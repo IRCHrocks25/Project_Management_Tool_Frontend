@@ -34,6 +34,15 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
 
+  const loadDeliverables = async () => {
+    try {
+      const projectDeliverables = await deliverableService.getAll(projectId);
+      setDeliverables(projectDeliverables);
+    } catch (error) {
+      console.error('Failed to load deliverables:', error);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && task) {
       setFormData({
@@ -46,16 +55,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setCustomDeliverableName('');
       loadDeliverables();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, task, projectId]);
-
-  const loadDeliverables = async () => {
-    try {
-      const projectDeliverables = await deliverableService.getAll(projectId);
-      setDeliverables(projectDeliverables);
-    } catch (error) {
-      console.error('Failed to load deliverables:', error);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const value = e.target.value;

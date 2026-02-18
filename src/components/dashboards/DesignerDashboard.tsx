@@ -20,7 +20,6 @@ import {
   FaPaintBrush,
   FaFigma,
   FaPlus,
-  FaTrash,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';

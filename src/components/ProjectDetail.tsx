@@ -66,6 +66,7 @@ const ProjectDetail: React.FC = () => {
       loadProject();
       loadTeamMembers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -328,7 +329,6 @@ const ProjectDetail: React.FC = () => {
     }
     
     const intakeTasks = project?.tasks?.filter((t: any) => t.type === 'Onboarding') || [];
-    const completedTasks = intakeTasks.filter((t: any) => t.isCompleted);
     const nextTask = intakeTasks.find((t: any) => !t.isCompleted);
     
     if (nextTask) {
@@ -522,9 +522,6 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const isCopyDeliverable = (type: string) => {
-    return ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(type);
-  };
 
   const showToast = (message: string) => {
     const toast = document.createElement('div');
@@ -1846,7 +1843,6 @@ const ProjectDetail: React.FC = () => {
                 };
 
                 const departments = getDeliverableDepartments(deliverable.type);
-                const primaryDepartment = departments[0];
                 
                 // Get workflow stage context
                 const getWorkflowContext = (status: string, type: string, depts: any[]) => {

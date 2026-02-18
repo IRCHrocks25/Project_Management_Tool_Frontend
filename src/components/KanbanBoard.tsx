@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaClock, FaEnvelope, FaExclamationTriangle, FaCheckCircle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { authService } from '../services/auth.service';
 import './KanbanBoard.css';
@@ -80,7 +80,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   };
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const getProjectsByStage = (displayStage: string) => {
     // If tasks are provided, show projects based on active tasks (multi-column view)
@@ -263,7 +262,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
-    setIsDragging(true);
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', projectId);
@@ -282,7 +280,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
     setDraggedProject(null);
     setDragOverColumn(null);
-    setIsDragging(false);
   };
 
   const handleDragOver = (e: React.DragEvent, stage: string) => {
