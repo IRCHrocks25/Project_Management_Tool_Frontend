@@ -1,0 +1,78 @@
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
+
+export const projectService = {
+  async getAll(): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects`, getAuthHeaders());
+    return response.data;
+  },
+
+  async getOne(id: string): Promise<any> {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${id}`, getAuthHeaders());
+      return response.data;
+    } catch (error: any) {
+      console.error(`[ProjectService] Error fetching project ${id}:`, error);
+      if (error.response) {
+        // Server responded with error status
+        throw new Error(error.response.data?.message || `Failed to load project: ${error.response.status}`);
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('No response from server. Is the backend running?');
+      } else {
+        // Something else happened
+        throw new Error(error.message || 'Failed to load project');
+      }
+    }
+  },
+
+  async create(data: any): Promise<any> {
+    const response = await axios.post(`${API_URL}/projects`, data, getAuthHeaders());
+    return response.data;
+  },
+
+  async updateStage(id: string, stage: string): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}/stage`, { stage }, getAuthHeaders());
+    return response.data;
+  },
+
+  async close(id: string): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}/close`, {}, getAuthHeaders());
+    return response.data;
+  },
+
+  async getStats(): Promise<any> {
+    const response = await axios.get(`${API_URL}/projects/stats`, getAuthHeaders());
+    return response.data;
+  },
+
+  async generateOnboardingTasks(id: string): Promise<any> {
+    const response = await axios.post(`${API_URL}/projects/${id}/generate-onboarding-tasks`, {}, getAuthHeaders());
+    return response.data;
+  },
+
+  async getTeamMembers(projectId: string): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects/${projectId}/team-members`, getAuthHeaders());
+    return response.data;
+  },
+
+  async addTeamMember(projectId: string, userId: string): Promise<any> {
+    const response = await axios.post(`${API_URL}/projects/${projectId}/team-members`, { userId }, getAuthHeaders());
+    return response.data;
+  },
+
+  async removeTeamMember(projectId: string, userId: string): Promise<void> {
+    await axios.delete(`${API_URL}/projects/${projectId}/team-members/${userId}`, getAuthHeaders());
+  },
+};
+
