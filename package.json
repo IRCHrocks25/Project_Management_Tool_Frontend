@@ -18,6 +18,7 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--no-deprecation PORT=3001 react-scripts start",
     "start:prod": "serve -s build -l 3001",
+    "start:railway": "serve -s build -l ${PORT:-3001}",
     "build": "cross-env NODE_OPTIONS=--no-deprecation react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
