@@ -41,6 +41,7 @@
     ]
   },
   "proxy": "http://localhost:3000",
+  "homepage": ".",
   "devDependencies": {
     "cross-env": "^10.1.0"
   }
