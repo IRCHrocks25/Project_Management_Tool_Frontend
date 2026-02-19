@@ -1288,13 +1288,6 @@ const ProjectDetail: React.FC = () => {
                     return <FaCircle style={{ color: '#6b7280' }} />;
                   };
                   
-                  const getActionColor = (action: string) => {
-                    if (action?.includes('Approved')) return '#10b981';
-                    if (action?.includes('Revision')) return '#f59e0b';
-                    if (action?.includes('Submitted') || action?.includes('Review')) return '#3b82f6';
-                    return '#6b7280';
-                  };
-                  
                   return (
                     <div className="activity-notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
                       {recentActivities.map((activity) => {
@@ -2156,15 +2149,8 @@ const ProjectDetail: React.FC = () => {
                 // Elliot Review: Check history for revision requests (set manually)
                 // Only show if deliverable is NOT in 'Revision' status and file doesn't have revision request
                 // Elliot Review is a manual staging area before actual revision
-                if (!isPlaceholder && selectedDeliverable.status !== 'Revision') {
-                  const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
-                  const fileHistory = deliverableHistory[fileHistoryKey] || [];
-                  const latestHistory = fileHistory[0];
-                  
-                  // Elliot Review is manually draggable - this is just for display
-                  // If there's a revision request but it's not actively in revision, it could be in Elliot Review
-                  // But since revision takes priority, this won't be reached if revision is active
-                }
+                // Note: Elliot Review is manually draggable - this section is kept for future use
+                // Since revision takes priority, this won't be reached if revision is active
                 
                 // 2. For Approval: When task is submitted for review (status = 'In Review')
                 // This takes priority - if task is in review, it's automatically in "For Approval"
