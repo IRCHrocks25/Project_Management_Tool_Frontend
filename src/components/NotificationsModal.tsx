@@ -6,9 +6,11 @@ import './NotificationsModal.css';
 interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpdate?: () => void; // Callback to refresh unread count in parent
+  onMarkAllAsRead?: () => void; // Callback to immediately reset count to 0
 }
 
-const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
+const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +38,10 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
       );
+      // Trigger parent update to refresh unread count
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -43,10 +49,26 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
 
   const handleMarkAllAsRead = async () => {
     try {
+      // Immediately reset count to 0 for instant feedback
+      if (onMarkAllAsRead) {
+        onMarkAllAsRead();
+      }
+      
+      // Wait for the backend request to complete
       await notificationService.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      
+      // Don't refresh immediately - the count is already 0
+      // The periodic refresh (every 30 seconds) will keep it accurate
+      // Only refresh if there's an error to get accurate state
     } catch (error) {
       console.error('Failed to mark all as read:', error);
+      // If error, refresh count to get accurate state
+      if (onUpdate) {
+        setTimeout(() => {
+          onUpdate();
+        }, 500);
+      }
     }
   };
 

@@ -45,6 +45,7 @@ const CopyDashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'created'>('due_date');
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const skipRefreshUntilRef = useRef<number | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -55,6 +56,10 @@ const CopyDashboard: React.FC = () => {
     loadData();
     loadUnreadCount();
     const interval = setInterval(() => {
+      // Skip refresh if we just marked all as read (within last 5 seconds)
+      if (skipRefreshUntilRef.current && Date.now() < skipRefreshUntilRef.current) {
+        return;
+      }
       loadUnreadCount();
     }, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
@@ -206,6 +211,10 @@ const CopyDashboard: React.FC = () => {
 
   const loadUnreadCount = async () => {
     try {
+      // Skip refresh if we just marked all as read (within last 5 seconds)
+      if (skipRefreshUntilRef.current && Date.now() < skipRefreshUntilRef.current) {
+        return;
+      }
       const count = await notificationService.getUnreadCount();
       setUnreadNotifications(count);
     } catch (error) {
@@ -529,6 +538,62 @@ const CopyDashboard: React.FC = () => {
         <div className="nav-container">
           <h2 className="logo">Copy Production</h2>
           <div className="nav-right">
+            {/* Notification Bell - Always Visible */}
+            <button
+              className="notification-button"
+              onClick={() => setShowNotificationsModal(true)}
+              style={{
+                position: 'relative',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                marginRight: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#64748b',
+                fontSize: '1.25rem',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#667eea';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#64748b';
+              }}
+            >
+              <FaBell />
+              {unreadNotifications > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-0.25rem',
+                    right: '-0.25rem',
+                    minWidth: '1.5rem',
+                    height: '1.5rem',
+                    padding: '0 0.375rem',
+                    borderRadius: '0.75rem',
+                    background: unreadNotifications >= 10 
+                      ? '#dc2626' // Red for 10+
+                      : unreadNotifications >= 5 
+                      ? '#f59e0b' // Orange for 5+
+                      : '#10b981', // Green for 1
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
+            </button>
+            
             <div className="avatar-dropdown-container" ref={dropdownRef}>
               <button
                 className="avatar-button"
@@ -993,7 +1058,17 @@ const CopyDashboard: React.FC = () => {
           isOpen={showNotificationsModal}
           onClose={() => {
             setShowNotificationsModal(false);
-            loadUnreadCount();
+          }}
+          onUpdate={loadUnreadCount}
+          onMarkAllAsRead={() => {
+            setUnreadNotifications(0);
+            // Prevent refresh for 5 seconds after marking all as read
+            skipRefreshUntilRef.current = Date.now() + 5000;
+            // After 5 seconds, refresh to get accurate count from server
+            setTimeout(() => {
+              skipRefreshUntilRef.current = null;
+              loadUnreadCount();
+            }, 5000);
           }}
         />
         <SendForReviewModal

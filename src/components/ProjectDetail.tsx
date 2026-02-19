@@ -1112,6 +1112,13 @@ const ProjectDetail: React.FC = () => {
           <FaHistory className="tab-icon" />
           Timeline
         </button>
+        <button
+          className={`tab-item ${activeTab === 'revisions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('revisions')}
+        >
+          <FaExclamationTriangle className="tab-icon" />
+          Revisions
+        </button>
       </div>
 
       {/* Tab Content with Fade Animation */}
@@ -3144,6 +3151,103 @@ const ProjectDetail: React.FC = () => {
             ) : (
               <ActivityLogKanban activities={activityLog} />
             )}
+          </div>
+        )}
+
+        {activeTab === 'revisions' && (
+          <div className="tab-content fade-in">
+            <div style={{ padding: '2rem' }}>
+              <h2 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
+                Revision Tracking
+              </h2>
+              <p style={{ marginBottom: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
+                Track the number of revisions for each deliverable type in this project.
+              </p>
+              
+              <div style={{ 
+                background: 'white', 
+                borderRadius: '0.5rem', 
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                overflow: 'hidden'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ 
+                        padding: '1rem', 
+                        textAlign: 'left', 
+                        fontWeight: 600, 
+                        color: '#475569',
+                        fontSize: '0.875rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Revision Type
+                      </th>
+                      <th style={{ 
+                        padding: '1rem', 
+                        textAlign: 'right', 
+                        fontWeight: 600, 
+                        color: '#475569',
+                        fontSize: '0.875rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Count
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <FaExclamationTriangle style={{ color: '#3b82f6', fontSize: '1rem' }} />
+                          <span>Copy Revisions</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                        {project?.copyRevisionCount || 0}
+                      </td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <FaExclamationTriangle style={{ color: '#8b5cf6', fontSize: '1rem' }} />
+                          <span>Design Revisions</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                        {project?.designRevisionCount || 0}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <FaExclamationTriangle style={{ color: '#10b981', fontSize: '1rem' }} />
+                          <span>Landing Page Revisions</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                        {project?.landingPageRevisionCount || 0}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ 
+                marginTop: '2rem', 
+                padding: '1rem', 
+                background: '#f0f9ff', 
+                borderRadius: '0.5rem',
+                border: '1px solid #bae6fd'
+              }}>
+                <p style={{ margin: 0, color: '#0369a1', fontSize: '0.875rem' }}>
+                  <strong>Note:</strong> Revision counts are automatically tracked when deliverables are marked for revision. 
+                  Each time a deliverable is sent back for revision, the corresponding counter is incremented.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
