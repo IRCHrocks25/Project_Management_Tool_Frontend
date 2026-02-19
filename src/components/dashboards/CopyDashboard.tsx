@@ -46,6 +46,7 @@ const CopyDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
+  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedProjectNotes, setSelectedProjectNotes] = useState<any[]>([]);
   const [selectedProjectName, setSelectedProjectName] = useState<string>('');
@@ -85,14 +86,57 @@ const CopyDashboard: React.FC = () => {
         ['Copy', 'Copy Revision'].includes(p.stage)
       );
 
-      // Get ALL copy tasks for copy stage projects (not filtered by assignment)
-      const copyTasks = allTasksData.filter((t: any) =>
-        t.type === 'Copy' && copyProjects.some((p: any) => p.id === t.projectId)
-      );
+      // Also include projects that have copy-related deliverables (even if not in Copy stage yet)
+      const projectsWithCopyDeliverables = projectsData.filter((p: any) => {
+        if (['Copy', 'Copy Revision'].includes(p.stage)) return true;
+        // Check if project has copy-related deliverables
+        return p.deliverables?.some((d: any) =>
+          ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(d.type) ||
+          (d.type === 'Landing Page' && d.customType) // Custom deliverables might be copy-related
+        );
+      });
 
-      // Load deliverable history for all copy projects to check for notes
+      // Get ALL copy tasks - include tasks for:
+      // 1. Projects in Copy/Copy Revision stage
+      // 2. Tasks with deliverableId pointing to copy-related deliverables
+      // 3. Projects that have copy-related deliverables
+      const copyTasks = allTasksData.filter((t: any) => {
+        if (t.type !== 'Copy') return false;
+        
+        // Check if task is for a project in Copy stage
+        if (copyProjects.some((p: any) => p.id === t.projectId)) return true;
+        
+        // Check if task has a deliverableId and find the deliverable
+        if (t.deliverableId) {
+          const project = projectsData.find((p: any) => p.id === t.projectId);
+          if (project?.deliverables) {
+            const deliverable = project.deliverables.find((d: any) => d.id === t.deliverableId);
+            if (deliverable) {
+              const deliverableType = deliverable.customType || deliverable.type;
+              // Check if it's a copy-related deliverable
+              if (['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
+                return true;
+              }
+              // Landing Page can be copy-related if it's not a design file
+              if (deliverableType === 'Landing Page' && !t.fileUrl?.includes('figma.com')) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        // Check if task's project has copy-related deliverables
+        return projectsWithCopyDeliverables.some((p: any) => p.id === t.projectId);
+      });
+
+      // Use projectsWithCopyDeliverables instead of just copyProjects to include all relevant projects
+      const allRelevantProjects = Array.from(new Map(
+        [...copyProjects, ...projectsWithCopyDeliverables].map((p: any) => [p.id, p])
+      ).values());
+
+      // Load deliverable history for all relevant projects to check for notes
       const projectsWithHistory = await Promise.all(
-        copyProjects.map(async (project: any) => {
+        allRelevantProjects.map(async (project: any) => {
           if (!project.deliverables || project.deliverables.length === 0) {
             return project;
           }
@@ -109,6 +153,12 @@ const CopyDashboard: React.FC = () => {
             try {
               const { deliverableService } = await import('../../services/deliverable.service');
               const history = await deliverableService.getHistory(deliverable.id);
+              
+              // Store full history for revision detection
+              setDeliverableHistory(prev => ({
+                ...prev,
+                [deliverable.id]: history
+              }));
               
               // Collect all history entries with notes
               // Only include notes for copy-related revisions (exclude design Figma files)
@@ -180,9 +230,20 @@ const CopyDashboard: React.FC = () => {
     }
   };
 
-  const handleSendForReview = (task: any) => {
+  const handleSendForReview = async (task: any) => {
     setSelectedTaskForReview(task);
     setShowReviewModal(true);
+    
+    // Reload the project to get fresh deliverables
+    try {
+      const freshProject = await projectService.getOne(task.projectId);
+      // Update the project in the projects array
+      setProjects((prevProjects: any[]) => 
+        prevProjects.map((p: any) => p.id === task.projectId ? freshProject : p)
+      );
+    } catch (error) {
+      console.error('Failed to reload project deliverables:', error);
+    }
   };
 
   const handleReviewSubmit = async (driveLink: string, deliverableType: string, deliverableId?: string) => {
@@ -341,12 +402,72 @@ const CopyDashboard: React.FC = () => {
     return '#6b7280'; // gray
   };
 
+  const getTaskBorderColor = (status: string, isCompleted: boolean, taskInRevision: boolean) => {
+    // Revision takes highest priority - red border
+    if (taskInRevision) return '#dc2626'; // red
+    if (isCompleted) return '#10b981'; // green
+    if (status === 'In Review') return '#f59e0b'; // amber/orange
+    if (status === 'In Progress') return '#3b82f6'; // blue
+    if (status === 'Blocked') return '#ef4444'; // red
+    return '#e5e7eb'; // default gray border
+  };
+
   // Check if project has deliverables in revision status
   const hasRevisionDeliverables = (project: any) => {
     return project.deliverables?.some((d: any) => 
       ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) &&
       d.status === 'Revision'
     );
+  };
+
+  // Check if a specific task is in revision
+  const isTaskInRevision = (task: any, project: any) => {
+    // Check if task's deliverable is in revision
+    if (task.deliverableId) {
+      const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+      if (deliverable) {
+        // Check deliverable status first - this is the most reliable indicator
+        if (deliverable.status === 'Revision') {
+          return true;
+        }
+        
+        // Check deliverable history for "Revision Requested" action
+        // This catches cases where PM requested revision but status hasn't updated yet
+        const history = deliverableHistory[deliverable.id] || [];
+        if (history.length > 0) {
+          // If task has been resubmitted (status is 'In Review'), it's no longer in revision
+          if (task.status === 'In Review') {
+            return false;
+          }
+          
+          // Check file-specific history if task has a fileUrl
+          if (task.fileUrl) {
+            // Find history entries for this specific file
+            const fileHistory = history.filter((h: any) => h.fileUrl === task.fileUrl);
+            if (fileHistory.length > 0) {
+              const latestFileHistory = fileHistory[0];
+              // If latest file history is "Revision Requested", task is in revision
+              if (latestFileHistory.action === 'Revision Requested') {
+                return true;
+              }
+            }
+          }
+          
+          // Also check general deliverable history
+          // Find the most recent "Revision Requested" entry
+          const revisionHistory = history.filter((h: any) => h.action === 'Revision Requested');
+          if (revisionHistory.length > 0) {
+            const latestRevision = revisionHistory[0];
+            // If task has fileUrl, prefer matching fileUrl, but also accept general revision requests
+            if (!task.fileUrl || !latestRevision.fileUrl || latestRevision.fileUrl === task.fileUrl) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    // Also check if project has revision deliverables (fallback)
+    return hasRevisionDeliverables(project);
   };
 
   const isTaskOverdue = (task: any) => {
@@ -687,12 +808,42 @@ const CopyDashboard: React.FC = () => {
                     const isOverdue = isTaskOverdue(task);
                     const daysUntilDue = getDaysUntilDue(task.dueDate);
                     const statusColor = getTaskStatusColor(task.status, task.isCompleted);
+                    const taskInRevision = isTaskInRevision(task, project);
+                    const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
 
                     return (
                       <div
                         key={task.id}
-                        className={`task-card copy-task-card ${task.isCompleted ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
+                        className={`task-card copy-task-card ${task.isCompleted ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${taskInRevision ? 'revision-task' : ''}`}
+                        style={{
+                          border: taskInRevision ? '2px solid #dc2626' : `2px solid ${borderColor}`,
+                          borderLeft: taskInRevision ? '4px solid #dc2626' : `4px solid ${borderColor}`,
+                          position: 'relative'
+                        }}
                       >
+                        {/* Revision Ribbon */}
+                        {taskInRevision && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '0',
+                            right: '0',
+                            background: '#dc2626',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderBottomLeftRadius: '8px',
+                            borderTopRightRadius: '8px',
+                            zIndex: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+                          }}>
+                            <FaExclamationTriangle style={{ fontSize: '0.625rem' }} />
+                            REVISION
+                          </div>
+                        )}
                         <div className="task-header">
                           <div className="task-status-indicator" style={{ backgroundColor: statusColor }}></div>
                           <h4 className="task-title">{task.title}</h4>
@@ -855,6 +1006,7 @@ const CopyDashboard: React.FC = () => {
           taskTitle={selectedTaskForReview?.title || ''}
           projectDeliverables={selectedTaskForReview ? (projects.find((p: any) => p.id === selectedTaskForReview.projectId)?.deliverables || []) : []}
           loading={updatingTask === selectedTaskForReview?.id}
+          taskDeliverableId={selectedTaskForReview?.deliverableId}
         />
         
         {/* Notes and Attachments Modal */}

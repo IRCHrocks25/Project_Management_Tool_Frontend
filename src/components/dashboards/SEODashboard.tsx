@@ -123,9 +123,20 @@ const SEODashboard: React.FC = () => {
     }
   };
 
-  const handleSendForReview = (task: any) => {
+  const handleSendForReview = async (task: any) => {
     setSelectedTaskForReview(task);
     setShowReviewModal(true);
+    
+    // Reload the project to get fresh deliverables
+    try {
+      const freshProject = await projectService.getOne(task.projectId);
+      // Update the project in the projects array
+      setProjects((prevProjects: any[]) => 
+        prevProjects.map((p: any) => p.id === task.projectId ? freshProject : p)
+      );
+    } catch (error) {
+      console.error('Failed to reload project deliverables:', error);
+    }
   };
 
   const handleReviewSubmit = async (fileLink: string, deliverableType: string, deliverableId?: string) => {
@@ -251,6 +262,29 @@ const SEODashboard: React.FC = () => {
     if (status === 'In Review') return '#f59e0b';
     if (status === 'Blocked') return '#ef4444';
     return '#6b7280';
+  };
+
+  const getTaskBorderColor = (status: string, isCompleted: boolean, taskInRevision: boolean) => {
+    // Revision takes highest priority - red border
+    if (taskInRevision) return '#dc2626'; // red
+    if (isCompleted) return '#10b981'; // green
+    if (status === 'In Review') return '#f59e0b'; // amber/orange
+    if (status === 'In Progress') return '#3b82f6'; // blue
+    if (status === 'Blocked') return '#ef4444'; // red
+    return '#e5e7eb'; // default gray border
+  };
+
+  // Check if a specific task is in revision
+  const isTaskInRevision = (task: any, project: any) => {
+    // Check if task's deliverable is in revision
+    if (task.deliverableId) {
+      const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+      if (deliverable && deliverable.status === 'Revision') {
+        return true;
+      }
+    }
+    // Note: For SEO tasks, we primarily rely on deliverable status
+    return false;
   };
 
   const isTaskOverdue = (task: any) => {
@@ -553,12 +587,42 @@ const SEODashboard: React.FC = () => {
                         const isOverdue = isTaskOverdue(task);
                         const daysUntilDue = getDaysUntilDue(task.dueDate);
                         const statusColor = getTaskStatusColor(task.status, task.isCompleted);
+                        const taskInRevision = isTaskInRevision(task, project);
+                        const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
 
                         return (
                           <div
                             key={task.id}
-                            className={`task-card seo-task-card ${task.isCompleted ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
+                            className={`task-card seo-task-card ${task.isCompleted ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${taskInRevision ? 'revision-task' : ''}`}
+                            style={{
+                              border: taskInRevision ? '2px solid #dc2626' : `2px solid ${borderColor}`,
+                              borderLeft: taskInRevision ? '4px solid #dc2626' : `4px solid ${borderColor}`,
+                              position: 'relative'
+                            }}
                           >
+                            {/* Revision Ribbon */}
+                            {taskInRevision && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '0',
+                                right: '0',
+                                background: '#dc2626',
+                                color: 'white',
+                                padding: '0.25rem 0.75rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                borderBottomLeftRadius: '8px',
+                                borderTopRightRadius: '8px',
+                                zIndex: 10,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+                              }}>
+                                <FaExclamationTriangle style={{ fontSize: '0.625rem' }} />
+                                REVISION
+                              </div>
+                            )}
                             <div className="task-header">
                               <div className="task-status-indicator" style={{ backgroundColor: statusColor }}></div>
                               <h4 className="task-title">{task.title}</h4>
@@ -714,6 +778,7 @@ const SEODashboard: React.FC = () => {
           projectDeliverables={selectedTaskForReview ? (projects.find((p: any) => p.id === selectedTaskForReview.projectId)?.deliverables || []) : []}
           loading={updatingTask === selectedTaskForReview?.id}
           isDevTask={true}
+          taskDeliverableId={selectedTaskForReview?.deliverableId}
         />
         <EditTaskModal
           isOpen={showEditTaskModal}

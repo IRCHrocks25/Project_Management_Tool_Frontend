@@ -161,6 +161,14 @@ const PMDashboard: React.FC = () => {
           <h2 className="logo">Katalyst PM</h2>
           <div className="nav-right">
             <button 
+              onClick={() => navigate('/clients')}
+              className="btn-secondary btn-secondary-premium"
+              style={{ marginRight: '0.75rem' }}
+            >
+              <FaFolder className="btn-icon" />
+              Clients
+            </button>
+            <button 
               onClick={() => navigate('/users')}
               className="btn-secondary btn-secondary-premium"
               style={{ marginRight: '0.75rem' }}

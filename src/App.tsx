@@ -8,6 +8,7 @@ import ProjectDetail from './components/ProjectDetail';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
 import Users from './components/Users';
+import Clients from './components/Clients';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -59,6 +60,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Users />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <PrivateRoute>
+              <Clients />
             </PrivateRoute>
           }
         />

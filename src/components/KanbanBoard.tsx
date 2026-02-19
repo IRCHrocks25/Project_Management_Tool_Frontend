@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight, FaUser } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { authService } from '../services/auth.service';
 import './KanbanBoard.css';
@@ -501,6 +501,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
                           <FaClock className="meta-icon" />
                           <span>{daysInStage} {daysInStage === 1 ? 'day' : 'days'} in stage</span>
                         </div>
+                        {project.pm?.name && (
+                          <div className="meta-item">
+                            <FaUser className="meta-icon" />
+                            <span>PM: {project.pm.name}</span>
+                          </div>
+                        )}
                         {daysSinceEmail !== null && (
                           <div className="meta-item">
                             <FaEnvelope className="meta-icon" />

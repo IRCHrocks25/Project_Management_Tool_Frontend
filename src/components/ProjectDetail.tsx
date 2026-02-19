@@ -1150,6 +1150,236 @@ const ProjectDetail: React.FC = () => {
               </div>
 
               <div className="overview-card premium-card">
+                <h3 className="card-title">Recent Activity</h3>
+                {(() => {
+                  // Collect all deliverable activities from history
+                  const allActivities: any[] = [];
+                  
+                  // Debug: Log deliverableHistory structure
+                  console.log('[Recent Activity] deliverableHistory keys:', Object.keys(deliverableHistory));
+                  console.log('[Recent Activity] deliverableHistory:', deliverableHistory);
+                  
+                  Object.keys(deliverableHistory).forEach((key) => {
+                    const history = deliverableHistory[key];
+                    if (!history || !Array.isArray(history) || history.length === 0) return;
+                    
+                    // Extract deliverable info from the key
+                    // Key format can be: "deliverableId" or "deliverableId:fileUrl"
+                    const parts = key.split(':');
+                    const deliverableId = parts[0];
+                    const fileUrl = parts[1]; // May be undefined for general deliverable history
+                    
+                    // Try to find deliverable
+                    let deliverable = project?.deliverables?.find((d: any) => d.id === deliverableId);
+                    
+                    // If not found, check if key itself is a deliverable ID (general history)
+                    if (!deliverable) {
+                      deliverable = project?.deliverables?.find((d: any) => d.id === key);
+                    }
+                    
+                    if (!deliverable) {
+                      console.log('[Recent Activity] Deliverable not found for key:', key);
+                      return;
+                    }
+                    
+                    // Get deliverable type
+                    const deliverableType = deliverable.customType || deliverable.type || 'Deliverable';
+                    
+                    // Process each history entry
+                    history.forEach((entry: any, index: number) => {
+                      const action = entry.action || entry.status || '';
+                      const actionLower = action.toLowerCase();
+                      
+                      // Debug: Log each entry
+                      console.log(`[Recent Activity] Entry ${index} for ${key}:`, {
+                        action,
+                        status: entry.status,
+                        createdAt: entry.createdAt,
+                        user: entry.user
+                      });
+                      
+                      // Check for important actions (more flexible matching)
+                      const isImportantAction = 
+                        actionLower.includes('approved') || 
+                        actionLower.includes('revision') || 
+                        actionLower.includes('submitted') || 
+                        actionLower.includes('review') ||
+                        actionLower.includes('ready') ||
+                        actionLower.includes('status changed') ||
+                        actionLower.includes('created');
+                      
+                      if (isImportantAction) {
+                        allActivities.push({
+                          ...entry,
+                          deliverableId: deliverableId || key,
+                          deliverableType,
+                          fileUrl: entry.fileUrl || fileUrl,
+                          key: `${key}-${index}-${entry.id || entry.createdAt || Date.now()}`
+                        });
+                      }
+                    });
+                  });
+                  
+                  // Also add task activities (when tasks are updated/submitted)
+                  if (tasks && tasks.length > 0) {
+                    tasks.forEach((task: any) => {
+                      // Only include tasks that have been updated recently or have fileUrl (submitted)
+                      if (task.fileUrl || task.status === 'In Review') {
+                        const deliverable = task.deliverableId 
+                          ? project?.deliverables?.find((d: any) => d.id === task.deliverableId)
+                          : null;
+                        
+                        if (deliverable || task.type === 'Copy' || task.type === 'Design') {
+                          const deliverableType = deliverable 
+                            ? (deliverable.customType || deliverable.type || 'Task')
+                            : `${task.type} Task`;
+                          
+                          // Create activity entry for task submission
+                          if (task.fileUrl && task.status === 'In Review') {
+                            allActivities.push({
+                              action: 'Submitted for Review',
+                              status: 'In Review',
+                              createdAt: task.updatedAt || task.createdAt,
+                              user: task.assignedTo || { name: 'System' },
+                              deliverableId: task.deliverableId,
+                              deliverableType,
+                              fileUrl: task.fileUrl,
+                              key: `task-${task.id}-submitted`
+                            });
+                          }
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Sort by date (newest first)
+                  allActivities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  
+                  // Get only the 10 most recent
+                  const recentActivities = allActivities.slice(0, 10);
+                  
+                  if (recentActivities.length === 0) {
+                    return (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        No recent activity
+                      </div>
+                    );
+                  }
+                  
+                  const formatTime = (date: string | Date) => {
+                    const d = new Date(date);
+                    const now = new Date();
+                    const diffMs = now.getTime() - d.getTime();
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    
+                    if (diffMins < 1) return 'Just now';
+                    if (diffMins < 60) return `${diffMins}m ago`;
+                    if (diffHours < 24) return `${diffHours}h ago`;
+                    if (diffDays < 7) return `${diffDays}d ago`;
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  };
+                  
+                  const getActionIcon = (action: string) => {
+                    if (action?.includes('Approved')) return <FaCheckCircle style={{ color: '#10b981' }} />;
+                    if (action?.includes('Revision')) return <FaExclamationTriangle style={{ color: '#f59e0b' }} />;
+                    if (action?.includes('Submitted') || action?.includes('Review')) return <FaPaperPlane style={{ color: '#3b82f6' }} />;
+                    return <FaCircle style={{ color: '#6b7280' }} />;
+                  };
+                  
+                  const getActionColor = (action: string) => {
+                    if (action?.includes('Approved')) return '#10b981';
+                    if (action?.includes('Revision')) return '#f59e0b';
+                    if (action?.includes('Submitted') || action?.includes('Review')) return '#3b82f6';
+                    return '#6b7280';
+                  };
+                  
+                  return (
+                    <div className="activity-notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                      {recentActivities.map((activity) => {
+                        const userName = activity.user?.name || 'System';
+                        const actionText = activity.action || 'Status Changed';
+                        const fileName = activity.fileUrl ? activity.fileUrl.split('/').pop()?.substring(0, 30) + '...' : '';
+                        
+                        const handleActivityClick = () => {
+                          // Switch to deliverables tab
+                          setActiveTab('deliverables');
+                          // Set the active deliverable tab to the one related to this activity
+                          if (activity.deliverableId) {
+                            setActiveDeliverableTab(activity.deliverableId);
+                          }
+                        };
+
+                        return (
+                          <div 
+                            key={activity.key}
+                            className="activity-notification-item"
+                            onClick={handleActivityClick}
+                            style={{
+                              padding: '0.875rem',
+                              background: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '0.75rem',
+                              transition: 'all 0.2s ease',
+                              cursor: 'pointer'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#f3f4f6';
+                              e.currentTarget.style.borderColor = '#d1d5db';
+                              e.currentTarget.style.transform = 'translateX(2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#f9fafb';
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                              e.currentTarget.style.transform = 'translateX(0)';
+                            }}
+                          >
+                            <div style={{ 
+                              flexShrink: 0, 
+                              marginTop: '0.125rem',
+                              fontSize: '0.875rem'
+                            }}>
+                              {getActionIcon(actionText)}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 600, color: '#111827', fontSize: '0.875rem' }}>
+                                  {userName}
+                                </span>
+                                <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                                  {actionText}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 500, color: '#374151', fontSize: '0.8125rem' }}>
+                                  {activity.deliverableType}
+                                </span>
+                                {fileName && (
+                                  <>
+                                    <span style={{ color: '#9ca3af' }}>•</span>
+                                    <span style={{ color: '#6b7280', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                                      {fileName}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                {formatTime(activity.createdAt)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="overview-card premium-card">
                 <h3 className="card-title">Revisions</h3>
                 {(() => {
                   // Collect all ACTIVE revision requests from deliverable history
@@ -1712,96 +1942,100 @@ const ProjectDetail: React.FC = () => {
                       }
                     } else {
                       // Original logic for standard deliverables (fallback for tasks not explicitly linked)
-                      // Copy tasks
-                      if (task.type === 'Copy' && ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(deliverableType)) {
-                        if (task.fileUrl) {
-                          links.push({
-                            department: 'Copy Writing',
-                            type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
-                            url: task.fileUrl,
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
-                        } else if (task.assignedToId) {
-                          // Include assigned tasks even without fileUrl
-                          links.push({
-                            department: 'Copy Writing',
-                            type: 'In Progress',
-                            url: `task-${task.id}`, // Placeholder URL for tasks without files
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
+                      // IMPORTANT: Only apply fallback logic if task has NO deliverableId set
+                      // If a task has a deliverableId, it should ONLY appear in that deliverable
+                      if (!task.deliverableId) {
+                        // Copy tasks
+                        if (task.type === 'Copy' && ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(deliverableType)) {
+                          if (task.fileUrl) {
+                            links.push({
+                              department: 'Copy Writing',
+                              type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
+                              url: task.fileUrl,
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          } else if (task.assignedToId) {
+                            // Include assigned tasks even without fileUrl
+                            links.push({
+                              department: 'Copy Writing',
+                              type: 'In Progress',
+                              url: `task-${task.id}`, // Placeholder URL for tasks without files
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          }
                         }
-                      }
-                      // Design tasks
-                      if (task.type === 'Design' && ['Logo', 'Social Banners', 'Landing Page', 'Brand Book'].includes(deliverableType)) {
-                        if (task.fileUrl) {
-                          links.push({
-                            department: 'Design',
-                            type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
-                            url: task.fileUrl,
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
-                        } else if (task.assignedToId) {
-                          // Include assigned tasks even without fileUrl
-                          links.push({
-                            department: 'Design',
-                            type: 'In Progress',
-                            url: `task-${task.id}`, // Placeholder URL for tasks without files
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
+                        // Design tasks
+                        if (task.type === 'Design' && ['Logo', 'Social Banners', 'Landing Page', 'Brand Book'].includes(deliverableType)) {
+                          if (task.fileUrl) {
+                            links.push({
+                              department: 'Design',
+                              type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
+                              url: task.fileUrl,
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          } else if (task.assignedToId) {
+                            // Include assigned tasks even without fileUrl
+                            links.push({
+                              department: 'Design',
+                              type: 'In Progress',
+                              url: `task-${task.id}`, // Placeholder URL for tasks without files
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          }
                         }
-                      }
-                      // Dev tasks
-                      if (task.type === 'Dev' && deliverableType === 'Landing Page') {
-                        if (task.fileUrl) {
-                          links.push({
-                            department: 'Development',
-                            type: 'Live URL',
-                            url: task.fileUrl,
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
-                        } else if (task.assignedToId) {
-                          links.push({
-                            department: 'Development',
-                            type: 'In Progress',
-                            url: `task-${task.id}`,
-                            taskTitle: task.title,
-                            taskId: task.id,
-                            assignedToId: task.assignedToId,
-                            assignedToName: task.assignedTo?.name || null,
-                            createdAt: task.createdAt,
-                            updatedAt: task.updatedAt
-                          });
+                        // Dev tasks
+                        if (task.type === 'Dev' && deliverableType === 'Landing Page') {
+                          if (task.fileUrl) {
+                            links.push({
+                              department: 'Development',
+                              type: 'Live URL',
+                              url: task.fileUrl,
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          } else if (task.assignedToId) {
+                            links.push({
+                              department: 'Development',
+                              type: 'In Progress',
+                              url: `task-${task.id}`,
+                              taskTitle: task.title,
+                              taskId: task.id,
+                              assignedToId: task.assignedToId,
+                              assignedToName: task.assignedTo?.name || null,
+                              createdAt: task.createdAt,
+                              updatedAt: task.updatedAt
+                            });
+                          }
                         }
+                        // AI tasks - ONLY show if explicitly linked to this deliverable via deliverableId
+                        // AI tasks should NOT appear in standard deliverables like Brand Book unless explicitly linked
+                        // The explicit linking is already handled above in the isLinkedToDeliverable check
+                        // So we don't need fallback logic here - AI tasks must be explicitly linked
                       }
-                      // AI tasks - ONLY show if explicitly linked to this deliverable via deliverableId
-                      // AI tasks should NOT appear in standard deliverables like Brand Book unless explicitly linked
-                      // The explicit linking is already handled above in the isLinkedToDeliverable check
-                      // So we don't need fallback logic here - AI tasks must be explicitly linked
                     }
                   }
                 });
@@ -1836,12 +2070,23 @@ const ProjectDetail: React.FC = () => {
               const relatedLinks = getRelatedLinks(selectedDeliverable.type);
               
               // Organize files into Kanban columns
-              const getFileStatus = (link: any) => {
+              const getFileStatus = (link: any): string => {
                 // Check if this is a placeholder task (no fileUrl yet)
                 const isPlaceholder = link.url.startsWith('task-');
                 
                 // Get related task to check current status
                 const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
+                
+                // Debug logging for status determination
+                if (!isPlaceholder && selectedDeliverable.status === 'Revision') {
+                  console.log('[ProjectDetail] File status check for Revision:', {
+                    fileUrl: link.url,
+                    deliverableStatus: selectedDeliverable.status,
+                    taskStatus: relatedTask?.status,
+                    taskId: relatedTask?.id,
+                    isResubmitted: relatedTask && relatedTask.status === 'In Review'
+                  });
+                }
                 
                 // Debug logging for AI tasks
                 if (relatedTask && relatedTask.type === 'AI') {
@@ -1857,59 +2102,99 @@ const ProjectDetail: React.FC = () => {
                   });
                 }
                 
-                // Check history for approved/revision status FIRST (only for files with actual URLs)
-                // Approved status takes highest priority - if approved, show as approved regardless of task status
+                // AUTOMATIC STATUS ASSIGNMENTS (based on task/deliverable status):
+                // These take priority over manual status columns
+                
+                // 1. Revision: Check if file has "Revision Requested" in history OR deliverable status is 'Revision'
+                // This takes HIGHEST PRIORITY - if in revision, it stays in revision (unless resubmitted)
                 if (!isPlaceholder) {
                   const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
                   const fileHistory = deliverableHistory[fileHistoryKey] || [];
                   const latestHistory = fileHistory[0];
                   
-                  if (latestHistory) {
-                    // If approved, always show as approved (highest priority)
-                    if (latestHistory.action === 'Approved') return 'approved';
-                    // Only show as revision if task is NOT currently in review
-                    // (if task is in review, it means it was resubmitted, so show in for_approval instead)
-                    if (latestHistory.action === 'Revision Requested' && (!relatedTask || relatedTask.status !== 'In Review')) {
-                      return 'revision';
+                  // Check if this file has been requested for revision
+                  const hasRevisionRequest = latestHistory?.action === 'Revision Requested';
+                  const isDeliverableInRevision = selectedDeliverable.status === 'Revision';
+                  
+                  // If file has revision request OR deliverable is in revision status
+                  if (hasRevisionRequest || isDeliverableInRevision) {
+                    // Check if task was resubmitted (status is 'In Review')
+                    if (relatedTask && relatedTask.status === 'In Review') {
+                      // Resubmitted - goes back to "For Approval"
+                      return 'for_approval';
                     }
+                    // Still needs revision - this takes priority over everything else
+                    return 'revision';
                   }
                 }
                 
-                // If task is currently "In Review" and not approved, it should be in "for_approval" column
-                // This takes priority over other statuses (user has resubmitted after revision)
-                // Works for ALL task types including AI
+                // MANUAL STATUS COLUMNS (set via drag and drop - check deliverable status):
+                // These are only shown if deliverable status matches (set manually via drag and drop)
+                // BUT only if NOT in revision (revision takes priority)
+                
+                // Approved/Completed: When deliverable status is 'Approved' (set manually)
+                if (selectedDeliverable.status === 'Approved' && !isPlaceholder) {
+                  return 'approved_completed';
+                }
+                
+                // Client Validation: When deliverable is in Client Review status (set manually)
+                if (selectedDeliverable.status === 'Client Review' && !isPlaceholder) {
+                  return 'client_validation';
+                }
+                
+                // QA Before Sending to Client: When deliverable is Ready for Review (set manually)
+                // Only show if task is NOT in review (if in review, it goes to "For Approval")
+                // AND only if NOT in revision (revision takes priority)
+                if (selectedDeliverable.status === 'Ready for Review' && !isPlaceholder) {
+                  if (relatedTask && relatedTask.status === 'In Review') {
+                    // Task is in review, so it goes to "For Approval" instead
+                    return 'for_approval';
+                  }
+                  return 'qa_before_client';
+                }
+                
+                // Elliot Review: Check history for revision requests (set manually)
+                // Only show if deliverable is NOT in 'Revision' status and file doesn't have revision request
+                // Elliot Review is a manual staging area before actual revision
+                if (!isPlaceholder && selectedDeliverable.status !== 'Revision') {
+                  const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
+                  const fileHistory = deliverableHistory[fileHistoryKey] || [];
+                  const latestHistory = fileHistory[0];
+                  
+                  // Elliot Review is manually draggable - this is just for display
+                  // If there's a revision request but it's not actively in revision, it could be in Elliot Review
+                  // But since revision takes priority, this won't be reached if revision is active
+                }
+                
+                // 2. For Approval: When task is submitted for review (status = 'In Review')
+                // This takes priority - if task is in review, it's automatically in "For Approval"
                 if (relatedTask && relatedTask.status === 'In Review') {
                   return 'for_approval';
                 }
                 
-                // Check if file has been submitted for approval
-                // A file is considered submitted if:
-                // 1. It has a fileUrl (not a placeholder) AND deliverable is Ready for Review/Client Review
-                const isSubmitted = !isPlaceholder && (selectedDeliverable.status === 'Ready for Review' || selectedDeliverable.status === 'Client Review');
-                
-                if (isSubmitted) {
-                  return 'for_approval';
-                }
-                
-                // Check if task is assigned - this determines "owned" status
+                // 3. Owned/In Progress: When a task has an owner (assigned)
                 if (link.assignedToId || link.taskId) {
                   const isAssigned = relatedTask?.assignedToId || link.assignedToId;
                   
                   if (isAssigned) {
-                    // If task is assigned (with or without file), it's "owned"
-                    return 'owned';
+                    // If task is assigned (with or without file), it's "owned_in_progress"
+                    return 'owned_in_progress';
                   }
                 }
                 
+                // 4. Not Yet Started: Default for unassigned tasks
                 return 'not_started';
               };
 
               const kanbanColumns = [
-                { id: 'not_started', title: 'Not Yet Started', files: relatedLinks.filter(l => getFileStatus(l) === 'not_started') },
-                { id: 'owned', title: 'Owned', files: relatedLinks.filter(l => getFileStatus(l) === 'owned') },
+                { id: 'not_started', title: 'Not yet started', files: relatedLinks.filter(l => getFileStatus(l) === 'not_started') },
+                { id: 'owned_in_progress', title: 'Owned/In Progress', files: relatedLinks.filter(l => getFileStatus(l) === 'owned_in_progress') },
                 { id: 'for_approval', title: 'For Approval', files: relatedLinks.filter(l => getFileStatus(l) === 'for_approval') },
+                { id: 'elliot_review', title: 'Elliot Review', files: relatedLinks.filter(l => getFileStatus(l) === 'elliot_review') },
                 { id: 'revision', title: 'Revision', files: relatedLinks.filter(l => getFileStatus(l) === 'revision') },
-                { id: 'approved', title: 'Approved', files: relatedLinks.filter(l => getFileStatus(l) === 'approved') },
+                { id: 'approved_completed', title: 'Approved/Completed', files: relatedLinks.filter(l => getFileStatus(l) === 'approved_completed') },
+                { id: 'qa_before_client', title: 'QA Before Sending to Client', files: relatedLinks.filter(l => getFileStatus(l) === 'qa_before_client') },
+                { id: 'client_validation', title: 'Client Validation', files: relatedLinks.filter(l => getFileStatus(l) === 'client_validation') },
               ];
 
               // Drag and drop handlers for deliverables Kanban
@@ -1957,15 +2242,19 @@ const ProjectDetail: React.FC = () => {
                 const fileUrl = draggedFile.fileUrl;
                 if (fileUrl.startsWith('task-')) return; // Can't move placeholder tasks
 
-                if (targetColumnId !== 'revision' && targetColumnId !== 'approved') {
-                  // For other columns, don't update status
+                // Only allow dropping on manual action columns
+                // Automatic columns (not_started, owned_in_progress, for_approval) cannot be dragged to
+                // Manual columns: elliot_review, revision, approved_completed, qa_before_client, client_validation
+                const manualColumns = ['elliot_review', 'revision', 'approved_completed', 'qa_before_client', 'client_validation'];
+                if (!manualColumns.includes(targetColumnId)) {
+                  // For automatic columns, don't update status (they're informational/automatic)
                   setDragOverColumn(null);
                   setDraggedFile(null);
                   return;
                 }
 
                 try {
-                  if (targetColumnId === 'revision') {
+                  if (targetColumnId === 'elliot_review' || targetColumnId === 'revision') {
                     // Open revision modal instead of directly updating
                     setRevisionDeliverable({ 
                       id: draggedFile.deliverableId, 
@@ -1979,8 +2268,8 @@ const ProjectDetail: React.FC = () => {
                     setDragOverColumn(null);
                     setDraggedFile(null);
                     return;
-                  } else if (targetColumnId === 'approved') {
-                    // Approve this file
+                  } else if (targetColumnId === 'approved_completed') {
+                    // Approve this file - sets status to 'Approved'
                     await deliverableService.updateStatus(
                       draggedFile.deliverableId,
                       'Approved',
@@ -1988,6 +2277,24 @@ const ProjectDetail: React.FC = () => {
                       fileUrl
                     );
                     showToast('File approved ✓');
+                  } else if (targetColumnId === 'qa_before_client') {
+                    // Move to QA - sets status to 'Ready for Review'
+                    await deliverableService.updateStatus(
+                      draggedFile.deliverableId,
+                      'Ready for Review',
+                      `Moved to QA before sending to client via Kanban`,
+                      fileUrl
+                    );
+                    showToast('Moved to QA before sending to client ✓');
+                  } else if (targetColumnId === 'client_validation') {
+                    // Move to client review - sets status to 'Client Review'
+                    await deliverableService.updateStatus(
+                      draggedFile.deliverableId,
+                      'Client Review',
+                      `Moved to client validation via Kanban`,
+                      fileUrl
+                    );
+                    showToast('Moved to client validation ✓');
                   }
                   
                   // Refresh to get the actual data from server
@@ -2097,14 +2404,47 @@ const ProjectDetail: React.FC = () => {
                             const deliverableMembers = deliverableTeamMembers[selectedDeliverable.id] || [];
                             const isPM = authService.getUser()?.role === 'Project Manager';
                             
+                            // Check if this file/task is in revision
+                            // Only show revision indicator if the file is actually in the "revision" column
+                            const currentFileStatus = getFileStatus(link);
+                            const isInRevision = currentFileStatus === 'revision';
+                            
                             return (
                               <div 
                                 key={idx} 
-                                className="kanban-card" 
+                                className={`kanban-card ${isInRevision ? 'revision-card' : ''}`}
                                 draggable={!link.url.startsWith('task-')}
                                 onDragStart={(e) => handleFileDragStart(e, link)}
                                 onDragEnd={handleFileDragEnd}
+                                style={isInRevision ? {
+                                  border: '2px solid #dc2626',
+                                  borderLeft: '4px solid #dc2626',
+                                  position: 'relative'
+                                } : {}}
                               >
+                                {/* Revision Ribbon */}
+                                {isInRevision && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '0',
+                                    right: '0',
+                                    background: '#dc2626',
+                                    color: 'white',
+                                    padding: '0.25rem 0.75rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    borderBottomLeftRadius: '8px',
+                                    borderTopRightRadius: '8px',
+                                    zIndex: 10,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+                                  }}>
+                                    <FaExclamationTriangle style={{ fontSize: '0.625rem' }} />
+                                    REVISION
+                                  </div>
+                                )}
                                 <div className="kanban-card-header">
                                   <div className="kanban-card-dept" style={{ backgroundColor: `${linkColor}20`, color: linkColor }}>
                                     {link.department.charAt(0)}

@@ -12,9 +12,17 @@ const getAuthHeaders = () => {
 };
 
 export const projectService = {
-  async getAll(): Promise<any[]> {
-    const response = await axios.get(`${API_URL}/projects`, getAuthHeaders());
+  async getAll(includeArchived: boolean = false): Promise<any[]> {
+    const url = includeArchived 
+      ? `${API_URL}/projects?includeArchived=true`
+      : `${API_URL}/projects`;
+    const response = await axios.get(url, getAuthHeaders());
     return response.data;
+  },
+
+  async getAllArchived(): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects?includeArchived=true`, getAuthHeaders());
+    return response.data.filter((p: any) => p.isArchived);
   },
 
   async getOne(id: string): Promise<any> {
