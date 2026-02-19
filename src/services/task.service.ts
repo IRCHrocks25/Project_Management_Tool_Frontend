@@ -25,10 +25,10 @@ export const taskService = {
     return this.getAll(projectId);
   },
 
-  async updateStatus(id: string, status: string, isCompleted?: boolean, fileUrl?: string, deliverableType?: string): Promise<any> {
+  async updateStatus(id: string, status: string, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<any> {
     const response = await axios.patch(
       `${API_URL}/tasks/${id}/status`,
-      { status, isCompleted, fileUrl, deliverableType },
+      { status, isCompleted, fileUrl, deliverableType, deliverableId },
       getAuthHeaders()
     );
     return response.data;

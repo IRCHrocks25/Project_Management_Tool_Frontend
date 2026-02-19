@@ -17,15 +17,193 @@ import {
   FaLink,
   FaFileAlt,
   FaPlus,
-  FaTimes
+  FaTimes,
+  FaEdit,
+  FaUser,
+  FaStickyNote,
+  FaArchive,
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { emailService } from '../services/email.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
-import ConfirmModal from './ConfirmModal';
 import './ProjectDetail.css';
+
+// Activity Log Kanban Component
+const ActivityLogKanban: React.FC<{ activities: any[] }> = ({ activities }) => {
+  // Group activities by department
+  // Activities are already sorted oldest first (newest at bottom) from backend
+  const groupedByDepartment: Record<string, any[]> = {};
+  
+  activities.forEach((activity) => {
+    const dept = activity.department || 'General';
+    if (!groupedByDepartment[dept]) {
+      groupedByDepartment[dept] = [];
+    }
+    groupedByDepartment[dept].push(activity); // Maintains order - oldest first
+  });
+
+  const departments = Object.keys(groupedByDepartment).sort();
+  
+  const getActionIcon = (action: string) => {
+    if (action.includes('Created')) return <FaCheckCircle style={{ color: '#10b981' }} />;
+    if (action.includes('Approved')) return <FaCheck style={{ color: '#10b981' }} />;
+    if (action.includes('Revision')) return <FaExclamationTriangle style={{ color: '#f59e0b' }} />;
+    if (action.includes('Submitted')) return <FaPaperPlane style={{ color: '#3b82f6' }} />;
+    if (action.includes('Updated')) return <FaEdit style={{ color: '#8b5cf6' }} />;
+    if (action.includes('Email')) return <FaEnvelope style={{ color: '#6366f1' }} />;
+    return <FaHistory style={{ color: '#6b7280' }} />;
+  };
+
+  const formatDateTime = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getDepartmentColor = (dept: string) => {
+    const colors: Record<string, string> = {
+      'Design': '#8b5cf6',
+      'Copy Writing': '#3b82f6',
+      'Development': '#10b981',
+      'Project Management': '#6366f1',
+      'Onboarding': '#f59e0b',
+      'General': '#6b7280',
+    };
+    return colors[dept] || '#6b7280';
+  };
+
+  if (activities.length === 0) {
+    return (
+      <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+        <FaHistory style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
+        <h3 style={{ marginBottom: '0.5rem' }}>No activity yet</h3>
+        <p>Activity will appear here as the project progresses.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="activity-log-kanban">
+      <div className="activity-log-header">
+        <h2>Activity Log</h2>
+        <p className="activity-log-subtitle">Track all project activities by department</p>
+      </div>
+      <div className="activity-log-columns">
+        {departments.map((dept) => (
+          <div key={dept} className="activity-log-column">
+            <div className="activity-log-column-header" style={{ borderLeftColor: getDepartmentColor(dept) }}>
+              <h3>{dept}</h3>
+              <span className="activity-count">{groupedByDepartment[dept].length}</span>
+            </div>
+            <div className="activity-log-column-content">
+              {groupedByDepartment[dept].map((activity) => (
+                <div key={activity.id} className="activity-log-card">
+                  <div className="activity-log-card-header">
+                    <div className="activity-icon-wrapper">
+                      {getActionIcon(activity.action)}
+                    </div>
+                    <div className="activity-action-text">
+                      <span className="activity-action">{activity.action}</span>
+                    </div>
+                  </div>
+                  <div className="activity-log-card-body">
+                    {activity.metadata?.taskTitle && (
+                      <div className="activity-meta-item">
+                        <strong>Task:</strong> {activity.metadata.taskTitle}
+                      </div>
+                    )}
+                    {activity.metadata?.deliverableType && (
+                      <div className="activity-meta-item">
+                        <strong>Deliverable:</strong> {activity.metadata.deliverableType}
+                        {activity.metadata.deliverableCustomType && ` (${activity.metadata.deliverableCustomType})`}
+                      </div>
+                    )}
+                    {activity.metadata?.fileUrl && (
+                      <div className="activity-meta-item">
+                        <strong>File:</strong>{' '}
+                        <a 
+                          href={activity.metadata.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="activity-file-link"
+                        >
+                          {activity.metadata.fileUrl.length > 50 
+                            ? activity.metadata.fileUrl.substring(0, 50) + '...' 
+                            : activity.metadata.fileUrl}
+                        </a>
+                      </div>
+                    )}
+                    {activity.metadata?.previousStatus && activity.metadata?.newStatus && (
+                      <div className="activity-meta-item">
+                        <strong>Status:</strong> {activity.metadata.previousStatus} → {activity.metadata.newStatus}
+                      </div>
+                    )}
+                    {activity.metadata?.notes && (
+                      <div className="activity-meta-item">
+                        <strong>Notes:</strong>
+                        <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>
+                          {(() => {
+                            const notes = activity.metadata.notes;
+                            // Check if notes contain an attachment link
+                            const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                            if (attachmentMatch) {
+                              const attachmentUrl = attachmentMatch[1];
+                              const notesText = notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim();
+                              return (
+                                <>
+                                  {notesText && <div style={{ marginBottom: '0.5rem' }}>{notesText}</div>}
+                                  <div>
+                                    <strong>Attachment: </strong>
+                                    <a 
+                                      href={attachmentUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      style={{ color: '#667eea', textDecoration: 'underline', wordBreak: 'break-all' }}
+                                    >
+                                      {attachmentUrl}
+                                    </a>
+                                  </div>
+                                </>
+                              );
+                            }
+                            return <div>{notes}</div>;
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="activity-log-card-footer">
+                    <div className="activity-user">
+                      {activity.user ? (
+                        <>
+                          <FaUser style={{ fontSize: '0.75rem', marginRight: '0.25rem' }} />
+                          {activity.user.name || activity.user.email || 'Unknown'}
+                        </>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>System</span>
+                      )}
+                    </div>
+                    <div className="activity-time">
+                      <FaClock style={{ fontSize: '0.75rem', marginRight: '0.25rem' }} />
+                      {formatDateTime(activity.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +220,8 @@ const ProjectDetail: React.FC = () => {
   const [updatingDeliverable, setUpdatingDeliverable] = useState<string | null>(null);
   const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
   const [revisionDeliverable, setRevisionDeliverable] = useState<{ id: string; type: string; fileUrl?: string } | null>(null);
+  const [revisionNotes, setRevisionNotes] = useState('');
+  const [revisionAttachment, setRevisionAttachment] = useState('');
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({});
   const [draggedFile, setDraggedFile] = useState<{ deliverableId: string; fileUrl: string; department: string } | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -60,6 +240,12 @@ const ProjectDetail: React.FC = () => {
   const [selectedDeliverableForTeam, setSelectedDeliverableForTeam] = useState<string | null>(null);
   const [selectedDeliverableUserId, setSelectedDeliverableUserId] = useState('');
   const [addingDeliverableTeamMember, setAddingDeliverableTeamMember] = useState(false);
+  const [activityLog, setActivityLog] = useState<any[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [showAddTaskFromDeliverableModal, setShowAddTaskFromDeliverableModal] = useState(false);
+  const [selectedDeliverableForTask, setSelectedDeliverableForTask] = useState<string | null>(null);
+  const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
+  const [creatingTask, setCreatingTask] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -101,6 +287,30 @@ const ProjectDetail: React.FC = () => {
       loadDeliverableTeamMembers(activeDeliverableTab);
     }
   }, [activeDeliverableTab]);
+
+  useEffect(() => {
+    // Load activity log when timeline tab is active
+    if (activeTab === 'timeline' && id) {
+      loadActivityLog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, id]);
+
+  const loadActivityLog = async () => {
+    if (!id) return;
+    try {
+      setLoadingActivity(true);
+      const activity = await projectService.getActivity(id);
+      console.log('Activity log loaded:', activity);
+      setActivityLog(activity || []);
+    } catch (error: any) {
+      console.error('Failed to load activity log:', error);
+      console.error('Error details:', error?.response?.data || error?.message);
+      setActivityLog([]);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
 
   const loadProject = async () => {
     try {
@@ -389,17 +599,18 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const handleRemoveTeamMember = async (userId: string) => {
-    if (!id) return;
-    if (!window.confirm('Are you sure you want to remove this team member?')) return;
-    try {
-      await projectService.removeTeamMember(id, userId);
-      await loadTeamMembers();
-    } catch (error: any) {
-      console.error('Failed to remove team member:', error);
-      alert(error.response?.data?.message || 'Failed to remove team member');
-    }
-  };
+  // Commented out - Team Members section is disabled
+  // const handleRemoveTeamMember = async (userId: string) => {
+  //   if (!id) return;
+  //   if (!window.confirm('Are you sure you want to remove this team member?')) return;
+  //   try {
+  //     await projectService.removeTeamMember(id, userId);
+  //     await loadTeamMembers();
+  //   } catch (error: any) {
+  //     console.error('Failed to remove team member:', error);
+  //     alert(error.response?.data?.message || 'Failed to remove team member');
+  //   }
+  // };
 
   const loadDeliverableTeamMembers = async (deliverableId: string) => {
     try {
@@ -449,8 +660,23 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const handleArchiveProject = async () => {
+    if (!window.confirm('Are you sure you want to archive this project? It will be hidden from default views but can still be accessed via direct link.')) return;
+    
+    try {
+      await projectService.archive(id!);
+      alert('Project archived successfully');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Failed to archive project:', error);
+      alert(error.response?.data?.message || 'Failed to archive project. Only Project Managers and Admins can archive projects.');
+    }
+  };
+
   const handleRequestRevisionClick = (deliverableId: string, deliverableType: string, fileUrl?: string) => {
     setRevisionDeliverable({ id: deliverableId, type: deliverableType, fileUrl });
+    setRevisionNotes('');
+    setRevisionAttachment('');
     setShowRevisionConfirm(true);
   };
 
@@ -460,12 +686,60 @@ const ProjectDetail: React.FC = () => {
     try {
       setUpdatingDeliverable(revisionDeliverable.id);
       console.log('Requesting revision for deliverable:', revisionDeliverable.id);
-      const result = await deliverableService.updateStatus(revisionDeliverable.id, 'Revision');
-      console.log('Revision request successful:', result);
+      
+      // Combine notes and attachment into a formatted note
+      let combinedNotes = revisionNotes.trim();
+      if (revisionAttachment.trim()) {
+        if (combinedNotes) {
+          combinedNotes += `\n\nAttachment: ${revisionAttachment.trim()}`;
+        } else {
+          combinedNotes = `Attachment: ${revisionAttachment.trim()}`;
+        }
+      }
+      
+      console.log('[Revision] Sending revision request with:', {
+        deliverableId: revisionDeliverable.id,
+        fileUrl: revisionDeliverable.fileUrl,
+        notes: combinedNotes || 'No notes',
+        notesLength: combinedNotes?.length || 0
+      });
+      
+      const result = await deliverableService.updateStatus(
+        revisionDeliverable.id, 
+        'Revision', 
+        combinedNotes || undefined,
+        revisionDeliverable.fileUrl
+      );
+      console.log('[Revision] Revision request successful:', result);
+      
+      // Reload project to get updated history
       await loadProject();
+      
+      // Also explicitly reload history for this specific file to ensure notes are visible
+      if (revisionDeliverable.fileUrl) {
+        try {
+          const fileHist = await deliverableService.getHistory(revisionDeliverable.id, revisionDeliverable.fileUrl);
+          const historyKey = `${revisionDeliverable.id}:${revisionDeliverable.fileUrl}`;
+          console.log('[Revision] Loaded file history after revision:', {
+            historyKey,
+            historyLength: fileHist.length,
+            latestEntry: fileHist[0],
+            hasNotes: !!fileHist[0]?.notes,
+            notes: fileHist[0]?.notes
+          });
+          setDeliverableHistory(prev => ({
+            ...prev,
+            [historyKey]: fileHist
+          }));
+        } catch (error) {
+          console.error('[Revision] Failed to reload file history:', error);
+        }
+      }
       showToast('Revision requested ✓');
       setShowRevisionConfirm(false);
       setRevisionDeliverable(null);
+      setRevisionNotes('');
+      setRevisionAttachment('');
     } catch (error: any) {
       console.error('Failed to request revision:', error);
       console.error('Full error object:', JSON.stringify(error, null, 2));
@@ -476,6 +750,60 @@ const ProjectDetail: React.FC = () => {
       showToast(`Failed to request revision: ${errorMessage}`);
     } finally {
       setUpdatingDeliverable(null);
+    }
+  };
+
+  // Create task from deliverable
+  const handleCreateTaskFromDeliverable = async () => {
+    if (!selectedDeliverableForTask || !newTaskData.department || !id || !project) return;
+
+    try {
+      setCreatingTask(true);
+      
+      // Find the deliverable from project
+      const deliverable = project.deliverables?.find((d: any) => d.id === selectedDeliverableForTask);
+      const deliverableType = deliverable?.customType || deliverable?.type || 'Task';
+      
+      // Map department to task type
+      const departmentToTaskType: Record<string, string> = {
+        'Design': 'Design',
+        'Copy Writing': 'Copy',
+        'Development': 'Dev',
+        'AI Team': 'AI',
+        'Social Media Team': 'Social Media',
+        'CRM': 'CRM',
+        'SEO/GEO Team': 'SEO/GEO',
+        'Onboarding': 'Onboarding',
+      };
+
+      const taskType = departmentToTaskType[newTaskData.department] || 'General';
+      
+      const taskData: any = {
+        projectId: id,
+        title: `${deliverableType} - ${newTaskData.department}`,
+        description: newTaskData.notes || '',
+        type: taskType,
+        status: 'Todo',
+        isCompleted: false,
+        deliverableId: selectedDeliverableForTask,
+      };
+
+      if (newTaskData.assignedToId) {
+        taskData.assignedToId = newTaskData.assignedToId;
+      }
+
+      await taskService.create(taskData);
+      showToast('Task created successfully ✓');
+      await loadProject();
+      setShowAddTaskFromDeliverableModal(false);
+      setSelectedDeliverableForTask(null);
+      setNewTaskData({ department: '', notes: '', assignedToId: '' });
+    } catch (error: any) {
+      console.error('Failed to create task:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      showToast(`Failed to create task: ${errorMessage}`);
+    } finally {
+      setCreatingTask(false);
     }
   };
 
@@ -658,6 +986,15 @@ const ProjectDetail: React.FC = () => {
               <button className="btn-primary-action">
                 <FaPaperPlane /> Send Update
               </button>
+              {(authService.getUser()?.role === 'Project Manager' || authService.getUser()?.role === 'FOUNDER/CEO') && !project?.isArchived && (
+                <button 
+                  onClick={handleArchiveProject} 
+                  className="btn-primary-action"
+                  style={{ marginLeft: '0.5rem', backgroundColor: '#6b7280' }}
+                >
+                  <FaArchive /> Archive Project
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -808,24 +1145,142 @@ const ProjectDetail: React.FC = () => {
 
               <div className="overview-card premium-card">
                 <h3 className="card-title">Revisions</h3>
-                <div className="revision-list-premium">
-                  <div className="revision-item-premium">
-                    <span className="revision-label">Copy Revisions</span>
-                    <span 
-                      className={`revision-count ${project.copyRevisionCount > 2 ? 'warning' : ''} ${project.copyRevisionCount > 4 ? 'critical' : ''}`}
-                    >
-                      {project.copyRevisionCount}
-                    </span>
-                  </div>
-                  <div className="revision-item-premium">
-                    <span className="revision-label">Design Revisions</span>
-                    <span 
-                      className={`revision-count ${project.designRevisionCount > 2 ? 'warning' : ''} ${project.designRevisionCount > 4 ? 'critical' : ''}`}
-                    >
-                      {project.designRevisionCount}
-                    </span>
-                  </div>
-                </div>
+                {(() => {
+                  // Collect all ACTIVE revision requests from deliverable history
+                  // A revision is active if it's the latest entry for that file and hasn't been approved/resubmitted
+                  const allRevisions: any[] = [];
+                  
+                  Object.keys(deliverableHistory).forEach((key) => {
+                    const history = deliverableHistory[key];
+                    if (history.length === 0) return;
+                    
+                    // Get the latest history entry
+                    const latestEntry = history[0];
+                    
+                    // Only show if latest entry is a revision request (meaning it's still active)
+                    if (latestEntry.action === 'Revision Requested') {
+                      // Extract deliverable info from the key (format: "deliverableId:fileUrl")
+                      const [deliverableId] = key.split(':');
+                      const deliverable = project?.deliverables?.find((d: any) => d.id === deliverableId);
+                      
+                      // Determine department based on deliverable type
+                      let department = 'General';
+                      const deliverableType = deliverable?.type || deliverable?.customType || '';
+                      
+                      if (['Logo', 'Social Banners', 'Speaker Kit', 'Landing Page'].includes(deliverableType)) {
+                        department = 'Design';
+                      } else if (['Brand Book', 'Copy of Landing Page', 'Other'].includes(deliverableType)) {
+                        department = 'Copy Writing';
+                      }
+                      
+                      // Check if there's a related task to see if it's been resubmitted
+                      const fileUrl = latestEntry.fileUrl;
+                      const relatedTask = tasks.find((t: any) => t.fileUrl === fileUrl);
+                      const isResubmitted = relatedTask && relatedTask.status === 'In Review';
+                      
+                      // Only add if not resubmitted (still needs revision)
+                      if (!isResubmitted) {
+                        allRevisions.push({
+                          ...latestEntry,
+                          deliverableType,
+                          deliverableId,
+                          department,
+                          fileUrl: latestEntry.fileUrl,
+                        });
+                      }
+                    }
+                  });
+                  
+                  // Sort by date (newest first)
+                  allRevisions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  
+                  if (allRevisions.length === 0) {
+                    return (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        No active revisions
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div className="revision-list-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {allRevisions.map((revision, idx) => {
+                        const notes = revision.notes || '';
+                        const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                        const hasAttachment = !!attachmentMatch;
+                        const notesText = attachmentMatch 
+                          ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                          : notes.trim();
+                        const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                        const departmentColor = revision.department === 'Design' ? '#8b5cf6' : '#3b82f6';
+                        
+                        return (
+                          <div 
+                            key={idx}
+                            className="revision-item-premium"
+                            style={{
+                              padding: '1rem',
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                  <span 
+                                    style={{
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '4px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      background: `${departmentColor}20`,
+                                      color: departmentColor
+                                    }}
+                                  >
+                                    {revision.department}
+                                  </span>
+                                  <span style={{ fontWeight: 600, color: '#111827', fontSize: '0.875rem' }}>
+                                    {revision.deliverableType}
+                                  </span>
+                                </div>
+                                {notesText && (
+                                  <div style={{ fontSize: '0.875rem', color: '#92400e', marginTop: '0.5rem', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                                    {notesText}
+                                  </div>
+                                )}
+                                {hasAttachment && attachmentUrl && (
+                                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <FaLink style={{ color: '#667eea', fontSize: '0.75rem' }} />
+                                    <a 
+                                      href={attachmentUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      style={{ 
+                                        color: '#667eea', 
+                                        textDecoration: 'underline', 
+                                        wordBreak: 'break-all',
+                                        fontSize: '0.75rem'
+                                      }}
+                                    >
+                                      View Attachment
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap', marginLeft: '1rem' }}>
+                                {new Date(revision.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               {project.stage === 'Ready to Close' && (
@@ -1031,6 +1486,7 @@ const ProjectDetail: React.FC = () => {
         {activeTab === 'deliverables' && (
           <div className="tab-content fade-in">
             {/* Team Members Section - Only for PM */}
+            {/* COMMENTED OUT - Temporarily disabled
             {authService.getUser()?.role === 'Project Manager' && (
               <div className="team-members-section" style={{ marginBottom: '2rem', background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1100,6 +1556,7 @@ const ProjectDetail: React.FC = () => {
                 </div>
               </div>
             )}
+            */}
 
             {/* Deliverables Header with Info */}
             <div className="deliverables-header-info">
@@ -1234,7 +1691,7 @@ const ProjectDetail: React.FC = () => {
                           updatedAt: task.updatedAt
                         });
                       } else {
-                        // Show linked tasks even without fileUrl
+                        // Show linked tasks even without fileUrl (including AI tasks)
                         links.push({
                           department,
                           type: task.assignedToId ? 'In Progress' : 'Not Started',
@@ -1335,6 +1792,10 @@ const ProjectDetail: React.FC = () => {
                           });
                         }
                       }
+                      // AI tasks - ONLY show if explicitly linked to this deliverable via deliverableId
+                      // AI tasks should NOT appear in standard deliverables like Brand Book unless explicitly linked
+                      // The explicit linking is already handled above in the isLinkedToDeliverable check
+                      // So we don't need fallback logic here - AI tasks must be explicitly linked
                     }
                   }
                 });
@@ -1373,25 +1834,52 @@ const ProjectDetail: React.FC = () => {
                 // Check if this is a placeholder task (no fileUrl yet)
                 const isPlaceholder = link.url.startsWith('task-');
                 
-                // Check history first for approved/revision status (only for files with actual URLs)
+                // Get related task to check current status
+                const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
+                
+                // Debug logging for AI tasks
+                if (relatedTask && relatedTask.type === 'AI') {
+                  console.log('[ProjectDetail] AI Task status check:', {
+                    taskId: relatedTask.id,
+                    taskTitle: relatedTask.title,
+                    status: relatedTask.status,
+                    fileUrl: relatedTask.fileUrl,
+                    linkUrl: link.url,
+                    isPlaceholder,
+                    deliverableId: relatedTask.deliverableId,
+                    selectedDeliverableId: selectedDeliverable.id
+                  });
+                }
+                
+                // Check history for approved/revision status FIRST (only for files with actual URLs)
+                // Approved status takes highest priority - if approved, show as approved regardless of task status
                 if (!isPlaceholder) {
                   const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
                   const fileHistory = deliverableHistory[fileHistoryKey] || [];
                   const latestHistory = fileHistory[0];
                   
                   if (latestHistory) {
+                    // If approved, always show as approved (highest priority)
                     if (latestHistory.action === 'Approved') return 'approved';
-                    if (latestHistory.action === 'Revision Requested') return 'revision';
+                    // Only show as revision if task is NOT currently in review
+                    // (if task is in review, it means it was resubmitted, so show in for_approval instead)
+                    if (latestHistory.action === 'Revision Requested' && (!relatedTask || relatedTask.status !== 'In Review')) {
+                      return 'revision';
+                    }
                   }
+                }
+                
+                // If task is currently "In Review" and not approved, it should be in "for_approval" column
+                // This takes priority over other statuses (user has resubmitted after revision)
+                // Works for ALL task types including AI
+                if (relatedTask && relatedTask.status === 'In Review') {
+                  return 'for_approval';
                 }
                 
                 // Check if file has been submitted for approval
                 // A file is considered submitted if:
                 // 1. It has a fileUrl (not a placeholder) AND deliverable is Ready for Review/Client Review
-                // 2. OR the related task status is "In Review"
-                const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
-                const isSubmitted = (!isPlaceholder && (selectedDeliverable.status === 'Ready for Review' || selectedDeliverable.status === 'Client Review')) ||
-                                   (relatedTask && relatedTask.status === 'In Review');
+                const isSubmitted = !isPlaceholder && (selectedDeliverable.status === 'Ready for Review' || selectedDeliverable.status === 'Client Review');
                 
                 if (isSubmitted) {
                   return 'for_approval';
@@ -1463,52 +1951,28 @@ const ProjectDetail: React.FC = () => {
                 const fileUrl = draggedFile.fileUrl;
                 if (fileUrl.startsWith('task-')) return; // Can't move placeholder tasks
 
-                // Optimistically update the deliverable history immediately
-                const fileHistoryKey = `${draggedFile.deliverableId}:${fileUrl}`;
-                const currentHistory = deliverableHistory[fileHistoryKey] || [];
-                
-                let newStatus: string;
-                let action: string;
-                
-                if (targetColumnId === 'revision') {
-                  newStatus = 'Revision';
-                  action = 'Revision Requested';
-                } else if (targetColumnId === 'approved') {
-                  newStatus = 'Approved';
-                  action = 'Approved';
-                } else {
+                if (targetColumnId !== 'revision' && targetColumnId !== 'approved') {
                   // For other columns, don't update status
                   setDragOverColumn(null);
                   setDraggedFile(null);
                   return;
                 }
 
-                // Optimistically add history entry
-                const optimisticHistory = [{
-                  id: `temp-${Date.now()}`,
-                  action,
-                  newStatus,
-                  previousStatus: currentHistory[0]?.newStatus || selectedDeliverable.status,
-                  createdAt: new Date(),
-                  user: { name: 'You' }
-                }, ...currentHistory];
-
-                // Update state immediately for instant UI feedback
-                setDeliverableHistory(prev => ({
-                  ...prev,
-                  [fileHistoryKey]: optimisticHistory
-                }));
-
                 try {
                   if (targetColumnId === 'revision') {
-                    // Request revision for this file
-                    await deliverableService.updateStatus(
-                      draggedFile.deliverableId,
-                      'Revision',
-                      `Moved to revision via Kanban`,
-                      fileUrl
-                    );
-                    showToast('File moved to revision ✓');
+                    // Open revision modal instead of directly updating
+                    setRevisionDeliverable({ 
+                      id: draggedFile.deliverableId, 
+                      type: selectedDeliverable.type, 
+                      fileUrl: fileUrl 
+                    });
+                    setRevisionNotes('');
+                    setRevisionAttachment('');
+                    setShowRevisionConfirm(true);
+                    // Don't update yet - wait for modal confirmation
+                    setDragOverColumn(null);
+                    setDraggedFile(null);
+                    return;
                   } else if (targetColumnId === 'approved') {
                     // Approve this file
                     await deliverableService.updateStatus(
@@ -1526,12 +1990,6 @@ const ProjectDetail: React.FC = () => {
                   console.error('Failed to update file status:', error);
                   const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
                   showToast(`Failed to move file: ${errorMessage}`);
-                  
-                  // Revert optimistic update on error
-                  setDeliverableHistory(prev => ({
-                    ...prev,
-                    [fileHistoryKey]: currentHistory
-                  }));
                 } finally {
                   setDragOverColumn(null);
                   setDraggedFile(null);
@@ -1568,6 +2026,45 @@ const ProjectDetail: React.FC = () => {
                           <span className="kanban-column-count">{column.files.length}</span>
                         </div>
                         <div className="kanban-column-content">
+                          {/* Add Task button for PMs in NOT YET STARTED column */}
+                          {column.id === 'not_started' && authService.getUser()?.role === 'Project Manager' && (
+                            <button
+                              onClick={() => {
+                                setSelectedDeliverableForTask(selectedDeliverable.id);
+                                setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                                setShowAddTaskFromDeliverableModal(true);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                marginBottom: '0.75rem',
+                                background: 'white',
+                                border: '2px dashed #cbd5e1',
+                                borderRadius: '8px',
+                                color: '#64748b',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#667eea';
+                                e.currentTarget.style.color = '#667eea';
+                                e.currentTarget.style.background = '#f0f4ff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.color = '#64748b';
+                                e.currentTarget.style.background = 'white';
+                              }}
+                            >
+                              <FaPlus /> Add Task
+                            </button>
+                          )}
                           {column.files.map((link, idx) => {
                             const deptColors: any = {
                               'Copy Writing': '#667eea',
@@ -1583,9 +2080,11 @@ const ProjectDetail: React.FC = () => {
                             const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
                             const ownerName = link.assignedToName || relatedTask?.assignedTo?.name || 'Unassigned';
                             const displayDate = link.updatedAt || link.createdAt || relatedTask?.updatedAt || relatedTask?.createdAt;
-                            const formattedDate = displayDate ? new Date(displayDate).toLocaleDateString('en-US', { 
+                            const formattedDate = displayDate ? new Date(displayDate).toLocaleString('en-US', { 
                               month: 'short', 
-                              day: 'numeric'
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
                             }) : '';
                             
                             // Get deliverable team members for this deliverable
@@ -1605,6 +2104,31 @@ const ProjectDetail: React.FC = () => {
                                     {link.department.charAt(0)}
                                   </div>
                                   <span className="kanban-card-type">{link.type}</span>
+                                  {/* Notification badge for notes/links */}
+                                  {fileHistory.length > 0 && fileHistory[0].notes && (() => {
+                                    const notes = fileHistory[0].notes;
+                                    const hasNotes = notes.trim().length > 0;
+                                    const hasAttachment = /Attachment:\s*https?:\/\/[^\s]+/i.test(notes);
+                                    if (!hasNotes && !hasAttachment) return null;
+                                    return (
+                                      <div 
+                                        style={{
+                                          marginLeft: 'auto',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          padding: '0.25rem 0.5rem',
+                                          background: '#fef3c7',
+                                          borderRadius: '12px',
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Has notes or attachments"
+                                      >
+                                        <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.75rem' }} />
+                                        {hasAttachment && <FaLink style={{ color: '#f59e0b', fontSize: '0.625rem' }} />}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="kanban-card-body">
                                   {link.url.startsWith('task-') ? (
@@ -1730,6 +2254,64 @@ const ProjectDetail: React.FC = () => {
                                       <span className="kanban-meta-value">{formattedDate}</span>
                                     </div>
                                   )}
+                                  
+                                  {/* Notes and Links Notification */}
+                                  {fileHistory.length > 0 && fileHistory[0].notes && (() => {
+                                    const notes = fileHistory[0].notes;
+                                    const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                                    const hasAttachment = !!attachmentMatch;
+                                    const notesText = attachmentMatch 
+                                      ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                                      : notes.trim();
+                                    const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                                    
+                                    if (!notesText && !hasAttachment) return null;
+                                    
+                                    return (
+                                      <div style={{ 
+                                        marginTop: '0.75rem', 
+                                        padding: '0.75rem', 
+                                        background: '#fef3c7', 
+                                        border: '1px solid #fde68a',
+                                        borderRadius: '6px',
+                                        fontSize: '0.75rem'
+                                      }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: notesText && hasAttachment ? '0.5rem' : 0 }}>
+                                          <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
+                                          <div style={{ flex: 1 }}>
+                                            {notesText && (
+                                              <div style={{ color: '#92400e', marginBottom: hasAttachment ? '0.5rem' : 0, whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                                                <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Notes:</strong>
+                                                {notesText}
+                                              </div>
+                                            )}
+                                            {hasAttachment && attachmentUrl && (
+                                              <div style={{ color: '#92400e' }}>
+                                                <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Attachment:</strong>
+                                                <a 
+                                                  href={attachmentUrl} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  style={{ 
+                                                    color: '#667eea', 
+                                                    textDecoration: 'underline', 
+                                                    wordBreak: 'break-all',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.25rem'
+                                                  }}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                >
+                                                  <FaLink style={{ fontSize: '0.625rem' }} />
+                                                  {attachmentUrl}
+                                                </a>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 {fileHistory.length > 0 && (
                                   <div className="kanban-card-footer">
@@ -2222,33 +2804,14 @@ const ProjectDetail: React.FC = () => {
 
         {activeTab === 'timeline' && (
           <div className="tab-content fade-in">
-            <div className="timeline-premium">
-              <div className="timeline-item-premium">
-                <div className="timeline-marker-premium"></div>
-                <div className="timeline-content-premium">
-                  <h4>Project Created</h4>
-                  <span>{new Date(project.createdAt).toLocaleDateString()}</span>
-                </div>
+            {loadingActivity ? (
+              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <FaHistory style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.3 }} />
+                <p>Loading activity log...</p>
               </div>
-              {project.lastEmailedAt && (
-                <div className="timeline-item-premium">
-                  <div className="timeline-marker-premium"></div>
-                  <div className="timeline-content-premium">
-                    <h4>Last Email Sent</h4>
-                    <span>{new Date(project.lastEmailedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              )}
-              {project.closedAt && (
-                <div className="timeline-item-premium">
-                  <div className="timeline-marker-premium"></div>
-                  <div className="timeline-content-premium">
-                    <h4>Project Closed</h4>
-                    <span>{new Date(project.closedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            ) : (
+              <ActivityLogKanban activities={activityLog} />
+            )}
           </div>
         )}
       </div>
@@ -2368,22 +2931,184 @@ const ProjectDetail: React.FC = () => {
         </div>
       )}
 
-      <ConfirmModal
-        isOpen={showRevisionConfirm}
-        onClose={() => {
+      {showRevisionConfirm && revisionDeliverable && (
+        <div className="modal-overlay" onClick={() => {
           setShowRevisionConfirm(false);
           setRevisionDeliverable(null);
-        }}
-        onConfirm={handleConfirmRevision}
-        title="Request Revision"
-        message={`Send "${revisionDeliverable?.type}" back for revision? This will notify the copywriting team.`}
-        confirmText="Request Revision"
-        cancelText="Cancel"
-        type="warning"
-        loading={updatingDeliverable !== null}
-      />
+          setRevisionNotes('');
+          setRevisionAttachment('');
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>Request Revision</h2>
+              <button className="close-button" onClick={() => {
+                setShowRevisionConfirm(false);
+                setRevisionDeliverable(null);
+                setRevisionNotes('');
+                setRevisionAttachment('');
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
+                Send "{revisionDeliverable.type}" back for revision? This will notify the team.
+              </p>
+              
+              <div className="form-group">
+                <label htmlFor="revision-notes">Notes (Optional)</label>
+                <textarea
+                  id="revision-notes"
+                  value={revisionNotes}
+                  onChange={(e) => setRevisionNotes(e.target.value)}
+                  className="form-input"
+                  style={{ width: '100%', padding: '0.75rem', minHeight: '100px', fontFamily: 'inherit' }}
+                  placeholder="Add notes about what needs to be revised..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="revision-attachment">Attachment/Link (Optional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FaLink style={{ color: '#6b7280', fontSize: '0.875rem' }} />
+                  <input
+                    id="revision-attachment"
+                    type="url"
+                    value={revisionAttachment}
+                    onChange={(e) => setRevisionAttachment(e.target.value)}
+                    className="form-input"
+                    style={{ flex: 1, padding: '0.75rem' }}
+                    placeholder="https://example.com or Google Drive/Figma link..."
+                  />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
+                  Add a link to reference materials, examples, or feedback documents
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setShowRevisionConfirm(false);
+                  setRevisionDeliverable(null);
+                  setRevisionNotes('');
+                  setRevisionAttachment('');
+                }}
+                disabled={updatingDeliverable === revisionDeliverable.id}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleConfirmRevision}
+                disabled={updatingDeliverable === revisionDeliverable.id}
+                style={{ background: '#dc2626', borderColor: '#dc2626' }}
+              >
+                {updatingDeliverable === revisionDeliverable.id ? 'Requesting...' : 'Request Revision'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Custom Deliverable Modal */}
+      {showAddTaskFromDeliverableModal && selectedDeliverableForTask && (
+        <div className="modal-overlay" onClick={() => setShowAddTaskFromDeliverableModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Add Task to Deliverable</h2>
+              <button className="close-button" onClick={() => setShowAddTaskFromDeliverableModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Department *</label>
+                <select
+                  value={newTaskData.department}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, department: e.target.value })}
+                  className="form-input"
+                  style={{ width: '100%', padding: '0.75rem' }}
+                  required
+                >
+                  <option value="">-- Select Department --</option>
+                  <option value="Design">Design</option>
+                  <option value="Copy Writing">Copy Writing</option>
+                  <option value="Development">Development</option>
+                  <option value="AI Team">AI Team</option>
+                  <option value="Social Media Team">Social Media Team</option>
+                  <option value="CRM">CRM</option>
+                  <option value="SEO/GEO Team">SEO/GEO Team</option>
+                  <option value="Onboarding">Onboarding</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Notes</label>
+                <textarea
+                  value={newTaskData.notes}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, notes: e.target.value })}
+                  className="form-input"
+                  style={{ width: '100%', padding: '0.75rem', minHeight: '100px' }}
+                  placeholder="Add task notes or description..."
+                />
+              </div>
+              <div className="form-group">
+                <label>Assign To (Optional)</label>
+                <select
+                  value={newTaskData.assignedToId}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
+                  className="form-input"
+                  style={{ width: '100%', padding: '0.75rem' }}
+                >
+                  <option value="">-- Unassigned --</option>
+                  {allUsers
+                    .filter((user) => 
+                      (newTaskData.department === 'Design' && user.role === 'Designer') ||
+                      (newTaskData.department === 'Copy Writing' && user.role === 'Copy Writing') ||
+                      (newTaskData.department === 'Development' && user.role === 'Developer') ||
+                      (newTaskData.department === 'AI Team' && user.role === 'AI Developer') ||
+                      (newTaskData.department === 'Social Media Team' && user.role === 'Social Media') ||
+                      (newTaskData.department === 'CRM' && user.role === 'CRM') ||
+                      (newTaskData.department === 'SEO/GEO Team' && user.role === 'SEO/GEO') ||
+                      (newTaskData.department === 'Onboarding' && (user.role === 'Project Manager' || user.role === 'FOUNDER/CEO'))
+                    )
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setShowAddTaskFromDeliverableModal(false);
+                  setSelectedDeliverableForTask(null);
+                  setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                }}
+                disabled={creatingTask}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleCreateTaskFromDeliverable}
+                disabled={creatingTask || !newTaskData.department}
+              >
+                {creatingTask ? 'Creating...' : 'Create Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddDeliverableModal && (
         <div className="modal-overlay" onClick={() => setShowAddDeliverableModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

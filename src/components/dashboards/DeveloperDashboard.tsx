@@ -132,12 +132,13 @@ const DeveloperDashboard: React.FC = () => {
     setShowReviewModal(true);
   };
 
-  const handleReviewSubmit = async (previewLink: string, deliverableType: string) => {
+  const handleReviewSubmit = async (previewLink: string, deliverableType: string, deliverableId?: string) => {
     if (!selectedTaskForReview) return;
     
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      await handleTaskStatusUpdate(selectedTaskForReview.id, 'In Review', false, previewLink, deliverableType);
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, previewLink, deliverableType, deliverableId);
+      await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);
     } catch (error) {

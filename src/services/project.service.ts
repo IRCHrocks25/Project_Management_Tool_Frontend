@@ -51,6 +51,11 @@ export const projectService = {
     return response.data;
   },
 
+  async archive(id: string): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}/archive`, {}, getAuthHeaders());
+    return response.data;
+  },
+
   async getStats(): Promise<any> {
     const response = await axios.get(`${API_URL}/projects/stats`, getAuthHeaders());
     return response.data;
@@ -73,6 +78,11 @@ export const projectService = {
 
   async removeTeamMember(projectId: string, userId: string): Promise<void> {
     await axios.delete(`${API_URL}/projects/${projectId}/team-members/${userId}`, getAuthHeaders());
+  },
+
+  async getActivity(projectId: string): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects/${projectId}/activity`, getAuthHeaders());
+    return response.data;
   },
 };
 

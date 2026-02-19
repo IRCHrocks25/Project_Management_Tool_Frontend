@@ -2077,3 +2077,222 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* Activity Log Kanban */
+.activity-log-kanban {
+  max-width: 100%;
+  padding: 0;
+}
+
+.activity-log-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.activity-log-header h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.activity-log-subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6b7280;
+}
+
+.activity-log-columns {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  min-width: 0;
+}
+
+.activity-log-columns::-webkit-scrollbar {
+  height: 8px;
+}
+
+.activity-log-columns::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.activity-log-columns::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.activity-log-columns::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.activity-log-column {
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  max-height: 800px;
+  overflow: hidden;
+  min-width: 300px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  flex-basis: 300px;
+}
+
+.activity-log-column-header {
+  padding: 1rem 1.25rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  border-left: 4px solid #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.activity-log-column-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.activity-count {
+  background: #e5e7eb;
+  color: #6b7280;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.activity-log-column-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.activity-log-column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-log-column-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.activity-log-column-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.activity-log-column-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.activity-log-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.activity-log-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.activity-log-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.activity-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.activity-action-text {
+  flex: 1;
+}
+
+.activity-action {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.activity-log-card-body {
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+  color: #374151;
+}
+
+.activity-meta-item {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.activity-meta-item:last-child {
+  margin-bottom: 0;
+}
+
+.activity-meta-item strong {
+  color: #111827;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.activity-file-link {
+  color: #3b82f6;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.activity-file-link:hover {
+  text-decoration: underline;
+}
+
+.activity-log-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  font-size: 0.75rem;
+}
+
+.activity-user {
+  display: flex;
+  align-items: center;
+  color: #374151;
+  font-weight: 500;
+}
+
+.activity-time {
+  display: flex;
+  align-items: center;
+  color: #9ca3af;
+}

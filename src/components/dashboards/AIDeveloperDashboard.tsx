@@ -18,6 +18,9 @@ import {
   FaHandPaper,
   FaGlobe,
   FaPlus,
+  FaStickyNote,
+  FaLink,
+  FaTimes,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -49,6 +52,10 @@ const AIDeveloperDashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'created'>('due_date');
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedProjectNotes, setSelectedProjectNotes] = useState<any[]>([]);
+  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -105,21 +112,116 @@ const AIDeveloperDashboard: React.FC = () => {
         stage: p.stage 
       })));
 
-      const aiProjects = projectsData.filter((p: any) => {
-        const stage = String(p.stage || '').trim();
-        return stage === 'AI Team';
-      });
-
-      console.log('[AI Dashboard] Filtered AI Team projects:', aiProjects.map((p: any) => ({ 
-        name: p.clientName, 
-        stage: p.stage 
+      // Get ALL AI tasks first (regardless of project stage)
+      const allAITasks = allTasksData.filter((t: any) => t.type === 'AI');
+      
+      console.log('[AI Dashboard] All AI tasks found:', allAITasks.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        projectId: t.projectId,
+        projectStage: projectsData.find((p: any) => p.id === t.projectId)?.stage
       })));
 
-      const aiTasks = allTasksData.filter((t: any) =>
-        t.type === 'AI' && aiProjects.some((p: any) => p.id === t.projectId)
+      // Get unique project IDs from AI tasks
+      const aiProjectIds = Array.from(new Set(allAITasks.map((t: any) => t.projectId)));
+      
+      // Get projects that have AI tasks (regardless of stage)
+      const aiProjects = projectsData.filter((p: any) => 
+        aiProjectIds.includes(p.id) || p.stage === 'AI Team'
       );
 
-      setProjects(aiProjects);
+      console.log('[AI Dashboard] Projects with AI tasks:', aiProjects.map((p: any) => ({ 
+        name: p.clientName, 
+        stage: p.stage,
+        hasAITasks: aiProjectIds.includes(p.id)
+      })));
+
+      // Get ALL AI tasks for these projects
+      const aiTasks = allAITasks.filter((t: any) =>
+        aiProjects.some((p: any) => p.id === t.projectId)
+      );
+
+      console.log('[AI Dashboard] All tasks for AI projects:', aiTasks.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        type: t.type,
+        projectId: t.projectId,
+        status: t.status
+      })));
+
+      // Also log tasks with AI type specifically
+      const aiTypeTasks = allTasksData.filter((t: any) => t.type === 'AI');
+      console.log('[AI Dashboard] Tasks with AI type:', aiTypeTasks.length, aiTypeTasks.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        projectId: t.projectId,
+        projectStage: projectsData.find((p: any) => p.id === t.projectId)?.stage
+      })));
+
+      // Load deliverable history for all AI projects to check for notes
+      // Only show notes for deliverables that have AI tasks linked to them
+      const projectsWithHistory = await Promise.all(
+        aiProjects.map(async (project: any) => {
+          if (!project.deliverables || project.deliverables.length === 0) {
+            return project;
+          }
+
+          // Get AI tasks for this project to find which deliverables they're linked to
+          const projectAITasks = allAITasks.filter((t: any) => t.projectId === project.id);
+          const aiDeliverableIds = new Set(
+            projectAITasks
+              .map((t: any) => t.deliverableId)
+              .filter((id: string) => id) // Only include tasks with deliverableId
+          );
+
+          // Only check deliverables that have AI tasks linked to them
+          const aiRelevantDeliverables = project.deliverables.filter((d: any) => 
+            aiDeliverableIds.has(d.id) || 
+            // Also include custom deliverables (type === 'Other') as they might be AI-related
+            (d.type === 'Other' && d.customType)
+          );
+
+          const projectNotesList: any[] = [];
+          
+          for (const deliverable of aiRelevantDeliverables) {
+            // Double-check: only include if it has AI tasks linked OR is a custom deliverable
+            const hasAITasks = aiDeliverableIds.has(deliverable.id);
+            const isCustomDeliverable = deliverable.type === 'Other' && deliverable.customType;
+            
+            if (!hasAITasks && !isCustomDeliverable) continue;
+            
+            try {
+              const { deliverableService } = await import('../../services/deliverable.service');
+              const history = await deliverableService.getHistory(deliverable.id);
+              
+              // Collect all history entries with notes
+              history.forEach((h: any) => {
+                if (h.notes && h.notes.trim()) {
+                  projectNotesList.push({
+                    ...h,
+                    deliverableType: deliverable.type || deliverable.customType,
+                    deliverableId: deliverable.id,
+                  });
+                }
+              });
+            } catch (error) {
+              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
+            }
+          }
+          
+          // Store notes for this project
+          if (projectNotesList.length > 0) {
+            setProjectNotes(prev => ({
+              ...prev,
+              [project.id]: projectNotesList
+            }));
+          }
+
+          return project;
+        })
+      );
+
+      setProjects(projectsWithHistory);
       setTasks(aiTasks);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -159,12 +261,13 @@ const AIDeveloperDashboard: React.FC = () => {
     setShowReviewModal(true);
   };
 
-  const handleReviewSubmit = async (fileLink: string, deliverableType: string) => {
+  const handleReviewSubmit = async (fileLink: string, deliverableType: string, deliverableId?: string) => {
     if (!selectedTaskForReview) return;
     
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      await handleTaskStatusUpdate(selectedTaskForReview.id, 'In Review', false, fileLink, deliverableType);
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, fileLink, deliverableType, deliverableId);
+      await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);
     } catch (error) {
@@ -527,6 +630,36 @@ const AIDeveloperDashboard: React.FC = () => {
                       <span className="stage-badge ai-stage">
                         AI Team
                       </span>
+                      {projectNotes[project.id] && projectNotes[project.id].length > 0 && (
+                        <button
+                          className="notes-notification-badge"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedProjectNotes(projectNotes[project.id]);
+                            setSelectedProjectName(project.clientName);
+                            setShowNotesModal(true);
+                          }}
+                          title="View revision notes and attachments"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.375rem 0.75rem',
+                            background: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            color: '#92400e',
+                            fontWeight: 500,
+                            marginLeft: '0.5rem'
+                          }}
+                        >
+                          <FaStickyNote style={{ fontSize: '0.875rem' }} />
+                          Notes ({projectNotes[project.id].length})
+                        </button>
+                      )}
                     </div>
                     <div className="project-header-actions">
                       {canClaimProject && (
@@ -766,6 +899,130 @@ const AIDeveloperDashboard: React.FC = () => {
           taskType="AI"
           onTaskAdded={handleTaskAdded}
         />
+        
+        {/* Notes and Attachments Modal */}
+        {showNotesModal && (
+          <div 
+            className="modal-overlay" 
+            onClick={() => {
+              setShowNotesModal(false);
+              setSelectedProjectNotes([]);
+              setSelectedProjectName('');
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+          >
+            <div 
+              className="modal-content" 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
+                  Revision Notes - {selectedProjectName}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowNotesModal(false);
+                    setSelectedProjectNotes([]);
+                    setSelectedProjectName('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.5rem',
+                    color: '#6b7280',
+                    padding: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {selectedProjectNotes.map((note, idx) => {
+                  const notes = note.notes || '';
+                  const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                  const hasAttachment = !!attachmentMatch;
+                  const notesText = attachmentMatch 
+                    ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                    : notes.trim();
+                  const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                  
+                  return (
+                    <div 
+                      key={idx}
+                      style={{
+                        padding: '1rem',
+                        background: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <FaStickyNote style={{ color: '#f59e0b', fontSize: '1rem' }} />
+                        <strong style={{ color: '#92400e', fontSize: '0.875rem' }}>
+                          {note.deliverableType}
+                        </strong>
+                        <span style={{ color: '#9ca3af', fontSize: '0.75rem', marginLeft: 'auto' }}>
+                          {new Date(note.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {notesText && (
+                        <div style={{ marginBottom: hasAttachment ? '0.75rem' : 0, color: '#92400e', fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                          {notesText}
+                        </div>
+                      )}
+                      
+                      {hasAttachment && attachmentUrl && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'white', borderRadius: '4px' }}>
+                          <FaLink style={{ color: '#667eea', fontSize: '0.875rem' }} />
+                          <a 
+                            href={attachmentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                              color: '#667eea', 
+                              textDecoration: 'underline', 
+                              wordBreak: 'break-all',
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            {attachmentUrl}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

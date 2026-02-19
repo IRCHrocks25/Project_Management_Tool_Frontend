@@ -7,6 +7,7 @@ import RoleBasedDashboard from './components/RoleBasedDashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
+import Users from './components/Users';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -50,6 +51,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Settings />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <PrivateRoute>
+              <Users />
             </PrivateRoute>
           }
         />

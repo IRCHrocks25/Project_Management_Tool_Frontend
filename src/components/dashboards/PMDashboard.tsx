@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -65,6 +65,7 @@ const PMDashboard: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   const handleLogout = () => {
     authService.logout();
@@ -159,6 +160,14 @@ const PMDashboard: React.FC = () => {
         <div className="nav-container">
           <h2 className="logo">Katalyst PM</h2>
           <div className="nav-right">
+            <button 
+              onClick={() => navigate('/users')}
+              className="btn-secondary btn-secondary-premium"
+              style={{ marginRight: '0.75rem' }}
+            >
+              <FaUsers className="btn-icon" />
+              Users
+            </button>
             <button 
               onClick={() => setShowCreateModal(true)} 
               className="btn-primary btn-primary-premium"

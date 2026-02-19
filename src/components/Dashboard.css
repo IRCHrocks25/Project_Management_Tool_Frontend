@@ -72,6 +72,33 @@
   font-size: 0.875rem;
 }
 
+.btn-secondary-premium {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: white;
+  color: #667eea;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+
+.btn-secondary-premium:hover {
+  background: #f9fafb;
+  border-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.btn-secondary-premium .btn-icon {
+  font-size: 0.875rem;
+}
+
 /* Avatar Dropdown */
 .avatar-dropdown-container {
   position: relative;

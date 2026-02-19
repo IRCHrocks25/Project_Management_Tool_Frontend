@@ -128,12 +128,13 @@ const SocialMediaDashboard: React.FC = () => {
     setShowReviewModal(true);
   };
 
-  const handleReviewSubmit = async (fileLink: string, deliverableType: string) => {
+  const handleReviewSubmit = async (fileLink: string, deliverableType: string, deliverableId?: string) => {
     if (!selectedTaskForReview) return;
     
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      await handleTaskStatusUpdate(selectedTaskForReview.id, 'In Review', false, fileLink, deliverableType);
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, fileLink, deliverableType, deliverableId);
+      await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);
     } catch (error) {

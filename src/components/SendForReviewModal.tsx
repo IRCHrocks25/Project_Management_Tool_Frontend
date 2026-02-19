@@ -5,9 +5,9 @@ import './SendForReviewModal.css';
 interface SendForReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (fileLink: string, deliverableType: string) => void;
+  onSubmit: (fileLink: string, deliverableType: string, deliverableId?: string) => void;
   taskTitle: string;
-  projectDeliverables?: Array<{ id: string; type: string; status: string }>;
+  projectDeliverables?: Array<{ id: string; type: string; customType?: string; status: string }>;
   loading?: boolean;
   isDesignTask?: boolean; // New prop to indicate if this is for design team
   isDevTask?: boolean; // New prop to indicate if this is for dev team
@@ -26,6 +26,7 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
   const [fileLink, setFileLink] = useState('');
   const [linkType, setLinkType] = useState<'drive' | 'figma' | 'preview'>(isDevTask ? 'preview' : 'drive');
   const [deliverableType, setDeliverableType] = useState('');
+  const [selectedDeliverableId, setSelectedDeliverableId] = useState<string>('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
@@ -69,32 +70,46 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
       }
     }
 
-    onSubmit(fileLink.trim(), deliverableType);
+    onSubmit(fileLink.trim(), deliverableType, selectedDeliverableId || undefined);
     setFileLink('');
     setLinkType(isDevTask ? 'preview' : 'drive');
     setDeliverableType('');
+    setSelectedDeliverableId('');
   };
 
   const handleClose = () => {
     setFileLink('');
     setLinkType(isDevTask ? 'preview' : 'drive');
     setDeliverableType('');
+    setSelectedDeliverableId('');
     setError('');
     onClose();
   };
 
-  // Filter deliverables based on task type
+  // Show all deliverables from the project, including custom ones
+  // For design tasks: show design-related + custom deliverables
+  // For copy tasks: show copy-related + custom deliverables  
+  // For dev tasks: show Landing Page + custom deliverables
   const relevantDeliverables = isDevTask
     ? projectDeliverables.filter((d: any) => 
-        ['Landing Page'].includes(d.type)
+        d.type === 'Landing Page' || (d.type === 'Other' && d.customType)
       )
     : isDesignTask
     ? projectDeliverables.filter((d: any) => 
-        ['Logo', 'Social Banners', 'Speaker Kit', 'Brand Book', 'Landing Page'].includes(d.type)
+        ['Logo', 'Social Banners', 'Speaker Kit', 'Brand Book', 'Landing Page'].includes(d.type) || 
+        (d.type === 'Other' && d.customType)
       )
     : projectDeliverables.filter((d: any) => 
-        ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type)
+        ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) || 
+        (d.type === 'Other' && d.customType)
       );
+  
+  // Sort deliverables: standard types first, then custom ones
+  const sortedDeliverables = [...relevantDeliverables].sort((a: any, b: any) => {
+    if (a.customType && !b.customType) return 1;
+    if (!a.customType && b.customType) return -1;
+    return (a.customType || a.type).localeCompare(b.customType || b.type);
+  });
 
   return (
     <div className="send-review-modal-overlay" onClick={handleClose}>
@@ -123,18 +138,30 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
             <select
               value={deliverableType}
               onChange={(e) => {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const deliverableId = selectedOption.getAttribute('data-deliverable-id') || '';
                 setDeliverableType(e.target.value);
+                setSelectedDeliverableId(deliverableId);
                 setError('');
               }}
               className="deliverable-select"
               required
             >
               <option value="">Select deliverable type...</option>
-              {relevantDeliverables.map((deliverable: any) => (
-                <option key={deliverable.id} value={deliverable.type}>
-                  {deliverable.type}
-                </option>
-              ))}
+              {sortedDeliverables.map((deliverable: any) => {
+                const displayName = deliverable.customType || deliverable.type;
+                // For backend compatibility: use the enum type value (for custom deliverables, type is 'Other')
+                const value = deliverable.type; // Always use the enum type
+                return (
+                  <option 
+                    key={deliverable.id} 
+                    value={value} 
+                    data-deliverable-id={deliverable.id}
+                  >
+                    {displayName}
+                  </option>
+                );
+              })}
             </select>
             <p className="input-hint">
               Select which deliverable this {isDesignTask ? 'design' : 'copy'} is for. The link will be attached to this deliverable.
