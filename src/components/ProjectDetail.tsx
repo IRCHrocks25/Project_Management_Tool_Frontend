@@ -669,7 +669,13 @@ const ProjectDetail: React.FC = () => {
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Failed to archive project:', error);
-      alert(error.response?.data?.message || 'Failed to archive project. Only Project Managers and Admins can archive projects.');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to archive project';
+      console.error('Error details:', {
+        status: error.response?.status,
+        message: errorMessage,
+        userRole: authService.getUser()?.role,
+      });
+      alert(errorMessage);
     }
   };
 
