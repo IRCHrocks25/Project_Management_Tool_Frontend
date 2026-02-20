@@ -22,7 +22,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadMode, setUploadMode] = useState<'single' | 'excel'>('single');
-  const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelPreview, setExcelPreview] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -150,7 +149,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setExcelFile(file);
     setError('');
 
     const reader = new FileReader();
@@ -196,7 +194,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         setExcelPreview(normalizedData);
       } catch (err: any) {
         setError('Failed to parse Excel file: ' + (err.message || 'Invalid file format'));
-        setExcelFile(null);
         setExcelPreview([]);
       }
     };
@@ -303,7 +300,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             type="button"
             onClick={() => {
               setUploadMode('single');
-              setExcelFile(null);
               setExcelPreview([]);
               setError('');
             }}
