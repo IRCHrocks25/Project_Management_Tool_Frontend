@@ -2021,20 +2021,25 @@
 }
 
 .modal-body {
-  padding: 2.5rem;
+  padding: 2rem 2.5rem;
 }
 
 .modal-body .form-group {
+  margin-bottom: 1.75rem;
+}
+
+.modal-body .form-group:last-of-type {
   margin-bottom: 0;
 }
 
 .modal-body .form-group label {
   display: block;
-  margin-bottom: 0.875rem;
+  margin-bottom: 0.75rem;
   font-weight: 600;
   color: #374151;
   font-size: 0.9375rem;
   letter-spacing: -0.01em;
+  line-height: 1.5;
 }
 
 .modal-body .form-input {
@@ -2061,13 +2066,22 @@
   background: #ffffff;
 }
 
+.modal-body .form-input textarea,
+.modal-body textarea.form-input {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.875rem;
-  padding: 1.75rem 2.5rem 2.5rem 2.5rem;
+  padding: 1.5rem 2.5rem 2rem 2.5rem;
   border-top: 1px solid #f3f4f6;
   background: #fafbfc;
+  margin-top: 0.5rem;
 }
 
 .modal-footer .btn-secondary {

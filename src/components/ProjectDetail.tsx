@@ -4009,7 +4009,6 @@ const ProjectDetail: React.FC = () => {
                   value={newTaskData.department}
                   onChange={(e) => setNewTaskData({ ...newTaskData, department: e.target.value })}
                   className="form-input"
-                  style={{ width: '100%', padding: '0.75rem' }}
                   required
                 >
                   <option value="">-- Select Department --</option>
@@ -4029,7 +4028,7 @@ const ProjectDetail: React.FC = () => {
                   value={newTaskData.notes}
                   onChange={(e) => setNewTaskData({ ...newTaskData, notes: e.target.value })}
                   className="form-input"
-                  style={{ width: '100%', padding: '0.75rem', minHeight: '100px' }}
+                  style={{ minHeight: '120px', resize: 'vertical' }}
                   placeholder="Add task notes or description..."
                 />
               </div>
@@ -4039,7 +4038,6 @@ const ProjectDetail: React.FC = () => {
                   value={newTaskData.assignedToId}
                   onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
                   className="form-input"
-                  style={{ width: '100%', padding: '0.75rem' }}
                 >
                   <option value="">-- Unassigned --</option>
                   {allUsers
