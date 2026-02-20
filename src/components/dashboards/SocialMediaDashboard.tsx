@@ -18,6 +18,9 @@ import {
   FaHandPaper,
   FaGlobe,
   FaPlus,
+  FaStickyNote,
+  FaLink,
+  FaTimes,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -50,6 +53,10 @@ const SocialMediaDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
+  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
+  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -85,15 +92,43 @@ const SocialMediaDashboard: React.FC = () => {
         taskService.getAll(),
       ]);
 
-      const smProjects = projectsData.filter((p: any) =>
-        p.stage === 'Social Media Team'
+      // Get ALL Social Media tasks first (regardless of project stage)
+      const smTasks = allTasksData.filter((t: any) => t.type === 'Social Media');
+
+      // Get all projects that have Social Media tasks (regardless of their current stage)
+      const projectIdsWithSMTasks = new Set(smTasks.map((t: any) => t.projectId));
+      const projectsWithSMTasks = projectsData.filter((project: any) => 
+        projectIdsWithSMTasks.has(project.id)
       );
 
-      const smTasks = allTasksData.filter((t: any) =>
-        t.type === 'Social Media' && smProjects.some((p: any) => p.id === t.projectId)
+      // Load deliverable history for all Social Media projects to check for file-level revisions
+      const projectsWithHistory = await Promise.all(
+        projectsWithSMTasks.map(async (project: any) => {
+          if (!project.deliverables || project.deliverables.length === 0) {
+            return project;
+          }
+
+          // Load history for all deliverables (Social Media tasks can be linked to any deliverable)
+          for (const deliverable of project.deliverables) {
+            try {
+              const { deliverableService } = await import('../../services/deliverable.service');
+              const history = await deliverableService.getHistory(deliverable.id);
+              
+              // Store full history for revision detection
+              setDeliverableHistory(prev => ({
+                ...prev,
+                [deliverable.id]: history
+              }));
+            } catch (error) {
+              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
+            }
+          }
+
+          return project;
+        })
       );
 
-      setProjects(smProjects);
+      setProjects(projectsWithHistory);
       setTasks(smTasks);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -288,12 +323,99 @@ const SocialMediaDashboard: React.FC = () => {
     // Check if task's deliverable is in revision
     if (task.deliverableId) {
       const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
-      if (deliverable && deliverable.status === 'Revision') {
-        return true;
+      if (deliverable) {
+        // Check deliverable status first
+        if (deliverable.status === 'Revision') {
+          // But only if this task is actually related to this deliverable
+          // If task has been resubmitted (status is 'In Review'), it's no longer in revision
+          if (task.status === 'In Review') {
+            return false;
+          }
+          return true;
+        }
+        
+        // Check deliverable history for "Revision Requested" action
+        // This catches cases where PM requested revision but status hasn't updated yet
+        const history = deliverableHistory[deliverable.id] || [];
+        if (history.length > 0) {
+          // If task has been resubmitted (status is 'In Review'), it's no longer in revision
+          if (task.status === 'In Review') {
+            return false;
+          }
+          
+          // Check file-specific history if task has a fileUrl
+          if (task.fileUrl) {
+            // Find history entries for this specific file
+            const fileHistory = history.filter((h: any) => h.fileUrl === task.fileUrl);
+            if (fileHistory.length > 0) {
+              const latestFileHistory = fileHistory[0];
+              // If latest file history is "Revision Requested", task is in revision
+              if (latestFileHistory.action === 'Revision Requested') {
+                return true;
+              }
+            }
+          }
+          
+          // Also check general deliverable history, but only if task doesn't have a fileUrl
+          // If task has a fileUrl, we need to match it specifically
+          if (!task.fileUrl) {
+            // Find the most recent "Revision Requested" entry
+            const revisionHistory = history.filter((h: any) => h.action === 'Revision Requested');
+            if (revisionHistory.length > 0) {
+              const latestRevision = revisionHistory[0];
+              // Only return true if the revision request doesn't have a specific fileUrl
+              // (meaning it's a general deliverable revision, not file-specific)
+              if (!latestRevision.fileUrl) {
+                return true;
+              }
+            }
+          }
+        }
       }
     }
-    // Note: For Social Media tasks, we primarily rely on deliverable status
+    // Don't fall back to checking project-wide revision status
+    // Only mark tasks as in revision if they're specifically linked to a deliverable in revision
     return false;
+  };
+
+  // Get task-specific revision notes
+  const getTaskNotes = (task: any, project: any) => {
+    if (!task.deliverableId) return [];
+    
+    const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+    if (!deliverable) return [];
+    
+    const history = deliverableHistory[deliverable.id] || [];
+    const taskNotes: any[] = [];
+    
+    // Filter history entries to only include those relevant to this task
+    history.forEach((h: any) => {
+      if (h.notes && h.notes.trim() && h.action === 'Revision Requested') {
+        // If task has a fileUrl, only include notes for that specific file
+        if (task.fileUrl) {
+          if (h.fileUrl === task.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        } else {
+          // If task doesn't have a fileUrl, include general deliverable revision notes
+          // (but only if the history entry also doesn't have a specific fileUrl)
+          if (!h.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        }
+      }
+    });
+    
+    // Sort by date (newest first)
+    return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const isTaskOverdue = (task: any) => {
@@ -654,6 +776,7 @@ const SocialMediaDashboard: React.FC = () => {
                         const statusColor = getTaskStatusColor(task.status, task.isCompleted);
                         const taskInRevision = isTaskInRevision(task, project);
                         const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
+                        const taskNotes = getTaskNotes(task, project);
 
                         return (
                           <div
@@ -711,6 +834,146 @@ const SocialMediaDashboard: React.FC = () => {
                             {task.description && (
                               <p className="task-description">{task.description}</p>
                             )}
+
+                            {/* Task-specific revision notes */}
+                            {taskNotes.length > 0 && (() => {
+                              // Calculate total length of all notes
+                              const totalNotesLength = taskNotes.reduce((sum, note) => {
+                                const notes = note.notes || '';
+                                const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                                const notesText = attachmentMatch 
+                                  ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                                  : notes.trim();
+                                return sum + notesText.length;
+                              }, 0);
+                              
+                              const shouldTruncate = totalNotesLength > 200; // Show "View full note" if total length > 200 chars
+                              const maxDisplayLength = 200;
+                              
+                              return (
+                                <div style={{
+                                  marginTop: '0.75rem',
+                                  marginBottom: '0.75rem',
+                                  padding: '0.75rem',
+                                  background: '#fef3c7',
+                                  border: '1px solid #fde68a',
+                                  borderRadius: '8px'
+                                }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    marginBottom: '0.5rem' 
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem' }} />
+                                      <strong style={{ color: '#92400e', fontSize: '0.8125rem' }}>
+                                        Revision Notes
+                                      </strong>
+                                    </div>
+                                    {shouldTruncate && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedTaskNotes(taskNotes);
+                                          setSelectedTaskTitle(task.title);
+                                          setShowNotesModal(true);
+                                        }}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: '#667eea',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          padding: '0.25rem 0.5rem',
+                                          borderRadius: '4px',
+                                          transition: 'background 0.2s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = '#f0f4ff';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = 'none';
+                                        }}
+                                      >
+                                        View full note
+                                      </button>
+                                    )}
+                                  </div>
+                                  {taskNotes.map((note, noteIdx) => {
+                                    const notes = note.notes || '';
+                                    const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                                    const hasAttachment = !!attachmentMatch;
+                                    let notesText = attachmentMatch 
+                                      ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                                      : notes.trim();
+                                    const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                                    
+                                    // Truncate if needed
+                                    let displayedText = notesText;
+                                    let remainingLength = maxDisplayLength;
+                                    if (shouldTruncate && noteIdx === 0) {
+                                      // Only truncate the first note if total is too long
+                                      if (notesText.length > remainingLength) {
+                                        displayedText = notesText.substring(0, remainingLength) + '...';
+                                      } else {
+                                        remainingLength -= notesText.length;
+                                      }
+                                    }
+                                    
+                                    return (
+                                      <div 
+                                        key={noteIdx}
+                                        style={{
+                                          marginTop: noteIdx > 0 ? '0.75rem' : 0,
+                                          paddingTop: noteIdx > 0 ? '0.75rem' : 0,
+                                          borderTop: noteIdx > 0 ? '1px solid #fde68a' : 'none'
+                                        }}
+                                      >
+                                        {displayedText && (
+                                          <div style={{ 
+                                            color: '#92400e', 
+                                            fontSize: '0.8125rem', 
+                                            whiteSpace: 'pre-wrap', 
+                                            lineHeight: '1.5',
+                                            marginBottom: hasAttachment ? '0.5rem' : 0
+                                          }}>
+                                            {displayedText}
+                                          </div>
+                                        )}
+                                        {hasAttachment && attachmentUrl && (
+                                          <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.5rem',
+                                            padding: '0.5rem',
+                                            background: 'white',
+                                            borderRadius: '4px'
+                                          }}>
+                                            <FaLink style={{ color: '#667eea', fontSize: '0.75rem' }} />
+                                            <a 
+                                              href={attachmentUrl} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              style={{ 
+                                                color: '#667eea', 
+                                                textDecoration: 'underline', 
+                                                wordBreak: 'break-all',
+                                                fontSize: '0.75rem'
+                                              }}
+                                            >
+                                              {attachmentUrl}
+                                            </a>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
 
                             {task.fileUrl && (
                               <div className="task-link">
@@ -876,6 +1139,130 @@ const SocialMediaDashboard: React.FC = () => {
           taskType="Social Media"
           onTaskAdded={handleTaskAdded}
         />
+        
+        {/* Task Notes Modal */}
+        {showNotesModal && (
+          <div 
+            className="modal-overlay" 
+            onClick={() => {
+              setShowNotesModal(false);
+              setSelectedTaskNotes([]);
+              setSelectedTaskTitle('');
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+          >
+            <div 
+              className="modal-content" 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
+                  Revision Notes - {selectedTaskTitle}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowNotesModal(false);
+                    setSelectedTaskNotes([]);
+                    setSelectedTaskTitle('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.5rem',
+                    color: '#6b7280',
+                    padding: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {selectedTaskNotes.map((note, idx) => {
+                  const notes = note.notes || '';
+                  const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                  const hasAttachment = !!attachmentMatch;
+                  const notesText = attachmentMatch 
+                    ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                    : notes.trim();
+                  const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                  
+                  return (
+                    <div 
+                      key={idx}
+                      style={{
+                        padding: '1rem',
+                        background: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <FaStickyNote style={{ color: '#f59e0b', fontSize: '1rem' }} />
+                        <strong style={{ color: '#92400e', fontSize: '0.875rem' }}>
+                          {note.deliverableType || 'Revision Note'}
+                        </strong>
+                        <span style={{ color: '#9ca3af', fontSize: '0.75rem', marginLeft: 'auto' }}>
+                          {new Date(note.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {notesText && (
+                        <div style={{ marginBottom: hasAttachment ? '0.75rem' : 0, color: '#92400e', fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                          {notesText}
+                        </div>
+                      )}
+                      
+                      {hasAttachment && attachmentUrl && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'white', borderRadius: '4px' }}>
+                          <FaLink style={{ color: '#667eea', fontSize: '0.875rem' }} />
+                          <a 
+                            href={attachmentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                              color: '#667eea', 
+                              textDecoration: 'underline', 
+                              wordBreak: 'break-all',
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            {attachmentUrl}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

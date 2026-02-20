@@ -49,8 +49,8 @@ const CopyDashboard: React.FC = () => {
   const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
-  const [selectedProjectNotes, setSelectedProjectNotes] = useState<any[]>([]);
-  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
+  const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
+  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -86,62 +86,18 @@ const CopyDashboard: React.FC = () => {
         taskService.getAll(), // Get ALL tasks, not just assigned ones
       ]);
 
-      // Filter copy-related projects
-      const copyProjects = projectsData.filter((p: any) =>
-        ['Copy', 'Copy Revision'].includes(p.stage)
+      // Get ALL copy tasks first (regardless of project stage or deliverable)
+      const copyTasks = allTasksData.filter((t: any) => t.type === 'Copy');
+
+      // Get all projects that have copy tasks (regardless of their current stage)
+      const projectIdsWithCopyTasks = new Set(copyTasks.map((t: any) => t.projectId));
+      const projectsWithCopyTasks = projectsData.filter((project: any) => 
+        projectIdsWithCopyTasks.has(project.id)
       );
-
-      // Also include projects that have copy-related deliverables (even if not in Copy stage yet)
-      const projectsWithCopyDeliverables = projectsData.filter((p: any) => {
-        if (['Copy', 'Copy Revision'].includes(p.stage)) return true;
-        // Check if project has copy-related deliverables
-        return p.deliverables?.some((d: any) =>
-          ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(d.type) ||
-          (d.type === 'Landing Page' && d.customType) // Custom deliverables might be copy-related
-        );
-      });
-
-      // Get ALL copy tasks - include tasks for:
-      // 1. Projects in Copy/Copy Revision stage
-      // 2. Tasks with deliverableId pointing to copy-related deliverables
-      // 3. Projects that have copy-related deliverables
-      const copyTasks = allTasksData.filter((t: any) => {
-        if (t.type !== 'Copy') return false;
-        
-        // Check if task is for a project in Copy stage
-        if (copyProjects.some((p: any) => p.id === t.projectId)) return true;
-        
-        // Check if task has a deliverableId and find the deliverable
-        if (t.deliverableId) {
-          const project = projectsData.find((p: any) => p.id === t.projectId);
-          if (project?.deliverables) {
-            const deliverable = project.deliverables.find((d: any) => d.id === t.deliverableId);
-            if (deliverable) {
-              const deliverableType = deliverable.customType || deliverable.type;
-              // Check if it's a copy-related deliverable
-              if (['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
-                return true;
-              }
-              // Landing Page can be copy-related if it's not a design file
-              if (deliverableType === 'Landing Page' && !t.fileUrl?.includes('figma.com')) {
-                return true;
-              }
-            }
-          }
-        }
-        
-        // Check if task's project has copy-related deliverables
-        return projectsWithCopyDeliverables.some((p: any) => p.id === t.projectId);
-      });
-
-      // Use projectsWithCopyDeliverables instead of just copyProjects to include all relevant projects
-      const allRelevantProjects = Array.from(new Map(
-        [...copyProjects, ...projectsWithCopyDeliverables].map((p: any) => [p.id, p])
-      ).values());
 
       // Load deliverable history for all relevant projects to check for notes
       const projectsWithHistory = await Promise.all(
-        allRelevantProjects.map(async (project: any) => {
+        projectsWithCopyTasks.map(async (project: any) => {
           if (!project.deliverables || project.deliverables.length === 0) {
             return project;
           }
@@ -475,8 +431,49 @@ const CopyDashboard: React.FC = () => {
         }
       }
     }
-    // Also check if project has revision deliverables (fallback)
-    return hasRevisionDeliverables(project);
+    // Don't fall back to checking project-wide revision status
+    // Only mark tasks as in revision if they're specifically linked to a deliverable in revision
+    return false;
+  };
+
+  // Get task-specific revision notes
+  const getTaskNotes = (task: any, project: any) => {
+    if (!task.deliverableId) return [];
+    
+    const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+    if (!deliverable) return [];
+    
+    const history = deliverableHistory[deliverable.id] || [];
+    const taskNotes: any[] = [];
+    
+    // Filter history entries to only include those relevant to this task
+    history.forEach((h: any) => {
+      if (h.notes && h.notes.trim() && h.action === 'Revision Requested') {
+        // If task has a fileUrl, only include notes for that specific file
+        if (task.fileUrl) {
+          if (h.fileUrl === task.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        } else {
+          // If task doesn't have a fileUrl, include general deliverable revision notes
+          // (but only if the history entry also doesn't have a specific fileUrl)
+          if (!h.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        }
+      }
+    });
+    
+    // Sort by date (newest first)
+    return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const isTaskOverdue = (task: any) => {
@@ -796,36 +793,6 @@ const CopyDashboard: React.FC = () => {
                           Rev {project.copyRevisionCount}
                         </span>
                       )}
-                      {projectNotes[project.id] && projectNotes[project.id].length > 0 && (
-                        <button
-                          className="notes-notification-badge"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedProjectNotes(projectNotes[project.id]);
-                            setSelectedProjectName(project.clientName);
-                            setShowNotesModal(true);
-                          }}
-                          title="View revision notes and attachments"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.375rem 0.75rem',
-                            background: '#fef3c7',
-                            border: '1px solid #fde68a',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            color: '#92400e',
-                            fontWeight: 500,
-                            marginLeft: '0.5rem'
-                          }}
-                        >
-                          <FaStickyNote style={{ fontSize: '0.875rem' }} />
-                          Notes ({projectNotes[project.id].length})
-                        </button>
-                      )}
                     </div>
                   <div className="project-header-actions">
                     {canClaimProject && (
@@ -875,6 +842,7 @@ const CopyDashboard: React.FC = () => {
                     const statusColor = getTaskStatusColor(task.status, task.isCompleted);
                     const taskInRevision = isTaskInRevision(task, project);
                     const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
+                    const taskNotes = getTaskNotes(task, project);
 
                     return (
                       <div
@@ -928,6 +896,146 @@ const CopyDashboard: React.FC = () => {
                             <span>Revision Required</span>
                           </div>
                         )}
+
+                        {/* Task-specific revision notes */}
+                        {taskNotes.length > 0 && (() => {
+                          // Calculate total length of all notes
+                          const totalNotesLength = taskNotes.reduce((sum, note) => {
+                            const notes = note.notes || '';
+                            const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                            const notesText = attachmentMatch 
+                              ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                              : notes.trim();
+                            return sum + notesText.length;
+                          }, 0);
+                          
+                          const shouldTruncate = totalNotesLength > 200; // Show "View full note" if total length > 200 chars
+                          const maxDisplayLength = 200;
+                          
+                          return (
+                            <div style={{
+                              marginTop: '0.75rem',
+                              marginBottom: '0.75rem',
+                              padding: '0.75rem',
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                marginBottom: '0.5rem' 
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem' }} />
+                                  <strong style={{ color: '#92400e', fontSize: '0.8125rem' }}>
+                                    Revision Notes
+                                  </strong>
+                                </div>
+                                {shouldTruncate && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTaskNotes(taskNotes);
+                                      setSelectedTaskTitle(task.title);
+                                      setShowNotesModal(true);
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#667eea',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      cursor: 'pointer',
+                                      textDecoration: 'underline',
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '4px',
+                                      transition: 'background 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#f0f4ff';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'none';
+                                    }}
+                                  >
+                                    View full note
+                                  </button>
+                                )}
+                              </div>
+                              {taskNotes.map((note, noteIdx) => {
+                                const notes = note.notes || '';
+                                const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
+                                const hasAttachment = !!attachmentMatch;
+                                let notesText = attachmentMatch 
+                                  ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
+                                  : notes.trim();
+                                const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
+                                
+                                // Truncate if needed
+                                let displayedText = notesText;
+                                let remainingLength = maxDisplayLength;
+                                if (shouldTruncate && noteIdx === 0) {
+                                  // Only truncate the first note if total is too long
+                                  if (notesText.length > remainingLength) {
+                                    displayedText = notesText.substring(0, remainingLength) + '...';
+                                  } else {
+                                    remainingLength -= notesText.length;
+                                  }
+                                }
+                                
+                                return (
+                                  <div 
+                                    key={noteIdx}
+                                    style={{
+                                      marginTop: noteIdx > 0 ? '0.75rem' : 0,
+                                      paddingTop: noteIdx > 0 ? '0.75rem' : 0,
+                                      borderTop: noteIdx > 0 ? '1px solid #fde68a' : 'none'
+                                    }}
+                                  >
+                                    {displayedText && (
+                                      <div style={{ 
+                                        color: '#92400e', 
+                                        fontSize: '0.8125rem', 
+                                        whiteSpace: 'pre-wrap', 
+                                        lineHeight: '1.5',
+                                        marginBottom: hasAttachment ? '0.5rem' : 0
+                                      }}>
+                                        {displayedText}
+                                      </div>
+                                    )}
+                                    {hasAttachment && attachmentUrl && (
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.5rem',
+                                        padding: '0.5rem',
+                                        background: 'white',
+                                        borderRadius: '4px'
+                                      }}>
+                                        <FaLink style={{ color: '#667eea', fontSize: '0.75rem' }} />
+                                        <a 
+                                          href={attachmentUrl} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          style={{ 
+                                            color: '#667eea', 
+                                            textDecoration: 'underline', 
+                                            wordBreak: 'break-all',
+                                            fontSize: '0.75rem'
+                                          }}
+                                        >
+                                          {attachmentUrl}
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
 
                         {task.fileUrl && (
                           <div className="task-drive-link">
@@ -1085,13 +1193,14 @@ const CopyDashboard: React.FC = () => {
         />
         
         {/* Notes and Attachments Modal */}
+        {/* Task Notes Modal */}
         {showNotesModal && (
           <div 
             className="modal-overlay" 
             onClick={() => {
               setShowNotesModal(false);
-              setSelectedProjectNotes([]);
-              setSelectedProjectName('');
+              setSelectedTaskNotes([]);
+              setSelectedTaskTitle('');
             }}
             style={{
               position: 'fixed',
@@ -1122,13 +1231,13 @@ const CopyDashboard: React.FC = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
-                  Revision Notes - {selectedProjectName}
+                  Revision Notes - {selectedTaskTitle}
                 </h2>
                 <button
                   onClick={() => {
                     setShowNotesModal(false);
-                    setSelectedProjectNotes([]);
-                    setSelectedProjectName('');
+                    setSelectedTaskNotes([]);
+                    setSelectedTaskTitle('');
                   }}
                   style={{
                     background: 'none',
@@ -1147,7 +1256,7 @@ const CopyDashboard: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {selectedProjectNotes.map((note, idx) => {
+                {selectedTaskNotes.map((note, idx) => {
                   const notes = note.notes || '';
                   const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
                   const hasAttachment = !!attachmentMatch;
@@ -1169,7 +1278,7 @@ const CopyDashboard: React.FC = () => {
                       <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <FaStickyNote style={{ color: '#f59e0b', fontSize: '1rem' }} />
                         <strong style={{ color: '#92400e', fontSize: '0.875rem' }}>
-                          {note.deliverableType}
+                          {note.deliverableType || 'Revision Note'}
                         </strong>
                         <span style={{ color: '#9ca3af', fontSize: '0.75rem', marginLeft: 'auto' }}>
                           {new Date(note.createdAt).toLocaleDateString()}

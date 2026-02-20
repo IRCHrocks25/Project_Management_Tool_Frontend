@@ -14,6 +14,7 @@ import {
   FaHistory,
   FaPaperPlane,
   FaChevronRight,
+  FaChevronDown,
   FaLink,
   FaFileAlt,
   FaPlus,
@@ -22,6 +23,7 @@ import {
   FaUser,
   FaStickyNote,
   FaArchive,
+  FaClipboard,
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
@@ -217,6 +219,7 @@ const ProjectDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [progressAnimation, setProgressAnimation] = useState(false);
+  const [hideOnboardingPhase, setHideOnboardingPhase] = useState(true);
   const [updatingDeliverable, setUpdatingDeliverable] = useState<string | null>(null);
   const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
   const [revisionDeliverable, setRevisionDeliverable] = useState<{ id: string; type: string; fileUrl?: string } | null>(null);
@@ -225,6 +228,22 @@ const ProjectDetail: React.FC = () => {
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({});
   const [draggedFile, setDraggedFile] = useState<{ deliverableId: string; fileUrl: string; department: string } | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [brandingCalls, setBrandingCalls] = useState<Record<string, { zoomLink: string; isDone: boolean; notes: string; attachmentLink: string }>>({
+    'call1': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call2': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'preC3': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call3': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'preC4': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call4': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call5': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'preC6': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call6': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+    'call7': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
+  });
+  const [showBrandingNotesModal, setShowBrandingNotesModal] = useState(false);
+  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+  const [brandingNotes, setBrandingNotes] = useState('');
+  const [brandingAttachment, setBrandingAttachment] = useState('');
   const [submittingTask, setSubmittingTask] = useState<string | null>(null);
   const [submissionForm, setSubmissionForm] = useState<{ taskId: string; data: string; type: 'url' | 'text' } | null>(null);
   const [showAddDeliverableModal, setShowAddDeliverableModal] = useState(false);
@@ -946,24 +965,26 @@ const ProjectDetail: React.FC = () => {
           
           <div className="summary-main">
             <div className="summary-left">
-              <h1 className="project-title-premium">{project.clientName}</h1>
-              <div className="project-meta-badges">
-                <span 
-                  className="client-badge-premium"
-                  style={{ background: clientTypeStyle.bg, color: clientTypeStyle.color }}
-                >
-                  {project.clientType}
-                </span>
-                <span className="meta-separator">•</span>
-                <span className="priority-badge-premium">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <h1 className="project-title-premium" style={{ margin: 0 }}>{project.clientName}</h1>
+                <div className="project-meta-badges">
                   <span 
-                    className="priority-dot-small"
-                    style={{ backgroundColor: priorityColor }}
-                  ></span>
-                  {project.priority}
-                </span>
-                <span className="meta-separator">•</span>
-                <span className="stage-badge-premium">{project.stage}</span>
+                    className="client-badge-premium"
+                    style={{ background: clientTypeStyle.bg, color: clientTypeStyle.color }}
+                  >
+                    {project.clientType}
+                  </span>
+                  <span className="meta-separator">•</span>
+                  <span className="priority-badge-premium">
+                    <span 
+                      className="priority-dot-small"
+                      style={{ backgroundColor: priorityColor }}
+                    ></span>
+                    {project.priority}
+                  </span>
+                  <span className="meta-separator">•</span>
+                  <span className="stage-badge-premium">{project.stage}</span>
+                </div>
               </div>
             </div>
             
@@ -1015,11 +1036,40 @@ const ProjectDetail: React.FC = () => {
       )}
 
       {/* Premium Onboarding Progress */}
-      {project.stage === 'Onboarding' && (
+      {project.stage === 'Onboarding' && !hideOnboardingPhase && (
         <div className="milestone-card">
           <div className="milestone-header">
             <h3>Onboarding Phase</h3>
-            <span className="progress-percentage">{intakeProgress}% Complete</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="progress-percentage">{intakeProgress}% Complete</span>
+              <button
+                onClick={() => setHideOnboardingPhase(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.color = '#374151';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+                title="Hide Onboarding Phase"
+              >
+                <FaTimes /> Hide
+              </button>
+            </div>
           </div>
           <div className="progress-bar-container">
             <div 
@@ -1045,6 +1095,46 @@ const ProjectDetail: React.FC = () => {
               {intakeStatus.message}
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Show button when hidden */}
+      {project.stage === 'Onboarding' && hideOnboardingPhase && (
+        <div style={{ 
+          maxWidth: '1600px', 
+          margin: '2rem auto', 
+          padding: '0 2rem' 
+        }}>
+          <button
+            onClick={() => setHideOnboardingPhase(false)}
+            style={{
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              color: '#6b7280',
+              cursor: 'pointer',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f9fafb';
+              e.currentTarget.style.borderColor = '#d1d5db';
+              e.currentTarget.style.color = '#374151';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#6b7280';
+            }}
+          >
+            <FaChevronDown style={{ transform: 'rotate(-90deg)' }} /> Show Onboarding Phase
+          </button>
         </div>
       )}
 
@@ -1078,19 +1168,27 @@ const ProjectDetail: React.FC = () => {
           Overview
         </button>
         <button
-          className={`tab-item ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tasks')}
-        >
-          <FaCheck className="tab-icon" />
-          Tasks
-        </button>
-        <button
           className={`tab-item ${activeTab === 'deliverables' ? 'active' : ''}`}
           onClick={() => setActiveTab('deliverables')}
         >
           <FaBox className="tab-icon" />
           Deliverables
         </button>
+        <button
+          className={`tab-item ${activeTab === 'revisions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('revisions')}
+        >
+          <FaExclamationTriangle className="tab-icon" />
+          Revisions
+        </button>
+        <button
+          className={`tab-item ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          <FaCheck className="tab-icon" />
+          Client Tasks
+        </button>
+        
         <button
           className={`tab-item ${activeTab === 'onboarding' ? 'active' : ''}`}
           onClick={() => setActiveTab('onboarding')}
@@ -1113,12 +1211,13 @@ const ProjectDetail: React.FC = () => {
           Timeline
         </button>
         <button
-          className={`tab-item ${activeTab === 'revisions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('revisions')}
+          className={`tab-item ${activeTab === 'branding' ? 'active' : ''}`}
+          onClick={() => setActiveTab('branding')}
         >
-          <FaExclamationTriangle className="tab-icon" />
-          Revisions
+          <FaClipboard className="tab-icon" />
+          Branding Management
         </button>
+        
       </div>
 
       {/* Tab Content with Fade Animation */}
@@ -2126,6 +2225,15 @@ const ProjectDetail: React.FC = () => {
                     // Still needs revision - this takes priority over everything else
                     return 'revision';
                   }
+                  
+                  // Check if file is in "Elliot Review" (manual column)
+                  // Check if the latest history entry indicates it was moved to Elliot Review
+                  // Only if it's not in revision (revision takes priority)
+                  // This check must come BEFORE checking deliverable status for QA (which also uses 'Ready for Review')
+                  if (latestHistory?.notes && latestHistory.notes.includes('Moved to Elliot Review')) {
+                    // If the latest entry is Elliot Review, return elliot_review
+                    return 'elliot_review';
+                  }
                 }
                 
                 // MANUAL STATUS COLUMNS (set via drag and drop - check deliverable status):
@@ -2145,7 +2253,16 @@ const ProjectDetail: React.FC = () => {
                 // QA Before Sending to Client: When deliverable is Ready for Review (set manually)
                 // Only show if task is NOT in review (if in review, it goes to "For Approval")
                 // AND only if NOT in revision (revision takes priority)
+                // AND only if NOT in Elliot Review (Elliot Review takes priority over QA)
                 if (selectedDeliverable.status === 'Ready for Review' && !isPlaceholder) {
+                  // Double-check it's not in Elliot Review (in case history wasn't loaded yet)
+                  const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
+                  const fileHistory = deliverableHistory[fileHistoryKey] || [];
+                  const isInElliotReview = fileHistory[0]?.notes?.includes('Moved to Elliot Review');
+                  if (isInElliotReview) {
+                    return 'elliot_review';
+                  }
+                  
                   if (relatedTask && relatedTask.status === 'In Review') {
                     // Task is in review, so it goes to "For Approval" instead
                     return 'for_approval';
@@ -2183,8 +2300,9 @@ const ProjectDetail: React.FC = () => {
                 { id: 'not_started', title: 'Not yet started', files: relatedLinks.filter(l => getFileStatus(l) === 'not_started') },
                 { id: 'owned_in_progress', title: 'Owned/In Progress', files: relatedLinks.filter(l => getFileStatus(l) === 'owned_in_progress') },
                 { id: 'for_approval', title: 'For Approval', files: relatedLinks.filter(l => getFileStatus(l) === 'for_approval') },
-                { id: 'elliot_review', title: 'Elliot Review', files: relatedLinks.filter(l => getFileStatus(l) === 'elliot_review') },
                 { id: 'revision', title: 'Revision', files: relatedLinks.filter(l => getFileStatus(l) === 'revision') },
+                { id: 'elliot_review', title: 'Elliot Review', files: relatedLinks.filter(l => getFileStatus(l) === 'elliot_review') },
+                
                 { id: 'approved_completed', title: 'Approved/Completed', files: relatedLinks.filter(l => getFileStatus(l) === 'approved_completed') },
                 { id: 'qa_before_client', title: 'QA Before Sending to Client', files: relatedLinks.filter(l => getFileStatus(l) === 'qa_before_client') },
                 { id: 'client_validation', title: 'Client Validation', files: relatedLinks.filter(l => getFileStatus(l) === 'client_validation') },
@@ -2247,8 +2365,8 @@ const ProjectDetail: React.FC = () => {
                 }
 
                 try {
-                  if (targetColumnId === 'elliot_review' || targetColumnId === 'revision') {
-                    // Open revision modal instead of directly updating
+                  if (targetColumnId === 'revision') {
+                    // Open revision modal for revision column
                     setRevisionDeliverable({ 
                       id: draggedFile.deliverableId, 
                       type: selectedDeliverable.type, 
@@ -2261,6 +2379,29 @@ const ProjectDetail: React.FC = () => {
                     setDragOverColumn(null);
                     setDraggedFile(null);
                     return;
+                  } else if (targetColumnId === 'elliot_review') {
+                    // Elliot Review is a manual staging area - add history entry to track it
+                    // Since there's no "Elliot Review" status in the backend, we'll add a history entry with notes
+                    await deliverableService.updateStatus(
+                      draggedFile.deliverableId,
+                      'Ready for Review', // Use existing status, but track in history
+                      `Moved to Elliot Review via Kanban`,
+                      fileUrl
+                    );
+                    
+                    // Explicitly reload file history to ensure it's up to date
+                    try {
+                      const fileHist = await deliverableService.getHistory(draggedFile.deliverableId, fileUrl);
+                      const historyKey = `${draggedFile.deliverableId}:${fileUrl}`;
+                      setDeliverableHistory(prev => ({
+                        ...prev,
+                        [historyKey]: fileHist
+                      }));
+                    } catch (error) {
+                      console.error('Failed to reload file history:', error);
+                    }
+                    
+                    showToast('Moved to Elliot Review ✓');
                   } else if (targetColumnId === 'approved_completed') {
                     // Approve this file - sets status to 'Approved'
                     await deliverableService.updateStatus(
@@ -2316,6 +2457,23 @@ const ProjectDetail: React.FC = () => {
                     }}>
                       {selectedDeliverable.status}
                     </div>
+                  </div>
+                  
+                  {/* Drag and Drop Instruction */}
+                  <div style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem 1rem',
+                    background: '#f0f4ff',
+                    border: '1px solid #c7d2fe',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    color: '#4c51bf',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>💡</span>
+                    <span><strong>Tip:</strong> Drag cards across columns to update their status. Cards can be moved between any columns.</span>
                   </div>
                   
                   <div className="kanban-columns">
@@ -3154,6 +3312,175 @@ const ProjectDetail: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'branding' && (
+          <div className="tab-content fade-in">
+            <div style={{ padding: '2rem' }}>
+              <h2 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
+                Branding Management
+              </h2>
+              <div style={{
+                display: 'flex',
+                gap: '1rem',
+                overflowX: 'auto',
+                paddingBottom: '1rem',
+                alignItems: 'stretch',
+                minHeight: '600px'
+              }}>
+                {[
+                  { id: 'call1', title: 'Call 1', subtitle: 'Brand Q&A Session #1', maxTime: '(Max 45min)' },
+                  { id: 'call2', title: 'Call 2 (optional)', subtitle: 'Brand Q&A Session #2', maxTime: '(Max 30min)' },
+                  { id: 'preC3', title: 'Pre C3', subtitle: '', maxTime: '' },
+                  { id: 'call3', title: 'Call 3', subtitle: 'Brand Messaging Framework Review Session', maxTime: '(Max 20min)' },
+                  { id: 'preC4', title: 'Pre C4', subtitle: '', maxTime: '' },
+                  { id: 'call4', title: 'Call 4', subtitle: 'Design Creative Review Session', maxTime: '(Max 15min)' },
+                  { id: 'call5', title: 'Call 5', subtitle: 'Design Validation Session', maxTime: '(Max 15min)' },
+                  { id: 'preC6', title: 'Pre C6', subtitle: '', maxTime: '' },
+                  { id: 'call6', title: 'Call 6', subtitle: 'Project Wrapup Call', maxTime: '(5 - 60min)' },
+                  { id: 'call7', title: 'Call 7 (optional)', subtitle: 'Client Lifetime Value Call', maxTime: '' },
+                ].map((call) => {
+                  const callData = brandingCalls[call.id];
+                  return (
+                    <div key={call.id} style={{
+                      background: '#f9fafb',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      minWidth: '280px',
+                      width: '280px',
+                      minHeight: '500px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      border: '2px solid #e5e7eb',
+                      flexShrink: 0
+                    }}>
+                      <div style={{ marginBottom: '1rem', minHeight: '80px' }}>
+                        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>
+                          {call.title}
+                        </h3>
+                        {call.subtitle ? (
+                          <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', lineHeight: '1.4' }}>
+                            {call.subtitle}
+                          </p>
+                        ) : (
+                          <div style={{ height: '1.125rem' }}></div>
+                        )}
+                        {call.maxTime ? (
+                          <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            {call.maxTime}
+                          </p>
+                        ) : (
+                          <div style={{ height: '0.9375rem' }}></div>
+                        )}
+                      </div>
+                      
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>
+                          Zoom Link
+                        </label>
+                        <input
+                          type="text"
+                          value={callData.zoomLink}
+                          onChange={(e) => {
+                            setBrandingCalls(prev => ({
+                              ...prev,
+                              [call.id]: { ...prev[call.id], zoomLink: e.target.value }
+                            }));
+                          }}
+                          placeholder="Enter Zoom link"
+                          style={{
+                            width: '100%',
+                            padding: '0.625rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '0.8125rem',
+                            fontFamily: 'inherit',
+                            background: 'white'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={callData.isDone}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedCallId(call.id);
+                              setBrandingNotes(callData.notes);
+                              setBrandingAttachment(callData.attachmentLink);
+                              setShowBrandingNotesModal(true);
+                            } else {
+                              setBrandingCalls(prev => ({
+                                ...prev,
+                                [call.id]: { ...prev[call.id], isDone: false }
+                              }));
+                            }
+                          }}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <label style={{ fontSize: '0.8125rem', color: '#475569', cursor: 'pointer', flex: 1 }}>
+                          Done
+                        </label>
+                      </div>
+
+                      {callData.isDone && (callData.notes || callData.attachmentLink) && (
+                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                          {callData.notes && (
+                            <div style={{ marginBottom: '0.75rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Notes: </span>
+                              {callData.notes.length > 100 ? (
+                                <div style={{ marginTop: '0.25rem' }}>
+                                  <p style={{ fontSize: '0.8125rem', color: '#64748b', wordBreak: 'break-word', marginBottom: '0.5rem' }}>
+                                    {callData.notes.substring(0, 100)}...
+                                  </p>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedCallId(call.id);
+                                      setBrandingNotes(callData.notes);
+                                      setBrandingAttachment(callData.attachmentLink);
+                                      setShowBrandingNotesModal(true);
+                                    }}
+                                    style={{
+                                      fontSize: '0.75rem',
+                                      color: '#667eea',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      textDecoration: 'underline',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    See more
+                                  </button>
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: '0.25rem', wordBreak: 'break-word' }}>{callData.notes}</p>
+                              )}
+                            </div>
+                          )}
+                          {callData.attachmentLink && (
+                            <div>
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Attachment: </span>
+                              <a 
+                                href={callData.attachmentLink} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ fontSize: '0.8125rem', color: '#667eea', textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '0.25rem' }}
+                              >
+                                View Link
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'revisions' && (
           <div className="tab-content fade-in">
             <div style={{ padding: '2rem' }}>
@@ -3449,6 +3776,221 @@ const ProjectDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Branding Notes Modal */}
+      {showBrandingNotesModal && selectedCallId && (() => {
+        const callInfo = [
+          { id: 'call1', title: 'Call 1 - Brand Q&A Session #1' },
+          { id: 'call2', title: 'Call 2 (optional) - Brand Q&A Session #2' },
+          { id: 'preC3', title: 'Pre C3' },
+          { id: 'call3', title: 'Call 3 - Brand Messaging Framework Review Session' },
+          { id: 'preC4', title: 'Pre C4' },
+          { id: 'call4', title: 'Call 4 - Design Creative Review Session' },
+          { id: 'call5', title: 'Call 5 - Design Validation Session' },
+          { id: 'preC6', title: 'Pre C6' },
+          { id: 'call6', title: 'Call 6 - Project Wrapup Call' },
+          { id: 'call7', title: 'Call 7 (optional) - Client Lifetime Value Call' },
+        ].find(c => c.id === selectedCallId);
+        
+        return (
+          <div className="modal-overlay" onClick={() => {
+            setShowBrandingNotesModal(false);
+            setSelectedCallId(null);
+            setBrandingNotes('');
+            setBrandingAttachment('');
+          }}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+              <div className="modal-header">
+                <h2>{callInfo && brandingCalls[callInfo.id]?.isDone ? 'Edit Notes' : 'Mark'} {callInfo?.title || 'Call'}{callInfo && brandingCalls[callInfo.id]?.isDone ? '' : ' as Done'}</h2>
+                <button className="close-button" onClick={() => {
+                  setShowBrandingNotesModal(false);
+                  setSelectedCallId(null);
+                  setBrandingNotes('');
+                  setBrandingAttachment('');
+                }}>
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="modal-body" style={{ padding: '1.5rem' }}>
+                <p style={{ 
+                  marginBottom: '1.5rem', 
+                  color: '#6b7280',
+                  fontSize: '0.875rem',
+                  lineHeight: '1.5'
+                }}>
+                  Add notes and/or attachment link for this call (optional).
+                </p>
+                
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label 
+                    htmlFor="branding-notes" 
+                    style={{ 
+                      display: 'block',
+                      marginBottom: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      color: '#374151'
+                    }}
+                  >
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    id="branding-notes"
+                    value={brandingNotes}
+                    onChange={(e) => setBrandingNotes(e.target.value)}
+                    className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem', 
+                      minHeight: '120px', 
+                      fontFamily: 'inherit',
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      resize: 'vertical'
+                    }}
+                    placeholder="Add notes about this call..."
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label 
+                    htmlFor="branding-attachment"
+                    style={{ 
+                      display: 'block',
+                      marginBottom: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      color: '#374151'
+                    }}
+                  >
+                    Attachment/Link (Optional)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <FaLink style={{ color: '#6b7280', fontSize: '0.875rem', flexShrink: 0 }} />
+                    <input
+                      id="branding-attachment"
+                      type="url"
+                      value={brandingAttachment}
+                      onChange={(e) => setBrandingAttachment(e.target.value)}
+                      className="form-input"
+                      style={{ 
+                        flex: 1, 
+                        padding: '0.75rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px'
+                      }}
+                      placeholder="https://example.com or Google Drive/Figma link..."
+                    />
+                  </div>
+                  <p style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#9ca3af', 
+                    marginTop: '0.25rem', 
+                    marginBottom: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    Add a link to reference materials, recordings, or documents
+                  </p>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ 
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: '#f9fafb'
+              }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowBrandingNotesModal(false);
+                    setSelectedCallId(null);
+                    setBrandingNotes('');
+                    setBrandingAttachment('');
+                  }}
+                  style={{
+                    padding: '0.625rem 1.25rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    borderRadius: '6px',
+                    border: '1px solid #d1d5db',
+                    background: 'white',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'center',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#9ca3af';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    if (selectedCallId) {
+                      setBrandingCalls(prev => ({
+                        ...prev,
+                        [selectedCallId]: {
+                          ...prev[selectedCallId],
+                          isDone: true,
+                          notes: brandingNotes,
+                          attachmentLink: brandingAttachment
+                        }
+                      }));
+                    }
+                    setShowBrandingNotesModal(false);
+                    setSelectedCallId(null);
+                    setBrandingNotes('');
+                    setBrandingAttachment('');
+                  }}
+                  style={{ 
+                    background: '#667eea', 
+                    borderColor: '#667eea',
+                    color: 'white',
+                    padding: '0.625rem 1.25rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    borderRadius: '6px',
+                    border: '1px solid #667eea',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'center',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.borderColor = '#5568d3';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.borderColor = '#667eea';
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add Custom Deliverable Modal */}
       {showAddTaskFromDeliverableModal && selectedDeliverableForTask && (

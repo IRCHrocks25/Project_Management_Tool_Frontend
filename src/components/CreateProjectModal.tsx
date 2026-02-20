@@ -438,6 +438,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             </div>
           </div>
 
+
           <div className="form-group">
             <label>Client Type</label>
             <div className="client-type-grid">

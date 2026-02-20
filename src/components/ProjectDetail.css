@@ -405,6 +405,7 @@
 .tab-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   background: none;
   border: none;
@@ -418,6 +419,8 @@
   font-family: inherit;
   font-weight: 500;
   position: relative;
+  min-width: 140px;
+  text-align: center;
 }
 
 .tab-item:hover {
@@ -1025,33 +1028,11 @@
 }
 
 .kanban-columns {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   min-height: 500px;
-  overflow-x: auto;
-  overflow-y: hidden;
   padding-bottom: 1rem;
-  scrollbar-width: thin;
-  scrollbar-color: #c7d2fe #f3f4f6;
-}
-
-.kanban-columns::-webkit-scrollbar {
-  height: 8px;
-}
-
-.kanban-columns::-webkit-scrollbar-track {
-  background: #f3f4f6;
-  border-radius: 4px;
-}
-
-.kanban-columns::-webkit-scrollbar-thumb {
-  background: #c7d2fe;
-  border-radius: 4px;
-}
-
-.kanban-columns::-webkit-scrollbar-thumb:hover {
-  background: #a5b4fc;
 }
 
 .kanban-column {
@@ -1061,11 +1042,10 @@
   display: flex;
   flex-direction: column;
   min-height: 400px;
-  min-width: 280px;
-  max-width: 280px;
-  flex-shrink: 0;
+  width: 100%;
   border: 2px solid transparent;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .kanban-column.drag-over {

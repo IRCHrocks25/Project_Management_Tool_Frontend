@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -8,6 +8,7 @@ import { notificationService } from '../../services/notification.service';
 import KanbanBoard from '../KanbanBoard';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
+import ConfirmModal from '../ConfirmModal';
 import '../Dashboard.css';
 
 const PMDashboard: React.FC = () => {
@@ -19,6 +20,11 @@ const PMDashboard: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [projectToArchive, setProjectToArchive] = useState<string | null>(null);
+  const [projectsToArchive, setProjectsToArchive] = useState<string[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  const [archiving, setArchiving] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -102,6 +108,67 @@ const PMDashboard: React.FC = () => {
     loadData();
   };
 
+  const handleArchiveClick = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click navigation
+    setProjectToArchive(projectId);
+    setShowArchiveModal(true);
+  };
+
+  const handleBulkArchiveClick = () => {
+    if (selectedProjects.size === 0) return;
+    setProjectsToArchive(Array.from(selectedProjects));
+    setShowArchiveModal(true);
+  };
+
+  const handleToggleSelect = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click navigation
+    setSelectedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const filtered = getFilteredProjects();
+    if (selectedProjects.size === filtered.length && filtered.length > 0) {
+      setSelectedProjects(new Set());
+    } else {
+      setSelectedProjects(new Set(filtered.map((p: any) => p.id)));
+    }
+  };
+
+  const handleArchiveConfirm = async () => {
+    const projectsToArchiveList = projectToArchive 
+      ? [projectToArchive] 
+      : projectsToArchive;
+    
+    if (projectsToArchiveList.length === 0) return;
+    
+    try {
+      setArchiving(true);
+      // Archive all projects in parallel
+      await Promise.all(
+        projectsToArchiveList.map(projectId => projectService.archive(projectId))
+      );
+      await loadData(); // Refresh the list
+      setShowArchiveModal(false);
+      setProjectToArchive(null);
+      setProjectsToArchive([]);
+      setSelectedProjects(new Set()); // Clear selections
+    } catch (error: any) {
+      console.error('Failed to archive project(s):', error);
+      alert(`Failed to archive ${projectsToArchiveList.length === 1 ? 'project' : 'projects'}. Please try again.`);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   const handleStatClick = (filterType: string) => {
     setActiveFilter(activeFilter === filterType ? null : filterType);
   };
@@ -135,8 +202,34 @@ const PMDashboard: React.FC = () => {
       filtered = filtered.filter((p: any) => p.clientType === clientTypeFilter);
     }
     
+    // Sort by oldest to newest (by createdAt, fallback to updatedAt or targetCloseMonth)
+    filtered.sort((a: any, b: any) => {
+      const aDate = a.createdAt 
+        ? new Date(a.createdAt).getTime()
+        : a.updatedAt 
+        ? new Date(a.updatedAt).getTime()
+        : a.targetCloseMonth 
+        ? new Date(a.targetCloseMonth + '-01').getTime()
+        : 0;
+      
+      const bDate = b.createdAt 
+        ? new Date(b.createdAt).getTime()
+        : b.updatedAt 
+        ? new Date(b.updatedAt).getTime()
+        : b.targetCloseMonth 
+        ? new Date(b.targetCloseMonth + '-01').getTime()
+        : 0;
+      
+      return aDate - bDate; // Oldest first (ascending)
+    });
+    
     return filtered;
   };
+
+  // Clear selections when filters change
+  useEffect(() => {
+    setSelectedProjects(new Set());
+  }, [activeFilter, priorityFilter, clientTypeFilter]);
 
   if (loading) {
     return (
@@ -426,7 +519,57 @@ const PMDashboard: React.FC = () => {
             <KanbanBoard projects={filteredProjects} tasks={tasks} onUpdate={loadData} />
           ) : (
             <div className="projects-list-view">
+              {selectedProjects.size > 0 && (
+                <div style={{
+                  padding: '1rem',
+                  background: '#f1f5f9',
+                  borderBottom: '2px solid #667eea',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1rem',
+                  borderRadius: '0.5rem'
+                }}>
+                  <span style={{ fontWeight: 600, color: '#475569' }}>
+                    {selectedProjects.size} project{selectedProjects.size === 1 ? '' : 's'} selected
+                  </span>
+                  <button
+                    onClick={handleBulkArchiveClick}
+                    style={{
+                      background: '#64748b',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 1.5rem',
+                      borderRadius: '0.375rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 600
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#475569';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#64748b';
+                    }}
+                  >
+                    <FaArchive />
+                    Archive Selected
+                  </button>
+                </div>
+              )}
               <div className="list-header">
+                <div className="list-header-cell" style={{ width: '50px', flex: '0 0 50px' }}>
+                  <input
+                    type="checkbox"
+                    checked={filteredProjects.length > 0 && selectedProjects.size === filteredProjects.length}
+                    onChange={() => {}}
+                    onClick={handleSelectAll}
+                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                  />
+                </div>
                 <div className="list-header-cell" style={{ flex: '2' }}>Project Name</div>
                 <div className="list-header-cell">Client Type</div>
                 <div className="list-header-cell">Priority</div>
@@ -451,7 +594,19 @@ const PMDashboard: React.FC = () => {
                         key={project.id} 
                         className="list-row"
                         onClick={() => navigate(`/project/${project.id}`)}
+                        style={{
+                          backgroundColor: selectedProjects.has(project.id) ? '#f1f5f9' : 'transparent'
+                        }}
                       >
+                        <div className="list-cell" style={{ width: '50px', flex: '0 0 50px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedProjects.has(project.id)}
+                            onChange={() => {}}
+                            onClick={(e) => handleToggleSelect(project.id, e)}
+                            style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                          />
+                        </div>
                         <div className="list-cell" style={{ flex: '2', fontWeight: 600 }}>
                           {project.clientName}
                         </div>
@@ -469,7 +624,7 @@ const PMDashboard: React.FC = () => {
                           <span className="stage-badge">{project.stage}</span>
                         </div>
                         <div className="list-cell">{daysInStage} {daysInStage === 1 ? 'day' : 'days'}</div>
-                        <div className="list-cell">
+                        <div className="list-cell" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           <button 
                             className="view-btn"
                             onClick={(e) => {
@@ -478,6 +633,31 @@ const PMDashboard: React.FC = () => {
                             }}
                           >
                             View
+                          </button>
+                          <button 
+                            className="view-btn"
+                            onClick={(e) => handleArchiveClick(project.id, e)}
+                            style={{
+                              background: '#64748b',
+                              color: 'white',
+                              border: 'none',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              fontSize: '0.875rem'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#475569';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#64748b';
+                            }}
+                          >
+                            <FaArchive />
+                            Archive
                           </button>
                         </div>
                       </div>
@@ -510,6 +690,25 @@ const PMDashboard: React.FC = () => {
             loadUnreadCount();
           }, 5000);
         }}
+      />
+      <ConfirmModal
+        isOpen={showArchiveModal}
+        onClose={() => {
+          setShowArchiveModal(false);
+          setProjectToArchive(null);
+          setProjectsToArchive([]);
+        }}
+        onConfirm={handleArchiveConfirm}
+        title={projectToArchive ? "Archive Project" : "Archive Projects"}
+        message={
+          projectToArchive
+            ? "Are you sure you want to archive this project? It will be hidden from default views but can still be accessed via direct link."
+            : `Are you sure you want to archive ${projectsToArchive.length} project${projectsToArchive.length === 1 ? '' : 's'}? They will be hidden from default views but can still be accessed via direct link.`
+        }
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+        loading={archiving}
       />
     </div>
   );
