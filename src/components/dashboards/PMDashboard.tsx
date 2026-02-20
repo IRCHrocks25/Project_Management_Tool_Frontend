@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -34,6 +34,7 @@ const PMDashboard: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
   const [clientTypeFilter, setClientTypeFilter] = useState<string>('All Client Types');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
 
@@ -208,6 +209,14 @@ const PMDashboard: React.FC = () => {
     // Exclude completed projects from main pipeline view
     filtered = filtered.filter((p: any) => !p.isCompleted);
     
+    // Apply search filter (by project/client name)
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((p: any) => 
+        p.clientName?.toLowerCase().includes(searchLower)
+      );
+    }
+    
     // Apply activeFilter (stat card filters)
     if (activeFilter) {
       switch (activeFilter) {
@@ -261,7 +270,7 @@ const PMDashboard: React.FC = () => {
   // Clear selections when filters change
   useEffect(() => {
     setSelectedProjects(new Set());
-  }, [activeFilter, priorityFilter, clientTypeFilter]);
+  }, [activeFilter, priorityFilter, clientTypeFilter, searchTerm]);
 
   if (loading) {
     return (
@@ -492,6 +501,16 @@ const PMDashboard: React.FC = () => {
               </button>
             </div>
             <div className="filters">
+              <div className="search-input-wrapper">
+                <FaSearch className="search-icon" />
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search by project name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
               <select 
                 className="filter-select"
                 value={priorityFilter}
