@@ -27,9 +27,9 @@ import {
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
-import { emailService } from '../services/email.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
+import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
 import './ProjectDetail.css';
 
 // Activity Log Kanban Component
@@ -212,12 +212,10 @@ const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
-  const [emails, setEmails] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [activeDeliverableTab, setActiveDeliverableTab] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showEmailModal, setShowEmailModal] = useState(false);
   const [progressAnimation, setProgressAnimation] = useState(false);
   const [hideOnboardingPhase, setHideOnboardingPhase] = useState(true);
   const [updatingDeliverable, setUpdatingDeliverable] = useState<string | null>(null);
@@ -265,6 +263,18 @@ const ProjectDetail: React.FC = () => {
   const [selectedDeliverableForTask, setSelectedDeliverableForTask] = useState<string | null>(null);
   const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
   const [creatingTask, setCreatingTask] = useState(false);
+  const [clientUpdates, setClientUpdates] = useState<ClientUpdate[]>([]);
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [showCreateUpdateModal, setShowCreateUpdateModal] = useState(false);
+  const [selectedUpdate, setSelectedUpdate] = useState<ClientUpdate | null>(null);
+  const [showFormBuilder, setShowFormBuilder] = useState(false);
+  const [currentForm, setCurrentForm] = useState<ClientUpdateForm | null>(null);
+  const [formBlocks, setFormBlocks] = useState<FormBlock[]>([]);
+  const [creatingForm, setCreatingForm] = useState(false);
+  const [publishingForm, setPublishingForm] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [formSubmissions, setFormSubmissions] = useState<Record<string, any[]>>({});
+  const [loadingSubmissions, setLoadingSubmissions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (id) {
@@ -312,6 +322,10 @@ const ProjectDetail: React.FC = () => {
     if (activeTab === 'timeline' && id) {
       loadActivityLog();
     }
+    // Load client updates when client-updates tab is active
+    if (activeTab === 'client-updates' && id) {
+      loadClientUpdates();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, id]);
 
@@ -331,12 +345,126 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const loadClientUpdates = async () => {
+    if (!id) return;
+    try {
+      setLoadingUpdates(true);
+      const updates = await clientUpdatesService.getAllByProject(id);
+      setClientUpdates(updates);
+    } catch (error: any) {
+      console.error('Failed to load client updates:', error);
+      setClientUpdates([]);
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const handleCreateUpdate = async () => {
+    if (!id) return;
+    try {
+      const update = await clientUpdatesService.create(id);
+      setClientUpdates([update, ...clientUpdates]);
+      setShowCreateUpdateModal(false);
+    } catch (error: any) {
+      console.error('Failed to create client update:', error);
+      alert('Failed to create client update entry');
+    }
+  };
+
+  const handleCreateForm = async () => {
+    if (!selectedUpdate) return;
+    try {
+      setCreatingForm(true);
+      const form = await clientUpdatesService.createForm(selectedUpdate.id, formBlocks);
+      setCurrentForm(form);
+      setShowFormBuilder(true);
+      // Reload updates to get the new form
+      await loadClientUpdates();
+    } catch (error: any) {
+      console.error('Failed to create form:', error);
+      alert('Failed to create form');
+    } finally {
+      setCreatingForm(false);
+    }
+  };
+
+  const handlePublishForm = async () => {
+    if (!currentForm) return;
+    try {
+      setPublishingForm(true);
+      await clientUpdatesService.publishForm(currentForm.id);
+      await loadClientUpdates();
+      setShowFormBuilder(false);
+      setCurrentForm(null);
+      setFormBlocks([]);
+      alert('Form published successfully! You can now share the URL with the client.');
+    } catch (error: any) {
+      console.error('Failed to publish form:', error);
+      alert('Failed to publish form');
+    } finally {
+      setPublishingForm(false);
+    }
+  };
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    try {
+      setUploadingImage(true);
+      const url = await clientUpdatesService.uploadImage(file);
+      return url;
+    } catch (error: any) {
+      console.error('Failed to upload image:', error);
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const addFormBlock = (type: FormBlock['type']) => {
+    const newBlock: FormBlock = {
+      id: `block-${Date.now()}-${Math.random()}`,
+      type,
+      ...(type === 'paragraph' && { content: '', bold: false }),
+      ...(type === 'heading' && { content: '' }),
+      ...(type === 'image' && { imageUrl: '', imageAlt: '' }),
+      ...(type === 'text_with_image' && { text: '', imageUrl: '', imageAlt: '' }),
+      ...(type === 'layout' && { layout: { columns: 2, blocks: [] } }),
+    };
+    setFormBlocks([...formBlocks, newBlock]);
+  };
+
+  const updateFormBlock = (blockId: string, updates: Partial<FormBlock>) => {
+    setFormBlocks(formBlocks.map(block => 
+      block.id === blockId ? { ...block, ...updates } : block
+    ));
+  };
+
+  const removeFormBlock = (blockId: string) => {
+    setFormBlocks(formBlocks.filter(block => block.id !== blockId));
+  };
+
+  const getFormUrl = (form: ClientUpdateForm) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/client-updates/forms/${form.publicToken}`;
+  };
+
+  const loadFormSubmissions = async (formId: string) => {
+    if (formSubmissions[formId]) return; // Already loaded
+    try {
+      setLoadingSubmissions(prev => ({ ...prev, [formId]: true }));
+      const submissions = await clientUpdatesService.getFormSubmissions(formId);
+      setFormSubmissions(prev => ({ ...prev, [formId]: submissions }));
+    } catch (error: any) {
+      console.error('Failed to load form submissions:', error);
+    } finally {
+      setLoadingSubmissions(prev => ({ ...prev, [formId]: false }));
+    }
+  };
+
   const loadProject = async () => {
     try {
-      const [projectData, tasksData, emailsData] = await Promise.all([
+      const [projectData, tasksData] = await Promise.all([
         projectService.getOne(id!),
         taskService.getByProject(id!),
-        emailService.getByProject(id!),
       ]);
       setProject(projectData);
       // Use tasks from projectData if available (includes relations), otherwise use tasksData from API
@@ -366,7 +494,6 @@ const ProjectDetail: React.FC = () => {
       }
       
       setTasks(tasksToUse);
-      setEmails(emailsData || []);
       
       console.log('[ProjectDetail] Loaded tasks from API:', tasksData);
       console.log('[ProjectDetail] Tasks from project data:', projectData?.tasks);
@@ -1138,25 +1265,6 @@ const ProjectDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Activity Summary */}
-      {emails.length > 0 && (
-        <div className="activity-summary">
-          <h3>Recent Activity</h3>
-          <div className="activity-list">
-            {emails.slice(0, 3).map((email) => (
-              <div key={email.id} className="activity-item">
-                <FaEnvelope className="activity-icon" />
-                <div className="activity-content">
-                  <span className="activity-text">{email.subject}</span>
-                  <span className="activity-time">
-                    {new Date(email.sentAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Premium Tabs */}
       <div className="project-tabs premium-tabs">
@@ -1197,13 +1305,6 @@ const ProjectDetail: React.FC = () => {
           Onboarding
         </button>
         <button
-          className={`tab-item ${activeTab === 'emails' ? 'active' : ''}`}
-          onClick={() => setActiveTab('emails')}
-        >
-          <FaEnvelopeOpen className="tab-icon" />
-          Emails
-        </button>
-        <button
           className={`tab-item ${activeTab === 'timeline' ? 'active' : ''}`}
           onClick={() => setActiveTab('timeline')}
         >
@@ -1216,6 +1317,13 @@ const ProjectDetail: React.FC = () => {
         >
           <FaClipboard className="tab-icon" />
           Branding Management
+        </button>
+        <button
+          className={`tab-item ${activeTab === 'client-updates' ? 'active' : ''}`}
+          onClick={() => setActiveTab('client-updates')}
+        >
+          <FaEnvelopeOpen className="tab-icon" />
+          Client Updates
         </button>
         
       </div>
@@ -3267,37 +3375,6 @@ const ProjectDetail: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'emails' && (
-          <div className="tab-content fade-in">
-            <div className="emails-header-premium">
-              <h3>Email History</h3>
-              <button onClick={() => setShowEmailModal(true)} className="btn-primary-premium">
-                <FaPaperPlane /> Send Email
-              </button>
-            </div>
-            <div className="emails-list-premium">
-              {emails.map((email) => (
-                <div key={email.id} className="email-item-premium">
-                  <div className="email-header-premium">
-                    <div>
-                      <h4 className="email-subject">{email.subject}</h4>
-                      <span className="email-meta-premium">
-                        Sent by {email.sentBy?.name} on {new Date(email.sentAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <span className={`email-status-premium ${email.isOpened ? 'opened' : 'unopened'}`}>
-                      {email.isOpened ? 'Opened' : 'Unopened'}
-                    </span>
-                  </div>
-                  <div className="email-body-premium">{email.body}</div>
-                  <div className="email-footer-premium">
-                    <span>To: {email.recipientEmail}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {activeTab === 'timeline' && (
           <div className="tab-content fade-in">
@@ -3577,19 +3654,315 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'client-updates' && (
+          <div className="tab-content fade-in">
+            <div style={{ padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ color: '#1e293b', fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>
+                  Client Updates
+                </h2>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => setShowCreateUpdateModal(true)}
+                    style={{
+                      background: '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.625rem 1.25rem',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#5568d3';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#667eea';
+                    }}
+                  >
+                    <FaPlus /> Log Email Sent
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!id) return;
+                      try {
+                        let updateToUse: ClientUpdate | null = null;
+                        
+                        // Check if there's an existing update we can use
+                        if (clientUpdates.length > 0) {
+                          // Use the most recent update
+                          updateToUse = clientUpdates[0];
+                        } else {
+                          // Create a new update entry silently in the background
+                          updateToUse = await clientUpdatesService.create(id);
+                          setClientUpdates([updateToUse]);
+                        }
+                        
+                        // Navigate to form builder page
+                        navigate(`/project/${id}/form-builder/${updateToUse.id}`);
+                      } catch (error: any) {
+                        console.error('Failed to generate form:', error);
+                        alert('Failed to generate form. Please try again.');
+                      }
+                    }}
+                    style={{
+                      background: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.625rem 1.25rem',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#059669';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#10b981';
+                    }}
+                  >
+                    <FaFileAlt /> Generate Form
+                  </button>
+                </div>
+              </div>
+
+              {loadingUpdates ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                  Loading client updates...
+                </div>
+              ) : clientUpdates.length === 0 ? (
+                <div style={{
+                  background: '#f9fafb',
+                  borderRadius: '12px',
+                  padding: '3rem',
+                  border: '1px solid #e5e7eb',
+                  textAlign: 'center'
+                }}>
+                  <FaEnvelopeOpen style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem' }} />
+                  <p style={{ color: '#64748b', fontSize: '0.9375rem', lineHeight: '1.6' }}>
+                    No client updates yet. Click "Log Email Sent" to create your first entry.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {clientUpdates.map((update) => (
+                    <div
+                      key={update.id}
+                      style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '1.5rem',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <FaEnvelope style={{ color: '#667eea' }} />
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                              Email sent by {update.pm?.name || 'PM'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                            {new Date(update.emailSentAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <span
+                              style={{
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
+                                color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                              }}
+                            >
+                              {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {update.forms && update.forms.length > 0 ? (
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                          <div style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b' }}>Forms:</div>
+                          {update.forms.map((form) => (
+                            <div
+                              key={form.id}
+                              style={{
+                                background: '#f9fafb',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                marginBottom: '0.75rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 500, marginBottom: '0.25rem', color: '#1e293b' }}>
+                                  Form {form.isPublished ? '(Published)' : '(Draft)'}
+                                </div>
+                                {form.isPublished && (
+                                  <>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                                      <FaLink style={{ marginRight: '0.25rem' }} />
+                                      <span
+                                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(getFormUrl(form));
+                                          alert('Form URL copied to clipboard!');
+                                        }}
+                                      >
+                                        {getFormUrl(form)}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => loadFormSubmissions(form.id)}
+                                      style={{
+                                        background: '#f3f4f6',
+                                        border: '1px solid #d1d5db',
+                                        padding: '0.375rem 0.75rem',
+                                        borderRadius: '6px',
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        marginTop: '0.25rem',
+                                      }}
+                                    >
+                                      {loadingSubmissions[form.id] ? 'Loading...' : `View Submissions (${formSubmissions[form.id]?.length || 0})`}
+                                    </button>
+                                    {formSubmissions[form.id] && formSubmissions[form.id].length > 0 && (
+                                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                                        {formSubmissions[form.id].map((submission, idx) => (
+                                          <div key={submission.id} style={{ 
+                                            background: '#f9fafb',
+                                            padding: '0.75rem',
+                                            borderRadius: '6px',
+                                            marginBottom: '0.5rem',
+                                            fontSize: '0.875rem'
+                                          }}>
+                                            <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>
+                                              Submission #{idx + 1} - {new Date(submission.submittedAt).toLocaleString()}
+                                            </div>
+                                            {submission.clientName && (
+                                              <div style={{ color: '#64748b' }}>From: {submission.clientName}</div>
+                                            )}
+                                            {submission.responses && submission.responses.length > 0 && (
+                                              <div style={{ marginTop: '0.5rem', color: '#374151' }}>
+                                                {submission.responses.map((resp: any, respIdx: number) => (
+                                                  <div key={respIdx} style={{ marginBottom: '0.5rem' }}>
+                                                    {resp.text && <div>{resp.text}</div>}
+                                                    {resp.imageUrls && resp.imageUrls.length > 0 && (
+                                                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                                                        {resp.imageUrls.map((url: string, imgIdx: number) => (
+                                                          <img key={imgIdx} src={url} alt={`Submission ${imgIdx + 1}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                        ))}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                onClick={() => {
+                                  navigate(`/project/${id}/form-builder/${update.id}/${form.id}`);
+                                }}
+                                style={{
+                                  background: 'white',
+                                  border: '1px solid #d1d5db',
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.875rem',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <FaEdit /> {form.isPublished ? 'View' : 'Edit'}
+                              </button>
+                                {!form.isPublished && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await clientUpdatesService.publishForm(form.id);
+                                        await loadClientUpdates();
+                                        alert('Form published!');
+                                      } catch (error) {
+                                        alert('Failed to publish form');
+                                      }
+                                    }}
+                                    style={{
+                                      background: '#667eea',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '0.5rem 1rem',
+                                      borderRadius: '6px',
+                                      fontSize: '0.875rem',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <FaPaperPlane /> Publish
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                          <button
+                            onClick={() => {
+                              navigate(`/project/${id}/form-builder/${update.id}`);
+                            }}
+                            style={{
+                              background: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <FaPlus /> Create Form
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {showEmailModal && (
-        <EmailModal
-          projectId={id!}
-          projectName={project.clientName}
-          onClose={() => setShowEmailModal(false)}
-          onSuccess={() => {
-            setShowEmailModal(false);
-            loadProject();
-          }}
-        />
-      )}
 
       {/* Add Team Member Modal */}
       {/* Add Deliverable Team Member Modal */}
@@ -4133,87 +4506,363 @@ const ProjectDetail: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
 
-const EmailModal: React.FC<{ projectId: string; projectName: string; onClose: () => void; onSuccess: () => void }> = ({
-  projectId,
-  projectName,
-  onClose,
-  onSuccess,
-}) => {
-  const [formData, setFormData] = useState({
-    subject: '',
-    body: '',
-    recipientEmail: '',
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await emailService.send({
-        ...formData,
-        projectId,
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to send email:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content email-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Send Email - {projectName}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+      {/* Create Client Update Modal */}
+      {showCreateUpdateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateUpdateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Log Email Sent</h2>
+              <button className="close-button" onClick={() => setShowCreateUpdateModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ color: '#64748b', marginBottom: '1rem' }}>
+                This will create a new entry recording that an email was sent to the client. You can then create a form to send to the client.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowCreateUpdateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleCreateUpdate}
+              >
+                Log Email Sent
+              </button>
+            </div>
+          </div>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>To</label>
-            <input
-              type="email"
-              value={formData.recipientEmail}
-              onChange={(e) => setFormData({ ...formData, recipientEmail: e.target.value })}
-              required
-              placeholder="client@example.com"
-            />
+      )}
+
+      {/* Form Builder Modal */}
+      {showFormBuilder && (
+        <div className="modal-overlay" onClick={() => {
+          if (!creatingForm && !publishingForm) {
+            setShowFormBuilder(false);
+            setCurrentForm(null);
+            setFormBlocks([]);
+            setSelectedUpdate(null);
+          }
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>{currentForm ? 'Edit Form' : 'Create Form'}</h2>
+              <button className="close-button" onClick={() => {
+                if (!creatingForm && !publishingForm) {
+                  setShowFormBuilder(false);
+                  setCurrentForm(null);
+                  setFormBlocks([]);
+                  setSelectedUpdate(null);
+                }
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => addFormBlock('paragraph')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Paragraph
+                </button>
+                <button
+                  onClick={() => addFormBlock('heading')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Heading
+                </button>
+                <button
+                  onClick={() => addFormBlock('image')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Image
+                </button>
+                <button
+                  onClick={() => addFormBlock('text_with_image')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Text + Image
+                </button>
+                <button
+                  onClick={() => addFormBlock('layout')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Layout
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {formBlocks.map((block, index) => (
+                  <div
+                    key={block.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      background: 'white',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
+                        {block.type.replace('_', ' ').toUpperCase()}
+                      </span>
+                      <button
+                        onClick={() => removeFormBlock(block.id)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '0.25rem',
+                        }}
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+
+                    {block.type === 'paragraph' && (
+                      <div>
+                        <textarea
+                          value={block.content || ''}
+                          onChange={(e) => updateFormBlock(block.id, { content: e.target.value })}
+                          placeholder="Enter paragraph text..."
+                          style={{
+                            width: '100%',
+                            minHeight: '100px',
+                            padding: '0.75rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={block.bold || false}
+                            onChange={(e) => updateFormBlock(block.id, { bold: e.target.checked })}
+                          />
+                          <span style={{ fontSize: '0.875rem' }}>Bold</span>
+                        </label>
+                      </div>
+                    )}
+
+                    {block.type === 'heading' && (
+                      <input
+                        type="text"
+                        value={block.content || ''}
+                        onChange={(e) => updateFormBlock(block.id, { content: e.target.value })}
+                        placeholder="Enter heading text..."
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '1.125rem',
+                          fontWeight: 600,
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                    )}
+
+                    {block.type === 'image' && (
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await handleImageUpload(file);
+                                updateFormBlock(block.id, { imageUrl: url });
+                              } catch (error) {
+                                alert('Failed to upload image');
+                              }
+                            }
+                          }}
+                          style={{ marginBottom: '0.5rem' }}
+                        />
+                        {block.imageUrl && (
+                          <img
+                            src={block.imageUrl}
+                            alt={block.imageAlt || ''}
+                            style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '6px', marginTop: '0.5rem' }}
+                          />
+                        )}
+                        <input
+                          type="text"
+                          value={block.imageAlt || ''}
+                          onChange={(e) => updateFormBlock(block.id, { imageAlt: e.target.value })}
+                          placeholder="Image alt text..."
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            marginTop: '0.5rem',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {block.type === 'text_with_image' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <textarea
+                          value={block.text || ''}
+                          onChange={(e) => updateFormBlock(block.id, { text: e.target.value })}
+                          placeholder="Enter text..."
+                          style={{
+                            width: '100%',
+                            minHeight: '80px',
+                            padding: '0.75rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const url = await handleImageUpload(file);
+                                updateFormBlock(block.id, { imageUrl: url });
+                              } catch (error) {
+                                alert('Failed to upload image');
+                              }
+                            }
+                          }}
+                        />
+                        {block.imageUrl && (
+                          <img
+                            src={block.imageUrl}
+                            alt={block.imageAlt || ''}
+                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px' }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {block.type === 'layout' && (
+                      <div>
+                        <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                          Layout blocks are complex. For now, use individual blocks.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {formBlocks.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                  <p>No blocks yet. Add blocks using the buttons above.</p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  if (!creatingForm && !publishingForm) {
+                    setShowFormBuilder(false);
+                    setCurrentForm(null);
+                    setFormBlocks([]);
+                    setSelectedUpdate(null);
+                  }
+                }}
+                disabled={creatingForm || publishingForm}
+              >
+                Cancel
+              </button>
+              {!currentForm ? (
+                <button
+                  className="btn-primary"
+                  onClick={handleCreateForm}
+                  disabled={formBlocks.length === 0 || creatingForm}
+                >
+                  {creatingForm ? 'Creating...' : 'Create Form'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="btn-secondary"
+                    onClick={async () => {
+                      try {
+                        await clientUpdatesService.updateForm(currentForm.id, formBlocks);
+                        await loadClientUpdates();
+                        alert('Form updated!');
+                      } catch (error) {
+                        alert('Failed to update form');
+                      }
+                    }}
+                    disabled={creatingForm || publishingForm}
+                  >
+                    Save Changes
+                  </button>
+                  {!currentForm.isPublished && (
+                    <button
+                      className="btn-primary"
+                      onClick={handlePublishForm}
+                      disabled={formBlocks.length === 0 || publishingForm}
+                    >
+                      {publishingForm ? 'Publishing...' : 'Publish Form'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-          <div className="form-group">
-            <label>Subject</label>
-            <input
-              type="text"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              required
-              placeholder="Email subject"
-            />
-          </div>
-          <div className="form-group">
-            <label>Message</label>
-            <textarea
-              value={formData.body}
-              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-              required
-              rows={8}
-              placeholder="Email message..."
-            />
-          </div>
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Email'}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

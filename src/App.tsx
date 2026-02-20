@@ -11,6 +11,8 @@ import Users from './components/Users';
 import Clients from './components/Clients';
 import CompletedProjects from './components/CompletedProjects';
 import ResetPassword from './components/ResetPassword';
+import ClientUpdateFormView from './components/ClientUpdateFormView';
+import FormBuilder from './components/FormBuilder';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -79,6 +81,26 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <CompletedProjects />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/client-updates/forms/:publicToken"
+          element={<ClientUpdateFormView />}
+        />
+        <Route
+          path="/project/:projectId/form-builder/:updateId"
+          element={
+            <PrivateRoute>
+              <FormBuilder />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId/form-builder/:updateId/:formId"
+          element={
+            <PrivateRoute>
+              <FormBuilder />
             </PrivateRoute>
           }
         />

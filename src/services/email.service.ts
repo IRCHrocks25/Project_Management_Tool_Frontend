@@ -12,7 +12,7 @@ const getAuthHeaders = () => {
 };
 
 export const emailService = {
-  async send(data: { subject: string; body: string; recipientEmail: string; projectId: string }): Promise<any> {
+  async send(data: { subject: string; body?: string; recipientEmail: string; projectId: string }): Promise<any> {
     const response = await axios.post(`${API_URL}/emails`, data, getAuthHeaders());
     return response.data;
   },
