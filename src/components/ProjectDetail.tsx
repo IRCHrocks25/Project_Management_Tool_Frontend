@@ -3849,32 +3849,127 @@ const ProjectDetail: React.FC = () => {
                                       <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
                                         {formSubmissions[form.id].map((submission, idx) => (
                                           <div key={submission.id} style={{ 
-                                            background: '#f9fafb',
-                                            padding: '0.75rem',
-                                            borderRadius: '6px',
-                                            marginBottom: '0.5rem',
+                                            background: '#ffffff',
+                                            border: '1px solid #e5e7eb',
+                                            padding: '1rem',
+                                            borderRadius: '8px',
+                                            marginBottom: '1rem',
                                             fontSize: '0.875rem'
                                           }}>
-                                            <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>
-                                              Submission #{idx + 1} - {new Date(submission.submittedAt).toLocaleString()}
+                                            <div style={{ 
+                                              display: 'flex', 
+                                              justifyContent: 'space-between', 
+                                              alignItems: 'center',
+                                              marginBottom: '0.75rem',
+                                              paddingBottom: '0.75rem',
+                                              borderBottom: '1px solid #e5e7eb'
+                                            }}>
+                                              <div>
+                                                <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                                                  Submission #{idx + 1}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                  {new Date(submission.submittedAt).toLocaleString()}
+                                                </div>
+                                              </div>
+                                              {submission.clientName && (
+                                                <div style={{ 
+                                                  padding: '0.25rem 0.75rem',
+                                                  background: '#f1f5f9',
+                                                  borderRadius: '12px',
+                                                  fontSize: '0.75rem',
+                                                  color: '#475569'
+                                                }}>
+                                                  <FaUser style={{ marginRight: '0.25rem' }} />
+                                                  {submission.clientName}
+                                                  {submission.clientEmail && ` (${submission.clientEmail})`}
+                                                </div>
+                                              )}
                                             </div>
-                                            {submission.clientName && (
-                                              <div style={{ color: '#64748b' }}>From: {submission.clientName}</div>
-                                            )}
                                             {submission.responses && submission.responses.length > 0 && (
-                                              <div style={{ marginTop: '0.5rem', color: '#374151' }}>
-                                                {submission.responses.map((resp: any, respIdx: number) => (
-                                                  <div key={respIdx} style={{ marginBottom: '0.5rem' }}>
-                                                    {resp.text && <div>{resp.text}</div>}
-                                                    {resp.imageUrls && resp.imageUrls.length > 0 && (
-                                                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                                                        {resp.imageUrls.map((url: string, imgIdx: number) => (
-                                                          <img key={imgIdx} src={url} alt={`Submission ${imgIdx + 1}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
-                                                        ))}
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                ))}
+                                              <div style={{ marginTop: '0.5rem' }}>
+                                                {submission.responses.map((resp: any, respIdx: number) => {
+                                                  // Find the corresponding form block to show context
+                                                  const block = form.blocks?.find((b: any) => b.id === resp.blockId);
+                                                  return (
+                                                    <div 
+                                                      key={respIdx} 
+                                                      style={{ 
+                                                        marginBottom: '1rem',
+                                                        padding: '0.75rem',
+                                                        background: '#f9fafb',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid #e5e7eb'
+                                                      }}
+                                                    >
+                                                      {block && (
+                                                        <div style={{ 
+                                                          fontSize: '0.75rem', 
+                                                          color: '#64748b', 
+                                                          marginBottom: '0.5rem',
+                                                          fontWeight: 500
+                                                        }}>
+                                                          {block.type === 'paragraph' && '📝 Paragraph Response'}
+                                                          {block.type === 'heading' && '📌 Heading Response'}
+                                                          {block.type === 'image' && '🖼️ Image Response'}
+                                                          {block.type === 'text_with_image' && '📄 Text with Image Response'}
+                                                          {!['paragraph', 'heading', 'image', 'text_with_image'].includes(block.type) && 'Response'}
+                                                        </div>
+                                                      )}
+                                                      {resp.text && (
+                                                        <div style={{ 
+                                                          color: '#374151', 
+                                                          whiteSpace: 'pre-wrap',
+                                                          lineHeight: '1.6',
+                                                          marginBottom: resp.imageUrls?.length > 0 ? '0.75rem' : '0'
+                                                        }}>
+                                                          {resp.text}
+                                                        </div>
+                                                      )}
+                                                      {resp.imageUrls && resp.imageUrls.length > 0 && (
+                                                        <div style={{ 
+                                                          display: 'flex', 
+                                                          gap: '0.75rem', 
+                                                          marginTop: '0.5rem', 
+                                                          flexWrap: 'wrap' 
+                                                        }}>
+                                                          {resp.imageUrls.map((url: string, imgIdx: number) => (
+                                                            <a
+                                                              key={imgIdx}
+                                                              href={url}
+                                                              target="_blank"
+                                                              rel="noopener noreferrer"
+                                                              style={{ 
+                                                                display: 'block',
+                                                                cursor: 'pointer',
+                                                                transition: 'transform 0.2s'
+                                                              }}
+                                                              onMouseEnter={(e) => {
+                                                                e.currentTarget.style.transform = 'scale(1.05)';
+                                                              }}
+                                                              onMouseLeave={(e) => {
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                              }}
+                                                            >
+                                                              <img 
+                                                                src={url} 
+                                                                alt={`Submission image ${imgIdx + 1}`} 
+                                                                style={{ 
+                                                                  width: '120px', 
+                                                                  height: '120px', 
+                                                                  objectFit: 'cover', 
+                                                                  borderRadius: '6px',
+                                                                  border: '1px solid #e5e7eb',
+                                                                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                                                }} 
+                                                              />
+                                                            </a>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                             )}
                                           </div>
