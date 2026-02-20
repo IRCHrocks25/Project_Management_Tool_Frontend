@@ -5,6 +5,46 @@
   width: 100%;
 }
 
+.kanban-instructions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+.instruction-icon {
+  font-size: 1rem;
+}
+
+.kanban-card-tooltip {
+  background: #1f2937;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+.kanban-card-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+
 .kanban-scroll-button {
   position: absolute;
   top: 50%;
@@ -219,18 +259,26 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
-.premium-card.draggable:hover {
-  cursor: grab;
-}
-
-.premium-card.draggable:active {
-  cursor: grabbing;
-}
-
 .premium-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border-left-color: #667eea;
+  cursor: pointer;
+}
+
+.premium-card:hover::after {
+  content: 'Click to view';
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.6875rem;
+  color: #667eea;
+  font-weight: 600;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 .premium-card.stuck {
@@ -394,6 +442,17 @@
 /* Smooth Scrolling */
 .premium-kanban {
   scroll-behavior: smooth;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-100%) translateY(0);
+  }
 }
 
 /* Responsive */

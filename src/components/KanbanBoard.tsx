@@ -517,8 +517,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
   };
 
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   return (
     <div className="kanban-board-wrapper">
+      <div className="kanban-instructions">
+        <span className="instruction-icon">💡</span>
+        <span>Click on any project card to view details • Drag cards to move between stages</span>
+      </div>
       {scrollState.isScrolledLeft && (
         <button 
           className="kanban-scroll-button kanban-scroll-left" 
@@ -566,12 +573,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
                       draggable
                       onDragStart={(e) => handleDragStart(e, project.id)}
                       onDragEnd={handleDragEnd}
+                      onMouseEnter={(e) => {
+                        setHoveredProject(project.id);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setTooltipPosition({
+                          x: rect.left + rect.width / 2,
+                          y: rect.top - 10
+                        });
+                      }}
+                      onMouseLeave={() => setHoveredProject(null)}
                       className={`kanban-card premium-card draggable ${isStuck(project) ? 'stuck' : ''} ${isWaitingOnClient(project) ? 'waiting-client' : ''} ${isOverdue(project) ? 'overdue' : ''} ${draggedProject === project.id ? 'dragging' : ''}`}
                       onClick={(e) => {
                         if (!isDragging) {
                           navigate(`/project/${project.id}`);
                         }
                       }}
+                      title="Click to view project details"
                     >
                       {/* Top Row */}
                       <div className="card-top-row">
@@ -668,6 +685,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
         >
           <FaChevronRight />
         </button>
+      )}
+      {hoveredProject && tooltipPosition.x > 0 && (
+        <div 
+          className="kanban-card-tooltip"
+          style={{
+            position: 'fixed',
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: 'translateX(-50%) translateY(-100%)',
+            zIndex: 1000,
+            pointerEvents: 'none'
+          }}
+        >
+          Click to view project
+        </div>
       )}
     </div>
   );
