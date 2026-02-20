@@ -9,6 +9,7 @@ import Profile from './components/Profile';
 import Settings from './components/Settings';
 import Users from './components/Users';
 import Clients from './components/Clients';
+import CompletedProjects from './components/CompletedProjects';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -68,6 +69,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Clients />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/completed-projects"
+          element={
+            <PrivateRoute>
+              <CompletedProjects />
             </PrivateRoute>
           }
         />

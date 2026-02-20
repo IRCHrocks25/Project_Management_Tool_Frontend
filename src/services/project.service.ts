@@ -64,6 +64,16 @@ export const projectService = {
     return response.data;
   },
 
+  async complete(id: string): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}/complete`, {}, getAuthHeaders());
+    return response.data;
+  },
+
+  async getCompleted(): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects/completed`, getAuthHeaders());
+    return response.data;
+  },
+
   async getStats(): Promise<any> {
     const response = await axios.get(`${API_URL}/projects/stats`, getAuthHeaders());
     return response.data;

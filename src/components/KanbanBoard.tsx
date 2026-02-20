@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight, FaUser } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
@@ -17,10 +18,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   
   // Local state for optimistic updates
   const [localProjects, setLocalProjects] = useState<any[]>(projects);
+  const pendingUpdatesRef = useRef<Map<string, any>>(new Map());
   
-  // Sync localProjects when projects prop changes
+  // Sync localProjects when projects prop changes, but preserve pending updates
   useEffect(() => {
-    setLocalProjects(projects);
+    if (pendingUpdatesRef.current.size > 0) {
+      // Merge server data with pending optimistic updates
+      setLocalProjects((prevLocal) => {
+        const updatedProjects = projects.map((p: any) => {
+          // If this project has a pending update, use the optimistic version
+          if (pendingUpdatesRef.current.has(p.id)) {
+            return pendingUpdatesRef.current.get(p.id);
+          }
+          return p;
+        });
+        // Also include any pending projects that might not be in the server response yet
+        pendingUpdatesRef.current.forEach((pendingProject, id) => {
+          if (!updatedProjects.find((p: any) => p.id === id)) {
+            updatedProjects.push(pendingProject);
+          }
+        });
+        return updatedProjects;
+      });
+    } else {
+      // No pending updates, just sync normally
+      setLocalProjects(projects);
+    }
   }, [projects]);
   
   // Define simplified stages per department
@@ -82,7 +105,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const getProjectsByStage = (displayStage: string) => {
-    // If tasks are provided, show projects based on active tasks (multi-column view)
+    // Use task-based filtering when tasks are provided (allows projects to appear in multiple columns)
+    // This allows projects with tasks in different departments to appear across multiple columns
+    // A project with Copy tasks appears in Copy Writing, Design tasks in Design, etc.
     if (tasks && tasks.length > 0) {
       // Map display stage to task types
       const taskTypesForStage: string[] = [];
@@ -105,7 +130,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       }
       
       // For task-based columns, show projects with active (non-completed) tasks of that type
+      // OR projects whose stage matches this column's stage (for manual stage changes)
+      // This allows projects to appear in MULTIPLE columns if they have tasks of different types
+      // AND also appear in a column if manually moved to that stage
       if (taskTypesForStage.length > 0) {
+        // Get projects with active tasks of this type
         const projectIdsWithActiveTasks = new Set(
           tasks
             .filter((t: any) => 
@@ -116,14 +145,70 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
             .map((t: any) => t.projectId)
         );
         
-        return localProjects.filter((p) => projectIdsWithActiveTasks.has(p.id));
+        // Also get projects whose stage matches this display stage (for manual stage changes)
+        const internalStagesForColumn: string[] = [];
+        if (displayStage === 'Copy Writing') {
+          internalStagesForColumn.push('Copy', 'Copy Revision');
+        } else if (displayStage === 'Design') {
+          internalStagesForColumn.push('Design', 'Design Revision');
+        } else if (displayStage === 'Development') {
+          internalStagesForColumn.push('Dev');
+        } else if (displayStage === 'AI Team') {
+          internalStagesForColumn.push('AI Team');
+        } else if (displayStage === 'Social Media Team') {
+          internalStagesForColumn.push('Social Media Team');
+        } else if (displayStage === 'CRM') {
+          internalStagesForColumn.push('CRM');
+        } else if (displayStage === 'SEO/GEO Team') {
+          internalStagesForColumn.push('SEO/GEO Team');
+        }
+        
+        // Combine: projects with tasks of this type OR projects in this stage
+        const projectIdsByStage = internalStagesForColumn.length > 0
+          ? new Set(localProjects.filter((p: any) => internalStagesForColumn.includes(p.stage)).map((p: any) => p.id))
+          : new Set<string>();
+        
+        // Union of both sets: projects with tasks OR projects in this stage
+        const combinedProjectIds = new Set([
+          ...Array.from(projectIdsWithActiveTasks),
+          ...Array.from(projectIdsByStage)
+        ]);
+        
+        return localProjects.filter((p) => combinedProjectIds.has(p.id));
       }
       
-      // For "Ready to Close" and other special stages, use stage-based logic
+      // For "Ready to Close" stage, use stage-based logic
       if (displayStage === 'Ready to Close') {
         return localProjects.filter((p) => 
           p.stage === 'Ready to Close' || p.stage === 'Closed'
         );
+      }
+      
+      // For Onboarding, combine task-based and stage-based logic
+      if (displayStage === 'Onboarding') {
+        // Get projects with Onboarding tasks
+        const onboardingTaskProjects = new Set(
+          tasks
+            .filter((t: any) => 
+              t.type === 'Onboarding' && 
+              !t.isCompleted &&
+              (t.status !== 'Completed')
+            )
+            .map((t: any) => t.projectId)
+        );
+        
+        // Also include projects that are in Onboarding/Intake stage (even without tasks)
+        const onboardingStageProjects = localProjects.filter((p) => 
+          p.stage === 'Onboarding' || p.stage === 'Intake'
+        );
+        
+        // Combine both: projects with onboarding tasks OR in onboarding stage
+        const combined = new Set([
+          ...Array.from(onboardingTaskProjects),
+          ...onboardingStageProjects.map((p: any) => p.id)
+        ]);
+        
+        return localProjects.filter((p) => combined.has(p.id));
       }
     }
     
@@ -233,24 +318,42 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     const previousStage = project.stage;
     const internalStage = mapDisplayStageToInternal(displayStage, project?.stage);
     
-    // Optimistic update: Update UI immediately
-    setLocalProjects((prevProjects) =>
-      prevProjects.map((p) =>
-        p.id === projectId ? { ...p, stage: internalStage, updatedAt: new Date().toISOString() } : p
-      )
-    );
+    // Create updated project object
+    const updatedProject = { ...project, stage: internalStage, updatedAt: new Date().toISOString() };
+    
+    // Store in pending updates ref immediately
+    pendingUpdatesRef.current.set(projectId, updatedProject);
+    
+    // Optimistic update: Update UI immediately using flushSync to force synchronous render
+    flushSync(() => {
+      setLocalProjects((prevProjects) => {
+        const updated = prevProjects.map((p) =>
+          p.id === projectId ? updatedProject : p
+        );
+        // Force immediate re-render by returning new array reference
+        return [...updated];
+      });
+    });
     
     showToast(`Moved to ${displayStage} ✓`);
     
     // Then update backend
     try {
       console.log('[Kanban] Updating project stage:', { projectId, displayStage, internalStage });
-      const updatedProject = await projectService.updateStage(projectId, internalStage);
-      console.log('[Kanban] Stage updated successfully:', updatedProject);
+      await projectService.updateStage(projectId, internalStage);
+      console.log('[Kanban] Stage updated successfully');
+      
+      // Remove from pending updates after successful backend update
+      pendingUpdatesRef.current.delete(projectId);
+      
       // Refresh from server to ensure consistency
       onUpdate();
     } catch (error) {
       console.error('[Kanban] Failed to update stage:', error);
+      
+      // Remove from pending updates
+      pendingUpdatesRef.current.delete(projectId);
+      
       // Revert optimistic update on error
       setLocalProjects((prevProjects) =>
         prevProjects.map((p) =>

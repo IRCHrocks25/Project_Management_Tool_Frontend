@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -25,6 +25,9 @@ const PMDashboard: React.FC = () => {
   const [projectsToArchive, setProjectsToArchive] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [archiving, setArchiving] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [projectToComplete, setProjectToComplete] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -169,12 +172,41 @@ const PMDashboard: React.FC = () => {
     }
   };
 
+  const handleCompleteClick = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click navigation
+    setProjectToComplete(projectId);
+    setShowCompleteModal(true);
+  };
+
+  const handleCompleteConfirm = async () => {
+    if (!projectToComplete) return;
+    
+    try {
+      setCompleting(true);
+      await projectService.complete(projectToComplete);
+      await loadData(); // Refresh the list
+      setShowCompleteModal(false);
+      setProjectToComplete(null);
+    } catch (error: any) {
+      console.error('Failed to complete project:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      console.error('Error details:', errorMessage);
+      alert(`Failed to mark project as complete: ${errorMessage}. Please try again or check the console for more details.`);
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+
   const handleStatClick = (filterType: string) => {
     setActiveFilter(activeFilter === filterType ? null : filterType);
   };
 
   const getFilteredProjects = () => {
     let filtered = [...projects];
+    
+    // Exclude completed projects from main pipeline view
+    filtered = filtered.filter((p: any) => !p.isCompleted);
     
     // Apply activeFilter (stat card filters)
     if (activeFilter) {
@@ -411,6 +443,17 @@ const PMDashboard: React.FC = () => {
                     Settings
                   </button>
                   <div className="dropdown-divider"></div>
+                  <button 
+                    onClick={() => {
+                      setShowAvatarDropdown(false);
+                      navigate('/completed-projects');
+                    }}
+                    className="dropdown-item"
+                  >
+                    <FaCheckCircle className="dropdown-icon" />
+                    Completed Projects
+                  </button>
+                  <div className="dropdown-divider"></div>
                   <button onClick={handleLogout} className="dropdown-item dropdown-item-danger">
                     <FaSignOutAlt className="dropdown-icon" />
                     Logout
@@ -636,6 +679,31 @@ const PMDashboard: React.FC = () => {
                           </button>
                           <button 
                             className="view-btn"
+                            onClick={(e) => handleCompleteClick(project.id, e)}
+                            style={{
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              fontSize: '0.875rem'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#059669';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#10b981';
+                            }}
+                          >
+                            <FaCheckCircle />
+                            Mark Complete
+                          </button>
+                          <button 
+                            className="view-btn"
                             onClick={(e) => handleArchiveClick(project.id, e)}
                             style={{
                               background: '#64748b',
@@ -709,6 +777,21 @@ const PMDashboard: React.FC = () => {
         cancelText="Cancel"
         type="warning"
         loading={archiving}
+      />
+
+      <ConfirmModal
+        isOpen={showCompleteModal}
+        onClose={() => {
+          setShowCompleteModal(false);
+          setProjectToComplete(null);
+        }}
+        onConfirm={handleCompleteConfirm}
+        title="Mark Project as Complete"
+        message="Are you sure you want to mark this project as complete? It will be removed from the pipeline and moved to Completed Projects."
+        confirmText="Mark Complete"
+        cancelText="Cancel"
+        type="info"
+        loading={completing}
       />
     </div>
   );
