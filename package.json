@@ -19,10 +19,10 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "serve -s build -l ${PORT:-3001}",
     "start:dev": "cross-env NODE_OPTIONS=--no-deprecation PORT=3001 react-scripts start",
-    "start:prod": "node server.js",
-    "start:railway": "node server.js",
+    "start:prod": "serve -s build -l ${PORT:-3001}",
+    "start:railway": "serve -s build -l ${PORT:-3001}",
     "build": "cross-env NODE_OPTIONS=--no-deprecation react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -46,7 +46,6 @@
     ]
   },
   "proxy": "http://localhost:3000",
-  "homepage": ".",
   "devDependencies": {
     "cross-env": "^10.1.0"
   }
