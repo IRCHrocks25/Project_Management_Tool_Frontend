@@ -46,7 +46,6 @@ const CopyDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
@@ -108,8 +107,6 @@ const CopyDashboard: React.FC = () => {
             ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(d.type)
           );
 
-          const projectNotesList: any[] = [];
-          
           for (const deliverable of copyDeliverables) {
             try {
               const { deliverableService } = await import('../../services/deliverable.service');
@@ -120,36 +117,9 @@ const CopyDashboard: React.FC = () => {
                 ...prev,
                 [deliverable.id]: history
               }));
-              
-              // Collect all history entries with notes
-              // Only include notes for copy-related revisions (exclude design Figma files)
-              history.forEach((h: any) => {
-                if (h.notes && h.notes.trim()) {
-                  // Exclude design files (Figma) - those should only show on Designer Dashboard
-                  const isDesignFile = h.fileUrl && (h.fileUrl.includes('figma.com') || h.fileUrl.includes('figma'));
-                  const isCopyDeliverable = ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(deliverable.type) ||
-                                          (deliverable.type === 'Landing Page' && !isDesignFile);
-                  
-                  if (isCopyDeliverable) {
-                    projectNotesList.push({
-                      ...h,
-                      deliverableType: deliverable.type || deliverable.customType,
-                      deliverableId: deliverable.id,
-                    });
-                  }
-                }
-              });
             } catch (error) {
               console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
             }
-          }
-          
-          // Store notes for this project
-          if (projectNotesList.length > 0) {
-            setProjectNotes(prev => ({
-              ...prev,
-              [project.id]: projectNotesList
-            }));
           }
 
           return project;

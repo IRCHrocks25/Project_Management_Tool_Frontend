@@ -53,7 +53,6 @@ const AIDeveloperDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
@@ -150,8 +149,6 @@ const AIDeveloperDashboard: React.FC = () => {
             (d.type === 'Other' && d.customType)
           );
 
-          const projectNotesList: any[] = [];
-          
           for (const deliverable of aiRelevantDeliverables) {
             // Double-check: only include if it has AI tasks linked OR is a custom deliverable
             const hasAITasks = aiDeliverableIds.has(deliverable.id);
@@ -168,28 +165,9 @@ const AIDeveloperDashboard: React.FC = () => {
                 ...prev,
                 [deliverable.id]: history
               }));
-              
-              // Collect all history entries with notes
-              history.forEach((h: any) => {
-                if (h.notes && h.notes.trim()) {
-                  projectNotesList.push({
-                    ...h,
-                    deliverableType: deliverable.type || deliverable.customType,
-                    deliverableId: deliverable.id,
-                  });
-                }
-              });
             } catch (error) {
               console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
             }
-          }
-          
-          // Store notes for this project
-          if (projectNotesList.length > 0) {
-            setProjectNotes(prev => ({
-              ...prev,
-              [project.id]: projectNotesList
-            }));
           }
 
           return project;

@@ -55,7 +55,6 @@ const DesignerDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [projectNotes, setProjectNotes] = useState<Record<string, any[]>>({});
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
@@ -118,7 +117,6 @@ const DesignerDashboard: React.FC = () => {
           );
 
           let hasFileRevision = false;
-          const projectNotesList: any[] = [];
           
           for (const deliverable of designDeliverables) {
             try {
@@ -135,36 +133,9 @@ const DesignerDashboard: React.FC = () => {
               if (history.some((h: any) => h.action === 'Revision Requested' && h.fileUrl)) {
                 hasFileRevision = true;
               }
-              
-              // Collect all history entries with notes
-              // Only include notes for design-related revisions (check fileUrl for design files)
-              history.forEach((h: any) => {
-                if (h.notes && h.notes.trim()) {
-                  // Only include if it's a design file (Figma) or if deliverable is clearly design-related
-                  const isDesignFile = h.fileUrl && (h.fileUrl.includes('figma.com') || h.fileUrl.includes('figma'));
-                  const isDesignDeliverable = ['Logo', 'Social Banners', 'Speaker Kit'].includes(deliverable.type) ||
-                                             (deliverable.type === 'Landing Page' && isDesignFile);
-                  
-                  if (isDesignDeliverable || isDesignFile) {
-                    projectNotesList.push({
-                      ...h,
-                      deliverableType: deliverable.type || deliverable.customType,
-                      deliverableId: deliverable.id,
-                    });
-                  }
-                }
-              });
             } catch (error) {
               console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
             }
-          }
-          
-          // Store notes for this project
-          if (projectNotesList.length > 0) {
-            setProjectNotes(prev => ({
-              ...prev,
-              [project.id]: projectNotesList
-            }));
           }
 
           // If file-level revision exists, ensure project stage reflects it
