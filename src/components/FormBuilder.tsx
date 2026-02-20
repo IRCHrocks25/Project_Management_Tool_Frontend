@@ -245,7 +245,6 @@ const FormBuilder: React.FC = () => {
     }
 
     try {
-      setSaving(true);
       if (form) {
         // Update existing form
         await clientUpdatesService.updateForm(form.id, formBlocks);
@@ -261,8 +260,6 @@ const FormBuilder: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to save form:', error);
       alert('Failed to save form');
-    } finally {
-      setSaving(false);
     }
   };
 
