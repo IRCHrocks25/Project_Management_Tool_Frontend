@@ -88,21 +88,23 @@ const Login: React.FC = () => {
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1.5rem' }}>
-          <a 
-            href="#" 
-            onClick={(e) => { 
-              e.preventDefault(); 
-              setShowForgotPassword(true); 
-            }}
+          <button
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
             style={{ 
+              background: 'none',
+              border: 'none',
               fontSize: '0.875rem', 
               color: '#667eea', 
               textDecoration: 'none',
-              fontWeight: 500
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              padding: 0,
             }}
           >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         <p className="auth-footer">

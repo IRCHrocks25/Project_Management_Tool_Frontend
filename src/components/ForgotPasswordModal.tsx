@@ -96,9 +96,22 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
 
         <p className="auth-footer">
           Remember your password?{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); onClose(); }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#667eea',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              fontSize: 'inherit',
+              fontFamily: 'inherit',
+              padding: 0,
+            }}
+          >
             Back to Login
-          </a>
+          </button>
         </p>
       </div>
     </div>
