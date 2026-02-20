@@ -10,6 +10,7 @@ import Settings from './components/Settings';
 import Users from './components/Users';
 import Clients from './components/Clients';
 import CompletedProjects from './components/CompletedProjects';
+import ResetPassword from './components/ResetPassword';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -24,6 +25,7 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/dashboard"
           element={

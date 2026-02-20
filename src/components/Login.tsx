@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService, LoginData } from '../services/auth.service';
+import ForgotPasswordModal from './ForgotPasswordModal';
 import './Auth.css';
 
 const Login: React.FC = () => {
@@ -11,6 +12,7 @@ const Login: React.FC = () => {
   });
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -85,6 +87,24 @@ const Login: React.FC = () => {
           </button>
         </form>
 
+        <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1.5rem' }}>
+          <a 
+            href="#" 
+            onClick={(e) => { 
+              e.preventDefault(); 
+              setShowForgotPassword(true); 
+            }}
+            style={{ 
+              fontSize: '0.875rem', 
+              color: '#667eea', 
+              textDecoration: 'none',
+              fontWeight: 500
+            }}
+          >
+            Forgot password?
+          </a>
+        </div>
+
         <p className="auth-footer">
           Don't have an account?{' '}
           <a href="/signup" onClick={(e) => { e.preventDefault(); navigate('/signup'); }}>
@@ -92,6 +112,10 @@ const Login: React.FC = () => {
           </a>
         </p>
       </div>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
+      )}
     </div>
   );
 };

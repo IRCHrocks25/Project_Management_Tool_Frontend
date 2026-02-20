@@ -119,5 +119,15 @@ export const authService = {
     });
     return response.data;
   },
+
+  async forgotPassword(email: string): Promise<{ message: string; resetLink?: string }> {
+    const response = await authAxios.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const response = await authAxios.post('/auth/reset-password', { token, password });
+    return response.data;
+  },
 };
 
