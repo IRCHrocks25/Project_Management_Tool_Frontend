@@ -3953,7 +3953,7 @@ const ProjectDetail: React.FC = () => {
                                                             >
                                                               <img 
                                                                 src={url} 
-                                                                alt={`Submission image ${imgIdx + 1}`} 
+                                                                alt={`Submission ${imgIdx + 1}`} 
                                                                 style={{ 
                                                                   width: '120px', 
                                                                   height: '120px', 
