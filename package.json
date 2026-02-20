@@ -19,7 +19,8 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "cross-env NODE_OPTIONS=--no-deprecation PORT=3001 react-scripts start",
+    "start": "node server.js",
+    "start:dev": "cross-env NODE_OPTIONS=--no-deprecation PORT=3001 react-scripts start",
     "start:prod": "node server.js",
     "start:railway": "node server.js",
     "build": "cross-env NODE_OPTIONS=--no-deprecation react-scripts build",
