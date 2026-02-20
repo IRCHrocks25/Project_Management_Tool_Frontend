@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FaArrowLeft, 
   FaPlus, 
   FaTimes, 
-  FaPaperPlane, 
-  FaSave, 
   FaImage, 
-  FaAlignLeft, 
   FaHeading, 
-  FaFileImage,
   FaClipboardList,
   FaChevronUp,
   FaChevronDown,
@@ -22,22 +18,19 @@ import {
   FaLink,
   FaUserPlus,
   FaEllipsisV,
-  FaQuestionCircle,
   FaFileAlt,
   FaVideo,
   FaLayerGroup,
 } from 'react-icons/fa';
-import { clientUpdatesService, FormBlock, ClientUpdate, ClientUpdateForm } from '../services/client-updates.service';
+import { clientUpdatesService, FormBlock, ClientUpdateForm } from '../services/client-updates.service';
 import './FormBuilder.css';
 
 const FormBuilder: React.FC = () => {
   const { projectId, updateId, formId } = useParams<{ projectId: string; updateId: string; formId?: string }>();
   const navigate = useNavigate();
-  const [update, setUpdate] = useState<ClientUpdate | null>(null);
   const [form, setForm] = useState<ClientUpdateForm | null>(null);
   const [formBlocks, setFormBlocks] = useState<FormBlock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [formTitle, setFormTitle] = useState('Untitled Form');
@@ -52,32 +45,12 @@ const FormBuilder: React.FC = () => {
   const [formHistory, setFormHistory] = useState<FormBlock[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  useEffect(() => {
-    if (updateId) {
-      loadData();
-    }
-  }, [updateId, formId]);
-
-  // Close more menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showMoreMenu) {
-        setShowMoreMenu(false);
-      }
-    };
-    if (showMoreMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [showMoreMenu]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!updateId) return;
+    
     try {
       setLoading(true);
-      const updateData = await clientUpdatesService.getOne(updateId!);
-      setUpdate(updateData);
+      const updateData = await clientUpdatesService.getOne(updateId);
 
       if (formId) {
         // Editing existing form
@@ -106,7 +79,28 @@ const FormBuilder: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [updateId, formId, projectId, navigate]);
+
+  useEffect(() => {
+    if (updateId) {
+      loadData();
+    }
+  }, [updateId, formId, loadData]);
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMoreMenu) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMoreMenu]);
 
   const addFormBlock = (type: FormBlock['type']) => {
     const newBlock: FormBlock = {

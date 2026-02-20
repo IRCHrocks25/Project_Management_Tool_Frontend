@@ -272,7 +272,6 @@ const ProjectDetail: React.FC = () => {
   const [formBlocks, setFormBlocks] = useState<FormBlock[]>([]);
   const [creatingForm, setCreatingForm] = useState(false);
   const [publishingForm, setPublishingForm] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [formSubmissions, setFormSubmissions] = useState<Record<string, any[]>>({});
   const [loadingSubmissions, setLoadingSubmissions] = useState<Record<string, boolean>>({});
 
@@ -408,14 +407,11 @@ const ProjectDetail: React.FC = () => {
 
   const handleImageUpload = async (file: File): Promise<string> => {
     try {
-      setUploadingImage(true);
       const url = await clientUpdatesService.uploadImage(file);
       return url;
     } catch (error: any) {
       console.error('Failed to upload image:', error);
       throw error;
-    } finally {
-      setUploadingImage(false);
     }
   };
 

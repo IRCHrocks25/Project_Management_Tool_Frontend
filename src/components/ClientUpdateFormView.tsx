@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaSpinner, FaImage, FaPaperPlane } from 'react-icons/fa';
 import { clientUpdatesService, FormBlock, SubmissionResponse } from '../services/client-updates.service';
@@ -16,16 +16,12 @@ const ClientUpdateFormView: React.FC = () => {
   const [clientEmail, setClientEmail] = useState('');
   const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (publicToken) {
-      loadForm();
-    }
-  }, [publicToken]);
-
-  const loadForm = async () => {
+  const loadForm = useCallback(async () => {
+    if (!publicToken) return;
+    
     try {
       setLoading(true);
-      const formData = await clientUpdatesService.getFormByToken(publicToken!);
+      const formData = await clientUpdatesService.getFormByToken(publicToken);
       setForm(formData);
       
       // Initialize responses for each block
@@ -46,7 +42,13 @@ const ClientUpdateFormView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [publicToken, navigate]);
+
+  useEffect(() => {
+    if (publicToken) {
+      loadForm();
+    }
+  }, [publicToken, loadForm]);
 
   const handleResponseChange = (blockId: string, value: string) => {
     setResponses(prev => ({
