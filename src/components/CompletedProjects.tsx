@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCheckCircle, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaFolder, FaArrowLeft } from 'react-icons/fa';
+import { FaCheckCircle, FaChevronDown, FaBell, FaCog, FaSignOutAlt, FaUsers, FaFolder, FaArrowLeft } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { notificationService } from '../services/notification.service';
