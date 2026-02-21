@@ -247,6 +247,8 @@ const ProjectDetail: React.FC = () => {
   const [showAddDeliverableModal, setShowAddDeliverableModal] = useState(false);
   const [newDeliverableName, setNewDeliverableName] = useState('');
   const [creatingDeliverable, setCreatingDeliverable] = useState(false);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [showAddTeamMemberModal, setShowAddTeamMemberModal] = useState(false);
@@ -274,6 +276,7 @@ const ProjectDetail: React.FC = () => {
   const [publishingForm, setPublishingForm] = useState(false);
   const [formSubmissions, setFormSubmissions] = useState<Record<string, any[]>>({});
   const [loadingSubmissions, setLoadingSubmissions] = useState<Record<string, boolean>>({});
+  const [hasNewDeliverableUpdates, setHasNewDeliverableUpdates] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -309,6 +312,50 @@ const ProjectDetail: React.FC = () => {
     }
   }, [project?.deliverables, activeDeliverableTab]);
 
+  // Check for updates whenever tasks or deliverable history changes
+  useEffect(() => {
+    if (id && project && deliverableHistory && Object.keys(deliverableHistory).length > 0) {
+      checkForNewDeliverableUpdates(deliverableHistory, project, tasks, id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, deliverableHistory, project?.deliverables]);
+
+  // Check for updates when page becomes visible (user switches back to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && id && project && deliverableHistory && Object.keys(deliverableHistory).length > 0) {
+        // Reload project data to get fresh timestamps
+        const refreshCheck = async () => {
+          try {
+            const [freshProject, freshTasks] = await Promise.all([
+              projectService.getOne(id),
+              taskService.getByProject(id),
+            ]);
+            
+            // Reload deliverable history
+            const historyMap: Record<string, any[]> = {};
+            if (freshProject?.deliverables) {
+              for (const deliverable of freshProject.deliverables) {
+                const deliverableHist = await deliverableService.getHistory(deliverable.id).catch(() => []);
+                historyMap[deliverable.id] = deliverableHist || [];
+              }
+            }
+            
+            setDeliverableHistory(historyMap);
+            checkForNewDeliverableUpdates(historyMap, freshProject, freshTasks, id);
+          } catch (error) {
+            console.error('Failed to refresh deliverable updates check:', error);
+          }
+        };
+        refreshCheck();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, project, deliverableHistory]);
+
   useEffect(() => {
     // Load team members for active deliverable
     if (activeDeliverableTab) {
@@ -327,6 +374,56 @@ const ProjectDetail: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, id]);
+
+  // Periodically check for new deliverable updates
+  useEffect(() => {
+    if (!id || !project?.deliverables) return;
+
+    const checkForUpdates = async () => {
+      try {
+        const historyMap: Record<string, any[]> = {};
+        
+        // Get all unique file URLs from tasks
+        const allFileUrls = new Set<string>();
+        tasks.forEach((task: any) => {
+          if (task.fileUrl) {
+            allFileUrls.add(task.fileUrl);
+          }
+        });
+        
+        const fileUrlsArray = Array.from(allFileUrls);
+        
+        // Load history for each deliverable
+        for (const deliverable of project.deliverables) {
+          const deliverableHist = await deliverableService.getHistory(deliverable.id).catch(() => []);
+          historyMap[deliverable.id] = deliverableHist || [];
+          
+          for (const fileUrl of fileUrlsArray) {
+            const fileHist = await deliverableService.getHistory(deliverable.id, fileUrl).catch(() => []);
+            const key = `${deliverable.id}:${fileUrl}`;
+            historyMap[key] = fileHist || [];
+          }
+        }
+        
+        // Update history and check for new updates
+        setDeliverableHistory(historyMap);
+        if (project) {
+          checkForNewDeliverableUpdates(historyMap, project, tasks, id);
+        }
+      } catch (error) {
+        console.error('Failed to check for deliverable updates:', error);
+      }
+    };
+
+    // Check immediately
+    checkForUpdates();
+    
+    // Then check every 15 seconds (more frequent for better responsiveness)
+    const interval = setInterval(checkForUpdates, 15000);
+    
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, project?.deliverables, tasks]);
 
   const loadActivityLog = async () => {
     if (!id) return;
@@ -491,6 +588,16 @@ const ProjectDetail: React.FC = () => {
       
       setTasks(tasksToUse);
       
+      // Store initial task statuses for change detection
+      if (id && tasksToUse.length > 0) {
+        const taskStatusKey = `tasks_last_seen_${id}`;
+        const lastSeenTasks: Record<string, string> = {};
+        tasksToUse.forEach((task: any) => {
+          lastSeenTasks[`task_${task.id}_status`] = task.status;
+        });
+        localStorage.setItem(taskStatusKey, JSON.stringify(lastSeenTasks));
+      }
+      
       console.log('[ProjectDetail] Loaded tasks from API:', tasksData);
       console.log('[ProjectDetail] Tasks from project data:', projectData?.tasks);
       console.log('[ProjectDetail] Using tasks:', tasksToUse);
@@ -545,6 +652,9 @@ const ProjectDetail: React.FC = () => {
         }
         
         setDeliverableHistory(historyMap);
+        
+        // Check for new updates (pass project data to check deliverable status changes)
+        checkForNewDeliverableUpdates(historyMap, projectData, tasksToUse, id!);
       }
     } catch (error: any) {
       console.error('Failed to load project:', error);
@@ -558,6 +668,206 @@ const ProjectDetail: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Build activity list (same logic as Recent Activity panel)
+  const buildActivityList = (historyMap: Record<string, any[]>, projectData: any, tasksData: any[]): any[] => {
+    const allActivities: any[] = [];
+    
+    // Collect all deliverable activities from history
+    Object.keys(historyMap).forEach((key) => {
+      const history = historyMap[key];
+      if (!history || !Array.isArray(history) || history.length === 0) return;
+      
+      // Extract deliverable info from the key
+      const parts = key.split(':');
+      const deliverableId = parts[0];
+      const fileUrl = parts[1]; // May be undefined for general deliverable history
+      
+      // Try to find deliverable
+      let deliverable = projectData?.deliverables?.find((d: any) => d.id === deliverableId);
+      if (!deliverable) {
+        deliverable = projectData?.deliverables?.find((d: any) => d.id === key);
+      }
+      
+      if (!deliverable) return;
+      
+      // Get deliverable type
+      const deliverableType = deliverable.customType || deliverable.type || 'Deliverable';
+      
+      // Process each history entry
+      history.forEach((entry: any) => {
+        const action = entry.action || entry.status || '';
+        const actionLower = action.toLowerCase();
+        
+        // Check for important actions
+        const isImportantAction = 
+          actionLower.includes('approved') || 
+          actionLower.includes('revision') || 
+          actionLower.includes('submitted') || 
+          actionLower.includes('review') ||
+          actionLower.includes('ready') ||
+          actionLower.includes('status changed') ||
+          actionLower.includes('created');
+        
+        if (isImportantAction) {
+          allActivities.push({
+            ...entry,
+            deliverableId: deliverableId || key,
+            deliverableType,
+            fileUrl: entry.fileUrl || fileUrl,
+            key: `${key}-${entry.id || entry.createdAt || Date.now()}`
+          });
+        }
+      });
+    });
+    
+    // Also add task activities (when tasks are updated/submitted)
+    if (tasksData && tasksData.length > 0) {
+      tasksData.forEach((task: any) => {
+        // Only include tasks that have been updated recently or have fileUrl (submitted)
+        if (task.fileUrl || task.status === 'In Review') {
+          const deliverable = task.deliverableId 
+            ? projectData?.deliverables?.find((d: any) => d.id === task.deliverableId)
+            : null;
+          
+          if (deliverable || task.type === 'Copy' || task.type === 'Design') {
+            const deliverableType = deliverable 
+              ? (deliverable.customType || deliverable.type || 'Task')
+              : `${task.type} Task`;
+            
+            // Create activity entry for task submission
+            if (task.fileUrl && task.status === 'In Review') {
+              allActivities.push({
+                action: 'Submitted for Review',
+                status: 'In Review',
+                createdAt: task.updatedAt || task.createdAt,
+                user: task.assignedTo || { name: 'System' },
+                deliverableId: task.deliverableId,
+                deliverableType,
+                fileUrl: task.fileUrl,
+                key: `task-${task.id}-submitted`
+              });
+            }
+          }
+        }
+      });
+    }
+    
+    // Sort by date (newest first)
+    allActivities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    return allActivities;
+  };
+
+  // Check for new deliverable updates based on Recent Activity
+  const checkForNewDeliverableUpdates = (historyMap: Record<string, any[]>, projectData: any, tasksData: any[], projectId: string) => {
+    const storageKey = `deliverable_last_seen_${projectId}`;
+    const lastSeenTimestamp = localStorage.getItem(storageKey);
+    
+    // Build the activity list (same as Recent Activity panel)
+    const allActivities = buildActivityList(historyMap, projectData, tasksData);
+    
+    // Also check deliverable updatedAt timestamps directly (catches updates without history entries)
+    const deliverableTimestamps: Date[] = [];
+    if (projectData?.deliverables) {
+      projectData.deliverables.forEach((deliverable: any) => {
+        if (deliverable.updatedAt) {
+          deliverableTimestamps.push(new Date(deliverable.updatedAt));
+        }
+      });
+    }
+    
+    // Also check task updatedAt timestamps for tasks in review
+    const taskTimestamps: Date[] = [];
+    if (tasksData) {
+      tasksData.forEach((task: any) => {
+        if ((task.status === 'In Review' || task.fileUrl) && task.updatedAt) {
+          taskTimestamps.push(new Date(task.updatedAt));
+        }
+      });
+    }
+    
+    // Combine all timestamps and find the most recent
+    const allTimestamps: Date[] = [];
+    allActivities.forEach(activity => {
+      if (activity.createdAt) {
+        allTimestamps.push(new Date(activity.createdAt));
+      }
+    });
+    allTimestamps.push(...deliverableTimestamps);
+    allTimestamps.push(...taskTimestamps);
+    
+    // Get the most recent timestamp
+    const mostRecentTimestamp = allTimestamps.length > 0 
+      ? new Date(Math.max(...allTimestamps.map(d => d.getTime())))
+      : null;
+    
+    console.log('[Deliverable Notification] Checking for updates:', {
+      totalActivities: allActivities.length,
+      deliverableTimestamps: deliverableTimestamps.length,
+      taskTimestamps: taskTimestamps.length,
+      lastSeenTimestamp,
+      mostRecentTimestamp: mostRecentTimestamp?.toISOString(),
+      mostRecentActivity: allActivities[0]?.createdAt
+    });
+    
+    if (!mostRecentTimestamp) {
+      setHasNewDeliverableUpdates(false);
+      return;
+    }
+    
+    if (!lastSeenTimestamp) {
+      // First time viewing this project - don't set last seen yet
+      // Only set it when user actually clicks on Deliverables tab
+      // This way, if there's existing activity, it will show as new
+      console.log('[Deliverable Notification] First visit - will set timestamp when user views Deliverables tab');
+      
+      // If there's any activity at all, show notification (user hasn't seen it yet)
+      if (allActivities.length > 0 || deliverableTimestamps.length > 0 || taskTimestamps.length > 0) {
+        setHasNewDeliverableUpdates(true);
+        console.log('[Deliverable Notification] ✅ First visit with existing activity - showing notification');
+      } else {
+        setHasNewDeliverableUpdates(false);
+      }
+      return;
+    }
+    
+    const lastSeen = new Date(lastSeenTimestamp);
+    
+    // Add a small buffer (5 seconds) to account for timing differences
+    const bufferMs = 5000;
+    const hasNewUpdates = mostRecentTimestamp.getTime() > (lastSeen.getTime() + bufferMs);
+    
+    console.log('[Deliverable Notification] Comparison:', {
+      mostRecentTimestamp: mostRecentTimestamp.toISOString(),
+      lastSeen: lastSeen.toISOString(),
+      hasNewUpdates,
+      timeDiff: mostRecentTimestamp.getTime() - lastSeen.getTime(),
+      timeDiffSeconds: (mostRecentTimestamp.getTime() - lastSeen.getTime()) / 1000,
+      bufferApplied: bufferMs
+    });
+    
+    // Force update state
+    setHasNewDeliverableUpdates(hasNewUpdates);
+    
+    // Also log the state change
+    if (hasNewUpdates) {
+      console.log('[Deliverable Notification] ✅ NEW UPDATES DETECTED - Badge should show!');
+    } else {
+      console.log('[Deliverable Notification] ❌ No new updates');
+    }
+  };
+
+  // Clear notification when Deliverables tab is clicked
+  const handleDeliverablesTabClick = () => {
+    setActiveTab('deliverables');
+    if (id) {
+      // Update last seen timestamp to now (user has viewed the deliverables)
+      const storageKey = `deliverable_last_seen_${id}`;
+      localStorage.setItem(storageKey, new Date().toISOString());
+      setHasNewDeliverableUpdates(false);
     }
   };
 
@@ -1089,7 +1399,27 @@ const ProjectDetail: React.FC = () => {
           <div className="summary-main">
             <div className="summary-left">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <h1 className="project-title-premium" style={{ margin: 0 }}>{project.clientName}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h1 className="project-title-premium" style={{ margin: 0 }}>{project.clientName}</h1>
+                  <button
+                    onClick={() => setShowEditProjectModal(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      color: '#64748b',
+                      transition: 'all 0.2s'
+                    }}
+                    title="Edit project details"
+                  >
+                    <FaEdit style={{ fontSize: '0.875rem' }} />
+                  </button>
+                </div>
                 <div className="project-meta-badges">
                   <span 
                     className="client-badge-premium"
@@ -1097,6 +1427,36 @@ const ProjectDetail: React.FC = () => {
                   >
                     {project.clientType}
                   </span>
+                  {project.secondaryClientTypes && (
+                    <>
+                      {(() => {
+                        // Handle both array and comma-separated string formats
+                        const secondaryTypes = Array.isArray(project.secondaryClientTypes)
+                          ? project.secondaryClientTypes
+                          : typeof project.secondaryClientTypes === 'string'
+                          ? project.secondaryClientTypes.split(',').map((t: string) => t.trim()).filter((t: string) => !!t)
+                          : [];
+                        
+                        return secondaryTypes.map((secondaryType: string, idx: number) => {
+                          const secondaryStyle = getClientTypeColor(secondaryType);
+                          return (
+                            <span 
+                              key={idx}
+                              className="client-badge-premium"
+                              style={{ 
+                                background: secondaryStyle.bg, 
+                                color: secondaryStyle.color,
+                                opacity: 0.9
+                              }}
+                              title="Secondary Client Type"
+                            >
+                              {secondaryType}
+                            </span>
+                          );
+                        });
+                      })()}
+                    </>
+                  )}
                   <span className="meta-separator">•</span>
                   <span className="priority-badge-premium">
                     <span 
@@ -1273,10 +1633,45 @@ const ProjectDetail: React.FC = () => {
         </button>
         <button
           className={`tab-item ${activeTab === 'deliverables' ? 'active' : ''}`}
-          onClick={() => setActiveTab('deliverables')}
+          onClick={handleDeliverablesTabClick}
+          style={{ position: 'relative' }}
         >
           <FaBox className="tab-icon" />
           Deliverables
+          {hasNewDeliverableUpdates && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                minWidth: '18px',
+                height: '18px',
+                borderRadius: '9px',
+                backgroundColor: '#ef4444',
+                border: '2px solid white',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 6px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: 'white',
+                zIndex: 1000,
+                animation: 'pulse 2s infinite',
+                pointerEvents: 'none',
+              }}
+              title="New activity available"
+            >
+              !
+            </span>
+          )}
+          {/* Debug: Show badge state */}
+          {process.env.NODE_ENV === 'development' && (
+            <span style={{ fontSize: '10px', color: '#999', marginLeft: '4px' }}>
+              [{hasNewDeliverableUpdates ? 'NEW' : 'OK'}]
+            </span>
+          )}
         </button>
         <button
           className={`tab-item ${activeTab === 'revisions' ? 'active' : ''}`}
@@ -1602,20 +1997,47 @@ const ProjectDetail: React.FC = () => {
                       const [deliverableId] = key.split(':');
                       const deliverable = project?.deliverables?.find((d: any) => d.id === deliverableId);
                       
-                      // Determine department based on deliverable type
-                      let department = 'General';
+                      // Check if there's a related task to see if it's been resubmitted AND determine department
+                      const fileUrl = latestEntry.fileUrl;
+                      // Try to find task by fileUrl first, then by deliverableId
+                      let relatedTask = tasks.find((t: any) => t.fileUrl === fileUrl);
+                      if (!relatedTask && deliverableId) {
+                        relatedTask = tasks.find((t: any) => t.deliverableId === deliverableId);
+                      }
+                      const isResubmitted = relatedTask && relatedTask.status === 'In Review';
+                      
+                      // Determine department based on task type first (more accurate), then fallback to deliverable type
+                      let department = 'Copy Writing';
                       const deliverableType = deliverable?.type || deliverable?.customType || '';
                       
-                      if (['Logo', 'Social Banners', 'Speaker Kit', 'Landing Page'].includes(deliverableType)) {
-                        department = 'Design';
-                      } else if (['Brand Book', 'Copy of Landing Page', 'Other'].includes(deliverableType)) {
-                        department = 'Copy Writing';
+                      // Check task type first - this is the most accurate way to determine department
+                      if (relatedTask) {
+                        if (relatedTask.type === 'Design') {
+                          department = 'Design';
+                        } else if (relatedTask.type === 'Copy') {
+                          department = 'Copy Writing';
+                        } else if (relatedTask.type === 'AI') {
+                          department = 'AI Developer';
+                        } else if (relatedTask.type === 'Dev') {
+                          department = 'Development';
+                        } else if (relatedTask.type === 'Social Media') {
+                          department = 'Social Media';
+                        } else if (relatedTask.type === 'SEO/GEO') {
+                          department = 'SEO/GEO';
+                        } else if (relatedTask.type === 'CRM') {
+                          department = 'CRM';
+                        }
+                      } else {
+                        // Fallback to deliverable type if no task found
+                        if (['Logo', 'Social Banners', 'Speaker Kit'].includes(deliverableType)) {
+                          department = 'Design';
+                        } else if (deliverableType === 'Landing Page') {
+                          // Landing Page can be Design or AI - default to Design if no task info
+                          department = 'Design';
+                        } else if (['Brand Book', 'Copy of Landing Page', 'Other'].includes(deliverableType)) {
+                          department = 'Copy Writing';
+                        }
                       }
-                      
-                      // Check if there's a related task to see if it's been resubmitted
-                      const fileUrl = latestEntry.fileUrl;
-                      const relatedTask = tasks.find((t: any) => t.fileUrl === fileUrl);
-                      const isResubmitted = relatedTask && relatedTask.status === 'In Review';
                       
                       // Only add if not resubmitted (still needs revision)
                       if (!isResubmitted) {
@@ -1651,7 +2073,23 @@ const ProjectDetail: React.FC = () => {
                           ? notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim()
                           : notes.trim();
                         const attachmentUrl = attachmentMatch ? attachmentMatch[1] : null;
-                        const departmentColor = revision.department === 'Design' ? '#8b5cf6' : '#3b82f6';
+                        // Set color based on department
+                        let departmentColor = '#3b82f6'; // Default blue
+                        if (revision.department === 'Design') {
+                          departmentColor = '#8b5cf6'; // Purple
+                        } else if (revision.department === 'AI Developer') {
+                          departmentColor = '#10b981'; // Green
+                        } else if (revision.department === 'Copy Writing') {
+                          departmentColor = '#3b82f6'; // Blue
+                        } else if (revision.department === 'Development') {
+                          departmentColor = '#f59e0b'; // Orange
+                        } else if (revision.department === 'Social Media') {
+                          departmentColor = '#ec4899'; // Pink
+                        } else if (revision.department === 'SEO/GEO') {
+                          departmentColor = '#06b6d4'; // Cyan
+                        } else if (revision.department === 'CRM') {
+                          departmentColor = '#6366f1'; // Indigo
+                        }
                         
                         return (
                           <div 
@@ -4954,6 +5392,192 @@ const ProjectDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Project Modal */}
+      {showEditProjectModal && project && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setShowEditProjectModal(false)}
+          onSuccess={async () => {
+            // Reload project data
+            try {
+              const updatedProject = await projectService.getOne(id!);
+              setProject(updatedProject);
+              setShowEditProjectModal(false);
+            } catch (error) {
+              console.error('Failed to reload project:', error);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Edit Project Modal Component
+interface EditProjectModalProps {
+  project: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, onSuccess }) => {
+  const [clientName, setClientName] = useState(project.clientName || '');
+  const [selectedClientTypes, setSelectedClientTypes] = useState<string[]>(() => {
+    const primary = project.clientType ? [project.clientType] : [];
+    const secondary = project.secondaryClientTypes 
+      ? (Array.isArray(project.secondaryClientTypes) 
+          ? project.secondaryClientTypes 
+          : project.secondaryClientTypes.split(',').map((t: string) => t.trim()).filter((t: string) => !!t))
+      : [];
+    return [...primary, ...secondary];
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const clientTypes = [
+    { value: 'ICON', label: 'ICON', color: '#fbbf24' },
+    { value: 'STAR', label: 'STAR', color: '#94a3b8' },
+    { value: 'Katalyst', label: 'Katalyst', color: '#667eea' },
+    { value: 'Private', label: 'Private', color: '#64748b' },
+  ];
+
+  const toggleClientType = (clientType: string) => {
+    setSelectedClientTypes((currentSelection) => {
+      if (currentSelection.includes(clientType)) {
+        return currentSelection.filter(t => t !== clientType);
+      } else if (currentSelection.length < 2) {
+        return [...currentSelection, clientType];
+      }
+      return currentSelection;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (selectedClientTypes.length === 0) {
+      setError('Please select at least one client type');
+      return;
+    }
+
+    if (!clientName.trim()) {
+      setError('Please enter a client name');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const secondaryClientTypes = selectedClientTypes.length > 1 
+        ? selectedClientTypes.slice(1) 
+        : undefined;
+
+      await projectService.update(project.id, {
+        clientName: clientName.trim(),
+        clientType: selectedClientTypes[0],
+        secondaryClientTypes: secondaryClientTypes,
+      });
+
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update project');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+        <div className="modal-header">
+          <h2>Edit Project</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="create-project-form">
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="form-group">
+            <label htmlFor="editClientName">Client Name</label>
+            <input
+              id="editClientName"
+              type="text"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              required
+              placeholder="Enter client name"
+            />
+          </div>
+
+          <div className="form-group" style={{ padding: '0' }}>
+            <label id="editClientTypeLabel" style={{ color: '#475569', fontWeight: 500 }}>
+              Client Type {selectedClientTypes.length > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Select up to 2)</span>}
+            </label>
+            <div className="client-type-grid" role="group" aria-labelledby="editClientTypeLabel" style={{ marginTop: '0.5rem' }}>
+              {clientTypes.map((type) => {
+                const isSelected = selectedClientTypes.includes(type.value);
+                const canSelect = selectedClientTypes.length < 2 || isSelected;
+
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    className={`client-type-card ${isSelected ? 'selected' : ''}`}
+                    onClick={() => toggleClientType(type.value)}
+                    style={{
+                      borderColor: isSelected ? type.color : '#e2e8f0',
+                      borderWidth: isSelected ? '2px' : '1.5px',
+                      opacity: canSelect ? 1 : 0.4,
+                      cursor: canSelect ? 'pointer' : 'not-allowed',
+                      backgroundColor: isSelected ? '#f8fafc' : 'white',
+                      boxShadow: isSelected ? `0 0 0 3px ${type.color}15` : 'none'
+                    }}
+                    title={isSelected ? `Selected: ${type.label}` : canSelect ? `Click to select ${type.label}` : 'You can only select up to 2 client types'}
+                    aria-pressed={isSelected}
+                  >
+                    <div className="client-type-badge" style={{ backgroundColor: type.color }}>
+                      {type.label}
+                    </div>
+                    {isSelected && (
+                      <div
+                        className="checkmark-overlay"
+                        style={{ background: type.color }}
+                      >
+                        ✓
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedClientTypes.length > 0 && (
+              <div style={{
+                marginTop: '0.75rem',
+                fontSize: '0.8125rem',
+                color: '#64748b',
+                fontWeight: 400,
+                padding: '0.625rem 0.875rem',
+                borderRadius: '8px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #f1f5f9'
+              }}>
+                Selected ({selectedClientTypes.length}/2): <span style={{ fontWeight: 500, color: '#475569' }}>{selectedClientTypes.join(', ')}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Project'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

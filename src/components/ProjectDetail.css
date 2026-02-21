@@ -2349,3 +2349,15 @@
   align-items: center;
   color: #9ca3af;
 }
+
+/* Notification badge pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}

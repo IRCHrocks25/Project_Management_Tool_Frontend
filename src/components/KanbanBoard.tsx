@@ -19,6 +19,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   // Local state for optimistic updates
   const [localProjects, setLocalProjects] = useState<any[]>(projects);
   const pendingUpdatesRef = useRef<Map<string, any>>(new Map());
+  // Track manually dragged projects (projectId -> targetStage) to show them even without tasks
+  const manuallyDraggedRef = useRef<Map<string, string>>(new Map());
   
   // Sync localProjects when projects prop changes, but preserve pending updates
   useEffect(() => {
@@ -134,7 +136,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       // This allows projects to appear in MULTIPLE columns if they have tasks of different types
       // AND also appear in a column if manually moved to that stage
       if (taskTypesForStage.length > 0) {
-        // Get projects with active tasks of this type
+        // For task-based columns, show projects that have active tasks of that type
+        // OR projects that were manually dragged to this column (even if they don't have tasks yet)
         const projectIdsWithActiveTasks = new Set(
           tasks
             .filter((t: any) => 
@@ -145,7 +148,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
             .map((t: any) => t.projectId)
         );
         
-        // Also get projects whose stage matches this display stage (for manual stage changes)
+        // Map display stage to internal stages (for checking manually dragged projects)
         const internalStagesForColumn: string[] = [];
         if (displayStage === 'Copy Writing') {
           internalStagesForColumn.push('Copy', 'Copy Revision');
@@ -163,18 +166,24 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
           internalStagesForColumn.push('SEO/GEO Team');
         }
         
-        // Combine: projects with tasks of this type OR projects in this stage
-        const projectIdsByStage = internalStagesForColumn.length > 0
-          ? new Set(localProjects.filter((p: any) => internalStagesForColumn.includes(p.stage)).map((p: any) => p.id))
-          : new Set<string>();
-        
-        // Union of both sets: projects with tasks OR projects in this stage
-        const combinedProjectIds = new Set([
-          ...Array.from(projectIdsWithActiveTasks),
-          ...Array.from(projectIdsByStage)
-        ]);
-        
-        return localProjects.filter((p) => combinedProjectIds.has(p.id));
+        // Return projects that have tasks of this type OR were manually dragged to this column
+        return localProjects.filter((p: any) => {
+          // Show if it has tasks of this type
+          if (projectIdsWithActiveTasks.has(p.id)) {
+            return true;
+          }
+          
+          // Show if it was manually dragged to this column (check both the tracked drag and stage match)
+          const wasManuallyDragged = manuallyDraggedRef.current.get(p.id) === displayStage;
+          const stageMatches = internalStagesForColumn.includes(p.stage);
+          
+          // Only show if it was manually dragged AND stage matches (to prevent false positives)
+          if (wasManuallyDragged && stageMatches) {
+            return true;
+          }
+          
+          return false;
+        });
       }
       
       // For "Ready to Close" stage, use stage-based logic
@@ -317,6 +326,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     
     const previousStage = project.stage;
     const internalStage = mapDisplayStageToInternal(displayStage, project?.stage);
+    
+    // Track that this project was manually dragged to this stage
+    manuallyDraggedRef.current.set(projectId, displayStage);
     
     // Create updated project object
     const updatedProject = { ...project, stage: internalStage, updatedAt: new Date().toISOString() };

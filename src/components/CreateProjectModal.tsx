@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { projectService } from '../services/project.service';
 import { authService } from '../services/auth.service';
@@ -19,8 +19,14 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     targetCloseMonth: '',
     notes: '',
   });
+  const [selectedClientTypes, setSelectedClientTypes] = useState<string[]>(['ICON']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log('selectedClientTypes state changed to:', selectedClientTypes);
+  }, [selectedClientTypes]);
   const [uploadMode, setUploadMode] = useState<'single' | 'excel'>('single');
   const [excelPreview, setExcelPreview] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -61,6 +67,41 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     setError('');
   };
 
+  const toggleClientType = (clientType: string) => {
+    console.log('toggleClientType called:', clientType);
+    
+    // Use functional update to ensure we have the latest state
+    setSelectedClientTypes((currentSelection) => {
+      console.log('Current selectedClientTypes in update:', currentSelection);
+      
+      // If already selected, deselect it
+      if (currentSelection.includes(clientType)) {
+        const newSelection = currentSelection.filter(t => t !== clientType);
+        console.log('Deselecting, new selection:', newSelection);
+        // Update formData to use first remaining type, or default to first type
+        setFormData((prevFormData) => ({
+          ...prevFormData,
+          clientType: newSelection[0] || clientTypes[0].value
+        }));
+        return newSelection;
+      } 
+      // If not selected and we have less than 2, add it
+      else if (currentSelection.length < 2) {
+        const newSelection = [...currentSelection, clientType];
+        console.log('Selecting, new selection:', newSelection);
+        // Update formData to use first selected type (primary)
+        setFormData((prevFormData) => ({
+          ...prevFormData,
+          clientType: newSelection[0]
+        }));
+        return newSelection;
+      } else {
+        console.log('Cannot select more, already at max (2)');
+        return currentSelection; // Return unchanged
+      }
+    });
+  };
+
   const toggleDeliverable = (deliverable: string) => {
     if (selectedDeliverables.includes(deliverable)) {
       setSelectedDeliverables(selectedDeliverables.filter(d => d !== deliverable));
@@ -78,7 +119,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     // Otherwise, use standard logic
     const deliverables: string[] = ['Logo', 'Brand Book'];
     
-    if (formData.clientType === 'ICON') {
+    // Check if ICON is in selected client types (supports multiple selections)
+    if (selectedClientTypes.includes('ICON')) {
       deliverables.push('Speaker Kit');
     }
     
@@ -255,6 +297,12 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     e.preventDefault();
     setError('');
     
+    // Validate client types
+    if (selectedClientTypes.length === 0) {
+      setError('Please select at least one client type');
+      return;
+    }
+    
     // Validate custom deliverables
     if (formData.package === 'Custom' && selectedDeliverables.length === 0) {
       setError('Please select at least one deliverable for Custom package');
@@ -264,8 +312,15 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     setLoading(true);
 
     try {
+      // Prepare secondary client types (all except the first one)
+      const secondaryClientTypes = selectedClientTypes.length > 1 
+        ? selectedClientTypes.slice(1) 
+        : undefined;
+      
       await projectService.create({
         ...formData,
+        clientType: selectedClientTypes[0], // Primary client type
+        secondaryClientTypes: secondaryClientTypes, // Secondary client types array
         pmId: user?.id,
         customDeliverables: formData.package === 'Custom' ? selectedDeliverables : undefined,
       });
@@ -291,10 +346,11 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         <div style={{ 
           display: 'flex', 
           gap: '0.5rem', 
-          marginBottom: '1rem', 
-          padding: '0.5rem',
+          marginBottom: '1.5rem', 
+          padding: '0.375rem',
           background: '#f8fafc',
-          borderRadius: '0.5rem'
+          borderRadius: '12px',
+          border: '1px solid #f1f5f9'
         }}>
           <button
             type="button"
@@ -305,14 +361,15 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             }}
             style={{
               flex: 1,
-              padding: '0.5rem 1rem',
+              padding: '0.625rem 1rem',
               border: 'none',
-              borderRadius: '0.375rem',
-              background: uploadMode === 'single' ? '#667eea' : 'white',
-              color: uploadMode === 'single' ? 'white' : '#64748b',
+              borderRadius: '10px',
+              background: uploadMode === 'single' ? 'white' : 'transparent',
+              color: uploadMode === 'single' ? '#475569' : '#94a3b8',
               cursor: 'pointer',
-              fontWeight: uploadMode === 'single' ? 600 : 400,
-              transition: 'all 0.2s'
+              fontWeight: uploadMode === 'single' ? 500 : 400,
+              transition: 'all 0.2s',
+              boxShadow: uploadMode === 'single' ? '0 1px 3px rgba(0, 0, 0, 0.08)' : 'none'
             }}
           >
             Single Project
@@ -325,14 +382,15 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             }}
             style={{
               flex: 1,
-              padding: '0.5rem 1rem',
+              padding: '0.625rem 1rem',
               border: 'none',
-              borderRadius: '0.375rem',
-              background: uploadMode === 'excel' ? '#667eea' : 'white',
-              color: uploadMode === 'excel' ? 'white' : '#64748b',
+              borderRadius: '10px',
+              background: uploadMode === 'excel' ? 'white' : 'transparent',
+              color: uploadMode === 'excel' ? '#475569' : '#94a3b8',
               cursor: 'pointer',
-              fontWeight: uploadMode === 'excel' ? 600 : 400,
-              transition: 'all 0.2s'
+              fontWeight: uploadMode === 'excel' ? 500 : 400,
+              transition: 'all 0.2s',
+              boxShadow: uploadMode === 'excel' ? '0 1px 3px rgba(0, 0, 0, 0.08)' : 'none'
             }}
           >
             Upload Excel
@@ -344,8 +402,10 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         {uploadMode === 'excel' ? (
           <div className="create-project-form" style={{ padding: '1rem' }}>
             <div className="form-group">
-              <label>Upload Excel File</label>
+              <label htmlFor="excelFile">Upload Excel File</label>
               <input
+                id="excelFile"
+                name="excelFile"
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleExcelUpload}
@@ -415,8 +475,9 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           <form onSubmit={handleSubmit} className="create-project-form">
           <div className="form-row">
             <div className="form-group">
-              <label>Client Name</label>
+              <label htmlFor="clientName">Client Name</label>
               <input
+                id="clientName"
                 type="text"
                 name="clientName"
                 value={formData.clientName}
@@ -427,8 +488,9 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             </div>
 
             <div className="form-group">
-              <label>Target Close Month</label>
+              <label htmlFor="targetCloseMonth">Target Close Month</label>
               <input
+                id="targetCloseMonth"
                 type="month"
                 name="targetCloseMonth"
                 value={formData.targetCloseMonth}
@@ -439,29 +501,96 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           </div>
 
 
-          <div className="form-group">
-            <label>Client Type</label>
-            <div className="client-type-grid">
-              {clientTypes.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  className={`client-type-card ${formData.clientType === type.value ? 'selected' : ''}`}
-                  onClick={() => setFormData({ ...formData, clientType: type.value })}
-                  style={{ borderColor: formData.clientType === type.value ? type.color : '#e2e8f0' }}
-                >
-                  <div className="client-type-badge" style={{ backgroundColor: type.color }}>
-                    {type.label}
-                  </div>
-                </button>
-              ))}
+          <div className="form-group" style={{ padding: '0' }}>
+            <label id="clientTypeLabel" style={{ color: '#475569', fontWeight: 500 }}>
+              Client Type {selectedClientTypes.length > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Select up to 2)</span>}
+            </label>
+            <div className="client-type-grid" role="group" aria-labelledby="clientTypeLabel" style={{ marginTop: '0.5rem' }}>
+              {clientTypes.map((type) => {
+                const isSelected = selectedClientTypes.includes(type.value);
+                const canSelect = selectedClientTypes.length < 2 || isSelected;
+                
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    id={`clientType-${type.value}`}
+                    name={`clientType-${type.value}`}
+                    className={`client-type-card ${isSelected ? 'selected' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Button clicked:', type.value, 'Current state:', selectedClientTypes);
+                      toggleClientType(type.value);
+                    }}
+                    style={{ 
+                      borderColor: isSelected ? type.color : '#e2e8f0',
+                      borderWidth: isSelected ? '2px' : '1.5px',
+                      opacity: canSelect ? 1 : 0.4,
+                      cursor: canSelect ? 'pointer' : 'not-allowed',
+                      backgroundColor: isSelected ? '#f8fafc' : 'white',
+                      boxShadow: isSelected ? `0 0 0 3px ${type.color}15` : 'none'
+                    }}
+                    title={isSelected ? `Selected: ${type.label}` : canSelect ? `Click to select ${type.label}` : 'You can only select up to 2 client types'}
+                    aria-pressed={isSelected}
+                  >
+                    <div className="client-type-badge" style={{ backgroundColor: type.color }}>
+                      {type.label}
+                    </div>
+                    {isSelected && (
+                      <div 
+                        className="checkmark-overlay"
+                        style={{ background: type.color }}
+                      >
+                        ✓
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+              {/* Add More Button */}
+              <button
+                type="button"
+                className="client-type-card add-client-type"
+                onClick={() => {
+                  // Placeholder for adding more client types
+                  // Could open a modal or input field for custom types
+                  alert('Add more client types feature coming soon!');
+                }}
+                style={{ 
+                  borderColor: '#e2e8f0',
+                  borderStyle: 'dashed',
+                  backgroundColor: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '60px'
+                }}
+                title="Add more client types"
+              >
+                <span style={{ fontSize: '1.5rem', color: '#64748b', fontWeight: 'bold' }}>+</span>
+              </button>
             </div>
+            {selectedClientTypes.length > 0 && (
+              <div style={{ 
+                marginTop: '0.75rem', 
+                fontSize: '0.8125rem', 
+                color: '#64748b',
+                fontWeight: 400,
+                padding: '0.625rem 0.875rem',
+                borderRadius: '8px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #f1f5f9'
+              }}>
+                Selected ({selectedClientTypes.length}/2): <span style={{ fontWeight: 500, color: '#475569' }}>{selectedClientTypes.join(', ')}</span>
+              </div>
+            )}
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Package</label>
-              <select name="package" value={formData.package} onChange={handleChange} required>
+              <label htmlFor="package">Package</label>
+              <select id="package" name="package" value={formData.package} onChange={handleChange} required>
                 {packages.map((pkg) => (
                   <option key={pkg} value={pkg}>{pkg}</option>
                 ))}
@@ -469,8 +598,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             </div>
 
             <div className="form-group">
-              <label>Priority</label>
-              <select name="priority" value={formData.priority} onChange={handleChange} required>
+              <label htmlFor="priority">Priority</label>
+              <select id="priority" name="priority" value={formData.priority} onChange={handleChange} required>
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
@@ -480,19 +609,23 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           </div>
 
           <div className="form-group">
-            <label>Included Deliverables</label>
+            <label id="deliverablesLabel">Included Deliverables</label>
             {formData.package === 'Custom' ? (
               <div className="custom-deliverables-selector">
                 <p className="deliverables-hint">Select the deliverables to include in this project:</p>
-                <div className="deliverables-checkbox-grid">
+                <div className="deliverables-checkbox-grid" role="group" aria-labelledby="deliverablesLabel">
                   {allDeliverables.map((deliverable) => {
                     const isChecked = selectedDeliverables.includes(deliverable);
+                    const deliverableId = `deliverable-${deliverable.toLowerCase().replace(/\s+/g, '-')}`;
                     return (
                       <label 
-                        key={deliverable} 
+                        key={deliverable}
+                        htmlFor={deliverableId}
                         className={`deliverable-checkbox-label ${isChecked ? 'checked' : ''}`}
                       >
                         <input
+                          id={deliverableId}
+                          name={deliverableId}
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleDeliverable(deliverable)}
@@ -521,8 +654,9 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           </div>
 
           <div className="form-group">
-            <label>Notes (Optional)</label>
+            <label htmlFor="notes">Notes (Optional)</label>
             <textarea
+              id="notes"
               name="notes"
               value={formData.notes}
               onChange={handleChange}

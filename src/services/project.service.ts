@@ -102,5 +102,10 @@ export const projectService = {
     const response = await axios.get(`${API_URL}/projects/${projectId}/activity`, getAuthHeaders());
     return response.data;
   },
+
+  async update(id: string, data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[] }): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}`, data, getAuthHeaders());
+    return response.data;
+  },
 };
 
