@@ -248,7 +248,6 @@ const ProjectDetail: React.FC = () => {
   const [newDeliverableName, setNewDeliverableName] = useState('');
   const [creatingDeliverable, setCreatingDeliverable] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
-  const [editingProject, setEditingProject] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [showAddTeamMemberModal, setShowAddTeamMemberModal] = useState(false);
