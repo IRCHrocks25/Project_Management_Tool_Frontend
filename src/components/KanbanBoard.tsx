@@ -167,6 +167,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
         }
         
         // Return projects that have tasks of this type OR were manually dragged to this column
+        // For CRM column, also show projects with Katalyst client type (primary or secondary)
         return localProjects.filter((p: any) => {
           // Show if it has tasks of this type
           if (projectIdsWithActiveTasks.has(p.id)) {
@@ -180,6 +181,24 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
           // Only show if it was manually dragged AND stage matches (to prevent false positives)
           if (wasManuallyDragged && stageMatches) {
             return true;
+          }
+          
+          // For CRM column, also show projects with Katalyst client type
+          if (displayStage === 'CRM') {
+            const allClientTypes = [
+              p.clientType,
+              ...(p.secondaryClientTypes 
+                ? (Array.isArray(p.secondaryClientTypes) 
+                    ? p.secondaryClientTypes 
+                    : p.secondaryClientTypes.split(',').map((t: string) => t.trim()).filter((t: string) => !!t))
+                : [])
+            ];
+            const hasKatalyst = allClientTypes.some((type: string) => 
+              type === 'Katalyst' || type === 'KATALYST' || type?.toLowerCase() === 'katalyst'
+            );
+            if (hasKatalyst) {
+              return true;
+            }
           }
           
           return false;
