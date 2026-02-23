@@ -129,5 +129,15 @@ export const authService = {
     const response = await authAxios.post('/auth/reset-password', { token, password });
     return response.data;
   },
+
+  async verifyOtp(email: string, otp: string): Promise<{ message: string; verified: boolean }> {
+    const response = await authAxios.post('/auth/verify-otp', { email, otp });
+    return response.data;
+  },
+
+  async resetPasswordWithOtp(email: string, password: string): Promise<{ message: string }> {
+    const response = await authAxios.post('/auth/reset-password-otp', { email, password });
+    return response.data;
+  },
 };
 
