@@ -54,9 +54,41 @@ const SocialMediaDashboard: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [loadingHistory, setLoadingHistory] = useState<Set<string>>(new Set()); // Track which histories are being loaded
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
   const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
+
+  // Lazy load deliverable history only when needed
+  const loadDeliverableHistory = async (deliverableId: string) => {
+    // If already loaded or loading, skip
+    if (deliverableHistory[deliverableId] || loadingHistory.has(deliverableId)) {
+      return;
+    }
+
+    try {
+      setLoadingHistory(prev => new Set(prev).add(deliverableId));
+      const { deliverableService } = await import('../../services/deliverable.service');
+      const history = await deliverableService.getHistory(deliverableId);
+      setDeliverableHistory(prev => ({
+        ...prev,
+        [deliverableId]: history
+      }));
+    } catch (error) {
+      console.error(`Failed to load history for deliverable ${deliverableId}:`, error);
+      // Set empty array on error so we don't retry
+      setDeliverableHistory(prev => ({
+        ...prev,
+        [deliverableId]: []
+      }));
+    } finally {
+      setLoadingHistory(prev => {
+        const next = new Set(prev);
+        next.delete(deliverableId);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -69,6 +101,7 @@ const SocialMediaDashboard: React.FC = () => {
       loadUnreadCount();
     }, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -87,48 +120,25 @@ const SocialMediaDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, allTasksData] = await Promise.all([
-        projectService.getAll(),
-        taskService.getAll(),
-      ]);
+      // Only load tasks assigned to current user for this dashboard (much faster!)
+      const allTasksData = user?.id 
+        ? await taskService.getAll(undefined, user.id)
+        : await taskService.getAll();
 
       // Get ALL Social Media tasks first (regardless of project stage)
       const smTasks = allTasksData.filter((t: any) => t.type === 'Social Media');
 
-      // Get all projects that have Social Media tasks (regardless of their current stage)
-      const projectIdsWithSMTasks = new Set(smTasks.map((t: any) => t.projectId));
-      const projectsWithSMTasks = projectsData.filter((project: any) => 
-        projectIdsWithSMTasks.has(project.id)
-      );
+      // Only load specific projects we need (much faster than loading all!)
+      const projectIdsWithSMTasks = Array.from(new Set(smTasks.map((t: any) => t.projectId)));
+      
+      // Load only the specific projects we need, not all projects
+      const projectsWithSMTasks = await Promise.all(
+        projectIdsWithSMTasks.map(id => projectService.getOne(id).catch(() => null))
+      ).then(projects => projects.filter(p => p !== null));
 
-      // Load deliverable history for all Social Media projects to check for file-level revisions
-      const projectsWithHistory = await Promise.all(
-        projectsWithSMTasks.map(async (project: any) => {
-          if (!project.deliverables || project.deliverables.length === 0) {
-            return project;
-          }
-
-          // Load history for all deliverables (Social Media tasks can be linked to any deliverable)
-          for (const deliverable of project.deliverables) {
-            try {
-              const { deliverableService } = await import('../../services/deliverable.service');
-              const history = await deliverableService.getHistory(deliverable.id);
-              
-              // Store full history for revision detection
-              setDeliverableHistory(prev => ({
-                ...prev,
-                [deliverable.id]: history
-              }));
-            } catch (error) {
-              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
-            }
-          }
-
-          return project;
-        })
-      );
-
-      setProjects(projectsWithHistory);
+      // Don't load deliverable history on initial load - it's too slow!
+      // Load history lazily only when needed (e.g., when checking for revisions)
+      setProjects(projectsWithSMTasks);
       setTasks(smTasks);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -158,10 +168,44 @@ const SocialMediaDashboard: React.FC = () => {
   const handleTaskStatusUpdate = async (taskId: string, status: string, isCompleted?: boolean, fileUrl?: string, deliverableType?: string) => {
     try {
       setUpdatingTask(taskId);
-      await taskService.updateStatus(taskId, status, isCompleted, fileUrl, deliverableType);
-      await loadData();
+      // Optimistically update the task in local state for instant feedback
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, status, isCompleted, fileUrl: fileUrl || task.fileUrl }
+            : task
+        )
+      );
+      
+      // Update on server
+      const updatedTask = await taskService.updateStatus(taskId, status, isCompleted, fileUrl, deliverableType);
+      
+      // Update with server response to ensure consistency
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, ...updatedTask } : task
+        )
+      );
+      
+      // Only reload if we need fresh deliverable data (when sending for review)
+      if (status === 'In Review' && fileUrl) {
+        // Reload project to get fresh deliverables
+        try {
+          const projectId = tasks.find(t => t.id === taskId)?.projectId;
+          if (projectId) {
+            const project = await projectService.getOne(projectId);
+            setProjects(prevProjects => 
+              prevProjects.map(p => p.id === projectId ? project : p)
+            );
+          }
+        } catch (error) {
+          console.error('Failed to reload project deliverables:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to update task:', error);
+      // Revert optimistic update on error
+      await loadData();
     } finally {
       setUpdatingTask(null);
     }
@@ -336,6 +380,10 @@ const SocialMediaDashboard: React.FC = () => {
         
         // Check deliverable history for "Revision Requested" action
         // This catches cases where PM requested revision but status hasn't updated yet
+        // Load history lazily if not already loaded
+        if (!deliverableHistory[deliverable.id] && !loadingHistory.has(deliverable.id)) {
+          loadDeliverableHistory(deliverable.id);
+        }
         const history = deliverableHistory[deliverable.id] || [];
         if (history.length > 0) {
           // If task has been resubmitted (status is 'In Review'), it's no longer in revision
@@ -385,6 +433,10 @@ const SocialMediaDashboard: React.FC = () => {
     const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
     if (!deliverable) return [];
     
+    // Load history lazily if not already loaded
+    if (!deliverableHistory[deliverable.id] && !loadingHistory.has(deliverable.id)) {
+      loadDeliverableHistory(deliverable.id);
+    }
     const history = deliverableHistory[deliverable.id] || [];
     const taskNotes: any[] = [];
     

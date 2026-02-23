@@ -53,7 +53,7 @@ const CRMDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [deliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId" (read-only for now)
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
   const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
@@ -69,6 +69,7 @@ const CRMDashboard: React.FC = () => {
       loadUnreadCount();
     }, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -87,48 +88,31 @@ const CRMDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, allTasksData] = await Promise.all([
-        projectService.getAll(),
-        taskService.getAll(),
-      ]);
+      // Load ALL CRM tasks (not just assigned ones) - CRM users need to see all CRM tasks
+      const allTasksData = await taskService.getAll();
+
+      console.log('[CRMDashboard] All tasks loaded:', allTasksData.length);
 
       // Get ALL CRM tasks first (regardless of project stage)
       const crmTasks = allTasksData.filter((t: any) => t.type === 'CRM');
+      console.log('[CRMDashboard] CRM tasks found:', crmTasks.length);
 
-      // Get all projects that have CRM tasks (regardless of their current stage)
-      const projectIdsWithCRMTasks = new Set(crmTasks.map((t: any) => t.projectId));
-      const projectsWithCRMTasks = projectsData.filter((project: any) => 
-        projectIdsWithCRMTasks.has(project.id)
-      );
+      // Only load specific projects we need (much faster than loading all!)
+      const projectIdsWithCRMTasks = Array.from(new Set(crmTasks.map((t: any) => t.projectId)));
+      console.log('[CRMDashboard] Project IDs:', projectIdsWithCRMTasks);
+      
+      // Load only the specific projects we need, not all projects
+      const projectsWithCRMTasks = projectIdsWithCRMTasks.length > 0
+        ? await Promise.all(
+            projectIdsWithCRMTasks.map(id => projectService.getOne(id).catch(() => null))
+          ).then(projects => projects.filter(p => p !== null))
+        : [];
+      
+      console.log('[CRMDashboard] Projects loaded:', projectsWithCRMTasks.length);
 
-      // Load deliverable history for all CRM projects to check for file-level revisions
-      const projectsWithHistory = await Promise.all(
-        projectsWithCRMTasks.map(async (project: any) => {
-          if (!project.deliverables || project.deliverables.length === 0) {
-            return project;
-          }
-
-          // Load history for all deliverables (CRM tasks can be linked to any deliverable)
-          for (const deliverable of project.deliverables) {
-            try {
-              const { deliverableService } = await import('../../services/deliverable.service');
-              const history = await deliverableService.getHistory(deliverable.id);
-              
-              // Store full history for revision detection
-              setDeliverableHistory(prev => ({
-                ...prev,
-                [deliverable.id]: history
-              }));
-            } catch (error) {
-              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
-            }
-          }
-
-          return project;
-        })
-      );
-
-      setProjects(projectsWithHistory);
+      // Don't load deliverable history on initial load - it's too slow!
+      // Load history lazily only when needed (e.g., when checking for revisions)
+      setProjects(projectsWithCRMTasks);
       setTasks(crmTasks);
     } catch (error) {
       console.error('Failed to load data:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
@@ -86,17 +86,28 @@ const PMDashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [projectsData, statsData, allTasksData] = await Promise.all([
+      setLoading(true);
+      // Load projects and tasks first (critical for UI) - stats can load after
+      const [projectsData, allTasksData] = await Promise.all([
         projectService.getAll(),
-        projectService.getStats(),
-        taskService.getAll(), // Load all tasks for multi-column view
+        taskService.getAll(), // Load all tasks for multi-column view (limited to 200 in backend)
       ]);
+      
+      // Set projects and tasks immediately for faster UI rendering
       setProjects(projectsData);
-      setStats(statsData);
       setTasks(allTasksData);
+      setLoading(false); // Show UI as soon as projects/tasks are loaded
+      
+      // Load stats in background (non-blocking)
+      try {
+        const statsData = await projectService.getStats();
+        setStats(statsData);
+      } catch (statsError) {
+        console.error('Failed to load stats:', statsError);
+        // Don't block UI if stats fail
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -272,6 +283,43 @@ const PMDashboard: React.FC = () => {
     setSelectedProjects(new Set());
   }, [activeFilter, priorityFilter, clientTypeFilter, searchTerm]);
 
+  // Memoize expensive calculations to prevent recalculation on every render
+  // MUST be called before any conditional returns (React Hooks rule)
+  const todayTasks = useMemo(() => {
+    return projects.reduce((acc, p) => {
+      const tasks = p.tasks?.filter((t: any) => {
+        if (!t.dueDate) return false;
+        const dueDate = new Date(t.dueDate);
+        const today = new Date();
+        return dueDate.toDateString() === today.toDateString() && !t.isCompleted;
+      }) || [];
+      return acc + tasks.length;
+    }, 0);
+  }, [projects]);
+
+  const waitingOnClient = useMemo(() => {
+    return projects.filter((p: any) => {
+      const daysSinceEmail = p.lastEmailedAt
+        ? Math.floor((Date.now() - new Date(p.lastEmailedAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 999;
+      return daysSinceEmail > 5 && ['Copy Revision', 'Design Revision'].includes(p.stage);
+    }).length;
+  }, [projects]);
+
+  const greetingMessage = useMemo(() => {
+    return todayTasks === 0 
+      ? 'All caught up 🎉' 
+      : todayTasks === 1 
+      ? '1 task needs attention today'
+      : `${todayTasks} tasks need attention today`;
+  }, [todayTasks]);
+
+  // Memoize filtered projects to prevent expensive filtering/sorting on every render
+  const filteredProjects = useMemo(() => {
+    return getFilteredProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, searchTerm, activeFilter, priorityFilter, clientTypeFilter]);
+
   if (loading) {
     return (
       <div className="dashboard">
@@ -287,31 +335,6 @@ const PMDashboard: React.FC = () => {
       </div>
     );
   }
-
-  const todayTasks = projects.reduce((acc, p) => {
-    const tasks = p.tasks?.filter((t: any) => {
-      if (!t.dueDate) return false;
-      const dueDate = new Date(t.dueDate);
-      const today = new Date();
-      return dueDate.toDateString() === today.toDateString() && !t.isCompleted;
-    }) || [];
-    return acc + tasks.length;
-  }, 0);
-
-  const waitingOnClient = projects.filter((p: any) => {
-    const daysSinceEmail = p.lastEmailedAt
-      ? Math.floor((Date.now() - new Date(p.lastEmailedAt).getTime()) / (1000 * 60 * 60 * 24))
-      : 999;
-    return daysSinceEmail > 5 && ['Copy Revision', 'Design Revision'].includes(p.stage);
-  }).length;
-
-  const greetingMessage = todayTasks === 0 
-    ? 'All caught up 🎉' 
-    : todayTasks === 1 
-    ? '1 task needs attention today'
-    : `${todayTasks} tasks need attention today`;
-
-  const filteredProjects = getFilteredProjects();
 
   return (
     <div className="dashboard premium">

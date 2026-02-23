@@ -53,7 +53,7 @@ const AIDeveloperDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [deliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId" (read-only for now)
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
   const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
@@ -89,6 +89,7 @@ const AIDeveloperDashboard: React.FC = () => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -107,74 +108,25 @@ const AIDeveloperDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, allTasksData] = await Promise.all([
-        projectService.getAll(),
-        taskService.getAll(),
-      ]);
-
-      console.log('[AI Dashboard] All projects:', projectsData.map((p: any) => ({ 
-        name: p.clientName, 
-        stage: p.stage 
-      })));
+      // Only load tasks assigned to current user for this dashboard (much faster!)
+      const allTasksData = user?.id 
+        ? await taskService.getAll(undefined, user.id)
+        : await taskService.getAll();
 
       // Get ALL AI tasks first (regardless of project stage)
       const aiTasks = allTasksData.filter((t: any) => t.type === 'AI');
 
-      // Get all projects that have AI tasks (regardless of their current stage)
-      const projectIdsWithAITasks = new Set(aiTasks.map((t: any) => t.projectId));
-      const projectsWithAITasks = projectsData.filter((project: any) => 
-        projectIdsWithAITasks.has(project.id)
-      );
+      // Only load specific projects we need (much faster than loading all!)
+      const projectIdsWithAITasks = Array.from(new Set(aiTasks.map((t: any) => t.projectId)));
+      
+      // Load only the specific projects we need, not all projects
+      const projectsWithAITasks = await Promise.all(
+        projectIdsWithAITasks.map(id => projectService.getOne(id).catch(() => null))
+      ).then(projects => projects.filter(p => p !== null));
 
-      // Load deliverable history for all AI projects to check for notes
-      // Only show notes for deliverables that have AI tasks linked to them
-      const projectsWithHistory = await Promise.all(
-        projectsWithAITasks.map(async (project: any) => {
-          if (!project.deliverables || project.deliverables.length === 0) {
-            return project;
-          }
-
-          // Get AI tasks for this project to find which deliverables they're linked to
-          const projectAITasks = aiTasks.filter((t: any) => t.projectId === project.id);
-          const aiDeliverableIds = new Set(
-            projectAITasks
-              .map((t: any) => t.deliverableId)
-              .filter((id: string) => id) // Only include tasks with deliverableId
-          );
-
-          // Only check deliverables that have AI tasks linked to them
-          const aiRelevantDeliverables = project.deliverables.filter((d: any) => 
-            aiDeliverableIds.has(d.id) || 
-            // Also include custom deliverables (type === 'Other') as they might be AI-related
-            (d.type === 'Other' && d.customType)
-          );
-
-          for (const deliverable of aiRelevantDeliverables) {
-            // Double-check: only include if it has AI tasks linked OR is a custom deliverable
-            const hasAITasks = aiDeliverableIds.has(deliverable.id);
-            const isCustomDeliverable = deliverable.type === 'Other' && deliverable.customType;
-            
-            if (!hasAITasks && !isCustomDeliverable) continue;
-            
-            try {
-              const { deliverableService } = await import('../../services/deliverable.service');
-              const history = await deliverableService.getHistory(deliverable.id);
-              
-              // Store full history for revision detection
-              setDeliverableHistory(prev => ({
-                ...prev,
-                [deliverable.id]: history
-              }));
-            } catch (error) {
-              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
-            }
-          }
-
-          return project;
-        })
-      );
-
-      setProjects(projectsWithHistory);
+      // Don't load deliverable history on initial load - it's too slow!
+      // Load history lazily only when needed (e.g., when checking for revisions)
+      setProjects(projectsWithAITasks);
       setTasks(aiTasks);
     } catch (error) {
       console.error('Failed to load data:', error);

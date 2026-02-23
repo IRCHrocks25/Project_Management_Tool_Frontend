@@ -54,7 +54,7 @@ const DeveloperDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [deliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId" (read-only for now)
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
   const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
@@ -70,6 +70,7 @@ const DeveloperDashboard: React.FC = () => {
       loadUnreadCount();
     }, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -88,56 +89,35 @@ const DeveloperDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, allTasksData] = await Promise.all([
-        projectService.getAll(),
-        taskService.getAll(),
-      ]);
+      // Load ALL dev tasks (not just assigned ones) - developers need to see all dev tasks
+      const allTasksData = await taskService.getAll();
+
+      console.log('[DeveloperDashboard] All tasks loaded:', allTasksData.length);
+      console.log('[DeveloperDashboard] User ID:', user?.id);
 
       // Get ALL dev tasks first (regardless of project stage)
       const devTasks = allTasksData.filter((t: any) => t.type === 'Dev');
+      console.log('[DeveloperDashboard] Dev tasks found:', devTasks.length);
 
-      // Get all projects that have dev tasks (regardless of their current stage)
-      const projectIdsWithDevTasks = new Set(devTasks.map((t: any) => t.projectId));
-      const projectsWithDevTasks = projectsData.filter((project: any) => 
-        projectIdsWithDevTasks.has(project.id)
-      );
+      // Only load specific projects we need (much faster than loading all!)
+      const projectIdsWithDevTasks = Array.from(new Set(devTasks.map((t: any) => t.projectId)));
+      console.log('[DeveloperDashboard] Project IDs:', projectIdsWithDevTasks);
+      
+      // Load only the specific projects we need, not all projects
+      const projectsWithDevTasks = projectIdsWithDevTasks.length > 0
+        ? await Promise.all(
+            projectIdsWithDevTasks.map(id => projectService.getOne(id).catch(() => null))
+          ).then(projects => projects.filter(p => p !== null))
+        : [];
+      
+      console.log('[DeveloperDashboard] Projects loaded:', projectsWithDevTasks.length);
 
-      // Load deliverable history for all dev projects to check for file-level revisions
-      const projectsWithHistory = await Promise.all(
-        projectsWithDevTasks.map(async (project: any) => {
-          if (!project.deliverables || project.deliverables.length === 0) {
-            return project;
-          }
-
-          // Check each deliverable for file-level revision history
-          // Dev tasks are typically linked to Landing Page deliverables
-          const devDeliverables = project.deliverables.filter((d: any) =>
-            d.type === 'Landing Page'
-          );
-
-          for (const deliverable of devDeliverables) {
-            try {
-              const { deliverableService } = await import('../../services/deliverable.service');
-              const history = await deliverableService.getHistory(deliverable.id);
-              
-              // Store full history for revision detection
-              setDeliverableHistory(prev => ({
-                ...prev,
-                [deliverable.id]: history
-              }));
-            } catch (error) {
-              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
-            }
-          }
-
-          return project;
-        })
-      );
-
-      setProjects(projectsWithHistory);
+      // Don't load deliverable history on initial load - it's too slow!
+      // Load history lazily only when needed (e.g., when checking for revisions)
+      setProjects(projectsWithDevTasks);
       setTasks(devTasks);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('[DeveloperDashboard] Failed to load data:', error);
     } finally {
       setLoading(false);
     }

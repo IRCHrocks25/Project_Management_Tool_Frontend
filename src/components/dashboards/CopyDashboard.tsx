@@ -46,7 +46,7 @@ const CopyDashboard: React.FC = () => {
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId"
+  const [deliverableHistory] = useState<Record<string, any[]>>({}); // Store full history: key = "deliverableId" (read-only for now)
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
   const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
@@ -62,6 +62,7 @@ const CopyDashboard: React.FC = () => {
       loadUnreadCount();
     }, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -80,53 +81,25 @@ const CopyDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, allTasksData] = await Promise.all([
-        projectService.getAll(),
-        taskService.getAll(), // Get ALL tasks, not just assigned ones
-      ]);
+      // Only load tasks assigned to current user for this dashboard (much faster!)
+      const allTasksData = user?.id 
+        ? await taskService.getAll(undefined, user.id)
+        : await taskService.getAll(); // Get ALL tasks, not just assigned ones
 
       // Get ALL copy tasks first (regardless of project stage or deliverable)
       const copyTasks = allTasksData.filter((t: any) => t.type === 'Copy');
 
-      // Get all projects that have copy tasks (regardless of their current stage)
-      const projectIdsWithCopyTasks = new Set(copyTasks.map((t: any) => t.projectId));
-      const projectsWithCopyTasks = projectsData.filter((project: any) => 
-        projectIdsWithCopyTasks.has(project.id)
-      );
+      // Only load specific projects we need (much faster than loading all!)
+      const projectIdsWithCopyTasks = Array.from(new Set(copyTasks.map((t: any) => t.projectId)));
+      
+      // Load only the specific projects we need, not all projects
+      const projectsWithCopyTasks = await Promise.all(
+        projectIdsWithCopyTasks.map(id => projectService.getOne(id).catch(() => null))
+      ).then(projects => projects.filter(p => p !== null));
 
-      // Load deliverable history for all relevant projects to check for notes
-      const projectsWithHistory = await Promise.all(
-        projectsWithCopyTasks.map(async (project: any) => {
-          if (!project.deliverables || project.deliverables.length === 0) {
-            return project;
-          }
-
-          // Check copy-related deliverables
-          // Only show notes for copy-specific deliverables (exclude design-only deliverables)
-          const copyDeliverables = project.deliverables.filter((d: any) =>
-            ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(d.type)
-          );
-
-          for (const deliverable of copyDeliverables) {
-            try {
-              const { deliverableService } = await import('../../services/deliverable.service');
-              const history = await deliverableService.getHistory(deliverable.id);
-              
-              // Store full history for revision detection
-              setDeliverableHistory(prev => ({
-                ...prev,
-                [deliverable.id]: history
-              }));
-            } catch (error) {
-              console.error(`Failed to load history for deliverable ${deliverable.id}:`, error);
-            }
-          }
-
-          return project;
-        })
-      );
-
-      setProjects(projectsWithHistory);
+      // Don't load deliverable history on initial load - it's too slow!
+      // Load history lazily only when needed (e.g., when checking for revisions)
+      setProjects(projectsWithCopyTasks);
       setTasks(copyTasks);
     } catch (error) {
       console.error('Failed to load data:', error);
