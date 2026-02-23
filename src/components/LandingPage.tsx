@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   FaCheck,
   FaVideo,
@@ -11,49 +11,7 @@ import {
 } from "react-icons/fa";
 import "./LandingPage.css";
 
-const WEBHOOK_URL = 'https://katalyst-crm2.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
-
 const LandingPage: React.FC = () => {
-  const [triggeringWebhook, setTriggeringWebhook] = useState(false);
-
-  const handleTriggerWebhook = async () => {
-    setTriggeringWebhook(true);
-    console.log('[LANDING PAGE] Triggering webhook...');
-    console.log('[LANDING PAGE] Webhook URL:', WEBHOOK_URL);
-
-    const payload = {
-      to: 'test@example.com',
-      subject: 'Test Webhook - Katalyst PM',
-      body: '<p>This is a test webhook trigger from Katalyst PM landing page.</p>',
-      html: '<p>This is a test webhook trigger from Katalyst PM landing page.</p>',
-    };
-
-    try {
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      console.log('[LANDING PAGE] Response status:', response.status, response.statusText);
-      const responseText = await response.text();
-      console.log('[LANDING PAGE] Response body:', responseText);
-
-      if (!response.ok) {
-        alert(`❌ Webhook failed: Status ${response.status}\n${responseText}`);
-      } else {
-        alert('✅ Webhook triggered successfully!');
-      }
-    } catch (error: any) {
-      console.error('[LANDING PAGE] Error:', error);
-      alert(`❌ Error: ${error.message}`);
-    } finally {
-      setTriggeringWebhook(false);
-    }
-  };
   return (
     <div className="lp">
       {/* Ambient background */}
@@ -81,14 +39,6 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="lp-nav-actions">
-            <button
-              onClick={handleTriggerWebhook}
-              className="lp-btn lp-btn-ghost"
-              disabled={triggeringWebhook}
-              style={{ marginRight: '0.5rem' }}
-            >
-              {triggeringWebhook ? 'Triggering...' : 'Trigger Webhook'}
-            </button>
             <a href="/signup" className="lp-btn lp-btn-ghost">
               Request Access
             </a>
