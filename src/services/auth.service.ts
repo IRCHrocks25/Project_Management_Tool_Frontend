@@ -121,8 +121,40 @@ export const authService = {
   },
 
   async forgotPassword(email: string): Promise<{ message: string; resetLink?: string }> {
-    const response = await authAxios.post('/auth/forgot-password', { email });
-    return response.data;
+    console.log('[FRONTEND] Calling forgotPassword with email:', email);
+    console.log('[FRONTEND] API URL:', API_URL);
+    console.log('[FRONTEND] Full endpoint:', `${API_URL}/auth/forgot-password`);
+    console.log('[FRONTEND] Request payload:', { email });
+    
+    try {
+      const response = await authAxios.post('/auth/forgot-password', { email });
+      console.log('[FRONTEND] Response received:', response.data);
+      
+      // Log webhook status if available
+      if (response.data.webhookStatus) {
+        console.log('[FRONTEND] 📤 WEBHOOK STATUS:', response.data.webhookStatus);
+        if (response.data.webhookStatus.success) {
+          console.log('[FRONTEND] ✅ Webhook triggered successfully!');
+          console.log('[FRONTEND] ✅ Webhook response status:', response.data.webhookStatus.status);
+          console.log('[FRONTEND] ✅ Webhook message:', response.data.webhookStatus.message);
+        } else {
+          console.error('[FRONTEND] ❌ Webhook failed!');
+          console.error('[FRONTEND] ❌ Webhook error:', response.data.webhookStatus.error);
+          console.error('[FRONTEND] ❌ Webhook status code:', response.data.webhookStatus.status);
+          console.error('[FRONTEND] ❌ Webhook message:', response.data.webhookStatus.message);
+        }
+      } else {
+        console.log('[FRONTEND] ⚠️ Webhook status not included in response (production mode)');
+        console.log('[FRONTEND] 💡 Check backend logs (Railway) to see webhook details');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('[FRONTEND] Error in forgotPassword:', error);
+      console.error('[FRONTEND] Error response:', error.response?.data);
+      console.error('[FRONTEND] Error status:', error.response?.status);
+      throw error;
+    }
   },
 
   async resetPassword(token: string, password: string): Promise<{ message: string }> {

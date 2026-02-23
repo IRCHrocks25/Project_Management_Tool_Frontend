@@ -19,13 +19,18 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[MODAL] handleEmailSubmit called with email:', email);
     setError('');
     setLoading(true);
 
     try {
+      console.log('[MODAL] Calling authService.forgotPassword...');
       await authService.forgotPassword(email);
+      console.log('[MODAL] forgotPassword succeeded, moving to OTP step');
       setStep('otp');
     } catch (err: any) {
+      console.error('[MODAL] Error in handleEmailSubmit:', err);
+      console.error('[MODAL] Error details:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
