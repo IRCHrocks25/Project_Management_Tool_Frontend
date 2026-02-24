@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave, FaEdit } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
@@ -37,6 +37,21 @@ const DepartmentView: React.FC = () => {
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  
+  // Edit task states
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editTaskData, setEditTaskData] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    deliverableId: '',
+    assignedToId: ''
+  });
+  const [editDeliverables, setEditDeliverables] = useState<any[]>([]);
+  const [showEditCustomDeliverableInput, setShowEditCustomDeliverableInput] = useState(false);
+  const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
+  const [updatingTask, setUpdatingTask] = useState(false);
   
   // Excel import states
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
@@ -667,7 +682,7 @@ const DepartmentView: React.FC = () => {
     }
   };
 
-  // Load deliverables when project is selected
+  // Load deliverables when project is selected (for add task modal)
   useEffect(() => {
     const loadDeliverables = async () => {
       if (newTaskData.projectId) {
@@ -684,6 +699,128 @@ const DepartmentView: React.FC = () => {
     };
     loadDeliverables();
   }, [newTaskData.projectId]);
+
+  // Load deliverables when editing a task
+  useEffect(() => {
+    const loadEditDeliverables = async () => {
+      if (editingTask?.projectId) {
+        try {
+          const projectDeliverables = await deliverableService.getAll(editingTask.projectId);
+          setEditDeliverables(projectDeliverables);
+        } catch (error) {
+          console.error('Failed to load deliverables:', error);
+          setEditDeliverables([]);
+        }
+      } else {
+        setEditDeliverables([]);
+      }
+    };
+    if (showEditTaskModal && editingTask) {
+      loadEditDeliverables();
+    }
+  }, [showEditTaskModal, editingTask]);
+
+  // Handle opening edit modal
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setEditTaskData({
+      title: task.title || '',
+      description: task.description || '',
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      deliverableId: task.deliverableId || '',
+      assignedToId: task.assignedToId || ''
+    });
+    setShowEditCustomDeliverableInput(false);
+    setEditCustomDeliverableName('');
+    setShowEditTaskModal(true);
+  };
+
+  // Handle update task
+  const handleUpdateTask = async () => {
+    if (!editingTask || !editTaskData.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    setUpdatingTask(true);
+    try {
+      let deliverableId = editTaskData.deliverableId;
+
+      // If custom deliverable is being created
+      if (showEditCustomDeliverableInput && editCustomDeliverableName.trim()) {
+        const newDeliverable = await deliverableService.create(
+          editingTask.projectId,
+          'Other',
+          editCustomDeliverableName.trim()
+        );
+        deliverableId = newDeliverable.id;
+        // Reload deliverables to include the new one
+        const projectDeliverables = await deliverableService.getAll(editingTask.projectId);
+        setEditDeliverables(projectDeliverables);
+      }
+
+      const updateData: any = {
+        title: editTaskData.title,
+        description: editTaskData.description,
+      };
+
+      if (editTaskData.dueDate) {
+        updateData.dueDate = new Date(editTaskData.dueDate);
+      }
+
+      if (deliverableId) {
+        updateData.deliverableId = deliverableId;
+      }
+
+      await taskService.update(editingTask.id, updateData);
+
+      // Update assignment if changed
+      if (editTaskData.assignedToId !== (editingTask.assignedToId || '')) {
+        if (editTaskData.assignedToId) {
+          await taskService.assign(editingTask.id, editTaskData.assignedToId);
+        } else if (editingTask.assignedToId) {
+          // Unassign by assigning to empty string (if backend supports it)
+          // Otherwise, we'll need to check if there's an unassign endpoint
+          try {
+            await taskService.assign(editingTask.id, '');
+          } catch (error) {
+            console.warn('Failed to unassign task (may not be supported):', error);
+          }
+        }
+      }
+
+      // Reload tasks - optimized
+      const allTasksData = await taskService.getAll();
+      const taskTypeForFilter = getTaskTypeForDepartment(department || '');
+      const projectIdsSet = new Set(projects.map((p: any) => p.id));
+      const departmentTasks = allTasksData.filter((t: any) => 
+        t.type === taskTypeForFilter && 
+        !t.isCompleted &&
+        t.status !== 'Completed' &&
+        projectIdsSet.has(t.projectId)
+      );
+      setTasks(departmentTasks);
+
+      // Close modal and reset
+      setShowEditTaskModal(false);
+      setEditingTask(null);
+      setEditTaskData({
+        title: '',
+        description: '',
+        dueDate: '',
+        deliverableId: '',
+        assignedToId: ''
+      });
+      setShowEditCustomDeliverableInput(false);
+      setEditCustomDeliverableName('');
+      alert('Task updated successfully!');
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task. Please try again.');
+    } finally {
+      setUpdatingTask(false);
+    }
+  };
 
   // Handle create task
   const handleCreateTask = async () => {
@@ -1457,12 +1594,14 @@ const DepartmentView: React.FC = () => {
                             boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                           }}
                           onClick={(e) => {
-                            // Don't navigate if clicking on checkbox, select, or interactive elements
+                            // Don't navigate if clicking on checkbox, select, button, or interactive elements
                             const target = e.target as HTMLElement;
                             if (target.closest('input[type="checkbox"]') || 
                                 target.closest('select') || 
+                                target.closest('button') ||
                                 target.tagName === 'INPUT' || 
-                                target.tagName === 'SELECT') {
+                                target.tagName === 'SELECT' ||
+                                target.tagName === 'BUTTON') {
                               return;
                             }
                             navigate(`/project/${task.projectId}`);
@@ -1497,12 +1636,47 @@ const DepartmentView: React.FC = () => {
                             />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
-                                fontSize: '0.75rem',
-                                color: '#667eea',
-                                fontWeight: 500,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
                                 marginBottom: '0.25rem'
                               }}>
-                                {projectName}
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  color: '#667eea',
+                                  fontWeight: 500
+                                }}>
+                                  {projectName}
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditTask(task);
+                                  }}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#667eea',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '4px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f0f4ff';
+                                    e.currentTarget.style.color = '#5568d3';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.color = '#667eea';
+                                  }}
+                                  title="Edit Task"
+                                >
+                                  <FaEdit style={{ fontSize: '0.75rem' }} />
+                                </button>
                               </div>
                               <div style={{
                                 display: 'flex',
@@ -1654,12 +1828,14 @@ const DepartmentView: React.FC = () => {
                         boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                       }}
                       onClick={(e) => {
-                        // Don't navigate if clicking on checkbox, select, or interactive elements
+                        // Don't navigate if clicking on checkbox, select, button, or interactive elements
                         const target = e.target as HTMLElement;
                         if (target.closest('input[type="checkbox"]') || 
                             target.closest('select') || 
+                            target.closest('button') ||
                             target.tagName === 'INPUT' || 
-                            target.tagName === 'SELECT') {
+                            target.tagName === 'SELECT' ||
+                            target.tagName === 'BUTTON') {
                           return;
                         }
                         navigate(`/project/${task.projectId}`);
@@ -1699,7 +1875,7 @@ const DepartmentView: React.FC = () => {
                             gap: '0.75rem',
                             marginBottom: '0.5rem'
                           }}>
-                            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: 0, flex: 1 }}>
                               {task.title}
                             </h4>
                             <span style={{
@@ -1712,6 +1888,35 @@ const DepartmentView: React.FC = () => {
                             }}>
                               {task.status}
                             </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditTask(task);
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#667eea',
+                                cursor: 'pointer',
+                                padding: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f0f4ff';
+                                e.currentTarget.style.color = '#5568d3';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = '#667eea';
+                              }}
+                              title="Edit Task"
+                            >
+                              <FaEdit style={{ fontSize: '0.875rem' }} />
+                            </button>
                           </div>
                           {task.description && (
                             <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
@@ -2865,6 +3070,466 @@ const DepartmentView: React.FC = () => {
                 }}
               >
                 <FaSave /> Save Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {showEditTaskModal && editingTask && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            setShowEditTaskModal(false);
+            setEditingTask(null);
+            setEditTaskData({
+              title: '',
+              description: '',
+              dueDate: '',
+              deliverableId: '',
+              assignedToId: ''
+            });
+            setShowEditCustomDeliverableInput(false);
+            setEditCustomDeliverableName('');
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            className="edit-task-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '2rem 2.5rem 1.5rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                Edit Task - {getProjectName(editingTask.projectId)}
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowEditTaskModal(false);
+                  setEditingTask(null);
+                  setEditTaskData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowEditCustomDeliverableInput(false);
+                  setEditCustomDeliverableName('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f9fafb';
+                  e.currentTarget.style.color = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '2rem 2.5rem',
+              gap: '2rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Task Title *
+                </label>
+                <input
+                  type="text"
+                  value={editTaskData.title}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, title: e.target.value })}
+                  required
+                  placeholder="Enter task title"
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Description
+                </label>
+                <textarea
+                  value={editTaskData.description}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, description: e.target.value })}
+                  rows={4}
+                  placeholder="Enter task description"
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    minHeight: '120px',
+                    lineHeight: '1.6'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={editTaskData.dueDate}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, dueDate: e.target.value })}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Associate with Deliverable (Optional)
+                </label>
+                <select
+                  value={showEditCustomDeliverableInput ? 'custom' : editTaskData.deliverableId}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setShowEditCustomDeliverableInput(true);
+                      setEditTaskData({ ...editTaskData, deliverableId: '' });
+                    } else {
+                      setShowEditCustomDeliverableInput(false);
+                      setEditCustomDeliverableName('');
+                      setEditTaskData({ ...editTaskData, deliverableId: e.target.value });
+                    }
+                  }}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 1rem center',
+                    backgroundSize: '1.25em 1.25em',
+                    paddingRight: '3rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">None</option>
+                  {editDeliverables.map((deliverable) => (
+                    <option key={deliverable.id} value={deliverable.id}>
+                      {deliverable.customType || deliverable.type}
+                    </option>
+                  ))}
+                  <option value="custom">➕ Add Custom Deliverable</option>
+                </select>
+                {showEditCustomDeliverableInput && (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                    <input
+                      type="text"
+                      placeholder="Enter custom deliverable name (e.g., Email Templates, Social Media Posts)"
+                      value={editCustomDeliverableName}
+                      onChange={(e) => setEditCustomDeliverableName(e.target.value)}
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        padding: '1rem 1.25rem',
+                        border: '1.5px solid #667eea',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        transition: 'all 0.2s',
+                        background: '#ffffff',
+                        color: '#111827',
+                        fontFamily: 'inherit'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.outline = 'none';
+                        e.target.style.borderColor = '#667eea';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#667eea';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditCustomDeliverableInput(false);
+                        setEditCustomDeliverableName('');
+                        setEditTaskData({ ...editTaskData, deliverableId: '' });
+                      }}
+                      style={{
+                        background: '#f3f4f6',
+                        border: '1.5px solid #e5e7eb',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '1rem',
+                        borderRadius: '10px',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '48px',
+                        height: '48px',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#e5e7eb';
+                        e.currentTarget.style.color = '#374151';
+                        e.currentTarget.style.borderColor = '#d1d5db';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f3f4f6';
+                        e.currentTarget.style.color = '#6b7280';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                      }}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Assign To (Optional)
+                </label>
+                <select
+                  value={editTaskData.assignedToId}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, assignedToId: e.target.value })}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 1rem center',
+                    backgroundSize: '1.25em 1.25em',
+                    paddingRight: '3rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              padding: '2rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              marginTop: 'auto',
+              gap: '0.875rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditTaskModal(false);
+                  setEditingTask(null);
+                  setEditTaskData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowEditCustomDeliverableInput(false);
+                  setEditCustomDeliverableName('');
+                }}
+                disabled={updatingTask}
+                style={{
+                  background: '#ffffff',
+                  color: '#374151',
+                  border: '1.5px solid #e5e7eb',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: updatingTask ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  opacity: updatingTask ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!updatingTask) {
+                    e.currentTarget.style.background = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!updatingTask) {
+                    e.currentTarget.style.background = '#ffffff';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateTask}
+                disabled={updatingTask || !editTaskData.title.trim()}
+                style={{
+                  background: updatingTask || !editTaskData.title.trim() ? '#cbd5e1' : '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: updatingTask || !editTaskData.title.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s',
+                  opacity: updatingTask || !editTaskData.title.trim() ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!updatingTask && editTaskData.title.trim()) {
+                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!updatingTask && editTaskData.title.trim()) {
+                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <FaSave /> {updatingTask ? 'Updating...' : 'Update Task'}
               </button>
             </div>
           </div>
