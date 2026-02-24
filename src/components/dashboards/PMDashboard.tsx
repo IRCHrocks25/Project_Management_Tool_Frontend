@@ -20,6 +20,7 @@ const PMDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
   const tasksRef = useRef<any[]>([]);
   const loadingRef = useRef(false);
+  const hasLoadedOnceRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
@@ -55,8 +56,8 @@ const PMDashboard: React.FC = () => {
     
     try {
       loadingRef.current = true;
-      // Only show loading spinner on initial load (when projects array is empty)
-      const isInitialLoad = projects.length === 0;
+      // Only show full-page loading spinner on the very first load
+      const isInitialLoad = !hasLoadedOnceRef.current;
       if (isInitialLoad) {
         setLoading(true);
       }
@@ -71,7 +72,8 @@ const PMDashboard: React.FC = () => {
       setProjects(projectsData);
       setTasks(allTasksData);
       tasksRef.current = allTasksData; // Keep ref in sync
-      setLoading(false); // Hide loading spinner
+      hasLoadedOnceRef.current = true;
+      setLoading(false); // Hide loading spinner (if it was shown)
       
       // Load stats in background (non-blocking)
       try {
@@ -87,7 +89,7 @@ const PMDashboard: React.FC = () => {
     } finally {
       loadingRef.current = false;
     }
-  }, [projects.length]);
+  }, []); // Empty dependency array - loadData doesn't depend on any props/state
 
   const loadUnreadCount = async () => {
     try {
@@ -181,7 +183,8 @@ const PMDashboard: React.FC = () => {
       clearTimeout(focusTimeout);
       focusTimeout = setTimeout(() => {
         // Only reload if not currently loading
-        if (!loadingRef.current) {
+        // Don't reload while create-project modal is open (avoids hiding the modal after file picker closes)
+        if (!loadingRef.current && !showCreateModal) {
           loadData();
         }
       }, 500); // Wait 500ms after focus to avoid rapid-fire calls
@@ -191,7 +194,7 @@ const PMDashboard: React.FC = () => {
       window.removeEventListener('focus', handleFocus);
       clearTimeout(focusTimeout);
     };
-  }, [loadData]);
+  }, [loadData, showCreateModal]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -320,7 +323,8 @@ const PMDashboard: React.FC = () => {
     for (let i = 0; i < projects.length; i++) {
       const p = projects[i];
       
-      // Skip completed projects
+      // Skip archived or completed projects
+      if (p.isArchived) continue;
       if (p.isCompleted) continue;
       
       // Apply search filter
@@ -373,6 +377,24 @@ const PMDashboard: React.FC = () => {
   }, [activeFilter, priorityFilter, clientTypeFilter, searchTerm]);
 
   // Memoize expensive calculations - optimized to use tasks array directly instead of iterating projects
+  const activeTasksCount = useMemo(() => {
+    if (!tasks || tasks.length === 0 || !projects || projects.length === 0) return 0;
+    const activeProjectIds = new Set(
+      projects
+        .filter((p: any) => !p.isArchived)
+        .map((p: any) => p.id)
+    );
+    let count = 0;
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i];
+      if (!activeProjectIds.has(task.projectId)) continue;
+      if (!task.isCompleted && task.status !== 'Completed') {
+        count++;
+      }
+    }
+    return count;
+  }, [tasks, projects]);
+
   const todayTasks = useMemo(() => {
     if (!tasks || tasks.length === 0) return 0;
     const today = new Date();
@@ -968,7 +990,9 @@ const PMDashboard: React.FC = () => {
                       <FaFolder style={{ fontSize: '1rem' }} />
                       Total Projects
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{stats?.totalProjects || projects.length}</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>
+                      {projects.filter((p: any) => !p.isArchived).length}
+                    </div>
                   </div>
                   <div style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -1001,7 +1025,7 @@ const PMDashboard: React.FC = () => {
                       <FaCheckCircle style={{ fontSize: '1rem' }} />
                       Active Tasks
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{tasks.filter((t: any) => !t.isCompleted && t.status !== 'Completed').length}</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{activeTasksCount}</div>
                   </div>
                   <div style={{
                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -1678,7 +1702,10 @@ const PMDashboard: React.FC = () => {
       {showCreateModal && (
         <CreateProjectModal
           onClose={() => setShowCreateModal(false)}
+          // Single-project create: close modal and refresh
           onSuccess={handleProjectCreated}
+          // Bulk Excel create: just refresh data, keep modal open so user can see summary/errors
+          onBulkSuccess={loadData}
         />
       )}
       <NotificationsModal

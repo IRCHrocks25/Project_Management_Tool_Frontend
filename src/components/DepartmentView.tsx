@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
@@ -36,6 +37,24 @@ const DepartmentView: React.FC = () => {
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  
+  // Excel import states
+  const [showExcelImportModal, setShowExcelImportModal] = useState(false);
+  const [excelPreview, setExcelPreview] = useState<any[]>([]);
+  const [uploadingTasks, setUploadingTasks] = useState(false);
+  const [importError, setImportError] = useState('');
+  
+  // Template task states
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [taskTemplates, setTaskTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templateData, setTemplateData] = useState({
+    name: '',
+    title: '',
+    description: '',
+    deliverableType: '',
+    defaultStatus: 'Todo'
+  });
 
   // Map department name to task type
   const getTaskTypeForDepartment = (dept: string): string => {
@@ -117,6 +136,10 @@ const DepartmentView: React.FC = () => {
         setAllProjects(allProjectsData); // Store for modal
         
         // Step 5: Filter projects efficiently using Set lookup
+        // Include projects that:
+        // 1. Have tasks of this department type, OR
+        // 2. Are in the department stage, OR
+        // 3. Match CRM special case
         const departmentProjectsMap = new Map();
         const isKatalyst = (clientType: string) => 
           clientType === 'Katalyst' || clientType === 'KATALYST' || clientType?.toLowerCase() === 'katalyst';
@@ -332,6 +355,316 @@ const DepartmentView: React.FC = () => {
 
   const getUserName = (userId: string): string => {
     return userNameMap.get(userId) || 'Unassigned';
+  };
+
+  // Fuzzy match client name to project
+  const findProjectByClientName = (clientName: string): any | null => {
+    if (!clientName || !allProjects.length) return null;
+    
+    const normalizedSearch = clientName.toLowerCase().trim();
+    
+    // First, try exact match
+    let match = allProjects.find((p: any) => 
+      p.clientName?.toLowerCase().trim() === normalizedSearch
+    );
+    if (match) return match;
+    
+    // Try partial match (client name contains search or vice versa)
+    match = allProjects.find((p: any) => {
+      const projectName = p.clientName?.toLowerCase().trim() || '';
+      return projectName.includes(normalizedSearch) || normalizedSearch.includes(projectName);
+    });
+    if (match) return match;
+    
+    // Try matching by removing common suffixes/prefixes
+    const cleanSearch = normalizedSearch
+      .replace(/:\s*(speaker kit|services page|black friday|offer|content)/gi, '')
+      .trim();
+    
+    match = allProjects.find((p: any) => {
+      const projectName = p.clientName?.toLowerCase().trim() || '';
+      const cleanProject = projectName
+        .replace(/:\s*(speaker kit|services page|black friday|offer|content)/gi, '')
+        .trim();
+      return cleanProject === cleanSearch || 
+             cleanProject.includes(cleanSearch) || 
+             cleanSearch.includes(cleanProject);
+    });
+    if (match) return match;
+    
+    return null;
+  };
+
+  // Map Excel status to task status
+  const mapStatusToTaskStatus = (excelStatus: string): string => {
+    const statusLower = excelStatus?.toLowerCase().trim() || '';
+    
+    // Map common statuses
+    if (statusLower.includes('client validation') || statusLower === 'client validation') {
+      return 'Client Review';
+    }
+    if (statusLower.includes('completed') || statusLower === 'completed') {
+      return 'Completed';
+    }
+    if (statusLower.includes('pending requirements') || statusLower.includes('for approval')) {
+      return 'For Approval';
+    }
+    if (statusLower.includes('on hold') || statusLower.includes('not started')) {
+      return 'Todo';
+    }
+    if (statusLower.includes('in progress') || statusLower.includes('owned')) {
+      return 'In Progress';
+    }
+    if (statusLower.includes('revision')) {
+      return 'Revision';
+    }
+    if (statusLower.includes('elliot review')) {
+      return 'Elliot Review';
+    }
+    if (statusLower.includes('qa') || statusLower.includes('qa review')) {
+      return 'QA Review';
+    }
+    if (statusLower.includes('in review')) {
+      return 'In Review';
+    }
+    
+    // Default to Todo if no match
+    return 'Todo';
+  };
+
+  // Handle Excel file upload
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportError('');
+    setExcelPreview([]);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+        // Validate columns
+        if (jsonData.length === 0) {
+          setImportError('Excel file is empty');
+          return;
+        }
+
+        const firstRow = jsonData[0] as any;
+        const hasClient = 'Client' in firstRow || 'client' in firstRow || 'CLIENT' in firstRow;
+
+        if (!hasClient) {
+          setImportError('Excel file must contain a "Client" column');
+          return;
+        }
+
+        // Normalize column names and prepare preview
+        const normalizedData = jsonData.map((row: any, index: number) => {
+          const client = row.Client || row.client || row.CLIENT || '';
+          const status = row.Status || row.status || row.STATUS || '';
+          const systemStatus = row['System = Status'] || row['system = status'] || row['SYSTEM = STATUS'] || status;
+          
+          // Find matching project
+          const project = findProjectByClientName(client);
+          const taskStatus = mapStatusToTaskStatus(systemStatus || status);
+          
+          return {
+            rowIndex: index + 2, // Excel row number (1-indexed, +1 for header)
+            client,
+            status,
+            systemStatus: systemStatus || status,
+            taskStatus,
+            project: project ? { id: project.id, name: project.clientName } : null,
+            matched: !!project,
+            error: !project ? 'Project not found' : null
+          };
+        });
+
+        setExcelPreview(normalizedData);
+      } catch (err: any) {
+        setImportError('Failed to parse Excel file: ' + (err.message || 'Invalid file format'));
+        setExcelPreview([]);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Handle bulk task creation from Excel
+  const handleBulkCreateTasks = async () => {
+    if (excelPreview.length === 0) {
+      setImportError('No tasks to create');
+      return;
+    }
+
+    const validRows = excelPreview.filter((row: any) => row.matched && row.project);
+    if (validRows.length === 0) {
+      setImportError('No valid projects found. Please ensure client names match existing projects.');
+      return;
+    }
+
+    setUploadingTasks(true);
+    setImportError('');
+
+    const taskType = getTaskTypeForDepartment(department || '');
+    const results = { success: 0, failed: 0 };
+    const errors: string[] = [];
+
+    try {
+      // Process tasks in batches to avoid overwhelming the backend
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
+        const batch = validRows.slice(i, i + BATCH_SIZE);
+        
+        await Promise.allSettled(
+          batch.map(async (row: any) => {
+            if (!row.project || !row.project.id) {
+              errors.push(`Row ${row.rowIndex}: Missing project`);
+              results.failed++;
+              return;
+            }
+
+            try {
+              // Create task - always start with 'Todo' status, then update if needed
+              // The backend might not accept certain statuses on initial creation
+              const taskData: any = {
+                projectId: row.project.id,
+                title: `${department} Task - ${row.client}`,
+                description: `Task created from Excel import. Original Status: ${row.status}`,
+                type: taskType,
+                status: 'Todo', // Always start with Todo
+                isCompleted: false, // Never set completed on creation
+              };
+
+              const createdTask = await taskService.create(taskData);
+              
+              // If the mapped status is not 'Todo', update it after creation
+              if (row.taskStatus && row.taskStatus !== 'Todo' && row.taskStatus !== 'Completed') {
+                try {
+                  await taskService.updateStatus(
+                    createdTask.id, 
+                    row.taskStatus, 
+                    false // Don't mark as completed yet
+                  );
+                } catch (updateErr: any) {
+                  console.warn(`Failed to update status for task ${createdTask.id}:`, updateErr);
+                  // Task was created, so count as success even if status update failed
+                }
+              } else if (row.taskStatus === 'Completed') {
+                // If status should be Completed, update it
+                try {
+                  await taskService.updateStatus(createdTask.id, 'Completed', true);
+                } catch (updateErr: any) {
+                  console.warn(`Failed to mark task ${createdTask.id} as completed:`, updateErr);
+                }
+              }
+              
+              results.success++;
+            } catch (err: any) {
+              const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+              const errorDetails = err.response?.data?.error || err.response?.data || '';
+              const fullError = errorDetails 
+                ? `${errorMsg} - ${JSON.stringify(errorDetails)}`
+                : errorMsg;
+              errors.push(`Row ${row.rowIndex} (${row.client}): ${fullError}`);
+              results.failed++;
+            }
+          })
+        );
+        
+        // Small delay between batches to avoid overwhelming the server
+        if (i + BATCH_SIZE < validRows.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      if (results.failed > 0) {
+        setImportError(`${results.success} tasks created successfully. ${results.failed} failed:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? `\n... and ${errors.length - 10} more errors` : ''}`);
+      } else {
+        setImportError(`Successfully created ${results.success} task(s)!`);
+      }
+
+      // Reload tasks
+      const allTasksData = await taskService.getAll();
+      const taskTypeForFilter = getTaskTypeForDepartment(department || '');
+      const projectIdsSet = new Set(projects.map((p: any) => p.id));
+      const departmentTasks = allTasksData.filter((t: any) => 
+        t.type === taskTypeForFilter && 
+        !t.isCompleted &&
+        t.status !== 'Completed' &&
+        projectIdsSet.has(t.projectId)
+      );
+      setTasks(departmentTasks);
+
+      // Clear preview after successful import
+      if (results.failed === 0) {
+        setTimeout(() => {
+          setExcelPreview([]);
+          setShowExcelImportModal(false);
+        }, 2000);
+      }
+    } catch (err: any) {
+      setImportError('Failed to create tasks: ' + (err.message || 'Unknown error'));
+    } finally {
+      setUploadingTasks(false);
+    }
+  };
+
+  // Load task templates from localStorage
+  useEffect(() => {
+    const savedTemplates = localStorage.getItem(`taskTemplates_${department}`);
+    if (savedTemplates) {
+      try {
+        setTaskTemplates(JSON.parse(savedTemplates));
+      } catch (error) {
+        console.error('Failed to load task templates:', error);
+      }
+    }
+  }, [department]);
+
+  // Save task template
+  const handleSaveTemplate = () => {
+    if (!templateData.name.trim() || !templateData.title.trim()) {
+      alert('Please enter a template name and task title');
+      return;
+    }
+
+    const newTemplate = {
+      id: Date.now().toString(),
+      department: department || '',
+      ...templateData
+    };
+
+    const updatedTemplates = [...taskTemplates, newTemplate];
+    setTaskTemplates(updatedTemplates);
+    localStorage.setItem(`taskTemplates_${department}`, JSON.stringify(updatedTemplates));
+    
+    setTemplateData({
+      name: '',
+      title: '',
+      description: '',
+      deliverableType: '',
+      defaultStatus: 'Todo'
+    });
+    setShowTemplateModal(false);
+    alert('Template saved successfully!');
+  };
+
+  // Load template into task form
+  const handleLoadTemplate = () => {
+    const template = taskTemplates.find((t: any) => t.id === selectedTemplate);
+    if (template) {
+      setNewTaskData({
+        ...newTaskData,
+        title: template.title,
+        description: template.description,
+      });
+      setShowTemplateModal(false);
+      setShowAddTaskModal(true);
+    }
   };
 
   // Load deliverables when project is selected
@@ -732,33 +1065,62 @@ const DepartmentView: React.FC = () => {
             );
           })()}
         </div>
-        <button
-          onClick={() => setShowAddTaskModal(true)}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            borderRadius: '0.5rem',
-            background: '#667eea',
-            color: 'white',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontWeight: 600,
-            fontSize: '0.9375rem',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#5568d3';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#667eea';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          <FaPlus /> Add New Task
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            onClick={() => setShowExcelImportModal(true)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: '1px solid #667eea',
+              borderRadius: '0.5rem',
+              background: 'white',
+              color: '#667eea',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f0f4ff';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <FaFileExcel /> Import from Excel
+          </button>
+          <button
+            onClick={() => setShowAddTaskModal(true)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              borderRadius: '0.5rem',
+              background: '#667eea',
+              color: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#5568d3';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#667eea';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <FaPlus /> Add New Task
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -1468,9 +1830,32 @@ const DepartmentView: React.FC = () => {
               padding: '2rem 2.5rem 1.5rem 2.5rem',
               borderBottom: '1px solid #f3f4f6'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
-                Add New Task - {department}
-              </h2>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                  Add New Task - {department}
+                </h2>
+                {taskTemplates.length > 0 && (
+                  <button
+                    onClick={() => setShowTemplateModal(true)}
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      background: 'transparent',
+                      border: '1px solid #667eea',
+                      color: '#667eea',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <FaSave /> Use Template
+                  </button>
+                )}
+              </div>
               <button 
                 onClick={() => {
                   setShowAddTaskModal(false);
@@ -1917,6 +2302,569 @@ const DepartmentView: React.FC = () => {
                 }}
               >
                 <FaPlus /> {creatingTask ? 'Creating...' : 'Create Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Import Modal */}
+      {showExcelImportModal && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            setShowExcelImportModal(false);
+            setExcelPreview([]);
+            setImportError('');
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            className="excel-import-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '900px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '2rem 2.5rem 1.5rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                Import Tasks from Excel
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowExcelImportModal(false);
+                  setExcelPreview([]);
+                  setImportError('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f9fafb';
+                  e.currentTarget.style.color = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '2rem 2.5rem',
+              gap: '1.5rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              <div style={{
+                padding: '1rem',
+                background: '#f0f4ff',
+                border: '1px solid #c7d2fe',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                color: '#4c51bf'
+              }}>
+                <strong>Instructions:</strong> Upload an Excel file with "Client" and "Status" columns. 
+                The system will match client names to existing projects and create tasks with the appropriate status.
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontWeight: 600, 
+                  color: '#374151', 
+                  fontSize: '0.9375rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  Select Excel File
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleExcelUpload}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+
+              {importError && (
+                <div style={{
+                  padding: '1rem',
+                  background: importError.includes('Successfully') ? '#d1fae5' : '#fee2e2',
+                  border: `1px solid ${importError.includes('Successfully') ? '#86efac' : '#fca5a5'}`,
+                  borderRadius: '8px',
+                  color: importError.includes('Successfully') ? '#065f46' : '#991b1b',
+                  fontSize: '0.875rem',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {importError}
+                </div>
+              )}
+
+              {excelPreview.length > 0 && (
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '1rem'
+                  }}>
+                    <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
+                      Preview ({excelPreview.length} rows)
+                    </h3>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                      {excelPreview.filter((r: any) => r.matched).length} matched, {excelPreview.filter((r: any) => !r.matched).length} not found
+                    </div>
+                  </div>
+                  <div style={{
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Row</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Client</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Task Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Project</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Match</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {excelPreview.map((row: any, index: number) => (
+                          <tr 
+                            key={index}
+                            style={{
+                              borderBottom: '1px solid #e5e7eb',
+                              background: row.matched ? 'white' : '#fef2f2'
+                            }}
+                          >
+                            <td style={{ padding: '0.75rem', color: '#6b7280' }}>{row.rowIndex}</td>
+                            <td style={{ padding: '0.75rem', color: '#111827' }}>{row.client}</td>
+                            <td style={{ padding: '0.75rem', color: '#111827' }}>{row.status}</td>
+                            <td style={{ padding: '0.75rem', color: '#111827' }}>
+                              <span style={{
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '4px',
+                                background: '#f3f4f6',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }}>
+                                {row.taskStatus}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem', color: '#111827' }}>
+                              {row.project ? row.project.name : '-'}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {row.matched ? (
+                                <span style={{ color: '#10b981', fontWeight: 500 }}>✓ Matched</span>
+                              ) : (
+                                <span style={{ color: '#ef4444', fontWeight: 500 }}>✗ Not Found</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              padding: '2rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              gap: '0.875rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExcelImportModal(false);
+                  setExcelPreview([]);
+                  setImportError('');
+                }}
+                disabled={uploadingTasks}
+                style={{
+                  background: '#ffffff',
+                  color: '#374151',
+                  border: '1.5px solid #e5e7eb',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: uploadingTasks ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: uploadingTasks ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkCreateTasks}
+                disabled={uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0}
+                style={{
+                  background: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? '#cbd5e1' : '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s',
+                  opacity: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? 0.5 : 1
+                }}
+              >
+                <FaUpload /> {uploadingTasks ? 'Creating Tasks...' : `Create ${excelPreview.filter((r: any) => r.matched).length} Task(s)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Task Modal */}
+      {showTemplateModal && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            setShowTemplateModal(false);
+            setTemplateData({
+              name: '',
+              title: '',
+              description: '',
+              deliverableType: '',
+              defaultStatus: 'Todo'
+            });
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            className="template-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '2rem 2.5rem 1.5rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                Task Templates
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setTemplateData({
+                    name: '',
+                    title: '',
+                    description: '',
+                    deliverableType: '',
+                    defaultStatus: 'Todo'
+                  });
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '2rem 2.5rem',
+              gap: '1.5rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              {taskTemplates.length > 0 && (
+                <div>
+                  <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#374151' }}>
+                    Existing Templates
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    {taskTemplates.map((template: any) => (
+                      <div
+                        key={template.id}
+                        style={{
+                          padding: '1rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
+                            {template.name}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            {template.title}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedTemplate(template.id);
+                            handleLoadTemplate();
+                          }}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: 500
+                          }}
+                        >
+                          Use Template
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#374151' }}>
+                  Create New Template
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                      Template Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={templateData.name}
+                      onChange={(e) => setTemplateData({ ...templateData, name: e.target.value })}
+                      placeholder="e.g., Standard Copy Task"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '0.9375rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                      Task Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={templateData.title}
+                      onChange={(e) => setTemplateData({ ...templateData, title: e.target.value })}
+                      placeholder="e.g., Create Copy for Landing Page"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '0.9375rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                      Description
+                    </label>
+                    <textarea
+                      value={templateData.description}
+                      onChange={(e) => setTemplateData({ ...templateData, description: e.target.value })}
+                      rows={3}
+                      placeholder="Task description..."
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '0.9375rem',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                      Default Status
+                    </label>
+                    <select
+                      value={templateData.defaultStatus}
+                      onChange={(e) => setTemplateData({ ...templateData, defaultStatus: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '0.9375rem'
+                      }}
+                    >
+                      <option value="Todo">Todo</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="In Review">In Review</option>
+                      <option value="For Approval">For Approval</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              padding: '2rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              gap: '0.875rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setTemplateData({
+                    name: '',
+                    title: '',
+                    description: '',
+                    deliverableType: '',
+                    defaultStatus: 'Todo'
+                  });
+                }}
+                style={{
+                  background: '#ffffff',
+                  color: '#374151',
+                  border: '1.5px solid #e5e7eb',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTemplate}
+                disabled={!templateData.name.trim() || !templateData.title.trim()}
+                style={{
+                  background: !templateData.name.trim() || !templateData.title.trim() ? '#cbd5e1' : '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: !templateData.name.trim() || !templateData.title.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s',
+                  opacity: !templateData.name.trim() || !templateData.title.trim() ? 0.5 : 1
+                }}
+              >
+                <FaSave /> Save Template
               </button>
             </div>
           </div>

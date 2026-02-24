@@ -7,9 +7,10 @@ import './CreateProjectModal.css';
 interface CreateProjectModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  onBulkSuccess?: () => void; // Optional: used to refresh data without closing modal
 }
 
-const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSuccess }) => {
+const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSuccess, onBulkSuccess }) => {
   const user = authService.getUser();
   const [formData, setFormData] = useState({
     clientName: '',
@@ -283,6 +284,11 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
 
       if (results.failed > 0) {
         setError(`${results.success} projects created successfully. ${results.failed} failed:\n${errors.join('\n')}`);
+      }
+
+      // Always refresh dashboard data after bulk create, but don't auto-close the modal
+      if (onBulkSuccess) {
+        onBulkSuccess();
       } else {
         onSuccess();
       }
