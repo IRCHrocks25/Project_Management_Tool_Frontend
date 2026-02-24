@@ -13,6 +13,8 @@ import CompletedProjects from './components/CompletedProjects';
 import ResetPassword from './components/ResetPassword';
 import ClientUpdateFormView from './components/ClientUpdateFormView';
 import FormBuilder from './components/FormBuilder';
+import DepartmentView from './components/DepartmentView';
+import MyProjectsView from './components/MyProjectsView';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -104,6 +106,24 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/department/:department"
+          element={
+            <PrivateRoute>
+              <DepartmentView />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/my-projects"
+          element={
+            <PrivateRoute>
+              <MyProjectsView />
+            </PrivateRoute>
+          }
+        />
+        {/* Fallback route - redirect to landing page if route not found */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

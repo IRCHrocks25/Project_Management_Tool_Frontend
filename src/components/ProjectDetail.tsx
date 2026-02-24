@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FaArrowLeft, 
@@ -212,6 +212,8 @@ const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
+  const tasksRef = useRef<any[]>([]);
+  const previousTasksKeyRef = useRef<string>('');
   const [activeTab, setActiveTab] = useState('overview');
   const [activeDeliverableTab, setActiveDeliverableTab] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -312,12 +314,23 @@ const ProjectDetail: React.FC = () => {
   }, [project?.deliverables, activeDeliverableTab]);
 
   // Check for updates whenever tasks or deliverable history changes
+  // Use a stable key to prevent unnecessary re-runs
+  const tasksKey = useMemo(() => {
+    return JSON.stringify(tasks.map((t: any) => ({ id: t.id, status: t.status, fileUrl: t.fileUrl })));
+  }, [tasks]);
+  
   useEffect(() => {
+    // Only run if tasks actually changed (not just reference)
+    if (tasksKey === previousTasksKeyRef.current) {
+      return;
+    }
+    previousTasksKeyRef.current = tasksKey;
+    
     if (id && project && deliverableHistory && Object.keys(deliverableHistory).length > 0) {
       checkForNewDeliverableUpdates(deliverableHistory, project, tasks, id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, deliverableHistory, project?.deliverables]);
+  }, [tasksKey, deliverableHistory, project?.deliverables]);
 
   // Check for updates when page becomes visible (user switches back to tab)
   useEffect(() => {
@@ -375,6 +388,7 @@ const ProjectDetail: React.FC = () => {
   }, [activeTab, id]);
 
   // Periodically check for new deliverable updates
+  // Use tasksRef to avoid re-running when tasks array reference changes
   useEffect(() => {
     if (!id || !project?.deliverables) return;
 
@@ -382,9 +396,10 @@ const ProjectDetail: React.FC = () => {
       try {
         const historyMap: Record<string, any[]> = {};
         
-        // Get all unique file URLs from tasks
+        // Get all unique file URLs from tasks (use ref to get latest)
+        const currentTasks = tasksRef.current;
         const allFileUrls = new Set<string>();
-        tasks.forEach((task: any) => {
+        currentTasks.forEach((task: any) => {
           if (task.fileUrl) {
             allFileUrls.add(task.fileUrl);
           }
@@ -407,7 +422,7 @@ const ProjectDetail: React.FC = () => {
         // Update history and check for new updates
         setDeliverableHistory(historyMap);
         if (project) {
-          checkForNewDeliverableUpdates(historyMap, project, tasks, id);
+          checkForNewDeliverableUpdates(historyMap, project, currentTasks, id);
         }
       } catch (error) {
         console.error('Failed to check for deliverable updates:', error);
@@ -417,12 +432,12 @@ const ProjectDetail: React.FC = () => {
     // Check immediately
     checkForUpdates();
     
-    // Then check every 15 seconds (more frequent for better responsiveness)
-    const interval = setInterval(checkForUpdates, 15000);
+    // Then check every 30 seconds (reduced frequency to improve performance)
+    const interval = setInterval(checkForUpdates, 30000);
     
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, project?.deliverables, tasks]);
+  }, [id, project?.deliverables?.length]); // Only depend on deliverables count, not tasks
 
   const loadActivityLog = async () => {
     if (!id) return;
@@ -586,6 +601,7 @@ const ProjectDetail: React.FC = () => {
       }
       
       setTasks(tasksToUse);
+      tasksRef.current = tasksToUse; // Keep ref in sync
       
       // Store initial task statuses for change detection
       if (id && tasksToUse.length > 0) {

@@ -2,6 +2,60 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* Department Kanban Styles */
+.department-kanban-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.department-kanban-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.department-kanban-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.department-kanban-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.department-kanban-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.department-kanban-column {
+  position: relative;
+}
+
+.department-kanban-column:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+}
+
+.department-kanban-column-content {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.department-kanban-column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.department-kanban-column-content::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.department-kanban-column-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.department-kanban-column-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .dashboard {
   min-height: 100vh;
   background: #fafbfc;

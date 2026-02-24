@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight, FaUser } from 'react-icons/fa';
@@ -21,9 +21,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   const pendingUpdatesRef = useRef<Map<string, any>>(new Map());
   // Track manually dragged projects (projectId -> targetStage) to show them even without tasks
   const manuallyDraggedRef = useRef<Map<string, string>>(new Map());
+  // Track previous projects to prevent infinite loops
+  const previousProjectsRef = useRef<string>('');
   
   // Sync localProjects when projects prop changes, but preserve pending updates
   useEffect(() => {
+    // Create a stable reference key from projects to detect actual changes
+    const projectsKey = JSON.stringify(projects.map((p: any) => ({ id: p.id, stage: p.stage })));
+    
+    // Only update if projects actually changed (not just reference)
+    if (projectsKey === previousProjectsRef.current) {
+      return;
+    }
+    
+    previousProjectsRef.current = projectsKey;
+    
     if (pendingUpdatesRef.current.size > 0) {
       // Merge server data with pending optimistic updates
       setLocalProjects((prevLocal) => {
@@ -73,7 +85,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
   };
   
-  const stages = getStagesForRole(user?.role || 'Project Manager');
+  const stages = useMemo(() => getStagesForRole(user?.role || 'Project Manager'), [user?.role]);
   
   // Map internal stage names to display stages
   const mapStageToDisplay = (internalStage: string): string => {
@@ -110,6 +122,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     // Use task-based filtering when tasks are provided (allows projects to appear in multiple columns)
     // This allows projects with tasks in different departments to appear across multiple columns
     // A project with Copy tasks appears in Copy Writing, Design tasks in Design, etc.
+    // BUT always fall back to stage-based filtering to ensure projects show up even without tasks
     if (tasks && tasks.length > 0) {
       // Map display stage to task types
       const taskTypesForStage: string[] = [];
@@ -148,7 +161,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
             .map((t: any) => t.projectId)
         );
         
-        // Map display stage to internal stages (for checking manually dragged projects)
+        // Map display stage to internal stages (for checking project stages)
         const internalStagesForColumn: string[] = [];
         if (displayStage === 'Copy Writing') {
           internalStagesForColumn.push('Copy', 'Copy Revision');
@@ -166,20 +179,25 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
           internalStagesForColumn.push('SEO/GEO Team');
         }
         
-        // Return projects that have tasks of this type OR were manually dragged to this column
+        // Return projects that have tasks of this type OR have a stage that matches this column
+        // This ensures projects show up based on their stage even if they don't have tasks yet
         // For CRM column, also show projects with Katalyst client type (primary or secondary)
-        return localProjects.filter((p: any) => {
+        const filtered = localProjects.filter((p: any) => {
           // Show if it has tasks of this type
           if (projectIdsWithActiveTasks.has(p.id)) {
             return true;
           }
           
-          // Show if it was manually dragged to this column (check both the tracked drag and stage match)
-          const wasManuallyDragged = manuallyDraggedRef.current.get(p.id) === displayStage;
-          const stageMatches = internalStagesForColumn.includes(p.stage);
+          // Show if project stage matches this column (primary way to show projects without tasks)
+          // This is the KEY fallback - always check stage even when tasks are provided
+          const stageMatches = internalStagesForColumn.length > 0 && internalStagesForColumn.includes(p.stage);
+          if (stageMatches) {
+            return true;
+          }
           
-          // Only show if it was manually dragged AND stage matches (to prevent false positives)
-          if (wasManuallyDragged && stageMatches) {
+          // Show if it was manually dragged to this column
+          const wasManuallyDragged = manuallyDraggedRef.current.get(p.id) === displayStage;
+          if (wasManuallyDragged) {
             return true;
           }
           
@@ -203,6 +221,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
           
           return false;
         });
+        
+        // CRITICAL FALLBACK: If no projects found with task-based filtering, 
+        // fall back to pure stage-based filtering to ensure projects always show up
+        if (filtered.length === 0 && internalStagesForColumn.length > 0) {
+          return localProjects.filter((p: any) => internalStagesForColumn.includes(p.stage));
+        }
+        
+        return filtered;
       }
       
       // For "Ready to Close" stage, use stage-based logic
@@ -485,16 +511,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
   };
 
-  // Debug: Log all projects and their stages
+  // Debug: Log all projects and their stages (only in development)
   useEffect(() => {
-    if (localProjects.length > 0) {
+    if (process.env.NODE_ENV === 'development' && localProjects.length > 0) {
       console.log('All projects in KanbanBoard:', localProjects.map((p: any) => ({ 
         name: p.clientName, 
         stage: p.stage 
       })));
       console.log('Display stages:', stages);
     }
-  }, [localProjects, stages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localProjects.length]); // Only depend on length to prevent excessive logging
 
   // Handle scroll indicators
   const [scrollState, setScrollState] = useState({ isScrolledLeft: false, isScrolledRight: true });
