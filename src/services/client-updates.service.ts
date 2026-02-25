@@ -40,6 +40,8 @@ export interface ClientUpdate {
   pm?: { name: string };
   emailSentAt: string;
   status: 'draft' | 'published' | 'responded';
+  notes?: string;
+  links?: string[];
   forms?: ClientUpdateForm[];
   createdAt: string;
   updatedAt: string;
@@ -71,11 +73,31 @@ export interface FormSubmission {
   submittedAt: string;
 }
 
+export interface ClientUpdateComment {
+  id: string;
+  updateId: string;
+  userId: string;
+  user?: { name: string; role?: string };
+  text: string;
+  mentionedUserIds?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const clientUpdatesService = {
-  async create(projectId: string): Promise<ClientUpdate> {
+  async create(projectId: string, notes?: string, links?: string[]): Promise<ClientUpdate> {
+    // Build payload - only include fields that are provided
+    const payload: any = { projectId };
+    if (notes) {
+      payload.notes = notes;
+    }
+    if (links && links.length > 0) {
+      payload.links = links;
+    }
+    
     const response = await axios.post(
       `${API_URL}/client-updates`,
-      { projectId },
+      payload,
       getAuthHeaders()
     );
     return response.data;
@@ -177,6 +199,23 @@ export const clientUpdatesService = {
       }
     );
     return response.data.url;
+  },
+
+  async createComment(updateId: string, text: string, mentionedUserIds?: string[]): Promise<ClientUpdateComment> {
+    const response = await axios.post(
+      `${API_URL}/client-updates/${updateId}/comments`,
+      { text, mentionedUserIds },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async getComments(updateId: string): Promise<ClientUpdateComment[]> {
+    const response = await axios.get(
+      `${API_URL}/client-updates/${updateId}/comments`,
+      getAuthHeaders()
+    );
+    return response.data;
   },
 };
 

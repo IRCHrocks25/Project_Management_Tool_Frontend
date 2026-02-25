@@ -648,6 +648,7 @@
 
 .list-content {
   max-height: calc(100vh - 400px);
+  min-height: 400px;
   overflow-y: auto;
 }
 
@@ -769,4 +770,25 @@
 .empty-list p {
   margin: 0;
   font-size: 1rem;
+}
+
+/* Side Modal Slide-in Animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
 }

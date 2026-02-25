@@ -35,6 +35,7 @@ import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
+import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
 import NotificationsModal from '../NotificationsModal';
 import SendForReviewModal from '../SendForReviewModal';
 import '../Dashboard.css';
@@ -96,6 +97,21 @@ const CRMDashboard: React.FC = () => {
   const [showEditCustomDeliverableInput, setShowEditCustomDeliverableInput] = useState(false);
   const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
   const [isUpdatingTaskInModal, setIsUpdatingTaskInModal] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [projectForUpdates, setProjectForUpdates] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [clientUpdates, setClientUpdates] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [showMentionDropdown, setShowMentionDropdown] = useState<{ updateId: string; position: number } | null>(null);
+  const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
+  const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
 
   // Load users once (they don't change often)
   useEffect(() => {
@@ -130,12 +146,15 @@ const CRMDashboard: React.FC = () => {
       if (!target.closest('.avatar-dropdown-container')) {
         setShowAvatarDropdown(false);
       }
+      if (!target.closest('[data-action-menu]')) {
+        setActionMenuOpen(null);
+      }
     };
-    if (showAvatarDropdown) {
+    if (showAvatarDropdown || actionMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAvatarDropdown]);
+  }, [showAvatarDropdown, actionMenuOpen]);
 
   const loadData = async () => {
     try {
@@ -455,6 +474,13 @@ const CRMDashboard: React.FC = () => {
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
+
+  // Get projects for list view (only projects with CRM tasks)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const projectsForListView = useMemo(() => {
+    const projectIds = new Set(tasks.map((t: any) => t.projectId));
+    return projects.filter((p: any) => projectIds.has(p.id));
+  }, [projects, tasks]);
 
   // Get task status for Kanban columns
   const getTaskStatus = (task: any): string => {
@@ -859,6 +885,98 @@ const CRMDashboard: React.FC = () => {
     if (!dueDate) return null;
     const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     return days;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleViewUpdatesClick = async (project: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectForUpdates(project);
+    setShowUpdatesModal(true);
+    await loadClientUpdates(project.id);
+  };
+
+  const loadClientUpdates = async (projectId: string) => {
+    try {
+      setLoadingUpdates(true);
+      const updates = await clientUpdatesService.getAllByProject(projectId);
+      setClientUpdates(updates);
+      if (updates && updates.length > 0) {
+        await Promise.all(updates.map(update => loadComments(update.id)));
+      }
+    } catch (error) {
+      console.error('Failed to load client updates:', error);
+      setClientUpdates([]);
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const loadComments = async (updateId: string) => {
+    try {
+      setLoadingComments({ ...loadingComments, [updateId]: true });
+      const commentsData = await clientUpdatesService.getComments(updateId);
+      setComments({ ...comments, [updateId]: commentsData });
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+      if ((error as any)?.response?.status !== 404) {
+        console.error('Error loading comments:', error);
+      }
+    } finally {
+      setLoadingComments({ ...loadingComments, [updateId]: false });
+    }
+  };
+
+  const extractMentions = (text: string): string[] => {
+    const mentionRegex = /@(\w+)/g;
+    const matches = text.match(mentionRegex);
+    if (!matches) return [];
+    
+    const mentionedUserIds: string[] = [];
+    matches.forEach(match => {
+      const username = match.substring(1);
+      const user = users.find(u => u.name === username);
+      if (user) {
+        mentionedUserIds.push(user.id);
+      }
+    });
+    return mentionedUserIds;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleCommentInput = (updateId: string, text: string, cursorPos?: number) => {
+    setCommentTexts({ ...commentTexts, [updateId]: text });
+    
+    const textBeforeCursor = text.substring(0, cursorPos || text.length);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        setShowMentionDropdown({ updateId, position: lastAtIndex + 1 });
+      } else {
+        setShowMentionDropdown(null);
+      }
+    } else {
+      setShowMentionDropdown(null);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleAddComment = async (updateId: string) => {
+    const comment = commentTexts[updateId]?.trim();
+    if (!comment) return;
+
+    try {
+      setSubmittingComment({ ...submittingComment, [updateId]: true });
+      const mentionedUserIds = extractMentions(comment);
+      await clientUpdatesService.createComment(updateId, comment, mentionedUserIds.length > 0 ? mentionedUserIds : undefined);
+      await loadComments(updateId);
+      setCommentTexts({ ...commentTexts, [updateId]: '' });
+    } catch (error: any) {
+      console.error('Failed to add comment:', error);
+      alert(`Failed to add comment: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
+    } finally {
+      setSubmittingComment({ ...submittingComment, [updateId]: false });
+    }
   };
 
   // Department menu items with icons
@@ -1763,14 +1881,26 @@ const CRMDashboard: React.FC = () => {
                               }}
                               onClick={(e) => {
                                 const target = e.target as HTMLElement;
-                                if (target.closest('input[type="checkbox"]') || 
-                                    target.closest('select') || 
+                                
+                                // FIRST: Check if click is on the edit button or any button - this must be checked first!
+                                if (target.closest('button[data-edit-task]') || 
                                     target.closest('button') ||
-                                    target.tagName === 'INPUT' || 
-                                    target.tagName === 'SELECT' ||
-                                    target.tagName === 'BUTTON') {
+                                    target.tagName === 'BUTTON' ||
+                                    (target.tagName === 'svg' && target.closest('button')) ||
+                                    (target.tagName === 'path' && target.closest('button'))) {
+                                  // Button click - let the button handle it, don't navigate
                                   return;
                                 }
+                                
+                                // Check if click is on other interactive elements
+                                if (target.closest('input[type="checkbox"]') || 
+                                    target.closest('select') || 
+                                    target.tagName === 'INPUT' || 
+                                    target.tagName === 'SELECT') {
+                                  return;
+                                }
+                                
+                                // If we get here, it's a card click - navigate to project
                                 navigate(`/project/${task.projectId}`);
                               }}
                               onMouseEnter={(e) => {
@@ -1823,33 +1953,49 @@ const CRMDashboard: React.FC = () => {
                                       {projectName}
                                     </div>
                                     <button
+                                      type="button"
+                                      data-edit-task="true"
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        e.preventDefault();
                                         handleEditTask(task);
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
                                       }}
                                       style={{
                                         background: 'transparent',
-                                        border: 'none',
+                                        border: '1px solid #06b6d4',
                                         color: '#06b6d4',
                                         cursor: 'pointer',
-                                        padding: '0.25rem',
+                                        padding: '0.5rem',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         borderRadius: '4px',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.2s',
+                                        zIndex: 100,
+                                        position: 'relative',
+                                        outline: 'none',
+                                        minWidth: '36px',
+                                        minHeight: '36px'
                                       }}
                                       onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#cffafe';
+                                        e.currentTarget.style.background = '#ecfeff';
                                         e.currentTarget.style.color = '#0891b2';
+                                        e.currentTarget.style.borderColor = '#0891b2';
+                                        e.currentTarget.style.transform = 'scale(1.1)';
                                       }}
                                       onMouseLeave={(e) => {
                                         e.currentTarget.style.background = 'transparent';
                                         e.currentTarget.style.color = '#06b6d4';
+                                        e.currentTarget.style.borderColor = '#06b6d4';
+                                        e.currentTarget.style.transform = 'scale(1)';
                                       }}
                                       title="Edit Task"
                                     >
-                                      <FaEdit style={{ fontSize: '0.75rem' }} />
+                                      <FaEdit style={{ fontSize: '1rem', pointerEvents: 'none' }} />
                                     </button>
                                   </div>
                                   <div style={{

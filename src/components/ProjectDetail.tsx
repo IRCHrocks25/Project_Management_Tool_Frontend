@@ -269,6 +269,8 @@ const ProjectDetail: React.FC = () => {
   const [clientUpdates, setClientUpdates] = useState<ClientUpdate[]>([]);
   const [loadingUpdates, setLoadingUpdates] = useState(false);
   const [showCreateUpdateModal, setShowCreateUpdateModal] = useState(false);
+  const [emailNotes, setEmailNotes] = useState('');
+  const [emailLinks, setEmailLinks] = useState<string[]>(['']);
   const [selectedUpdate, setSelectedUpdate] = useState<ClientUpdate | null>(null);
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [currentForm, setCurrentForm] = useState<ClientUpdateForm | null>(null);
@@ -472,13 +474,38 @@ const ProjectDetail: React.FC = () => {
   const handleCreateUpdate = async () => {
     if (!id) return;
     try {
-      const update = await clientUpdatesService.create(id);
+      // Filter out empty links
+      const validLinks = emailLinks.filter(link => link.trim() !== '');
+      const update = await clientUpdatesService.create(id, emailNotes || undefined, validLinks.length > 0 ? validLinks : undefined);
       setClientUpdates([update, ...clientUpdates]);
       setShowCreateUpdateModal(false);
+      // Reset form fields
+      setEmailNotes('');
+      setEmailLinks(['']);
     } catch (error: any) {
       console.error('Failed to create client update:', error);
       alert('Failed to create client update entry');
     }
+  };
+
+  const addEmailLink = () => {
+    setEmailLinks([...emailLinks, '']);
+  };
+
+  const removeEmailLink = (index: number) => {
+    const newLinks = emailLinks.filter((_, i) => i !== index);
+    // Ensure at least one empty link field exists
+    if (newLinks.length === 0) {
+      setEmailLinks(['']);
+    } else {
+      setEmailLinks(newLinks);
+    }
+  };
+
+  const updateEmailLink = (index: number, value: string) => {
+    const newLinks = [...emailLinks];
+    newLinks[index] = value;
+    setEmailLinks(newLinks);
   };
 
   const handleCreateForm = async () => {
@@ -4250,6 +4277,105 @@ const ProjectDetail: React.FC = () => {
                         </div>
                       </div>
 
+                      {(update.notes || (update.links && update.links.length > 0)) && (
+                        <div style={{ 
+                          marginTop: '1rem', 
+                          paddingTop: '1rem', 
+                          borderTop: '1px solid #e5e7eb' 
+                        }}>
+                          {update.notes && (
+                            <div style={{ marginBottom: (update.links && update.links.length > 0) ? '0.75rem' : '0' }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'flex-start', 
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem'
+                              }}>
+                                <FaStickyNote style={{ 
+                                  color: '#f59e0b', 
+                                  fontSize: '0.875rem', 
+                                  marginTop: '0.125rem',
+                                  flexShrink: 0
+                                }} />
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 500, 
+                                    color: '#64748b',
+                                    marginBottom: '0.25rem'
+                                  }}>
+                                    Notes:
+                                  </div>
+                                  <div style={{ 
+                                    color: '#374151', 
+                                    fontSize: '0.875rem',
+                                    lineHeight: '1.5',
+                                    whiteSpace: 'pre-wrap'
+                                  }}>
+                                    {update.notes}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {update.links && update.links.length > 0 && (
+                            <div>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem'
+                              }}>
+                                <FaLink style={{ 
+                                  color: '#667eea', 
+                                  fontSize: '0.875rem',
+                                  flexShrink: 0
+                                }} />
+                                <div style={{ 
+                                  fontSize: '0.75rem', 
+                                  fontWeight: 500, 
+                                  color: '#64748b'
+                                }}>
+                                  Links:
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {update.links.map((link, linkIndex) => (
+                                  <a
+                                    key={linkIndex}
+                                    href={link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      color: '#667eea',
+                                      fontSize: '0.875rem',
+                                      textDecoration: 'none',
+                                      wordBreak: 'break-all',
+                                      display: 'inline-block',
+                                      maxWidth: '100%',
+                                      padding: '0.5rem',
+                                      background: '#f9fafb',
+                                      borderRadius: '6px',
+                                      border: '1px solid #e5e7eb',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.textDecoration = 'underline';
+                                      e.currentTarget.style.background = '#f3f4f6';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.textDecoration = 'none';
+                                      e.currentTarget.style.background = '#f9fafb';
+                                    }}
+                                  >
+                                    {link}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {update.forms && update.forms.length > 0 ? (
                         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
                           <div style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b' }}>Forms:</div>
@@ -5053,23 +5179,165 @@ const ProjectDetail: React.FC = () => {
 
       {/* Create Client Update Modal */}
       {showCreateUpdateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateUpdateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => {
+          setShowCreateUpdateModal(false);
+          setEmailNotes('');
+          setEmailLinks(['']);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <h2>Log Email Sent</h2>
-              <button className="close-button" onClick={() => setShowCreateUpdateModal(false)}>
+              <button className="close-button" onClick={() => {
+                setShowCreateUpdateModal(false);
+                setEmailNotes('');
+                setEmailLinks(['']);
+              }}>
                 <FaTimes />
               </button>
             </div>
             <div className="modal-body">
-              <p style={{ color: '#64748b', marginBottom: '1rem' }}>
-                This will create a new entry recording that an email was sent to the client. You can then create a form to send to the client.
+              <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+                Record that an email was sent to the client. Add notes and attach links if necessary.
               </p>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 500, 
+                  color: '#1e293b',
+                  fontSize: '0.875rem'
+                }}>
+                  <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b' }} />
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={emailNotes}
+                  onChange={(e) => setEmailNotes(e.target.value)}
+                  placeholder="Add any notes about this email..."
+                  style={{
+                    width: '100%',
+                    minHeight: '120px',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    lineHeight: '1.5',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '0.5rem'
+                }}>
+                  <label style={{ 
+                    fontWeight: 500, 
+                    color: '#1e293b',
+                    fontSize: '0.875rem',
+                    margin: 0
+                  }}>
+                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea' }} />
+                    Links (Optional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addEmailLink}
+                    style={{
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      padding: '0.375rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      color: '#374151',
+                      fontWeight: 500,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e5e7eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f3f4f6';
+                    }}
+                  >
+                    <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
+                  </button>
+                </div>
+                {emailLinks.map((link, index) => (
+                  <div key={index} style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    marginBottom: index < emailLinks.length - 1 ? '0.5rem' : '0',
+                    alignItems: 'flex-start'
+                  }}>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => updateEmailLink(index, e.target.value)}
+                      placeholder="https://example.com"
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    {emailLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeEmailLink(index)}
+                        style={{
+                          background: '#fee2e2',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '40px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fecaca';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#fee2e2';
+                        }}
+                      >
+                        <FaTimes style={{ fontSize: '0.75rem' }} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#64748b', 
+                  marginTop: '0.5rem',
+                  marginBottom: 0
+                }}>
+                  Attach links to relevant documents, files, or resources
+                </p>
+              </div>
             </div>
             <div className="modal-footer">
               <button
                 className="btn-secondary"
-                onClick={() => setShowCreateUpdateModal(false)}
+                onClick={() => {
+                  setShowCreateUpdateModal(false);
+                  setEmailNotes('');
+                  setEmailLinks(['']);
+                }}
               >
                 Cancel
               </button>

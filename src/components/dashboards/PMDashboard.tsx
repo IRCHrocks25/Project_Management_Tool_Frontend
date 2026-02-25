@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
+import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
 import KanbanBoard from '../KanbanBoard';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
@@ -33,6 +34,22 @@ const PMDashboard: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [projectToComplete, setProjectToComplete] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [showLogEmailModal, setShowLogEmailModal] = useState(false);
+  const [projectForEmailLog, setProjectForEmailLog] = useState<any>(null);
+  const [emailNotes, setEmailNotes] = useState('');
+  const [emailLinks, setEmailLinks] = useState<string[]>(['']);
+  const [loggingEmail, setLoggingEmail] = useState(false);
+  const [emailLogsTab, setEmailLogsTab] = useState<'logs' | 'new'>('logs');
+  const [clientUpdates, setClientUpdates] = useState<any[]>([]);
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [showMentionDropdown, setShowMentionDropdown] = useState<{ updateId: string; position: number } | null>(null);
+  const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
+  const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
+  const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string }>>({});
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview'>('overview');
@@ -83,6 +100,9 @@ const PMDashboard: React.FC = () => {
         console.error('Failed to load stats:', statsError);
         // Don't block UI if stats fail
       }
+      
+      // Load last email logs in background (non-blocking)
+      loadLastEmailLogs(projectsData);
     } catch (error) {
       console.error('Failed to load data:', error);
       setLoading(false);
@@ -202,6 +222,9 @@ const PMDashboard: React.FC = () => {
       if (!target.closest('.avatar-dropdown-container')) {
         setShowAvatarDropdown(false);
       }
+      if (!target.closest('[data-action-menu]')) {
+        setActionMenuOpen(null);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -301,6 +324,221 @@ const PMDashboard: React.FC = () => {
     } finally {
       setCompleting(false);
     }
+  };
+
+  const handleLogEmailClick = async (project: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectForEmailLog(project);
+    setShowLogEmailModal(true);
+    setEmailNotes('');
+    setEmailLinks(['']);
+    setEmailLogsTab('logs');
+    // Load existing client updates
+    const updates = await loadClientUpdates(project.id);
+    // Load users for mentions
+    await loadUsers();
+    // Load comments for all updates (in parallel)
+    if (updates && updates.length > 0) {
+      await Promise.all(updates.map(update => loadComments(update.id)));
+    }
+  };
+
+  const loadClientUpdates = async (projectId: string) => {
+    try {
+      setLoadingUpdates(true);
+      const updates = await clientUpdatesService.getAllByProject(projectId);
+      setClientUpdates(updates);
+      return updates;
+    } catch (error) {
+      console.error('Failed to load client updates:', error);
+      setClientUpdates([]);
+      return [];
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const usersData = await authService.getAllUsers();
+      console.log('Loaded users:', usersData);
+      setUsers(usersData || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      setUsers([]);
+    }
+  };
+
+  const handleLogEmailSubmit = async () => {
+    if (!projectForEmailLog) return;
+    
+    try {
+      setLoggingEmail(true);
+      const validLinks = emailLinks.filter(link => link.trim() !== '');
+      await clientUpdatesService.create(
+        projectForEmailLog.id,
+        emailNotes || undefined,
+        validLinks.length > 0 ? validLinks : undefined
+      );
+      // Reload updates
+      await loadClientUpdates(projectForEmailLog.id);
+      // Update last email log for this project
+      const updates = await clientUpdatesService.getAllByProject(projectForEmailLog.id);
+      if (updates && updates.length > 0) {
+        const lastUpdate = updates[0];
+        setLastEmailLogs(prev => ({
+          ...prev,
+          [projectForEmailLog.id]: {
+            date: lastUpdate.emailSentAt,
+            pmName: lastUpdate.pm?.name,
+          }
+        }));
+      }
+      // Switch to logs tab and reset form
+      setEmailLogsTab('logs');
+      setEmailNotes('');
+      setEmailLinks(['']);
+      alert('Email logged successfully!');
+    } catch (error: any) {
+      console.error('Failed to log email:', error);
+      alert('Failed to log email. Please try again.');
+    } finally {
+      setLoggingEmail(false);
+    }
+  };
+
+  const handleAddComment = async (updateId: string) => {
+    const comment = commentTexts[updateId]?.trim();
+    if (!comment) return;
+
+    try {
+      setSubmittingComment({ ...submittingComment, [updateId]: true });
+      // Extract mentioned user IDs from text (look for @username patterns)
+      const mentionedUserIds = extractMentions(comment);
+      
+      // Call backend API
+      await clientUpdatesService.createComment(updateId, comment, mentionedUserIds.length > 0 ? mentionedUserIds : undefined);
+      
+      // Reload comments
+      await loadComments(updateId);
+      
+      // Clear comment text
+      setCommentTexts({ ...commentTexts, [updateId]: '' });
+    } catch (error: any) {
+      console.error('Failed to add comment:', error);
+      if (error?.response?.status === 404) {
+        alert('Comment functionality is not yet available. Please run the migration script and implement the backend endpoints.');
+      } else {
+        alert(`Failed to add comment: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
+      }
+    } finally {
+      setSubmittingComment({ ...submittingComment, [updateId]: false });
+    }
+  };
+
+  const extractMentions = (text: string): string[] => {
+    const mentionRegex = /@(\w+)/g;
+    const matches = text.match(mentionRegex);
+    if (!matches) return [];
+    
+    // Convert usernames to user IDs
+    const mentionedUserIds: string[] = [];
+    matches.forEach(match => {
+      const username = match.substring(1); // Remove @
+      const user = users.find(u => u.name === username);
+      if (user) {
+        mentionedUserIds.push(user.id);
+      }
+    });
+    return mentionedUserIds;
+  };
+
+  const loadComments = async (updateId: string) => {
+    try {
+      setLoadingComments({ ...loadingComments, [updateId]: true });
+      const commentsData = await clientUpdatesService.getComments(updateId);
+      setComments({ ...comments, [updateId]: commentsData });
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+      // Don't show error if endpoint doesn't exist yet
+      if ((error as any)?.response?.status !== 404) {
+        console.error('Error loading comments:', error);
+      }
+    } finally {
+      setLoadingComments({ ...loadingComments, [updateId]: false });
+    }
+  };
+
+  const loadLastEmailLogs = async (projects: any[]) => {
+    try {
+      const logsMap: Record<string, { date: string; pmName?: string }> = {};
+      
+      // Load last email log for each project in parallel
+      await Promise.all(
+        projects.map(async (project) => {
+          try {
+            const updates = await clientUpdatesService.getAllByProject(project.id);
+            if (updates && updates.length > 0) {
+              // Get the most recent update (they're already sorted DESC by createdAt)
+              const lastUpdate = updates[0];
+              logsMap[project.id] = {
+                date: lastUpdate.emailSentAt,
+                pmName: lastUpdate.pm?.name,
+              };
+            }
+          } catch (error) {
+            // Silently fail for individual projects
+            console.error(`Failed to load email logs for project ${project.id}:`, error);
+          }
+        })
+      );
+      
+      setLastEmailLogs(logsMap);
+    } catch (error) {
+      console.error('Failed to load email logs:', error);
+    }
+  };
+
+  const handleCommentInput = (updateId: string, value: string, cursorPosition: number) => {
+    setCommentTexts({ ...commentTexts, [updateId]: value });
+    
+    // Check if user typed @
+    const textBeforeCursor = value.substring(0, cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      // Show dropdown if @ is followed by no space (still typing username)
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        console.log('Showing mention dropdown for update:', updateId, 'Users available:', users.length);
+        setShowMentionDropdown({ updateId, position: lastAtIndex + 1 });
+      } else {
+        // Hide dropdown if there's a space or newline after @
+        setShowMentionDropdown(null);
+      }
+    } else {
+      // No @ found, hide dropdown
+      setShowMentionDropdown(null);
+    }
+  };
+
+  const addEmailLink = () => {
+    setEmailLinks([...emailLinks, '']);
+  };
+
+  const removeEmailLink = (index: number) => {
+    const newLinks = emailLinks.filter((_, i) => i !== index);
+    if (newLinks.length === 0) {
+      setEmailLinks(['']);
+    } else {
+      setEmailLinks(newLinks);
+    }
+  };
+
+  const updateEmailLink = (index: number, value: string) => {
+    const newLinks = [...emailLinks];
+    newLinks[index] = value;
+    setEmailLinks(newLinks);
   };
 
 
@@ -1418,12 +1656,14 @@ const PMDashboard: React.FC = () => {
                     style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                   />
                 </div>
-                <div className="list-header-cell" style={{ flex: '2' }}>Project Name</div>
-                <div className="list-header-cell">Client Type</div>
-                <div className="list-header-cell">Priority</div>
-                <div className="list-header-cell">Stage</div>
-                <div className="list-header-cell">Days in Stage</div>
-                <div className="list-header-cell">Actions</div>
+                <div className="list-header-cell" style={{ flex: '2', minWidth: '200px' }}>Project Name</div>
+                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Client Type</div>
+                <div className="list-header-cell" style={{ width: '100px', flex: '0 0 100px' }}>Priority</div>
+                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Stage</div>
+                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Days in Stage</div>
+                <div className="list-header-cell" style={{ width: '150px', flex: '0 0 150px' }}>Who</div>
+                <div className="list-header-cell" style={{ width: '160px', flex: '0 0 160px' }}>Last Email Log</div>
+                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px', textAlign: 'center' }}>Actions</div>
               </div>
               <div className="list-content">
                 {filteredProjects.length === 0 ? (
@@ -1455,83 +1695,253 @@ const PMDashboard: React.FC = () => {
                             style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                           />
                         </div>
-                        <div className="list-cell" style={{ flex: '2', fontWeight: 600 }}>
+                        <div className="list-cell" style={{ flex: '2', minWidth: '200px', fontWeight: 600 }}>
                           {project.clientName}
                         </div>
-                        <div className="list-cell">
+                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
                           <span className={`client-type-badge ${project.clientType?.toLowerCase()}`}>
                             {project.clientType}
                           </span>
                         </div>
-                        <div className="list-cell">
+                        <div className="list-cell" style={{ width: '100px', flex: '0 0 100px' }}>
                           <span className={`priority-badge priority-${project.priority?.toLowerCase()}`}>
                             {project.priority}
                           </span>
                         </div>
-                        <div className="list-cell">
+                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
                           <span className="stage-badge">{project.stage}</span>
                         </div>
-                        <div className="list-cell">{daysInStage} {daysInStage === 1 ? 'day' : 'days'}</div>
-                        <div className="list-cell" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <button 
-                            className="view-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/project/${project.id}`);
-                            }}
-                          >
-                            View
-                          </button>
-                          <button 
-                            className="view-btn"
-                            onClick={(e) => handleCompleteClick(project.id, e)}
-                            style={{
-                              background: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.5rem 1rem',
-                              borderRadius: '0.375rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              fontSize: '0.875rem'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#059669';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#10b981';
-                            }}
-                          >
-                            <FaCheckCircle />
-                            Mark Complete
-                          </button>
-                          <button 
-                            className="view-btn"
-                            onClick={(e) => handleArchiveClick(project.id, e)}
-                            style={{
-                              background: '#64748b',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.5rem 1rem',
-                              borderRadius: '0.375rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              fontSize: '0.875rem'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#475569';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#64748b';
-                            }}
-                          >
-                            <FaArchive />
-                            Archive
-                          </button>
+                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
+                          {daysInStage} {daysInStage === 1 ? 'day' : 'days'}
+                        </div>
+                        <div className="list-cell" style={{ width: '150px', flex: '0 0 150px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
+                          <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                            {project.pm?.name || 'Unassigned'}
+                          </span>
+                        </div>
+                        <div className="list-cell" style={{ width: '160px', flex: '0 0 160px' }}>
+                          {lastEmailLogs[project.id] ? (() => {
+                            const lastLog = lastEmailLogs[project.id];
+                            const logDate = new Date(lastLog.date);
+                            const daysSinceLog = Math.floor((Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+                            const isOverdue = daysSinceLog >= 7;
+                            
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                <div style={{ 
+                                  fontSize: '0.875rem', 
+                                  color: isOverdue ? '#dc2626' : '#374151',
+                                  fontWeight: isOverdue ? 600 : 400,
+                                }}>
+                                  {logDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })}
+                                </div>
+                                <div style={{ 
+                                  fontSize: '0.75rem', 
+                                  color: isOverdue ? '#dc2626' : '#64748b',
+                                }}>
+                                  {logDate.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </div>
+                                {isOverdue && (
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    color: '#dc2626',
+                                    fontWeight: 500,
+                                    marginTop: '0.25rem',
+                                  }}>
+                                    {daysSinceLog} days ago
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })() : (
+                            <span style={{ fontSize: '0.875rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                              No logs
+                            </span>
+                          )}
+                        </div>
+                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <div style={{ position: 'relative', display: 'inline-block' }} data-action-menu>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActionMenuOpen(actionMenuOpen === project.id ? null : project.id);
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '0.375rem',
+                                padding: '0.5rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '36px',
+                                height: '36px',
+                                color: '#64748b',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f1f5f9';
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.color = '#475569';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.borderColor = '#e2e8f0';
+                                e.currentTarget.style.color = '#64748b';
+                              }}
+                            >
+                              <FaEllipsisV style={{ fontSize: '1rem' }} />
+                            </button>
+                            {actionMenuOpen === project.id && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: '0.25rem',
+                                  background: 'white',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '0.5rem',
+                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                  zIndex: 9999,
+                                  minWidth: '180px',
+                                  overflow: 'hidden',
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionMenuOpen(null);
+                                    navigate(`/project/${project.id}`);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    transition: 'background 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f8fafc';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }}
+                                >
+                                  <FaEye style={{ fontSize: '0.875rem', color: '#3b82f6' }} />
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionMenuOpen(null);
+                                    handleLogEmailClick(project, e);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    transition: 'background 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f8fafc';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }}
+                                >
+                                  <FaEnvelope style={{ fontSize: '0.875rem', color: '#667eea' }} />
+                                  Log Email
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionMenuOpen(null);
+                                    handleCompleteClick(project.id, e);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    transition: 'background 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f8fafc';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }}
+                                >
+                                  <FaCheckCircle style={{ fontSize: '0.875rem', color: '#10b981' }} />
+                                  Mark Complete
+                                </button>
+                                <div style={{ height: '1px', background: '#e2e8f0', margin: '0.25rem 0' }} />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionMenuOpen(null);
+                                    handleArchiveClick(project.id, e);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    fontSize: '0.875rem',
+                                    color: '#374151',
+                                    transition: 'background 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f8fafc';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }}
+                                >
+                                  <FaArchive style={{ fontSize: '0.875rem', color: '#64748b' }} />
+                                  Archive
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1757,6 +2167,615 @@ const PMDashboard: React.FC = () => {
         type="info"
         loading={completing}
       />
+
+      {/* Log Email Side Modal */}
+      {showLogEmailModal && projectForEmailLog && (
+        <>
+          <div 
+            className="modal-overlay" 
+            onClick={() => {
+              setShowLogEmailModal(false);
+              setProjectForEmailLog(null);
+              setEmailNotes('');
+              setEmailLinks(['']);
+              setClientUpdates([]);
+                  setEmailLogsTab('logs');
+                  setCommentTexts({});
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              width: '500px',
+              height: '100vh',
+              background: 'white',
+              boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.15)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.3s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>
+                  Email Logs
+                </h2>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
+                  {projectForEmailLog.clientName}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowLogEmailModal(false);
+                  setProjectForEmailLog(null);
+                  setEmailNotes('');
+                  setEmailLinks(['']);
+                  setClientUpdates([]);
+                  setEmailLogsTab('logs');
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '0.375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid #e5e7eb',
+              padding: '0 1.5rem',
+            }}>
+              <button
+                onClick={() => setEmailLogsTab('logs')}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: emailLogsTab === 'logs' ? '2px solid #667eea' : '2px solid transparent',
+                  color: emailLogsTab === 'logs' ? '#667eea' : '#64748b',
+                  fontWeight: emailLogsTab === 'logs' ? 600 : 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Logs ({clientUpdates.length})
+              </button>
+              <button
+                onClick={() => setEmailLogsTab('new')}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: emailLogsTab === 'new' ? '2px solid #667eea' : '2px solid transparent',
+                  color: emailLogsTab === 'new' ? '#667eea' : '#64748b',
+                  fontWeight: emailLogsTab === 'new' ? 600 : 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                New Log
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+            }}>
+              {emailLogsTab === 'logs' ? (
+                /* Existing Logs Tab */
+                loadingUpdates ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    Loading logs...
+                  </div>
+                ) : clientUpdates.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    <FaEnvelope style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
+                    <p>No email logs yet. Click "New Log" to create one.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {clientUpdates.map((update) => (
+                      <div
+                        key={update.id}
+                        style={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '1.5rem',
+                          background: 'white',
+                        }}
+                      >
+                        {/* Log Header */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '1rem',
+                        }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                              <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
+                              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
+                                {update.pm?.name || 'PM'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {new Date(update.emailSentAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </div>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
+                            color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                          }}>
+                            {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                          </span>
+                        </div>
+
+                        {/* Notes */}
+                        {update.notes && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>
+                                  Note:
+                                </div>
+                                <div style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                  {update.notes}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Links */}
+                        {update.links && update.links.length > 0 && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              <FaLink style={{ color: '#667eea', fontSize: '0.875rem', flexShrink: 0 }} />
+                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
+                                Links:
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1.5rem' }}>
+                              {update.links.map((link: string, linkIndex: number) => (
+                                <a
+                                  key={linkIndex}
+                                  href={link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: '#667eea',
+                                    fontSize: '0.875rem',
+                                    textDecoration: 'none',
+                                    wordBreak: 'break-all',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.textDecoration = 'underline';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.textDecoration = 'none';
+                                  }}
+                                >
+                                  {link}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Existing Comments */}
+                        {comments[update.id] && comments[update.id].length > 0 && (
+                          <div style={{
+                            marginTop: '1rem',
+                            paddingTop: '1rem',
+                            borderTop: '1px solid #e5e7eb',
+                          }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                              Comments ({comments[update.id].length}):
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              {comments[update.id].map((comment) => (
+                                <div
+                                  key={comment.id}
+                                  style={{
+                                    background: '#f9fafb',
+                                    borderRadius: '6px',
+                                    padding: '0.75rem',
+                                    border: '1px solid #e5e7eb',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>
+                                        {comment.user?.name || 'User'}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                      {new Date(comment.createdAt).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                    {comment.text}
+                                  </div>
+                                  {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#667eea' }}>
+                                      Mentioned: {comment.mentionedUserIds.length} user(s)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Comments Section with @ Mentions */}
+                        <div style={{
+                          marginTop: '1rem',
+                          paddingTop: '1rem',
+                          borderTop: '1px solid #e5e7eb',
+                          position: 'relative',
+                        }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                            Add Comment (use @ to mention users):
+                          </div>
+                          <textarea
+                            value={commentTexts[update.id] || ''}
+                            onChange={(e) => {
+                              const cursorPos = e.target.selectionStart || 0;
+                              handleCommentInput(update.id, e.target.value, cursorPos);
+                            }}
+                            placeholder="Write a comment... Use @ to mention users"
+                            style={{
+                              width: '100%',
+                              minHeight: '80px',
+                              padding: '0.75rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontFamily: 'inherit',
+                              resize: 'vertical',
+                              marginBottom: '0.5rem',
+                            }}
+                          />
+                          {showMentionDropdown && showMentionDropdown.updateId === update.id && (
+                            <div style={{
+                              position: 'absolute',
+                              background: 'white',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                              maxHeight: '200px',
+                              overflowY: 'auto',
+                              zIndex: 10000,
+                              top: '100%',
+                              left: '0',
+                              right: '0',
+                              marginTop: '0.25rem',
+                              minWidth: '200px',
+                            }}>
+                              {users.length === 0 ? (
+                                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                  Loading users...
+                                </div>
+                              ) : (
+                                users.map((user: any) => (
+                                <div
+                                  key={user.id}
+                                  onClick={() => {
+                                    const currentText = commentTexts[update.id] || '';
+                                    const beforeCursor = currentText.substring(0, showMentionDropdown.position - 1);
+                                    const afterCursor = currentText.substring(showMentionDropdown.position);
+                                    const newText = `${beforeCursor}@${user.name} ${afterCursor}`;
+                                    setCommentTexts({ ...commentTexts, [update.id]: newText });
+                                    setShowMentionDropdown(null);
+                                    // Focus back on textarea
+                                    setTimeout(() => {
+                                      const textarea = document.querySelector(`textarea[value*="${newText.substring(0, 20)}"]`) as HTMLTextAreaElement;
+                                      if (textarea) {
+                                        const newCursorPos = beforeCursor.length + `@${user.name} `.length;
+                                        textarea.focus();
+                                        textarea.setSelectionRange(newCursorPos, newCursorPos);
+                                      }
+                                    }, 0);
+                                  }}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f3f4f6';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'white';
+                                  }}
+                                >
+                                  {user.name} ({user.role || 'User'})
+                                </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleAddComment(update.id)}
+                            disabled={!commentTexts[update.id]?.trim() || submittingComment[update.id]}
+                            style={{
+                              background: submittingComment[update.id] ? '#9ca3af' : '#667eea',
+                              border: 'none',
+                              color: 'white',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              cursor: submittingComment[update.id] ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {submittingComment[update.id] ? 'Posting...' : 'Post Comment'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                /* New Log Tab */
+                <>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 500, 
+                  color: '#1e293b',
+                  fontSize: '0.875rem'
+                }}>
+                  <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b', display: 'inline' }} />
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={emailNotes}
+                  onChange={(e) => setEmailNotes(e.target.value)}
+                  placeholder="Add any notes about this email..."
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    lineHeight: '1.5',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '0.5rem'
+                }}>
+                  <label style={{ 
+                    fontWeight: 500, 
+                    color: '#1e293b',
+                    fontSize: '0.875rem',
+                    margin: 0
+                  }}>
+                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea', display: 'inline' }} />
+                    Links (Optional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addEmailLink}
+                    style={{
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      padding: '0.375rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      color: '#374151',
+                      fontWeight: 500,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e5e7eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f3f4f6';
+                    }}
+                  >
+                    <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
+                  </button>
+                </div>
+                {emailLinks.map((link, index) => (
+                  <div key={index} style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    marginBottom: index < emailLinks.length - 1 ? '0.5rem' : '0',
+                    alignItems: 'flex-start'
+                  }}>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => updateEmailLink(index, e.target.value)}
+                      placeholder="https://example.com"
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    {emailLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeEmailLink(index)}
+                        style={{
+                          background: '#fee2e2',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '40px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fecaca';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#fee2e2';
+                        }}
+                      >
+                        <FaTimes style={{ fontSize: '0.75rem' }} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#64748b', 
+                  marginTop: '0.5rem',
+                  marginBottom: 0
+                }}>
+                  Attach links to relevant documents, files, or resources
+                </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer - Only show in New Log tab */}
+            {emailLogsTab === 'new' && (
+              <div style={{
+                padding: '1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'flex-end',
+              }}>
+                <button
+                  onClick={() => {
+                    setEmailLogsTab('logs');
+                    setEmailNotes('');
+                    setEmailLinks(['']);
+                  }}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    color: '#374151',
+                    padding: '0.625rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#e5e7eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLogEmailSubmit}
+                  disabled={loggingEmail}
+                  style={{
+                    background: loggingEmail ? '#9ca3af' : '#667eea',
+                    border: 'none',
+                    color: 'white',
+                    padding: '0.625rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: loggingEmail ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loggingEmail) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!loggingEmail) {
+                      e.currentTarget.style.background = '#667eea';
+                    }
+                  }}
+                >
+                  <FaPaperPlane />
+                  {loggingEmail ? 'Logging...' : 'Log Email'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
