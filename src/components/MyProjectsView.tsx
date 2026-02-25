@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft,
@@ -53,7 +53,6 @@ const MyProjectsView: React.FC = () => {
   const [projectForUpdates, setProjectForUpdates] = useState<any>(null);
   const [clientUpdates, setClientUpdates] = useState<any[]>([]);
   const [loadingUpdates, setLoadingUpdates] = useState(false);
-  const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string }>>({});
   const [users, setUsers] = useState<any[]>([]);
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
