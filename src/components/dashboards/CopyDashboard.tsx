@@ -80,6 +80,7 @@ const CopyDashboard: React.FC = () => {
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Edit task states
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
@@ -394,6 +395,17 @@ const CopyDashboard: React.FC = () => {
       filtered = filtered.filter((t: any) => t.isCompleted);
     }
 
+    // Apply search by task title or project/client name
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((t: any) => {
+        const title = (t.title || '').toLowerCase();
+        const project = projects.find((p: any) => p.id === t.projectId);
+        const projectName = (project?.clientName || '').toLowerCase();
+        return title.includes(q) || projectName.includes(q);
+      });
+    }
+
     // Apply sort
     filtered = [...filtered].sort((a: any, b: any) => {
       if (sortBy === 'due_date') {
@@ -432,7 +444,7 @@ const CopyDashboard: React.FC = () => {
     });
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter, sortBy, user?.id, projects]);
+  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
 
   // Get task status for Kanban columns
   const getTaskStatus = (task: any): string => {
@@ -490,7 +502,7 @@ const CopyDashboard: React.FC = () => {
     
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter, sortBy, user?.id, projects]);
+  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
 
   // Get project name - optimized with Map cache
   const projectNameMap = useMemo(() => {
@@ -1487,11 +1499,46 @@ const CopyDashboard: React.FC = () => {
                 List
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: '0.5rem', 
+              alignItems: 'center', 
+              flexWrap: 'wrap' 
+            }}>
+              <div style={{ 
+                position: 'relative', 
+                minWidth: '220px', 
+                maxWidth: '260px' 
+              }}>
+                <FaSearch 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '0.75rem', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#94a3b8', 
+                    fontSize: '0.875rem' 
+                  }} 
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by client or task"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
               <FaFilter style={{ color: '#64748b', fontSize: '0.875rem' }} />
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as any)}
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #e2e8f0',
@@ -1499,18 +1546,18 @@ const CopyDashboard: React.FC = () => {
                   fontSize: '0.875rem',
                   cursor: 'pointer'
                 }}
-          >
-            <option value="all">All Tasks</option>
+              >
+                <option value="all">All Tasks</option>
                 <option value="my_tasks">My Tasks</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="in_review">In Review</option>
-            <option value="completed">Completed</option>
-          </select>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="in_review">In Review</option>
+                <option value="completed">Completed</option>
+              </select>
               <FaSort style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }} />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #e2e8f0',
@@ -1518,14 +1565,14 @@ const CopyDashboard: React.FC = () => {
                   fontSize: '0.875rem',
                   cursor: 'pointer'
                 }}
-          >
-            <option value="due_date">Sort by Due Date</option>
-            <option value="priority">Sort by Priority</option>
-            <option value="created">Sort by Created</option>
-          </select>
+              >
+                <option value="due_date">Sort by Due Date</option>
+                <option value="priority">Sort by Priority</option>
+                <option value="created">Sort by Created</option>
+              </select>
             </div>
+          </div>
         </div>
-      </div>
 
         {/* Tasks Display */}
         <div>

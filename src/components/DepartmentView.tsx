@@ -37,6 +37,7 @@ const DepartmentView: React.FC = () => {
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Edit task states
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
@@ -266,7 +267,19 @@ const DepartmentView: React.FC = () => {
   // Group tasks by project (for list view) - optimized with Map
   const tasksByProject = useMemo(() => {
     const grouped = new Map<string, any[]>();
+    const hasSearch = searchQuery.trim().length > 0;
+    const q = searchQuery.toLowerCase();
+
     for (const task of tasks) {
+      if (hasSearch) {
+        const title = (task.title || '').toLowerCase();
+        const project = projects.find((p: any) => p.id === task.projectId);
+        const projectName = (project?.clientName || 'Unknown Project').toLowerCase();
+        if (!title.includes(q) && !projectName.includes(q)) {
+          continue;
+        }
+      }
+
       const existing = grouped.get(task.projectId) || [];
       existing.push(task);
       grouped.set(task.projectId, existing);
@@ -277,7 +290,7 @@ const DepartmentView: React.FC = () => {
       result[key] = value;
     });
     return result;
-  }, [tasks]);
+  }, [tasks, projects, searchQuery]);
 
   // Get task status for Kanban columns (similar to ProjectDetail)
   const getTaskStatus = (task: any): string => {
@@ -333,9 +346,20 @@ const DepartmentView: React.FC = () => {
       'client_validation': []
     };
     
+    const hasSearch = searchQuery.trim().length > 0;
+    const q = searchQuery.toLowerCase();
+
     // Use for loop for better performance
     for (let i = 0; i < tasks.length; i++) {
       const task = tasks[i];
+      if (hasSearch) {
+        const title = (task.title || '').toLowerCase();
+        const project = projects.find((p: any) => p.id === task.projectId);
+        const projectName = (project?.clientName || 'Unknown Project').toLowerCase();
+        if (!title.includes(q) && !projectName.includes(q)) {
+          continue;
+        }
+      }
       const status = getTaskStatus(task);
       const group = grouped[status];
       if (group) {
@@ -344,7 +368,7 @@ const DepartmentView: React.FC = () => {
     }
     
     return grouped;
-  }, [tasks]);
+  }, [tasks, projects, searchQuery]);
 
   // Get project name - optimized with Map cache
   const projectNameMap = useMemo(() => {
@@ -1371,44 +1395,72 @@ const DepartmentView: React.FC = () => {
         </div>
       )}
 
-      {/* View Toggle */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      {/* View Toggle + Search */}
+      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', margin: 0, flex: 1 }}>
           Tasks by Project
         </h2>
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.5rem' }}>
-          <button
-            onClick={() => setViewMode('kanban')}
-            style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              borderRadius: '0.375rem',
-              background: viewMode === 'kanban' ? 'white' : 'transparent',
-              color: viewMode === 'kanban' ? '#1e293b' : '#64748b',
-              cursor: 'pointer',
-              fontWeight: viewMode === 'kanban' ? 600 : 400,
-              boxShadow: viewMode === 'kanban' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            Kanban
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              borderRadius: '0.375rem',
-              background: viewMode === 'list' ? 'white' : 'transparent',
-              color: viewMode === 'list' ? '#1e293b' : '#64748b',
-              cursor: 'pointer',
-              fontWeight: viewMode === 'list' ? 600 : 400,
-              boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            List
-          </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.5rem' }}>
+            <button
+              onClick={() => setViewMode('kanban')}
+              style={{
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '0.375rem',
+                background: viewMode === 'kanban' ? 'white' : 'transparent',
+                color: viewMode === 'kanban' ? '#1e293b' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'kanban' ? 600 : 400,
+                boxShadow: viewMode === 'kanban' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              Kanban
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '0.375rem',
+                background: viewMode === 'list' ? 'white' : 'transparent',
+                color: viewMode === 'list' ? '#1e293b' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: viewMode === 'list' ? 600 : 400,
+                boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              List
+            </button>
+          </div>
+          <div style={{ position: 'relative', minWidth: '220px', maxWidth: '260px' }}>
+            <FaSearch 
+              style={{ 
+                position: 'absolute', 
+                left: '0.75rem', 
+                top: '50%', 
+                transform: 'translateY(-50%)', 
+                color: '#94a3b8', 
+                fontSize: '0.875rem' 
+              }} 
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by client or task"
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                outline: 'none'
+              }}
+            />
+          </div>
         </div>
       </div>
 

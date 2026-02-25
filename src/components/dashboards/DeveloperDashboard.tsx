@@ -80,6 +80,7 @@ const DeveloperDashboard: React.FC = () => {
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Edit task states
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
@@ -144,7 +145,8 @@ const DeveloperDashboard: React.FC = () => {
       const allTasksData = await taskService.getAll();
 
       // Get ALL Development tasks first (regardless of project stage or assignment)
-      const developmentTasks = allTasksData.filter((t: any) => t.type === 'Development');
+      // Backend TaskType for development is "Dev", so we must match that here
+      const developmentTasks = allTasksData.filter((t: any) => t.type === 'Dev');
 
       // Load ALL projects once, then derive what we need from here
       const allProjectsData = await projectService.getAll();
@@ -273,7 +275,7 @@ const DeveloperDashboard: React.FC = () => {
       
       // Get all development tasks for this project
       const projectTasks = tasks.filter((t: any) => 
-        t.projectId === projectId && t.type === 'Development'
+        t.projectId === projectId && t.type === 'Dev'
       );
       
       console.log('Project tasks found:', projectTasks.length);
@@ -287,7 +289,7 @@ const DeveloperDashboard: React.FC = () => {
             projectId,
             title: 'Develop Features',
             description: 'Develop and implement project features',
-            type: 'Development',
+            type: 'Dev',
             status: 'Todo',
             isCompleted: false,
             assignedToId: user.id,
@@ -296,7 +298,7 @@ const DeveloperDashboard: React.FC = () => {
             projectId,
             title: 'Code Review',
             description: 'Review and test development work',
-            type: 'Development',
+            type: 'Dev',
             status: 'Todo',
             isCompleted: false,
             assignedToId: user.id,
@@ -394,6 +396,17 @@ const DeveloperDashboard: React.FC = () => {
       filtered = filtered.filter((t: any) => t.isCompleted);
     }
 
+    // Apply search by task title or project/client name
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((t: any) => {
+        const title = (t.title || '').toLowerCase();
+        const project = projects.find((p: any) => p.id === t.projectId);
+        const projectName = (project?.clientName || '').toLowerCase();
+        return title.includes(q) || projectName.includes(q);
+      });
+    }
+
     // Apply sort
     filtered = [...filtered].sort((a: any, b: any) => {
       if (sortBy === 'due_date') {
@@ -432,7 +445,7 @@ const DeveloperDashboard: React.FC = () => {
     });
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter, sortBy, user?.id, projects]);
+  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
 
   // Get task status for Kanban columns
   const getTaskStatus = (task: any): string => {
@@ -490,7 +503,7 @@ const DeveloperDashboard: React.FC = () => {
     
     return grouped;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter, sortBy, user?.id, projects]);
+  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
 
   // Get project name - optimized with Map cache
   const projectNameMap = useMemo(() => {
@@ -676,7 +689,8 @@ const DeveloperDashboard: React.FC = () => {
         projectId: newTaskData.projectId,
         title: newTaskData.title,
         description: newTaskData.description,
-        type: 'Development',
+        // Backend uses "Dev" as the enum value for Development tasks
+        type: 'Dev',
         status: 'Todo',
         isCompleted: false,
       };
@@ -1487,7 +1501,42 @@ const DeveloperDashboard: React.FC = () => {
                 List
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: '0.5rem', 
+              alignItems: 'center', 
+              flexWrap: 'wrap' 
+            }}>
+              <div style={{ 
+                position: 'relative', 
+                minWidth: '220px', 
+                maxWidth: '260px' 
+              }}>
+                <FaSearch 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '0.75rem', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#94a3b8', 
+                    fontSize: '0.875rem' 
+                  }} 
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by client or task"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
               <FaFilter style={{ color: '#64748b', fontSize: '0.875rem' }} />
               <select
                 value={filter}
