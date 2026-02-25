@@ -1,0 +1,3 @@
+# Pin Node 20 for Railway/Nixpacks (cross-env requires Node >=20)
+[phases.setup]
+nixPkgs = ["nodejs_20"]
