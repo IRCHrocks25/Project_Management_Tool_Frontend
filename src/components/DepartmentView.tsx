@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave, FaEdit, FaStickyNote, FaLink, FaEnvelope } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
@@ -375,7 +375,7 @@ const DepartmentView: React.FC = () => {
   }, [tasks, projects, searchQuery]);
 
   // Get task status for Kanban columns (similar to ProjectDetail)
-  const getTaskStatus = (task: any): string => {
+  const getTaskStatus = useCallback((task: any): string => {
     // CRM-specific status mapping
     if (department === 'CRM') {
       // Map Blocked status to stuck column (we use Blocked enum value but display as Stuck)
@@ -469,7 +469,7 @@ const DepartmentView: React.FC = () => {
     
     // Default for unassigned tasks
     return 'not_started';
-  };
+  }, [department]);
 
   // Group tasks by status for Kanban view - optimized
   const tasksByStatus = useMemo(() => {
@@ -513,7 +513,7 @@ const DepartmentView: React.FC = () => {
     }
     
     return grouped;
-  }, [tasks, projects, searchQuery, department]);
+  }, [tasks, projects, searchQuery, department, getTaskStatus]);
 
   // Get project name - optimized with Map cache
   const projectNameMap = useMemo(() => {

@@ -242,7 +242,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         const firstRow = jsonData[0] as any;
         const hasClient = 'Client' in firstRow || 'client' in firstRow || 'CLIENT' in firstRow;
         const hasPackage = 'Package' in firstRow || 'package' in firstRow || 'PACKAGE' in firstRow;
-        const hasClientType = 'Client Type' in firstRow || 'client type' in firstRow || 'clientType' in firstRow || 'CLIENT TYPE' in firstRow;
 
         if (!hasClient || !hasPackage) {
           setError('Excel file must contain "Client" and "Package" columns');
