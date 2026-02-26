@@ -178,7 +178,7 @@ const CRMDashboard: React.FC = () => {
         projectIdsWithCRMTasks.has(p.id)
       );
 
-      // Projects that are CRM-related (Katalyst client type) even if they don't have CRM tasks yet
+      // Projects that are CRM-related (Katalyst, Premium, or Powered-Up client type) even if they don't have CRM tasks yet
       const crmClientProjects = allProjectsData.filter((p: any) => {
         const allClientTypes = [
           p.clientType,
@@ -190,7 +190,7 @@ const CRMDashboard: React.FC = () => {
         ];
         return allClientTypes.some((type: string) =>
           type === 'Katalyst' || type === 'KATALYST' || type?.toLowerCase() === 'katalyst'
-        );
+        ) || p.clientType === 'Premium' || p.clientType === 'Powered-Up';
       });
 
       // Combine both sets of projects and de‑dupe

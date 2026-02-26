@@ -275,6 +275,8 @@ const CompletedProjects: React.FC = () => {
                 <option>STAR</option>
                 <option>Katalyst</option>
                 <option>Private</option>
+                <option>Premium</option>
+                <option>Powered-Up</option>
               </select>
               <select 
                 className="filter-select"

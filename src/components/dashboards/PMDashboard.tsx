@@ -48,7 +48,7 @@ const PMDashboard: React.FC = () => {
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
-  const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string }>>({});
+  const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string; notes?: string; pmId?: string }>>({});
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
@@ -58,6 +58,7 @@ const PMDashboard: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
   const [clientTypeFilter, setClientTypeFilter] = useState<string>('All Client Types');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [lastEmailLogDateFilter, setLastEmailLogDateFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -391,6 +392,8 @@ const PMDashboard: React.FC = () => {
           [projectForEmailLog.id]: {
             date: lastUpdate.emailSentAt,
             pmName: lastUpdate.pm?.name,
+            pmId: lastUpdate.pmId || (lastUpdate.pm as any)?.id,
+            notes: lastUpdate.notes,
           }
         }));
       }
@@ -471,7 +474,7 @@ const PMDashboard: React.FC = () => {
 
   const loadLastEmailLogs = async (projects: any[]) => {
     try {
-      const logsMap: Record<string, { date: string; pmName?: string }> = {};
+      const logsMap: Record<string, { date: string; pmName?: string; notes?: string; pmId?: string }> = {};
       
       // Load last email log for each project in parallel
       await Promise.all(
@@ -484,6 +487,8 @@ const PMDashboard: React.FC = () => {
               logsMap[project.id] = {
                 date: lastUpdate.emailSentAt,
                 pmName: lastUpdate.pm?.name,
+                pmId: lastUpdate.pmId || (lastUpdate.pm as any)?.id,
+                notes: lastUpdate.notes,
               };
             }
           } catch (error) {
@@ -497,6 +502,64 @@ const PMDashboard: React.FC = () => {
     } catch (error) {
       console.error('Failed to load email logs:', error);
     }
+  };
+
+  // Determine the last PM who interacted with a project
+  // Priority: 1) Most recent client update PM, 2) Most recent task creator/updater (if PM), 3) Project's assigned PM
+  const getLastActivePM = useMemo(() => {
+    const pmMap = new Map<string, { name: string; id?: string; lastActivity?: Date }>();
+    
+    // Check client updates (most reliable source)
+    for (const [projectId, log] of Object.entries(lastEmailLogs)) {
+      if (log.pmName && log.date) {
+        const activityDate = new Date(log.date);
+        const existing = pmMap.get(projectId);
+        if (!existing || activityDate > (existing.lastActivity || new Date(0))) {
+          pmMap.set(projectId, {
+            name: log.pmName,
+            id: log.pmId,
+            lastActivity: activityDate
+          });
+        }
+      }
+    }
+    
+    // Check tasks - find most recent task for each project
+    // Note: Tasks might not have PM info directly, but we can check if assignedTo is a PM
+    const projectTaskMap = new Map<string, { task: any; date: Date }>();
+    for (const task of tasks) {
+      if (!task.projectId) continue;
+      const taskDate = new Date(task.updatedAt || task.createdAt || 0);
+      const existing = projectTaskMap.get(task.projectId);
+      if (!existing || taskDate > existing.date) {
+        projectTaskMap.set(task.projectId, { task, date: taskDate });
+      }
+    }
+    
+    // For tasks, if the assigned user is a PM, use that
+    // We'll need to check if the user is a PM by their role
+    // Note: This would require loading all users to check roles, so we'll skip for now
+    // Backend support would be needed to track task creator/updater as PM
+    Array.from(projectTaskMap.entries()).forEach(([projectId, { task, date }]) => {
+      if (task.assignedTo) {
+        // Check if assigned user is a PM (we'd need users list, but for now we'll skip this)
+        // This would require loading all users, which we might not have
+      }
+    });
+    
+    return pmMap;
+  }, [lastEmailLogs, tasks]);
+
+  // Get the PM name to display for a project
+  const getProjectPMName = (project: any): string => {
+    // First check if there's a recent client update PM
+    const lastPM = getLastActivePM.get(project.id);
+    if (lastPM && lastPM.name) {
+      return lastPM.name;
+    }
+    
+    // Fallback to project's assigned PM
+    return project.pm?.name || 'Unassigned';
   };
 
   const handleCommentInput = (updateId: string, value: string, cursorPosition: number) => {
@@ -574,6 +637,21 @@ const PMDashboard: React.FC = () => {
       // Apply client type filter
       if (clientTypeFilter !== 'All Client Types' && p.clientType !== clientTypeFilter) continue;
       
+      // Apply last email log date filter
+      if (lastEmailLogDateFilter) {
+        const lastLog = lastEmailLogs[p.id];
+        if (!lastLog || !lastLog.date) continue; // Skip if no email log
+        
+        const logDate = new Date(lastLog.date);
+        const filterDate = new Date(lastEmailLogDateFilter);
+        
+        // Compare dates (ignore time, only compare year/month/day)
+        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+        const filterDateOnly = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
+        
+        if (logDateOnly.getTime() !== filterDateOnly.getTime()) continue;
+      }
+      
       // Apply activeFilter
       if (activeFilter === 'waiting') {
         if (!['Copy Revision', 'Design Revision'].includes(p.stage)) continue;
@@ -607,12 +685,12 @@ const PMDashboard: React.FC = () => {
     });
     
     return filtered;
-  }, [projects, searchTerm, activeFilter, priorityFilter, clientTypeFilter]);
+  }, [projects, searchTerm, activeFilter, priorityFilter, clientTypeFilter, lastEmailLogDateFilter, lastEmailLogs]);
 
   // Clear selections when filters change
   useEffect(() => {
     setSelectedProjects(new Set());
-  }, [activeFilter, priorityFilter, clientTypeFilter, searchTerm]);
+  }, [activeFilter, priorityFilter, clientTypeFilter, searchTerm, lastEmailLogDateFilter]);
 
   // Memoize expensive calculations - optimized to use tasks array directly instead of iterating projects
   const activeTasksCount = useMemo(() => {
@@ -774,9 +852,10 @@ const PMDashboard: React.FC = () => {
                   : p.secondaryClientTypes.split(',').map((t: string) => t.trim()).filter((t: string) => !!t))
               : [])
           ];
+          // Include projects with Katalyst (primary or secondary), Premium, or Powered-Up
           if (allClientTypes.some((type: string) => 
             type === 'Katalyst' || type === 'KATALYST' || type?.toLowerCase() === 'katalyst'
-          )) {
+          ) || p.clientType === 'Premium' || p.clientType === 'Powered-Up') {
             if (!projectSet.has(p.id)) {
               stageProjectsList.push(p);
               projectSet.add(p.id);
@@ -829,7 +908,25 @@ const PMDashboard: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     setShowAll(false);
-  }, [searchTerm, activeFilter, priorityFilter, clientTypeFilter]);
+  }, [searchTerm, activeFilter, priorityFilter, clientTypeFilter, lastEmailLogDateFilter]);
+
+  // Helper function to extract a keyword/snippet from email log notes
+  const getEmailLogKeyword = (notes?: string): string => {
+    if (!notes || notes.trim().length === 0) return '';
+    
+    // Remove common prefixes and clean up
+    let text = notes.trim();
+    
+    // Remove common prefixes like "Task:", "Note:", etc.
+    text = text.replace(/^(Task|Note|Email|Log):\s*/i, '');
+    
+    // Get first sentence or first 50 characters, whichever is shorter
+    const firstSentence = text.split(/[.!?]\s+/)[0];
+    const snippet = firstSentence.length <= 50 ? firstSentence : text.substring(0, 50);
+    
+    // Clean up and return
+    return snippet.trim() + (snippet.length < text.length ? '...' : '');
+  };
 
   // Helper function to format time ago
   const getTimeAgo = (dateString: string): string => {
@@ -1127,6 +1224,8 @@ const PMDashboard: React.FC = () => {
                 <option>STAR</option>
                 <option>Katalyst</option>
                 <option>Private</option>
+                <option>Premium</option>
+                <option>Powered-Up</option>
               </select>
             </div>
           </div>
@@ -1662,7 +1761,65 @@ const PMDashboard: React.FC = () => {
                 <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Stage</div>
                 <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Days in Stage</div>
                 <div className="list-header-cell" style={{ width: '150px', flex: '0 0 150px' }}>Who</div>
-                <div className="list-header-cell" style={{ width: '160px', flex: '0 0 160px' }}>Last Email Log</div>
+                <div className="list-header-cell" style={{ width: '200px', flex: '0 0 200px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                  <div>Last Email Log</div>
+                  <input
+                    type="date"
+                    value={lastEmailLogDateFilter}
+                    onChange={(e) => setLastEmailLogDateFilter(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Filter by date"
+                    style={{
+                      width: '100%',
+                      padding: '0.375rem 0.5rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.75rem',
+                      background: 'white',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e2e8f0';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                  {lastEmailLogDateFilter && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLastEmailLogDateFilter('');
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        background: '#fee2e2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '0.25rem',
+                        color: '#dc2626',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#fecaca';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#fee2e2';
+                      }}
+                    >
+                      <FaTimes style={{ fontSize: '0.625rem' }} />
+                      Clear
+                    </button>
+                  )}
+                </div>
                 <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px', textAlign: 'center' }}>Actions</div>
               </div>
               <div className="list-content">
@@ -1717,15 +1874,16 @@ const PMDashboard: React.FC = () => {
                         <div className="list-cell" style={{ width: '150px', flex: '0 0 150px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
                           <span style={{ fontSize: '0.875rem', color: '#374151' }}>
-                            {project.pm?.name || 'Unassigned'}
+                            {getProjectPMName(project)}
                           </span>
                         </div>
-                        <div className="list-cell" style={{ width: '160px', flex: '0 0 160px' }}>
+                        <div className="list-cell" style={{ width: '200px', flex: '0 0 200px' }}>
                           {lastEmailLogs[project.id] ? (() => {
                             const lastLog = lastEmailLogs[project.id];
                             const logDate = new Date(lastLog.date);
                             const daysSinceLog = Math.floor((Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24));
                             const isOverdue = daysSinceLog >= 7;
+                            const keyword = getEmailLogKeyword(lastLog.notes);
                             
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -1749,6 +1907,21 @@ const PMDashboard: React.FC = () => {
                                     minute: '2-digit',
                                   })}
                                 </div>
+                                {keyword && (
+                                  <div style={{ 
+                                    fontSize: '0.75rem', 
+                                    color: '#667eea',
+                                    fontWeight: 500,
+                                    marginTop: '0.25rem',
+                                    fontStyle: 'italic',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: '100%'
+                                  }}>
+                                    "{keyword}"
+                                  </div>
+                                )}
                                 {isOverdue && (
                                   <div style={{ 
                                     fontSize: '0.75rem', 

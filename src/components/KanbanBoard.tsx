@@ -201,7 +201,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
             return true;
           }
           
-          // For CRM column, also show projects with Katalyst client type
+          // For CRM column, also show projects with Katalyst, Premium, or Powered-Up client type
           if (displayStage === 'CRM') {
             const allClientTypes = [
               p.clientType,
@@ -214,7 +214,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
             const hasKatalyst = allClientTypes.some((type: string) => 
               type === 'Katalyst' || type === 'KATALYST' || type?.toLowerCase() === 'katalyst'
             );
-            if (hasKatalyst) {
+            // Include projects with Katalyst (primary or secondary), Premium, or Powered-Up
+            if (hasKatalyst || p.clientType === 'Premium' || p.clientType === 'Powered-Up') {
               return true;
             }
           }
@@ -498,6 +499,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       case 'ICON': return '#fbbf24'; // Gold
       case 'STAR': return '#a855f7'; // Purple
       case 'Katalyst': return '#667eea'; // Blue
+      case 'Private': return '#64748b'; // Grey
+      case 'Premium': return '#8b5cf6'; // Purple
+      case 'Powered-Up': return '#a855f7'; // Purple
       default: return '#64748b'; // Grey
     }
   };

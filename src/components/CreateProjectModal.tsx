@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { projectService } from '../services/project.service';
+import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import './CreateProjectModal.css';
 
@@ -37,6 +38,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     { value: 'STAR', label: 'STAR', color: '#94a3b8' },
     { value: 'Katalyst', label: 'Katalyst', color: '#667eea' },
     { value: 'Private', label: 'Private', color: '#64748b' },
+    { value: 'Premium', label: 'Premium', color: '#8b5cf6' },
+    { value: 'Powered-Up', label: 'Powered-Up', color: '#a855f7' },
   ];
 
   const packages = ['Starter', 'Standard', 'Premium', 'ICON Package', 'Custom'];
@@ -77,7 +80,14 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
       
       // If already selected, deselect it
       if (currentSelection.includes(clientType)) {
-        const newSelection = currentSelection.filter(t => t !== clientType);
+        let newSelection = currentSelection.filter(t => t !== clientType);
+        
+        // If deselecting "Premium" or "Powered-Up", remove auto-added "Katalyst" only if it's the only remaining type
+        // (This handles the case where Katalyst was auto-added and user deselects Premium or Powered-Up)
+        if ((clientType === 'Premium' || clientType === 'Powered-Up') && newSelection.length === 1 && newSelection[0] === 'Katalyst') {
+          newSelection = [];
+        }
+        
         console.log('Deselecting, new selection:', newSelection);
         // Update formData to use first remaining type, or default to first type
         setFormData((prevFormData) => ({
@@ -88,7 +98,17 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
       } 
       // If not selected and we have less than 2, add it
       else if (currentSelection.length < 2) {
-        const newSelection = [...currentSelection, clientType];
+        let newSelection = [...currentSelection, clientType];
+        
+        // If selecting "Premium" or "Powered-Up", automatically add "Katalyst" for CRM assignment
+        if ((clientType === 'Premium' || clientType === 'Powered-Up') && !currentSelection.includes('Katalyst')) {
+          // Add Katalyst if we have room (max 2 total visible in UI)
+          if (newSelection.length < 2) {
+            newSelection.push('Katalyst');
+          }
+          // If we're at max (2), Katalyst will be added in the backend submission
+        }
+        
         console.log('Selecting, new selection:', newSelection);
         // Update formData to use first selected type (primary)
         setFormData((prevFormData) => ({
@@ -97,6 +117,17 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         }));
         return newSelection;
       } else {
+        // If trying to select when already at max, check if it's Premium or Powered-Up
+        // In this case, we'll allow it but Katalyst will be added in backend
+        if ((clientType === 'Premium' || clientType === 'Powered-Up') && !currentSelection.includes(clientType)) {
+          // Replace the last selected type with Premium or Powered-Up
+          const newSelection = [currentSelection[0], clientType];
+          setFormData((prevFormData) => ({
+            ...prevFormData,
+            clientType: newSelection[0]
+          }));
+          return newSelection;
+        }
         console.log('Cannot select more, already at max (2)');
         return currentSelection; // Return unchanged
       }
@@ -183,7 +214,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     // If no indicator found, default to STAR (as per requirement: "client type is the package")
     
     return {
-      clientType: clientType as 'ICON' | 'STAR' | 'Katalyst' | 'Private',
+      clientType: clientType as 'ICON' | 'STAR' | 'Katalyst' | 'Private' | 'Premium' | 'Powered-Up',
       package: mappedPackage as 'Starter' | 'Standard' | 'Premium' | 'ICON Package' | 'Custom',
     };
   };
@@ -211,6 +242,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         const firstRow = jsonData[0] as any;
         const hasClient = 'Client' in firstRow || 'client' in firstRow || 'CLIENT' in firstRow;
         const hasPackage = 'Package' in firstRow || 'package' in firstRow || 'PACKAGE' in firstRow;
+        const hasClientType = 'Client Type' in firstRow || 'client type' in firstRow || 'clientType' in firstRow || 'CLIENT TYPE' in firstRow;
 
         if (!hasClient || !hasPackage) {
           setError('Excel file must contain "Client" and "Package" columns');
@@ -222,12 +254,21 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           const client = row.Client || row.client || row.CLIENT || '';
           const packageValue = row.Package || row.package || row.PACKAGE || '';
           const notes = row.Notes || row.notes || row.NOTES || '';
+          const clientTypeFromColumn = row['Client Type'] || row['client type'] || row.clientType || row['CLIENT TYPE'] || '';
           
-          const { clientType, package: mappedPackage } = mapPackageToClientTypeAndPackage(packageValue);
+          // If Client Type column exists and contains "Premium" or "Powered-Up", use it
+          // Otherwise, infer from package
+          let clientType: string;
+          if (clientTypeFromColumn && (clientTypeFromColumn.trim() === 'Premium' || clientTypeFromColumn.trim() === 'Powered-Up')) {
+            clientType = clientTypeFromColumn.trim();
+          } else {
+            const mapped = mapPackageToClientTypeAndPackage(packageValue);
+            clientType = mapped.clientType;
+          }
           
           return {
             client,
-            package: mappedPackage,
+            package: mapPackageToClientTypeAndPackage(packageValue).package,
             clientType,
             notes,
             originalPackage: packageValue,
@@ -265,15 +306,40 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         }
 
         try {
-          await projectService.create({
+          // If "Premium" or "Powered-Up" is the client type, ensure "Katalyst" is included for CRM assignment
+          const clientType = row.clientType;
+          const secondaryClientTypes = (clientType === 'Premium' || clientType === 'Powered-Up')
+            ? ['Katalyst'] 
+            : undefined;
+          
+          const createdProject = await projectService.create({
             clientName: row.client,
-            clientType: row.clientType,
+            clientType: clientType,
+            secondaryClientTypes: secondaryClientTypes, // Include Katalyst for Premium and Powered-Up
             package: row.package,
             priority: 'Medium',
             targetCloseMonth: currentMonth,
             notes: row.notes || '',
             pmId: user?.id || '',
           });
+          
+          // If Premium or Powered-Up, automatically create a default CRM task
+          if (clientType === 'Premium' || clientType === 'Powered-Up') {
+            try {
+              await taskService.create({
+                projectId: createdProject.id,
+                title: `Initial Setup - ${row.client}`,
+                description: `Initial setup and onboarding task for ${clientType} client.`,
+                type: 'CRM',
+                status: 'Todo',
+                isCompleted: false,
+              });
+            } catch (taskError) {
+              console.error(`Failed to create default CRM task for ${row.client}:`, taskError);
+              // Don't fail the project creation if task creation fails
+            }
+          }
+          
           results.success++;
         } catch (err: any) {
           const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
@@ -318,18 +384,48 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     setLoading(true);
 
     try {
+      // If "Premium" or "Powered-Up" is selected, ensure "Katalyst" is included for CRM assignment
+      let finalClientTypes = [...selectedClientTypes];
+      if ((selectedClientTypes.includes('Premium') || selectedClientTypes.includes('Powered-Up')) && !selectedClientTypes.includes('Katalyst')) {
+        // Add Katalyst to ensure CRM assignment
+        // If we have room (less than 2), add it; otherwise, it will be added to secondary types
+        if (finalClientTypes.length < 2) {
+          finalClientTypes.push('Katalyst');
+        } else {
+          // If already at max, add Katalyst to secondary types array
+          finalClientTypes = [...finalClientTypes, 'Katalyst'];
+        }
+      }
+      
       // Prepare secondary client types (all except the first one)
-      const secondaryClientTypes = selectedClientTypes.length > 1 
-        ? selectedClientTypes.slice(1) 
+      const secondaryClientTypes = finalClientTypes.length > 1 
+        ? finalClientTypes.slice(1) 
         : undefined;
       
-      await projectService.create({
+      const createdProject = await projectService.create({
         ...formData,
-        clientType: selectedClientTypes[0], // Primary client type
-        secondaryClientTypes: secondaryClientTypes, // Secondary client types array
+        clientType: finalClientTypes[0], // Primary client type
+        secondaryClientTypes: secondaryClientTypes, // Secondary client types array (includes Katalyst if Premium and Powered-Up is selected)
         pmId: user?.id,
         customDeliverables: formData.package === 'Custom' ? selectedDeliverables : undefined,
       });
+      
+      // If Premium or Powered-Up, automatically create a default CRM task
+      if (finalClientTypes.includes('Premium') || finalClientTypes.includes('Powered-Up')) {
+        try {
+          await taskService.create({
+            projectId: createdProject.id,
+            title: `Initial Setup - ${formData.clientName}`,
+            description: `Initial setup and onboarding task for ${finalClientTypes.includes('Premium') ? 'Premium' : 'Powered-Up'} client.`,
+            type: 'CRM',
+            status: 'Todo',
+            isCompleted: false,
+          });
+        } catch (taskError) {
+          console.error('Failed to create default CRM task:', taskError);
+          // Don't fail the project creation if task creation fails
+        }
+      }
       
       // Show confetti effect (simple version)
       onSuccess();
@@ -537,7 +633,13 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                       backgroundColor: isSelected ? '#f8fafc' : 'white',
                       boxShadow: isSelected ? `0 0 0 3px ${type.color}15` : 'none'
                     }}
-                    title={isSelected ? `Selected: ${type.label}` : canSelect ? `Click to select ${type.label}` : 'You can only select up to 2 client types'}
+                    title={
+                      isSelected 
+                        ? `Selected: ${type.label}${(type.value === 'Premium' || type.value === 'Powered-Up') ? ' (Auto-assigned to CRM)' : ''}` 
+                        : canSelect 
+                        ? `Click to select ${type.label}${(type.value === 'Premium' || type.value === 'Powered-Up') ? ' (Auto-assigns to CRM)' : ''}` 
+                        : 'You can only select up to 2 client types'
+                    }
                     aria-pressed={isSelected}
                   >
                     <div className="client-type-badge" style={{ backgroundColor: type.color }}>
@@ -589,6 +691,20 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                 border: '1px solid #f1f5f9'
               }}>
                 Selected ({selectedClientTypes.length}/2): <span style={{ fontWeight: 500, color: '#475569' }}>{selectedClientTypes.join(', ')}</span>
+                {(selectedClientTypes.includes('Premium') || selectedClientTypes.includes('Powered-Up')) && (
+                  <div style={{ 
+                    marginTop: '0.5rem', 
+                    fontSize: '0.75rem', 
+                    color: '#667eea',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}>
+                    <span>ℹ️</span>
+                    <span>Premium and Powered-Up projects are automatically assigned to CRM</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave, FaEdit } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaClock, FaPlus, FaTimes, FaCopy, FaPalette, FaCode, FaRobot, FaShareAlt, FaDatabase, FaSearch, FaClipboardList, FaUpload, FaFileExcel, FaSave, FaEdit, FaStickyNote, FaLink, FaEnvelope } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import { deliverableService } from '../services/deliverable.service';
+import { clientUpdatesService, ClientUpdateComment } from '../services/client-updates.service';
 import './Dashboard.css';
 
 const DepartmentView: React.FC = () => {
@@ -39,6 +40,10 @@ const DepartmentView: React.FC = () => {
   const [creatingTask, setCreatingTask] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Searchable client dropdown states
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  
   // Edit task states
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -71,6 +76,37 @@ const DepartmentView: React.FC = () => {
     deliverableType: '',
     defaultStatus: 'Todo'
   });
+  
+  // Forward task modal states (for CRM)
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardingTask, setForwardingTask] = useState<any>(null);
+  const [forwardData, setForwardData] = useState({
+    targetDepartment: '',
+    notes: '',
+    links: ''
+  });
+  const [forwarding, setForwarding] = useState(false);
+  
+  // Client Validation modal states (for CRM)
+  const [showClientValidationModal, setShowClientValidationModal] = useState(false);
+  const [taskForClientValidation, setTaskForClientValidation] = useState<any>(null);
+  const [projectForClientValidation, setProjectForClientValidation] = useState<any>(null);
+  const [clientValidationNotes, setClientValidationNotes] = useState('');
+  const [clientValidationLinks, setClientValidationLinks] = useState<string[]>(['']);
+  const [loggingClientValidation, setLoggingClientValidation] = useState(false);
+  const [clientValidationTab, setClientValidationTab] = useState<'logs' | 'new'>('logs');
+  const [clientValidationUpdates, setClientValidationUpdates] = useState<any[]>([]);
+  const [loadingClientValidationUpdates, setLoadingClientValidationUpdates] = useState(false);
+  const [clientValidationCommentTexts, setClientValidationCommentTexts] = useState<Record<string, string>>({});
+  const [showClientValidationMentionDropdown, setShowClientValidationMentionDropdown] = useState<{ updateId: string; position: number } | null>(null);
+  const [submittingClientValidationComment, setSubmittingClientValidationComment] = useState<Record<string, boolean>>({});
+  const [clientValidationComments, setClientValidationComments] = useState<Record<string, ClientUpdateComment[]>>({});
+  const [loadingClientValidationComments, setLoadingClientValidationComments] = useState<Record<string, boolean>>({});
+  
+  // Notification modal state
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationType, setNotificationType] = useState<'success' | 'error'>('success');
 
   // Map department name to task type
   const getTaskTypeForDepartment = (dept: string): string => {
@@ -102,6 +138,47 @@ const DepartmentView: React.FC = () => {
     };
     return mapping[dept] || [dept];
   };
+
+  // Map department to user roles (for filtering users in Assign To dropdown)
+  const getRolesForDepartment = (dept: string): string[] => {
+    const mapping: Record<string, string[]> = {
+      'Copy Writing': ['Copy Writer', 'Copy', 'Copy Writing', 'Copywriter'],
+      'Design': ['Designer', 'Design', 'Graphic Designer', 'UI/UX Designer'],
+      'Development': ['Developer', 'Dev', 'Web Developer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer'],
+      'AI Team': ['AI Developer', 'AI', 'AI Team', 'Machine Learning Engineer'],
+      'Social Media Team': ['Social Media', 'Social Media Manager', 'Social Media Specialist', 'Content Creator'],
+      'CRM': ['CRM', 'CRM Manager', 'CRM Specialist', 'Account Manager'],
+      'SEO/GEO Team': ['SEO', 'GEO', 'SEO Specialist', 'SEO Manager', 'GEO Specialist'],
+      'Onboarding': ['Onboarding', 'Onboarding Specialist', 'Project Manager', 'PM'],
+    };
+    return mapping[dept] || [];
+  };
+
+  // Filter users by department
+  const getDepartmentUsers = useMemo(() => {
+    if (!department) return users;
+    const departmentRoles = getRolesForDepartment(department);
+    if (departmentRoles.length === 0) return users; // If no roles mapped, show all users
+    
+    return users.filter((user: any) => {
+      const userRole = (user.role || '').toLowerCase();
+      return departmentRoles.some(role => 
+        userRole === role.toLowerCase() || 
+        userRole.includes(role.toLowerCase()) ||
+        role.toLowerCase().includes(userRole)
+      );
+    });
+  }, [users, department]);
+
+  // Filter projects for searchable dropdown
+  const filteredProjects = useMemo(() => {
+    if (!clientSearchQuery.trim()) return allProjects;
+    const query = clientSearchQuery.toLowerCase();
+    return allProjects.filter((project: any) => {
+      const clientName = (project.clientName || 'Unknown Client').toLowerCase();
+      return clientName.includes(query);
+    });
+  }, [allProjects, clientSearchQuery]);
 
   // Load users once (they don't change often)
   useEffect(() => {
@@ -138,10 +215,7 @@ const DepartmentView: React.FC = () => {
           t.status !== 'Completed'
         );
         
-        // Step 3: Get unique project IDs from relevant tasks (Set for O(1) lookup)
-        const projectIdsWithTasks = new Set(relevantTasks.map((t: any) => t.projectId));
-        
-        // Step 4: Fetch projects - use cache if available
+        // Step 3: Fetch projects - use cache if available
         let allProjectsData: any[];
         if (allProjectsCacheRef.current.length > 0) {
           allProjectsData = allProjectsCacheRef.current;
@@ -151,11 +225,14 @@ const DepartmentView: React.FC = () => {
         }
         setAllProjects(allProjectsData); // Store for modal
         
+        // Step 4: Get unique project IDs from relevant tasks (Set for O(1) lookup)
+        const projectIdsWithTasks = new Set(relevantTasks.map((t: any) => t.projectId));
+        
         // Step 5: Filter projects efficiently using Set lookup
         // Include projects that:
         // 1. Have tasks of this department type, OR
         // 2. Are in the department stage, OR
-        // 3. Match CRM special case
+        // 3. Match CRM special case (Katalyst, Premium, or Powered-Up)
         const departmentProjectsMap = new Map();
         const isKatalyst = (clientType: string) => 
           clientType === 'Katalyst' || clientType === 'KATALYST' || clientType?.toLowerCase() === 'katalyst';
@@ -172,7 +249,7 @@ const DepartmentView: React.FC = () => {
             continue;
           }
           
-          // CRM special case
+          // CRM special case - include Premium and Powered-Up projects even if they don't have tasks yet
           if (department === 'CRM') {
             const allClientTypes = [
               project.clientType,
@@ -182,7 +259,12 @@ const DepartmentView: React.FC = () => {
                     : project.secondaryClientTypes.split(',').map((t: string) => t.trim()).filter((t: string) => !!t))
                 : [])
             ];
-            if (allClientTypes.some(isKatalyst)) {
+            // Include projects with Katalyst (primary or secondary), Premium, or Powered-Up
+            const hasKatalyst = allClientTypes.some(isKatalyst);
+            const isPremium = project.clientType === 'Premium' || allClientTypes.includes('Premium');
+            const isPoweredUp = project.clientType === 'Powered-Up' || allClientTypes.includes('Powered-Up');
+            
+            if (hasKatalyst || isPremium || isPoweredUp) {
               departmentProjectsMap.set(project.id, project);
             }
           }
@@ -294,6 +376,28 @@ const DepartmentView: React.FC = () => {
 
   // Get task status for Kanban columns (similar to ProjectDetail)
   const getTaskStatus = (task: any): string => {
+    // CRM-specific status mapping
+    if (department === 'CRM') {
+      // Map Blocked status to stuck column (we use Blocked enum value but display as Stuck)
+      if (task.status === 'Blocked' || task.status === 'Stuck' || task.status === 'stuck') {
+        return 'stuck';
+      }
+      // Check if task has been forwarded by looking for forward marker in description
+      if (task.description && task.description.includes('--- Forwarded to')) {
+        return 'forwarded';
+      }
+      // For CRM, "In Review" status maps to Client Validation column
+      if (task.status === 'In Review' || task.status === 'Client Validation' || task.status === 'Client Review') {
+        return 'client_validation';
+      }
+      if (task.assignedTo && (task.status === 'In Progress' || task.status === 'Owned')) {
+        return 'owned_in_progress';
+      }
+      // Default for CRM unassigned or Todo
+      return 'not_started';
+    }
+    
+    // Standard status mapping for other departments
     // If task has a file URL and deliverable, check deliverable status
     if (task.fileUrl && task.deliverableId) {
       // This would require fetching deliverable data, but for now we'll use task status
@@ -305,9 +409,30 @@ const DepartmentView: React.FC = () => {
       return 'approved_completed';
     }
     
+    // Check for column markers in description FIRST (regardless of assignment status)
+    // This ensures tasks moved to specific columns appear in the correct column even if unassigned
+    if (task.status === 'In Review' && task.description) {
+      if (task.description.includes('--- Column: Revision ---')) {
+        return 'revision';
+      }
+      if (task.description.includes('--- Column: Elliot Review ---')) {
+        return 'elliot_review';
+      }
+      if (task.description.includes('--- Column: QA Review ---')) {
+        return 'qa_before_client';
+      }
+      if (task.description.includes('--- Column: Client Review ---')) {
+        return 'client_validation';
+      }
+      if (task.description.includes('--- Column: For Approval ---')) {
+        return 'for_approval';
+      }
+    }
+    
     // Check if assigned
     if (task.assignedTo) {
-      if (task.status === 'In Progress' || task.status === 'In Review') {
+      // Legacy status checks (for backward compatibility)
+      if (task.status === 'In Progress') {
         return 'owned_in_progress';
       }
       if (task.status === 'For Approval' || task.status === 'Ready for Review') {
@@ -325,17 +450,37 @@ const DepartmentView: React.FC = () => {
       if (task.status === 'Client Review' || task.status === 'Client Validation') {
         return 'client_validation';
       }
+      // Default for assigned tasks with In Review status (no marker)
+      if (task.status === 'In Review') {
+        return 'owned_in_progress';
+      }
       // Default for assigned tasks
       return 'owned_in_progress';
     }
     
-    // Unassigned tasks
+    // Unassigned tasks - check for legacy status values
+    if (task.status === 'In Review') {
+      // If unassigned and In Review but no column marker, default to not_started
+      return 'not_started';
+    }
+    if (task.status === 'In Progress') {
+      return 'owned_in_progress';
+    }
+    
+    // Default for unassigned tasks
     return 'not_started';
   };
 
   // Group tasks by status for Kanban view - optimized
   const tasksByStatus = useMemo(() => {
-    const grouped: Record<string, any[]> = {
+    // CRM-specific columns
+    const grouped: Record<string, any[]> = department === 'CRM' ? {
+      'not_started': [],
+      'owned_in_progress': [],
+      'client_validation': [],
+      'forwarded': [],
+      'stuck': []
+    } : {
       'not_started': [],
       'owned_in_progress': [],
       'for_approval': [],
@@ -368,7 +513,7 @@ const DepartmentView: React.FC = () => {
     }
     
     return grouped;
-  }, [tasks, projects, searchQuery]);
+  }, [tasks, projects, searchQuery, department]);
 
   // Get project name - optimized with Map cache
   const projectNameMap = useMemo(() => {
@@ -395,6 +540,20 @@ const DepartmentView: React.FC = () => {
   const getUserName = (userId: string): string => {
     return userNameMap.get(userId) || 'Unassigned';
   };
+
+  // Check if a project is active (has active tasks) - for CRM department
+  const isProjectActive = useMemo(() => {
+    if (department !== 'CRM') return new Map<string, boolean>();
+    
+    const activeMap = new Map<string, boolean>();
+    // A project is active if it has any tasks that are not completed
+    for (const task of tasks) {
+      if (!task.isCompleted && task.status !== 'Completed') {
+        activeMap.set(task.projectId, true);
+      }
+    }
+    return activeMap;
+  }, [tasks, department]);
 
   // Fuzzy match client name to project
   const findProjectByClientName = (clientName: string): any | null => {
@@ -744,6 +903,20 @@ const DepartmentView: React.FC = () => {
     }
   }, [showEditTaskModal, editingTask]);
 
+  // Handle click outside client dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.client-searchable-dropdown')) {
+        setShowClientDropdown(false);
+      }
+    };
+    if (showClientDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showClientDropdown]);
+
   // Handle opening edit modal
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -846,6 +1019,244 @@ const DepartmentView: React.FC = () => {
     }
   };
 
+  // Handle forward task (CRM)
+  const handleForwardTask = async () => {
+    if (!forwardingTask || !forwardData.targetDepartment) {
+      showNotification('Please select a target department', 'error');
+      return;
+    }
+
+    setForwarding(true);
+    try {
+      // Get department name for display
+      const targetDept = departmentMenuItems.find(d => d.id === forwardData.targetDepartment);
+      const deptName = targetDept?.name || forwardData.targetDepartment;
+      
+      // Get task type for target department
+      const targetTaskType = getTaskTypeForDepartment(forwardData.targetDepartment);
+      
+      // Build description for new task with forwarding information
+      let newTaskDescription = `Forwarded from CRM\n\nOriginal Task: ${forwardingTask.title}`;
+      if (forwardingTask.description) {
+        newTaskDescription += `\n\nOriginal Description:\n${forwardingTask.description}`;
+      }
+      if (forwardData.notes) {
+        newTaskDescription += `\n\n--- Forwarding Notes ---\n${forwardData.notes}`;
+      }
+      if (forwardData.links) {
+        newTaskDescription += `\n\n--- Forwarding Links ---\n${forwardData.links}`;
+      }
+      
+      // Create new task in target department
+      const newTaskData: any = {
+        projectId: forwardingTask.projectId, // Same project/client
+        title: `${forwardingTask.title} (Forwarded from CRM)`,
+        description: newTaskDescription,
+        type: targetTaskType,
+        status: 'Todo',
+        isCompleted: false,
+      };
+      
+      // Copy due date if exists
+      if (forwardingTask.dueDate) {
+        newTaskData.dueDate = new Date(forwardingTask.dueDate);
+      }
+      
+      // Copy deliverable if exists
+      if (forwardingTask.deliverableId) {
+        newTaskData.deliverableId = forwardingTask.deliverableId;
+      }
+      
+      await taskService.create(newTaskData);
+      
+      // Update original task description to include forward information (for tracking)
+      const forwardNote = `\n\n--- Forwarded to ${deptName} on ${new Date().toLocaleString()} ---\n${forwardData.notes ? `Notes: ${forwardData.notes}\n` : ''}${forwardData.links ? `Links: ${forwardData.links}` : ''}`;
+      const updatedDescription = (forwardingTask.description || '') + forwardNote;
+      
+      await taskService.update(forwardingTask.id, {
+        description: updatedDescription
+      });
+
+      // Reload tasks - optimized
+      const allTasksData = await taskService.getAll();
+      const taskType = getTaskTypeForDepartment(department || '');
+      const projectIdsSet = new Set(projects.map((p: any) => p.id));
+      const departmentTasks = allTasksData.filter((t: any) => 
+        t.type === taskType && 
+        !t.isCompleted &&
+        t.status !== 'Completed' &&
+        projectIdsSet.has(t.projectId)
+      );
+      setTasks(departmentTasks);
+
+      // Close modal and reset
+      setShowForwardModal(false);
+      setForwardingTask(null);
+      setForwardData({
+        targetDepartment: '',
+        notes: '',
+        links: ''
+      });
+      showNotification(`Task forwarded to ${deptName} successfully! A new task has been created in that department.`, 'success');
+    } catch (error) {
+      console.error('Failed to forward task:', error);
+      showNotification('Failed to forward task. Please try again.', 'error');
+    } finally {
+      setForwarding(false);
+    }
+  };
+
+  // Load client validation updates
+  const loadClientValidationUpdates = async (projectId: string) => {
+    try {
+      setLoadingClientValidationUpdates(true);
+      const updates = await clientUpdatesService.getAllByProject(projectId);
+      setClientValidationUpdates(updates || []);
+      
+      // Load comments for each update
+      const commentsMap: Record<string, ClientUpdateComment[]> = {};
+      const loadingMap: Record<string, boolean> = {};
+      for (const update of updates || []) {
+        loadingMap[update.id] = true;
+        setLoadingClientValidationComments({ ...loadingClientValidationComments, ...loadingMap });
+        try {
+          const updateComments = await clientUpdatesService.getComments(update.id);
+          commentsMap[update.id] = updateComments || [];
+        } catch (error) {
+          console.error(`Failed to load comments for update ${update.id}:`, error);
+          commentsMap[update.id] = [];
+        }
+        loadingMap[update.id] = false;
+      }
+      setClientValidationComments(commentsMap);
+      setLoadingClientValidationComments({ ...loadingClientValidationComments, ...loadingMap });
+    } catch (error) {
+      console.error('Failed to load client validation updates:', error);
+      setClientValidationUpdates([]);
+    } finally {
+      setLoadingClientValidationUpdates(false);
+    }
+  };
+
+  // Add client validation link
+  const addClientValidationLink = () => {
+    setClientValidationLinks([...clientValidationLinks, '']);
+  };
+
+  // Remove client validation link
+  const removeClientValidationLink = (index: number) => {
+    const newLinks = clientValidationLinks.filter((_, i) => i !== index);
+    if (newLinks.length === 0) {
+      setClientValidationLinks(['']);
+    } else {
+      setClientValidationLinks(newLinks);
+    }
+  };
+
+  // Update client validation link
+  const updateClientValidationLink = (index: number, value: string) => {
+    const newLinks = [...clientValidationLinks];
+    newLinks[index] = value;
+    setClientValidationLinks(newLinks);
+  };
+
+  // Show notification modal
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotificationMessage(message);
+    setNotificationType(type);
+    setShowNotificationModal(true);
+    // Auto-close after 3 seconds
+    setTimeout(() => {
+      setShowNotificationModal(false);
+    }, 3000);
+  };
+
+  // Handle client validation log submit
+  const handleClientValidationLogSubmit = async () => {
+    if (!projectForClientValidation) return;
+    
+    try {
+      setLoggingClientValidation(true);
+      const validLinks = clientValidationLinks.filter(link => link.trim() !== '');
+      await clientUpdatesService.create(
+        projectForClientValidation.id,
+        clientValidationNotes || undefined,
+        validLinks.length > 0 ? validLinks : undefined
+      );
+      // Reload updates
+      await loadClientValidationUpdates(projectForClientValidation.id);
+      // Switch to logs tab and reset form
+      setClientValidationTab('logs');
+      setClientValidationNotes('');
+      setClientValidationLinks(['']);
+      showNotification('Client validation log saved successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to save client validation log:', error);
+      showNotification('Failed to save client validation log. Please try again.', 'error');
+    } finally {
+      setLoggingClientValidation(false);
+    }
+  };
+
+  // Handle client validation comment input with @ mentions
+  const handleClientValidationCommentInput = (updateId: string, text: string, cursorPosition: number) => {
+    setClientValidationCommentTexts({ ...clientValidationCommentTexts, [updateId]: text });
+    
+    // Check for @ mention
+    const textBeforeCursor = text.substring(0, cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      // Check if there's a space after @, meaning we should show dropdown
+      if (!textAfterAt.includes(' ') && textAfterAt.length > 0) {
+        setShowClientValidationMentionDropdown({ updateId, position: cursorPosition });
+      } else {
+        setShowClientValidationMentionDropdown(null);
+      }
+    } else {
+      setShowClientValidationMentionDropdown(null);
+    }
+  };
+
+  // Handle add client validation comment
+  const handleAddClientValidationComment = async (updateId: string) => {
+    const commentText = clientValidationCommentTexts[updateId]?.trim();
+    if (!commentText) return;
+
+    try {
+      setSubmittingClientValidationComment({ ...submittingClientValidationComment, [updateId]: true });
+      
+      // Extract mentions from comment text
+      const mentionRegex = /@(\w+)/g;
+      const mentions: string[] = [];
+      let match;
+      while ((match = mentionRegex.exec(commentText)) !== null) {
+        const mentionedName = match[1];
+        const user = users.find((u: any) => u.name === mentionedName);
+        if (user) {
+          mentions.push(user.id);
+        }
+      }
+
+      await clientUpdatesService.createComment(updateId, commentText, mentions.length > 0 ? mentions : undefined);
+      
+      // Reload comments for this update
+      const updateComments = await clientUpdatesService.getComments(updateId);
+      setClientValidationComments({ ...clientValidationComments, [updateId]: updateComments || [] });
+      
+      // Clear comment text
+      setClientValidationCommentTexts({ ...clientValidationCommentTexts, [updateId]: '' });
+      setShowClientValidationMentionDropdown(null);
+      showNotification('Comment added successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      showNotification('Failed to add comment. Please try again.', 'error');
+    } finally {
+      setSubmittingClientValidationComment({ ...submittingClientValidationComment, [updateId]: false });
+    }
+  };
+
   // Handle create task
   const handleCreateTask = async () => {
     if (!newTaskData.projectId || !newTaskData.title.trim()) {
@@ -918,6 +1329,8 @@ const DepartmentView: React.FC = () => {
       });
       setShowCustomDeliverableInput(false);
       setCustomDeliverableName('');
+      setClientSearchQuery('');
+      setShowClientDropdown(false);
       alert('Task created successfully!');
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -1371,7 +1784,7 @@ const DepartmentView: React.FC = () => {
                 }}
               >
                 <option value="">Select user to assign...</option>
-                {users.map((u: any) => (
+                {getDepartmentUsers.map((u: any) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
@@ -1498,14 +1911,21 @@ const DepartmentView: React.FC = () => {
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: department === 'CRM' ? 'repeat(5, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
               gap: '1.5rem',
               paddingBottom: '1rem',
               paddingTop: '0.5rem',
               width: '100%',
-              minHeight: '400px'
+              minHeight: '400px',
+              overflow: 'hidden'
             }} className="department-kanban-container">
-              {[
+              {(department === 'CRM' ? [
+                { id: 'not_started', title: 'Not Yet Started' },
+                { id: 'owned_in_progress', title: 'Owned/ In Progress' },
+                { id: 'client_validation', title: 'Client Validation' },
+                { id: 'forwarded', title: 'Forwarded' },
+                { id: 'stuck', title: 'Stuck' }
+              ] : [
                 { id: 'not_started', title: 'Not yet started' },
                 { id: 'owned_in_progress', title: 'Owned/In Progress' },
                 { id: 'for_approval', title: 'For Approval' },
@@ -1514,7 +1934,7 @@ const DepartmentView: React.FC = () => {
                 { id: 'approved_completed', title: 'Approved/Completed' },
                 { id: 'qa_before_client', title: 'QA Before Sending to Client' },
                 { id: 'client_validation', title: 'Client Validation' }
-              ].map((column) => {
+              ]).map((column) => {
                 const columnTasks = tasksByStatus[column.id] || [];
                 const isDragOver = dragOverColumn === column.id;
                 
@@ -1524,6 +1944,8 @@ const DepartmentView: React.FC = () => {
                     className="department-kanban-column"
                     style={{
                       width: '100%',
+                      minWidth: 0,
+                      maxWidth: '100%',
                       background: 'white',
                       borderRadius: '0.5rem',
                       boxShadow: isDragOver ? '0 4px 12px rgba(102, 126, 234, 0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
@@ -1533,7 +1955,8 @@ const DepartmentView: React.FC = () => {
                       transition: 'all 0.2s',
                       height: 'fit-content',
                       maxHeight: 'calc(100vh - 300px)',
-                      position: 'relative'
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -1551,23 +1974,195 @@ const DepartmentView: React.FC = () => {
                         const task = tasks.find((t: any) => t.id === draggedTask);
                         if (!task) return;
                         
+                        // Special handling for CRM Forwarded column
+                        if (department === 'CRM' && column.id === 'forwarded') {
+                          setForwardingTask(task);
+                          setForwardData({
+                            targetDepartment: '',
+                            notes: '',
+                            links: ''
+                          });
+                          setShowForwardModal(true);
+                          return;
+                        }
+                        
+                        // Special handling for CRM Client Validation column
+                        if (department === 'CRM' && column.id === 'client_validation') {
+                          const project = projects.find((p: any) => p.id === task.projectId);
+                          setTaskForClientValidation(task);
+                          setProjectForClientValidation(project);
+                          // Pre-populate notes with task title
+                          setClientValidationNotes(`Task: ${task.title}`);
+                          setClientValidationLinks(['']);
+                          setClientValidationTab('new'); // Open to New Log tab automatically
+                          setClientValidationCommentTexts({});
+                          // Load existing client updates for this project
+                          if (project) {
+                            loadClientValidationUpdates(project.id);
+                          }
+                          setShowClientValidationModal(true);
+                          // Update task status to "In Review" (valid enum value) - we track client validation separately in logs
+                          await taskService.updateStatus(task.id, 'In Review', false);
+                          // Reload tasks
+                          const allTasksData = await taskService.getAll();
+                          const taskType = getTaskTypeForDepartment(department || '');
+                          const projectIdsSet = new Set(projects.map((p: any) => p.id));
+                          const departmentTasks = allTasksData.filter((t: any) => 
+                            t.type === taskType && 
+                            !t.isCompleted &&
+                            t.status !== 'Completed' &&
+                            projectIdsSet.has(t.projectId)
+                          );
+                          setTasks(departmentTasks);
+                          return;
+                        }
+                        
                         let newStatus = task.status;
-                        if (column.id === 'revision') {
-                          newStatus = 'Revision';
-                        } else if (column.id === 'elliot_review') {
-                          newStatus = 'Elliot Review';
-                        } else if (column.id === 'approved_completed') {
-                          newStatus = 'Completed';
-                        } else if (column.id === 'qa_before_client') {
-                          newStatus = 'QA Review';
-                        } else if (column.id === 'client_validation') {
-                          newStatus = 'Client Review';
-                        } else if (column.id === 'for_approval') {
-                          newStatus = 'For Approval';
-                        } else if (column.id === 'owned_in_progress') {
-                          newStatus = 'In Progress';
-                        } else if (column.id === 'not_started') {
-                          newStatus = 'Todo';
+                        if (department === 'CRM') {
+                          // CRM-specific status mapping - use valid enum values
+                          if (column.id === 'stuck') {
+                            newStatus = 'Blocked'; // Use Blocked enum value for Stuck column
+                          } else if (column.id === 'owned_in_progress') {
+                            newStatus = 'In Progress';
+                          } else if (column.id === 'not_started') {
+                            newStatus = 'Todo';
+                          }
+                        } else {
+                          // Standard status mapping - use valid enum values
+                          // Valid enum values: 'Todo', 'In Progress', 'In Review', 'Completed', 'Blocked'
+                          // For review columns, we store the column info in description to distinguish them
+                          if (column.id === 'revision') {
+                            newStatus = 'In Review'; // Map Revision to In Review (valid enum)
+                            // Store column marker in description
+                            const columnMarker = '\n\n--- Column: Revision ---';
+                            const currentDesc = task.description || '';
+                            if (!currentDesc.includes('--- Column: Revision ---')) {
+                              try {
+                                // Remove any existing column markers first
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc + columnMarker
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to update description with column marker:', descError);
+                                // Continue with status update even if description update fails
+                              }
+                            }
+                          } else if (column.id === 'elliot_review') {
+                            newStatus = 'In Review'; // Map Elliot Review to In Review (valid enum)
+                            const columnMarker = '\n\n--- Column: Elliot Review ---';
+                            const currentDesc = task.description || '';
+                            if (!currentDesc.includes('--- Column: Elliot Review ---')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc + columnMarker
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to update description with column marker:', descError);
+                              }
+                            }
+                          } else if (column.id === 'approved_completed') {
+                            newStatus = 'Completed'; // Valid enum value
+                          } else if (column.id === 'qa_before_client') {
+                            newStatus = 'In Review'; // Map QA Review to In Review (valid enum)
+                            const columnMarker = '\n\n--- Column: QA Review ---';
+                            const currentDesc = task.description || '';
+                            if (!currentDesc.includes('--- Column: QA Review ---')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc + columnMarker
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to update description with column marker:', descError);
+                              }
+                            }
+                          } else if (column.id === 'client_validation') {
+                            // Special handling for Client Validation column - open modal like CRM
+                            const project = projects.find((p: any) => p.id === task.projectId);
+                            setTaskForClientValidation(task);
+                            setProjectForClientValidation(project);
+                            // Pre-populate notes with task title
+                            setClientValidationNotes(`Task: ${task.title}`);
+                            setClientValidationLinks(['']);
+                            setClientValidationTab('new'); // Open to New Log tab automatically
+                            setClientValidationCommentTexts({});
+                            // Load existing client updates for this project
+                            if (project) {
+                              loadClientValidationUpdates(project.id);
+                            }
+                            setShowClientValidationModal(true);
+                            // Update task status to "In Review" (valid enum value) - we track client validation separately in logs
+                            newStatus = 'In Review';
+                            const columnMarker = '\n\n--- Column: Client Review ---';
+                            const currentDesc = task.description || '';
+                            if (!currentDesc.includes('--- Column: Client Review ---')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc + columnMarker
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to update description with column marker:', descError);
+                              }
+                            }
+                            await taskService.updateStatus(task.id, newStatus, false);
+                            // Reload tasks
+                            const allTasksData = await taskService.getAll();
+                            const taskType = getTaskTypeForDepartment(department || '');
+                            const projectIdsSet = new Set(projects.map((p: any) => p.id));
+                            const departmentTasks = allTasksData.filter((t: any) => 
+                              t.type === taskType && 
+                              !t.isCompleted &&
+                              t.status !== 'Completed' &&
+                              projectIdsSet.has(t.projectId)
+                            );
+                            setTasks(departmentTasks);
+                            return; // Return early to prevent further status update
+                          } else if (column.id === 'for_approval') {
+                            newStatus = 'In Review'; // Map For Approval to In Review (valid enum)
+                            const columnMarker = '\n\n--- Column: For Approval ---';
+                            const currentDesc = task.description || '';
+                            if (!currentDesc.includes('--- Column: For Approval ---')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc + columnMarker
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to update description with column marker:', descError);
+                              }
+                            }
+                          } else if (column.id === 'owned_in_progress') {
+                            newStatus = 'In Progress'; // Valid enum value
+                            // Clear any column markers when moving to in progress
+                            const currentDesc = task.description || '';
+                            if (currentDesc.includes('--- Column:')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to clear column marker from description:', descError);
+                              }
+                            }
+                          } else if (column.id === 'not_started') {
+                            newStatus = 'Todo'; // Valid enum value
+                            // Clear any column markers when moving to not started
+                            const currentDesc = task.description || '';
+                            if (currentDesc.includes('--- Column:')) {
+                              try {
+                                const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+                                await taskService.update(task.id, {
+                                  description: cleanedDesc
+                                });
+                              } catch (descError) {
+                                console.warn('Failed to clear column marker from description:', descError);
+                              }
+                            }
+                          }
                         }
                         
                         await taskService.updateStatus(task.id, newStatus, column.id === 'approved_completed');
@@ -1594,10 +2189,21 @@ const DepartmentView: React.FC = () => {
                         padding: '1rem',
                         background: '#f8fafc',
                         borderBottom: '1px solid #e2e8f0',
-                        borderRadius: '0.5rem 0.5rem 0 0'
+                        borderRadius: '0.5rem 0.5rem 0 0',
+                        minWidth: 0,
+                        width: '100%',
+                        overflow: 'hidden'
                       }}
                     >
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.25rem 0' }}>
+                      <h3 style={{ 
+                        fontSize: '1rem', 
+                        fontWeight: 600, 
+                        color: '#1e293b', 
+                        margin: '0 0 0.25rem 0',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
                         {column.title}
                       </h3>
                       <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
@@ -1608,8 +2214,11 @@ const DepartmentView: React.FC = () => {
                       padding: '0.75rem',
                       flex: 1,
                       overflowY: 'auto',
+                      overflowX: 'hidden',
                       minHeight: '200px',
-                      maxHeight: 'calc(100vh - 400px)'
+                      maxHeight: 'calc(100vh - 400px)',
+                      minWidth: 0,
+                      width: '100%'
                     }} className="department-kanban-column-content">
                       {columnTasks.map((task: any) => {
                         const projectName = getProjectName(task.projectId);
@@ -1643,7 +2252,11 @@ const DepartmentView: React.FC = () => {
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             position: 'relative',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                            minWidth: 0,
+                            width: '100%',
+                            maxWidth: '100%',
+                            boxSizing: 'border-box'
                           }}
                           onClick={(e) => {
                             // Don't navigate if clicking on checkbox, select, button, or interactive elements
@@ -1817,7 +2430,7 @@ const DepartmentView: React.FC = () => {
                                 }}
                               >
                                 <option value="">Unassigned</option>
-                                {users.map((u: any) => (
+                                {getDepartmentUsers.map((u: any) => (
                                   <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
                               </select>
@@ -1833,113 +2446,331 @@ const DepartmentView: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* List View */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {Object.entries(tasksByProject).map(([projectId, projectTasks]) => (
-              <div
-                key={projectId}
-                style={{
-                  background: 'white',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid #e2e8f0',
-                  overflow: 'hidden'
-                }}
-              >
-                <div
-                  onClick={() => navigate(`/project/${projectId}`)}
-                  style={{
-                    padding: '1rem 1.5rem',
+          /* List View - Table Format */
+          <div style={{
+            background: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              overflowX: 'auto',
+              overflowY: 'visible'
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
+                <thead>
+                  <tr style={{
                     background: '#f8fafc',
-                    borderBottom: '1px solid #e2e8f0',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
-                    {getProjectName(projectId)}
-                  </h3>
-                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                    {projectTasks.length} task(s)
-                  </span>
-                </div>
-                <div style={{ padding: '1rem 1.5rem' }}>
-                  {projectTasks.map((task: any) => (
-                    <div
-                      key={task.id}
-                      style={{
+                    borderBottom: '2px solid #e2e8f0'
+                  }}>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      width: '40px'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTasks.size === tasks.length && tasks.length > 0}
+                        onChange={handleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      TASK TITLE
+                    </th>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      PROJECT/CLIENT
+                    </th>
+                    {department === 'CRM' && (
+                      <th style={{
                         padding: '1rem',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.375rem',
-                        marginBottom: '0.75rem',
-                        background: selectedTasks.has(task.id) ? '#f0f4ff' : 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                      }}
-                      onClick={(e) => {
-                        // Don't navigate if clicking on checkbox, select, button, or interactive elements
-                        const target = e.target as HTMLElement;
-                        if (target.closest('input[type="checkbox"]') || 
-                            target.closest('select') || 
-                            target.closest('button') ||
-                            target.tagName === 'INPUT' || 
-                            target.tagName === 'SELECT' ||
-                            target.tagName === 'BUTTON') {
-                          return;
-                        }
-                        navigate(`/project/${task.projectId}`);
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!selectedTasks.has(task.id)) {
-                          e.currentTarget.style.background = '#f8fafc';
-                          e.currentTarget.style.borderColor = '#667eea';
-                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.15)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!selectedTasks.has(task.id)) {
-                          e.currentTarget.style.background = 'white';
-                          e.currentTarget.style.borderColor = '#e2e8f0';
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedTasks.has(task.id)}
-                          onChange={() => handleTaskSelect(task.id)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTaskSelect(task.id);
-                          }}
-                          style={{ marginTop: '0.25rem', cursor: 'pointer' }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '0.75rem',
-                            marginBottom: '0.5rem'
+                        textAlign: 'left',
+                        fontWeight: 600,
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        width: '120px'
+                      }}>
+                        CLIENT STATUS
+                      </th>
+                    )}
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      STATUS
+                    </th>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      ASSIGNED TO
+                    </th>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      DUE DATE
+                    </th>
+                    <th style={{
+                      padding: '1rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      width: '100px'
+                    }}>
+                      ACTIONS
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Filter tasks by search query
+                    const hasSearch = searchQuery.trim().length > 0;
+                    const q = searchQuery.toLowerCase();
+                    const filteredTasks = hasSearch
+                      ? tasks.filter((task: any) => {
+                          const title = (task.title || '').toLowerCase();
+                          const project = projects.find((p: any) => p.id === task.projectId);
+                          const projectName = (project?.clientName || 'Unknown Project').toLowerCase();
+                          return title.includes(q) || projectName.includes(q);
+                        })
+                      : tasks;
+                    
+                    if (filteredTasks.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={department === 'CRM' ? 8 : 7} style={{
+                            padding: '3rem',
+                            textAlign: 'center',
+                            color: '#64748b',
+                            fontSize: '0.875rem'
                           }}>
-                            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: 0, flex: 1 }}>
+                            {hasSearch ? 'No tasks match your search' : 'No active tasks in this department'}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    
+                    return filteredTasks.map((task: any) => {
+                      const projectName = getProjectName(task.projectId);
+                      const isSelected = selectedTasks.has(task.id);
+                      
+                      return (
+                        <tr
+                          key={task.id}
+                          onClick={(e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest('input[type="checkbox"]') || 
+                                target.closest('select') || 
+                                target.closest('button') ||
+                                target.tagName === 'INPUT' || 
+                                target.tagName === 'SELECT' ||
+                                target.tagName === 'BUTTON') {
+                              return;
+                            }
+                            navigate(`/project/${task.projectId}`);
+                          }}
+                          style={{
+                            background: isSelected ? '#f0f4ff' : 'white',
+                            borderBottom: '1px solid #e2e8f0',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.background = '#f8fafc';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.background = 'white';
+                            }
+                          }}
+                        >
+                          <td style={{ padding: '1rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleTaskSelect(task.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTaskSelect(task.id);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{
+                              fontWeight: 600,
+                              color: '#1e293b',
+                              fontSize: '0.875rem',
+                              marginBottom: '0.25rem'
+                            }}>
                               {task.title}
-                            </h4>
+                            </div>
+                            {task.description && (
+                              <div style={{
+                                color: '#64748b',
+                                fontSize: '0.75rem',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '300px'
+                              }}>
+                                {task.description}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{
+                              color: '#667eea',
+                              fontWeight: 500,
+                              fontSize: '0.875rem'
+                            }}>
+                              {projectName}
+                            </div>
+                          </td>
+                          {department === 'CRM' && (
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                background: isProjectActive.get(task.projectId) ? '#d1fae5' : '#fee2e2',
+                                color: isProjectActive.get(task.projectId) ? '#065f46' : '#991b1b',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block'
+                              }}>
+                                {isProjectActive.get(task.projectId) ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                          )}
+                          <td style={{ padding: '1rem' }}>
                             <span style={{
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.25rem',
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '12px',
                               fontSize: '0.75rem',
                               fontWeight: 500,
-                              background: task.status === 'Completed' ? '#d1fae5' : '#fef3c7',
-                              color: task.status === 'Completed' ? '#065f46' : '#92400e'
+                              background: task.status === 'Completed' ? '#d1fae5' : 
+                                         task.status === 'In Progress' ? '#dbeafe' :
+                                         task.status === 'In Review' ? '#fef3c7' :
+                                         task.status === 'Blocked' ? '#fee2e2' : '#f3f4f6',
+                              color: task.status === 'Completed' ? '#065f46' : 
+                                    task.status === 'In Progress' ? '#1e40af' :
+                                    task.status === 'In Review' ? '#92400e' :
+                                    task.status === 'Blocked' ? '#991b1b' : '#374151',
+                              whiteSpace: 'nowrap'
                             }}>
                               {task.status}
                             </span>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <select
+                              value={task.assignedTo || ''}
+                              onChange={async (e) => {
+                                try {
+                                  await taskService.assign(task.id, e.target.value);
+                                  setTasks((prev) =>
+                                    prev.map((t: any) =>
+                                      t.id === task.id ? { ...t, assignedTo: e.target.value } : t
+                                    )
+                                  );
+                                } catch (error) {
+                                  console.error('Failed to assign task:', error);
+                                  alert('Failed to assign task. Please try again.');
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem',
+                                background: 'white',
+                                color: '#1e293b',
+                                cursor: 'pointer',
+                                minWidth: '150px',
+                                maxWidth: '200px'
+                              }}
+                              onFocus={(e) => {
+                                e.target.style.borderColor = '#667eea';
+                                e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                              }}
+                              onBlur={(e) => {
+                                e.target.style.borderColor = '#e2e8f0';
+                                e.target.style.boxShadow = 'none';
+                              }}
+                            >
+                              <option value="">Unassigned</option>
+                              {getDepartmentUsers.map((u: any) => (
+                                <option key={u.id} value={u.id}>{u.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {task.dueDate ? (
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                color: '#64748b',
+                                fontSize: '0.875rem'
+                              }}>
+                                <FaClock style={{ fontSize: '0.75rem' }} />
+                                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1947,88 +2778,40 @@ const DepartmentView: React.FC = () => {
                               }}
                               style={{
                                 background: 'transparent',
-                                border: 'none',
+                                border: '1px solid #e2e8f0',
                                 color: '#667eea',
                                 cursor: 'pointer',
                                 padding: '0.5rem',
+                                borderRadius: '0.375rem',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                borderRadius: '4px',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                width: '36px',
+                                height: '36px'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#f0f4ff';
+                                e.currentTarget.style.borderColor = '#667eea';
                                 e.currentTarget.style.color = '#5568d3';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.borderColor = '#e2e8f0';
                                 e.currentTarget.style.color = '#667eea';
                               }}
                               title="Edit Task"
                             >
                               <FaEdit style={{ fontSize: '0.875rem' }} />
                             </button>
-                          </div>
-                          {task.description && (
-                            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
-                              {task.description}
-                            </p>
-                          )}
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '1.5rem',
-                            fontSize: '0.875rem',
-                            color: '#64748b'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <FaUser />
-                              <span>{getUserName(task.assignedTo || '')}</span>
-                            </div>
-                            {task.dueDate && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <FaClock />
-                                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <select
-                          value={task.assignedTo || ''}
-                          onChange={async (e) => {
-                            try {
-                              await taskService.assign(task.id, e.target.value);
-                              // Update local state
-                              setTasks((prev) =>
-                                prev.map((t: any) =>
-                                  t.id === task.id ? { ...t, assignedTo: e.target.value } : t
-                                )
-                              );
-                            } catch (error) {
-                              console.error('Failed to assign task:', error);
-                              alert('Failed to assign task. Please try again.');
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            padding: '0.5rem',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '0.375rem',
-                            minWidth: '150px'
-                          }}
-                        >
-                          <option value="">Unassigned</option>
-                          {users.map((u: any) => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -2049,6 +2832,8 @@ const DepartmentView: React.FC = () => {
             });
             setShowCustomDeliverableInput(false);
             setCustomDeliverableName('');
+            setClientSearchQuery('');
+            setShowClientDropdown(false);
           }}
           style={{
             position: 'fixed',
@@ -2163,51 +2948,129 @@ const DepartmentView: React.FC = () => {
               overflowY: 'auto',
               flex: 1
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative' }} className="client-searchable-dropdown">
                 <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
                   Select Client (Project) *
                 </label>
-                <select
-                  value={newTaskData.projectId}
-                  onChange={(e) => {
-                    setNewTaskData({ ...newTaskData, projectId: e.target.value, deliverableId: '' });
-                    setShowCustomDeliverableInput(false);
-                    setCustomDeliverableName('');
-                  }}
-                  required
-                  style={{
-                    padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
-                    borderRadius: '10px',
-                    fontSize: '1rem',
-                    transition: 'all 0.2s',
-                    background: '#ffffff',
-                    color: '#111827',
-                    cursor: 'pointer',
-                    appearance: 'none',
-                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 1rem center',
-                    backgroundSize: '1.25em 1.25em',
-                    paddingRight: '3rem'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Select a client...</option>
-                  {allProjects.map((project: any) => (
-                    <option key={project.id} value={project.id}>
-                      {project.clientName || 'Unknown Client'}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={newTaskData.projectId ? allProjects.find((p: any) => p.id === newTaskData.projectId)?.clientName || '' : clientSearchQuery}
+                    onChange={(e) => {
+                      setClientSearchQuery(e.target.value);
+                      setShowClientDropdown(true);
+                      if (newTaskData.projectId) {
+                        setNewTaskData({ ...newTaskData, projectId: '', deliverableId: '' });
+                        setShowCustomDeliverableInput(false);
+                        setCustomDeliverableName('');
+                      }
+                    }}
+                    placeholder="Search for a client..."
+                    required={!newTaskData.projectId}
+                    style={{
+                      width: '100%',
+                      padding: '1rem 1.25rem',
+                      paddingRight: '3rem',
+                      border: '1.5px solid #e5e7eb',
+                      borderRadius: '10px',
+                      fontSize: '1rem',
+                      transition: 'all 0.2s',
+                      background: '#ffffff',
+                      color: '#111827',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                      setShowClientDropdown(true);
+                      if (!newTaskData.projectId) {
+                        setClientSearchQuery('');
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e5e7eb';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowClientDropdown(false);
+                      }
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      color: '#6b7280'
+                    }}
+                  >
+                    <FaSearch style={{ fontSize: '1rem' }} />
+                  </div>
+                  {showClientDropdown && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        marginTop: '0.25rem',
+                        background: 'white',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '10px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        zIndex: 1000,
+                        marginBottom: '1rem'
+                      }}
+                    >
+                      {filteredProjects.length === 0 ? (
+                        <div style={{
+                          padding: '1rem',
+                          textAlign: 'center',
+                          color: '#64748b',
+                          fontSize: '0.875rem'
+                        }}>
+                          No clients found
+                        </div>
+                      ) : (
+                        filteredProjects.map((project: any) => (
+                          <div
+                            key={project.id}
+                            onClick={() => {
+                              setNewTaskData({ ...newTaskData, projectId: project.id, deliverableId: '' });
+                              setShowCustomDeliverableInput(false);
+                              setCustomDeliverableName('');
+                              setClientSearchQuery('');
+                              setShowClientDropdown(false);
+                            }}
+                            style={{
+                              padding: '0.875rem 1.25rem',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f3f4f6',
+                              transition: 'background 0.15s',
+                              color: '#111827',
+                              fontSize: '0.9375rem'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                            }}
+                          >
+                            {project.clientName || 'Unknown Client'}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -2460,7 +3323,7 @@ const DepartmentView: React.FC = () => {
                   }}
                 >
                   <option value="">Unassigned</option>
-                  {users.map((u: any) => (
+                  {getDepartmentUsers.map((u: any) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
@@ -2490,6 +3353,8 @@ const DepartmentView: React.FC = () => {
                   });
                   setShowCustomDeliverableInput(false);
                   setCustomDeliverableName('');
+                  setClientSearchQuery('');
+                  setShowClientDropdown(false);
                 }}
                 disabled={creatingTask}
                 style={{
@@ -3483,7 +4348,7 @@ const DepartmentView: React.FC = () => {
                   }}
                 >
                   <option value="">Unassigned</option>
-                  {users.map((u: any) => (
+                  {getDepartmentUsers.map((u: any) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
@@ -3582,6 +4447,1041 @@ const DepartmentView: React.FC = () => {
                 }}
               >
                 <FaSave /> {updatingTask ? 'Updating...' : 'Update Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forward Task Modal (CRM) */}
+      {showForwardModal && forwardingTask && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => {
+            setShowForwardModal(false);
+            setForwardingTask(null);
+            setForwardData({
+              targetDepartment: '',
+              notes: '',
+              links: ''
+            });
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            className="forward-task-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '2rem 2.5rem 1.5rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                Forward Task - {getProjectName(forwardingTask.projectId)}
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowForwardModal(false);
+                  setForwardingTask(null);
+                  setForwardData({
+                    targetDepartment: '',
+                    notes: '',
+                    links: ''
+                  });
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f9fafb';
+                  e.currentTarget.style.color = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '2rem 2.5rem',
+              gap: '2rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              <div style={{
+                padding: '1rem',
+                background: '#f0f4ff',
+                border: '1px solid #c7d2fe',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                color: '#4c51bf'
+              }}>
+                <strong>Task:</strong> {forwardingTask.title}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Forward to Department *
+                </label>
+                <select
+                  value={forwardData.targetDepartment}
+                  onChange={(e) => setForwardData({ ...forwardData, targetDepartment: e.target.value })}
+                  required
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 1rem center',
+                    backgroundSize: '1.25em 1.25em',
+                    paddingRight: '3rem'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Select department...</option>
+                  {departmentMenuItems.filter(d => d.id !== 'CRM').map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={forwardData.notes}
+                  onChange={(e) => setForwardData({ ...forwardData, notes: e.target.value })}
+                  rows={4}
+                  placeholder="Add any notes about forwarding this task..."
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    minHeight: '120px',
+                    lineHeight: '1.6'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  Links (Optional)
+                </label>
+                <textarea
+                  value={forwardData.links}
+                  onChange={(e) => setForwardData({ ...forwardData, links: e.target.value })}
+                  rows={3}
+                  placeholder="Add any relevant links (one per line or comma-separated)..."
+                  style={{
+                    padding: '1rem 1.25rem',
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s',
+                    background: '#ffffff',
+                    color: '#111827',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    minHeight: '90px',
+                    lineHeight: '1.6'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#667eea';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              padding: '2rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              marginTop: 'auto',
+              gap: '0.875rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForwardModal(false);
+                  setForwardingTask(null);
+                  setForwardData({
+                    targetDepartment: '',
+                    notes: '',
+                    links: ''
+                  });
+                }}
+                disabled={forwarding}
+                style={{
+                  background: '#ffffff',
+                  color: '#374151',
+                  border: '1.5px solid #e5e7eb',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: forwarding ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  opacity: forwarding ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!forwarding) {
+                    e.currentTarget.style.background = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!forwarding) {
+                    e.currentTarget.style.background = '#ffffff';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleForwardTask}
+                disabled={forwarding || !forwardData.targetDepartment}
+                style={{
+                  background: forwarding || !forwardData.targetDepartment ? '#cbd5e1' : '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  cursor: forwarding || !forwardData.targetDepartment ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s',
+                  opacity: forwarding || !forwardData.targetDepartment ? 0.5 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!forwarding && forwardData.targetDepartment) {
+                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!forwarding && forwardData.targetDepartment) {
+                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <FaShareAlt /> {forwarding ? 'Forwarding...' : 'Forward Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client Validation Modal (CRM) */}
+      {showClientValidationModal && taskForClientValidation && projectForClientValidation && (
+        <>
+          <div 
+            className="modal-overlay" 
+            onClick={() => {
+              setShowClientValidationModal(false);
+              setTaskForClientValidation(null);
+              setProjectForClientValidation(null);
+              setClientValidationNotes('');
+              setClientValidationLinks(['']);
+              setClientValidationUpdates([]);
+              setClientValidationTab('logs');
+              setClientValidationCommentTexts({});
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              width: '500px',
+              height: '100vh',
+              background: 'white',
+              boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.15)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.3s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>
+                  Client Validation Logs
+                </h2>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
+                  {projectForClientValidation.clientName} - {taskForClientValidation.title}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowClientValidationModal(false);
+                  setTaskForClientValidation(null);
+                  setProjectForClientValidation(null);
+                  setClientValidationNotes('');
+                  setClientValidationLinks(['']);
+                  setClientValidationUpdates([]);
+                  setClientValidationTab('logs');
+                  setClientValidationCommentTexts({});
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '0.375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid #e5e7eb',
+              padding: '0 1.5rem',
+            }}>
+              <button
+                onClick={() => setClientValidationTab('logs')}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: clientValidationTab === 'logs' ? '2px solid #667eea' : '2px solid transparent',
+                  color: clientValidationTab === 'logs' ? '#667eea' : '#64748b',
+                  fontWeight: clientValidationTab === 'logs' ? 600 : 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Logs ({clientValidationUpdates.length})
+              </button>
+              <button
+                onClick={() => setClientValidationTab('new')}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: clientValidationTab === 'new' ? '2px solid #667eea' : '2px solid transparent',
+                  color: clientValidationTab === 'new' ? '#667eea' : '#64748b',
+                  fontWeight: clientValidationTab === 'new' ? 600 : 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                New Log
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+            }}>
+              {clientValidationTab === 'logs' ? (
+                /* Existing Logs Tab */
+                loadingClientValidationUpdates ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    Loading logs...
+                  </div>
+                ) : clientValidationUpdates.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    <FaEnvelope style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
+                    <p>No client validation logs yet. Click "New Log" to create one.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {clientValidationUpdates.map((update) => (
+                      <div
+                        key={update.id}
+                        style={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '1.5rem',
+                          background: 'white',
+                        }}
+                      >
+                        {/* Log Header */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '1rem',
+                        }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                              <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
+                              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
+                                {update.pm?.name || 'User'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {new Date(update.emailSentAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </div>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
+                            color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                          }}>
+                            {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                          </span>
+                        </div>
+
+                        {/* Notes */}
+                        {update.notes && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>
+                                  Note:
+                                </div>
+                                <div style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                  {update.notes}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Links */}
+                        {update.links && update.links.length > 0 && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              <FaLink style={{ color: '#667eea', fontSize: '0.875rem', flexShrink: 0 }} />
+                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
+                                Links:
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1.5rem' }}>
+                              {update.links.map((link: string, linkIndex: number) => (
+                                <a
+                                  key={linkIndex}
+                                  href={link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: '#667eea',
+                                    fontSize: '0.875rem',
+                                    textDecoration: 'none',
+                                    wordBreak: 'break-all',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.textDecoration = 'underline';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.textDecoration = 'none';
+                                  }}
+                                >
+                                  {link}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Existing Comments */}
+                        {clientValidationComments[update.id] && clientValidationComments[update.id].length > 0 && (
+                          <div style={{
+                            marginTop: '1rem',
+                            paddingTop: '1rem',
+                            borderTop: '1px solid #e5e7eb',
+                          }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                              Comments ({clientValidationComments[update.id].length}):
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              {clientValidationComments[update.id].map((comment) => (
+                                <div
+                                  key={comment.id}
+                                  style={{
+                                    background: '#f9fafb',
+                                    borderRadius: '6px',
+                                    padding: '0.75rem',
+                                    border: '1px solid #e5e7eb',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>
+                                        {comment.user?.name || 'User'}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                      {new Date(comment.createdAt).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                    {comment.text}
+                                  </div>
+                                  {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#667eea' }}>
+                                      Mentioned: {comment.mentionedUserIds.length} user(s)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Comments Section with @ Mentions */}
+                        <div style={{
+                          marginTop: '1rem',
+                          paddingTop: '1rem',
+                          borderTop: '1px solid #e5e7eb',
+                          position: 'relative',
+                        }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                            Add Comment (use @ to mention users):
+                          </div>
+                          <textarea
+                            value={clientValidationCommentTexts[update.id] || ''}
+                            onChange={(e) => {
+                              const cursorPos = e.target.selectionStart || 0;
+                              handleClientValidationCommentInput(update.id, e.target.value, cursorPos);
+                            }}
+                            placeholder="Write a comment... Use @ to mention users"
+                            style={{
+                              width: '100%',
+                              minHeight: '80px',
+                              padding: '0.75rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontFamily: 'inherit',
+                              resize: 'vertical',
+                              marginBottom: '0.5rem',
+                            }}
+                          />
+                          {showClientValidationMentionDropdown && showClientValidationMentionDropdown.updateId === update.id && (
+                            <div style={{
+                              position: 'absolute',
+                              background: 'white',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                              maxHeight: '200px',
+                              overflowY: 'auto',
+                              zIndex: 10000,
+                              top: '100%',
+                              left: '0',
+                              right: '0',
+                              marginTop: '0.25rem',
+                              minWidth: '200px',
+                            }}>
+                              {users.length === 0 ? (
+                                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                  Loading users...
+                                </div>
+                              ) : (
+                                users.map((user: any) => (
+                                <div
+                                  key={user.id}
+                                  onClick={() => {
+                                    const currentText = clientValidationCommentTexts[update.id] || '';
+                                    const beforeCursor = currentText.substring(0, showClientValidationMentionDropdown.position - 1);
+                                    const afterCursor = currentText.substring(showClientValidationMentionDropdown.position);
+                                    const newText = `${beforeCursor}@${user.name} ${afterCursor}`;
+                                    setClientValidationCommentTexts({ ...clientValidationCommentTexts, [update.id]: newText });
+                                    setShowClientValidationMentionDropdown(null);
+                                    setTimeout(() => {
+                                      const textarea = document.querySelector(`textarea[value*="${newText.substring(0, 20)}"]`) as HTMLTextAreaElement;
+                                      if (textarea) {
+                                        const newCursorPos = beforeCursor.length + `@${user.name} `.length;
+                                        textarea.focus();
+                                        textarea.setSelectionRange(newCursorPos, newCursorPos);
+                                      }
+                                    }, 0);
+                                  }}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f3f4f6';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'white';
+                                  }}
+                                >
+                                  {user.name} ({user.role || 'User'})
+                                </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleAddClientValidationComment(update.id)}
+                            disabled={!clientValidationCommentTexts[update.id]?.trim() || submittingClientValidationComment[update.id]}
+                            style={{
+                              background: submittingClientValidationComment[update.id] ? '#9ca3af' : '#667eea',
+                              border: 'none',
+                              color: 'white',
+                              padding: '0.5rem 1rem',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              cursor: submittingClientValidationComment[update.id] ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {submittingClientValidationComment[update.id] ? 'Posting...' : 'Post Comment'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                /* New Log Tab */
+                <>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem', 
+                  fontWeight: 500, 
+                  color: '#1e293b',
+                  fontSize: '0.875rem'
+                }}>
+                  <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b', display: 'inline' }} />
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={clientValidationNotes}
+                  onChange={(e) => setClientValidationNotes(e.target.value)}
+                  placeholder="Add any notes about this client validation..."
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    lineHeight: '1.5',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '0.5rem'
+                }}>
+                  <label style={{ 
+                    fontWeight: 500, 
+                    color: '#1e293b',
+                    fontSize: '0.875rem',
+                    margin: 0
+                  }}>
+                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea', display: 'inline' }} />
+                    Links (Optional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addClientValidationLink}
+                    style={{
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      padding: '0.375rem 0.75rem',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      color: '#374151',
+                      fontWeight: 500,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e5e7eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f3f4f6';
+                    }}
+                  >
+                    <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
+                  </button>
+                </div>
+                {clientValidationLinks.map((link, index) => (
+                  <div key={index} style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    marginBottom: index < clientValidationLinks.length - 1 ? '0.5rem' : '0',
+                    alignItems: 'flex-start'
+                  }}>
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => updateClientValidationLink(index, e.target.value)}
+                      placeholder="https://example.com"
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    {clientValidationLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeClientValidationLink(index)}
+                        style={{
+                          background: '#fee2e2',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '40px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fecaca';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#fee2e2';
+                        }}
+                      >
+                        <FaTimes style={{ fontSize: '0.75rem' }} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#64748b', 
+                  marginTop: '0.5rem',
+                  marginBottom: 0
+                }}>
+                  Attach links to relevant documents, files, or resources sent for client validation
+                </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer - Only show in New Log tab */}
+            {clientValidationTab === 'new' && (
+              <div style={{
+                padding: '1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'flex-end',
+              }}>
+                <button
+                  onClick={() => {
+                    setClientValidationTab('logs');
+                    setClientValidationNotes('');
+                    setClientValidationLinks(['']);
+                  }}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    color: '#374151',
+                    padding: '0.625rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#e5e7eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClientValidationLogSubmit}
+                  disabled={loggingClientValidation}
+                  style={{
+                    background: loggingClientValidation ? '#9ca3af' : '#667eea',
+                    border: 'none',
+                    color: 'white',
+                    padding: '0.625rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: loggingClientValidation ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loggingClientValidation) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!loggingClientValidation) {
+                      e.currentTarget.style.background = '#667eea';
+                    }
+                  }}
+                >
+                  <FaSave /> {loggingClientValidation ? 'Saving...' : 'Save Log'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Notification Modal */}
+      {showNotificationModal && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowNotificationModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            className="notification-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '400px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem',
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            <div style={{
+              padding: '2rem',
+              textAlign: 'center',
+              background: notificationType === 'success' 
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: 'white'
+            }}>
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {notificationType === 'success' ? '✓' : '✗'}
+              </div>
+              <h3 style={{
+                margin: 0,
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: 'white'
+              }}>
+                {notificationType === 'success' ? 'Success!' : 'Error'}
+              </h3>
+            </div>
+            <div style={{
+              padding: '1.5rem 2rem',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                margin: 0,
+                fontSize: '1rem',
+                color: '#374151',
+                lineHeight: '1.6'
+              }}>
+                {notificationMessage}
+              </p>
+            </div>
+            <div style={{
+              padding: '1rem 2rem 2rem 2rem',
+              display: 'flex',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => setShowNotificationModal(false)}
+                style={{
+                  background: notificationType === 'success' ? '#10b981' : '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 2rem',
+                  borderRadius: '8px',
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                OK
               </button>
             </div>
           </div>

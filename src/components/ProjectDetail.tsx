@@ -24,6 +24,8 @@ import {
   FaStickyNote,
   FaArchive,
   FaClipboard,
+  FaCopy,
+  FaSearch,
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
@@ -280,6 +282,15 @@ const ProjectDetail: React.FC = () => {
   const [formSubmissions, setFormSubmissions] = useState<Record<string, any[]>>({});
   const [loadingSubmissions, setLoadingSubmissions] = useState<Record<string, boolean>>({});
   const [hasNewDeliverableUpdates, setHasNewDeliverableUpdates] = useState(false);
+  const [showAssignDeliverableModal, setShowAssignDeliverableModal] = useState(false);
+  const [taskToAssign, setTaskToAssign] = useState<any>(null);
+  const [selectedDeliverableId, setSelectedDeliverableId] = useState('');
+  const [newCustomDeliverableName, setNewCustomDeliverableName] = useState('');
+  const [assigningDeliverable, setAssigningDeliverable] = useState(false);
+  const [useCustomDeliverable, setUseCustomDeliverable] = useState(false);
+  const [showFilesLinksModal, setShowFilesLinksModal] = useState(false);
+  const [filesLinksSearchQuery, setFilesLinksSearchQuery] = useState('');
+  const [filesLinksFilter, setFilesLinksFilter] = useState<'all' | 'task' | 'email'>('all');
 
   useEffect(() => {
     if (id) {
@@ -382,8 +393,8 @@ const ProjectDetail: React.FC = () => {
     if (activeTab === 'timeline' && id) {
       loadActivityLog();
     }
-    // Load client updates when client-updates tab is active
-    if (activeTab === 'client-updates' && id) {
+    // Load client updates when client-updates tab or overview tab is active (needed for Files/Links card)
+    if ((activeTab === 'client-updates' || activeTab === 'overview') && id) {
       loadClientUpdates();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1307,6 +1318,54 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  // Assign deliverable to task
+  const handleAssignDeliverableToTask = async () => {
+    if (!taskToAssign || !id || !project) return;
+
+    try {
+      setAssigningDeliverable(true);
+      let deliverableId = selectedDeliverableId;
+
+      // If creating custom deliverable
+      if (useCustomDeliverable && newCustomDeliverableName.trim()) {
+        const newDeliverable = await deliverableService.create(
+          project.id,
+          'Other',
+          newCustomDeliverableName.trim()
+        );
+        deliverableId = newDeliverable.id;
+        
+        // Reload project to get updated deliverables
+        const updatedProject = await projectService.getOne(id);
+        setProject(updatedProject);
+      }
+
+      // Update task with deliverableId
+      if (deliverableId) {
+        await taskService.update(taskToAssign.id, {
+          deliverableId: deliverableId,
+        });
+        
+        // Reload project to refresh tasks
+        await loadProject();
+        showToast('Task assigned to deliverable ✓');
+        
+        // Close modal and reset state
+        setShowAssignDeliverableModal(false);
+        setTaskToAssign(null);
+        setSelectedDeliverableId('');
+        setNewCustomDeliverableName('');
+        setUseCustomDeliverable(false);
+      }
+    } catch (error: any) {
+      console.error('Failed to assign deliverable:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      showToast(`Failed to assign deliverable: ${errorMessage}`);
+    } finally {
+      setAssigningDeliverable(false);
+    }
+  };
+
   // Approve individual file
   const handleApproveFile = async (deliverableId: string, deliverableType: string, fileUrl: string, department: string) => {
     try {
@@ -1363,11 +1422,78 @@ const ProjectDetail: React.FC = () => {
     }, 2000);
   };
 
+  // Collect all files/links with detailed information
+  const getAllFilesAndLinks = useMemo(() => {
+    const allLinks: Array<{
+      id: string;
+      url: string;
+      source: string;
+      sourceType: 'Task' | 'Email Log';
+      date?: Date;
+      taskTitle?: string;
+      taskId?: string;
+      taskType?: string;
+      assignedTo?: { name: string; id: string };
+      pmName?: string;
+      updateId?: string;
+      notes?: string;
+    }> = [];
+    
+    // Get links from tasks (fileUrl)
+    tasks.forEach((task: any) => {
+      if (task.fileUrl) {
+        allLinks.push({
+          id: `task-${task.id}`,
+          url: task.fileUrl,
+          source: task.title || 'Task',
+          sourceType: 'Task',
+          date: task.updatedAt ? new Date(task.updatedAt) : task.createdAt ? new Date(task.createdAt) : undefined,
+          taskTitle: task.title,
+          taskId: task.id,
+          taskType: task.type,
+          assignedTo: task.assignedTo ? { name: task.assignedTo.name, id: task.assignedTo.id } : undefined
+        });
+      }
+    });
+    
+    // Get links from client updates (email logs)
+    clientUpdates.forEach((update: any) => {
+      if (update.links && Array.isArray(update.links) && update.links.length > 0) {
+        update.links.forEach((link: string, linkIndex: number) => {
+          if (link && link.trim()) {
+            allLinks.push({
+              id: `update-${update.id}-${linkIndex}`,
+              url: link.trim(),
+              source: `Email Log - ${update.pm?.name || 'PM'}`,
+              sourceType: 'Email Log',
+              date: update.emailSentAt ? new Date(update.emailSentAt) : update.createdAt ? new Date(update.createdAt) : undefined,
+              pmName: update.pm?.name,
+              updateId: update.id,
+              notes: update.notes
+            });
+          }
+        });
+      }
+    });
+    
+    // Sort by date (newest first)
+    allLinks.sort((a, b) => {
+      const dateA = a.date?.getTime() || 0;
+      const dateB = b.date?.getTime() || 0;
+      return dateB - dateA;
+    });
+    
+    return allLinks;
+  }, [tasks, clientUpdates]);
+
   const getClientTypeColor = (clientType: string) => {
     switch (clientType) {
       case 'ICON': return { bg: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: 'white' };
       case 'STAR': return { bg: '#a855f7', color: 'white' };
       case 'Katalyst': return { bg: '#667eea', color: 'white' };
+      case 'Private': return { bg: '#64748b', color: 'white' };
+      case 'Premium': return { bg: '#8b5cf6', color: 'white' };
+      case 'Powered-Up': return { bg: '#a855f7', color: 'white' };
       default: return { bg: '#64748b', color: 'white' };
     }
   };
@@ -1714,6 +1840,13 @@ const ProjectDetail: React.FC = () => {
               [{hasNewDeliverableUpdates ? 'NEW' : 'OK'}]
             </span>
           )}
+        </button>
+        <button
+          className={`tab-item ${activeTab === 'unassigned-tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('unassigned-tasks')}
+        >
+          <FaClipboard className="tab-icon" />
+          Unassigned Tasks
         </button>
         <button
           className={`tab-item ${activeTab === 'revisions' ? 'active' : ''}`}
@@ -2197,6 +2330,117 @@ const ProjectDetail: React.FC = () => {
                           </div>
                         );
                       })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div 
+                className="overview-card premium-card"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setShowFilesLinksModal(true)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 className="card-title" style={{ margin: 0 }}>Files/Links</h3>
+                  <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    background: '#f0f4ff',
+                    color: '#667eea',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>
+                    {getAllFilesAndLinks.length}
+                  </div>
+                </div>
+                {(() => {
+                  // Show preview of first 3 links
+                  const previewLinks = getAllFilesAndLinks.slice(0, 3);
+                  
+                  if (previewLinks.length === 0) {
+                    return (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        No files or links shared yet
+                      </div>
+                    );
+                  }
+                  
+                  const formatLinkDisplay = (url: string) => {
+                    try {
+                      const urlObj = new URL(url);
+                      const display = urlObj.hostname + (urlObj.pathname.length > 20 ? urlObj.pathname.substring(0, 20) + '...' : urlObj.pathname);
+                      return display.length > 40 ? display.substring(0, 40) + '...' : display;
+                    } catch {
+                      return url.length > 40 ? url.substring(0, 40) + '...' : url;
+                    }
+                  };
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      {previewLinks.map((link, idx) => (
+                        <div
+                          key={link.id}
+                          style={{
+                            padding: '0.625rem',
+                            background: '#fafbfc',
+                            borderRadius: '6px',
+                            border: '1px solid #e5e7eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            background: link.sourceType === 'Task' ? '#dbeafe' : '#fef3c7',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {link.sourceType === 'Task' ? (
+                              <FaClipboard style={{ color: '#3b82f6', fontSize: '0.75rem' }} />
+                            ) : (
+                              <FaEnvelope style={{ color: '#f59e0b', fontSize: '0.75rem' }} />
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              color: '#1e293b',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {formatLinkDisplay(link.url)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {getAllFilesAndLinks.length > 3 && (
+                        <div style={{
+                          padding: '0.625rem',
+                          textAlign: 'center',
+                          fontSize: '0.8125rem',
+                          color: '#667eea',
+                          fontWeight: 500,
+                          cursor: 'pointer'
+                        }}>
+                          View all {getAllFilesAndLinks.length} files/links →
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -3851,6 +4095,254 @@ const ProjectDetail: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'unassigned-tasks' && (
+          <div className="tab-content fade-in">
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h2 style={{ color: '#1e293b', fontSize: '1.25rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>
+                  Tasks Without Deliverables
+                </h2>
+                <p style={{ color: '#64748b', fontSize: '0.8125rem', margin: 0 }}>
+                  Assign tasks to deliverables or create custom ones
+                </p>
+              </div>
+
+              {(() => {
+                // Filter tasks that don't have a deliverableId
+                const unassignedTasks = tasks.filter((task: any) => !task.deliverableId && task.type !== 'Onboarding');
+                
+                if (unassignedTasks.length === 0) {
+                  return (
+                    <div style={{
+                      background: '#f9fafb',
+                      borderRadius: '8px',
+                      padding: '2rem',
+                      border: '1px solid #e5e7eb',
+                      textAlign: 'center'
+                    }}>
+                      <FaClipboard style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '0.75rem' }} />
+                      <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: '1.5', margin: 0 }}>
+                        All tasks are connected to deliverables.
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Group tasks by type/department
+                const tasksByType: Record<string, any[]> = {};
+                unassignedTasks.forEach((task: any) => {
+                  const type = task.type || 'General';
+                  if (!tasksByType[type]) {
+                    tasksByType[type] = [];
+                  }
+                  tasksByType[type].push(task);
+                });
+
+                const getTypeColor = (type: string) => {
+                  const colors: Record<string, string> = {
+                    'Copy': '#3b82f6',
+                    'Design': '#8b5cf6',
+                    'Dev': '#10b981',
+                    'AI': '#10b981',
+                    'CRM': '#6366f1',
+                    'Social Media': '#ec4899',
+                    'SEO/GEO': '#06b6d4',
+                    'General': '#6b7280',
+                  };
+                  return colors[type] || '#6b7280';
+                };
+
+                const getStatusColor = (status: string, isCompleted: boolean) => {
+                  if (isCompleted) return { bg: '#d1fae5', color: '#065f46' };
+                  switch (status) {
+                    case 'In Progress': return { bg: '#dbeafe', color: '#1e40af' };
+                    case 'In Review': return { bg: '#fef3c7', color: '#92400e' };
+                    case 'Blocked': return { bg: '#fee2e2', color: '#991b1b' };
+                    case 'Completed': return { bg: '#d1fae5', color: '#065f46' };
+                    default: return { bg: '#f3f4f6', color: '#6b7280' };
+                  }
+                };
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {Object.entries(tasksByType).map(([type, typeTasks]) => (
+                      <div
+                        key={type}
+                        style={{
+                          background: 'white',
+                          borderRadius: '8px',
+                          padding: '1rem',
+                          border: '1px solid #e5e7eb',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                          <div
+                            style={{
+                              width: '3px',
+                              height: '18px',
+                              borderRadius: '2px',
+                              backgroundColor: getTypeColor(type),
+                            }}
+                          />
+                          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                            {type} ({typeTasks.length})
+                          </h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {typeTasks.map((task: any) => {
+                            const statusStyle = getStatusColor(task.status, task.isCompleted);
+                            return (
+                              <div
+                                key={task.id}
+                                style={{
+                                  padding: '0.75rem',
+                                  background: '#fafbfc',
+                                  borderRadius: '6px',
+                                  border: '1px solid #e5e7eb',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  gap: '0.75rem',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#f8f9fa';
+                                  e.currentTarget.style.borderColor = '#d1d5db';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = '#fafbfc';
+                                  e.currentTarget.style.borderColor = '#e5e7eb';
+                                }}
+                              >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {task.title}
+                                    </h4>
+                                    <span
+                                      style={{
+                                        padding: '0.125rem 0.5rem',
+                                        borderRadius: '10px',
+                                        fontSize: '0.6875rem',
+                                        fontWeight: 500,
+                                        background: statusStyle.bg,
+                                        color: statusStyle.color,
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {task.isCompleted ? 'Done' : task.status || 'Todo'}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
+                                    {task.assignedTo && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                        <FaUser style={{ fontSize: '0.625rem' }} />
+                                        <span>{task.assignedTo.name || 'Unassigned'}</span>
+                                      </div>
+                                    )}
+                                    {task.dueDate && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                        <FaClock style={{ fontSize: '0.625rem' }} />
+                                        <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                                      </div>
+                                    )}
+                                    {task.fileUrl && (
+                                      <a
+                                        href={task.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.375rem',
+                                          fontSize: '0.75rem',
+                                          color: '#667eea',
+                                          textDecoration: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                      >
+                                        <FaLink style={{ fontSize: '0.625rem' }} />
+                                        <span>File</span>
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => {
+                                      setTaskToAssign(task);
+                                      setSelectedDeliverableId('');
+                                      setNewCustomDeliverableName('');
+                                      setUseCustomDeliverable(false);
+                                      setShowAssignDeliverableModal(true);
+                                    }}
+                                    style={{
+                                      background: '#667eea',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      padding: '0.375rem 0.625rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: 'white',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      transition: 'all 0.2s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#5568d3';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = '#667eea';
+                                    }}
+                                    title="Assign to deliverable"
+                                  >
+                                    <FaEdit style={{ fontSize: '0.625rem', marginRight: '0.25rem' }} />
+                                    Assign
+                                  </button>
+                                  <button
+                                    onClick={() => handleTaskComplete(task.id, !task.isCompleted)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '6px',
+                                      padding: '0.375rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: task.isCompleted ? '#10b981' : '#6b7280',
+                                      transition: 'all 0.2s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#f3f4f6';
+                                      e.currentTarget.style.borderColor = '#d1d5db';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'transparent';
+                                      e.currentTarget.style.borderColor = '#e5e7eb';
+                                    }}
+                                    title={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
+                                  >
+                                    {task.isCompleted ? <FaCheckCircle style={{ fontSize: '0.75rem' }} /> : <FaCircle style={{ fontSize: '0.75rem' }} />}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
         {activeTab === 'timeline' && (
           <div className="tab-content fade-in">
@@ -5676,6 +6168,759 @@ const ProjectDetail: React.FC = () => {
         </div>
       )}
 
+      {/* Assign Deliverable to Task Modal */}
+      {showAssignDeliverableModal && taskToAssign && project && (
+        <div className="modal-overlay" onClick={() => {
+          setShowAssignDeliverableModal(false);
+          setTaskToAssign(null);
+          setSelectedDeliverableId('');
+          setNewCustomDeliverableName('');
+          setUseCustomDeliverable(false);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Assign Task to Deliverable</h2>
+              <button className="close-button" onClick={() => {
+                setShowAssignDeliverableModal(false);
+                setTaskToAssign(null);
+                setSelectedDeliverableId('');
+                setNewCustomDeliverableName('');
+                setUseCustomDeliverable(false);
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              {/* Task Info Card */}
+              <div style={{ 
+                marginBottom: '1.5rem', 
+                padding: '0.875rem 1rem', 
+                background: 'linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)', 
+                borderRadius: '8px', 
+                border: '1px solid #c7d2fe',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: '#667eea',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <FaClipboard style={{ color: 'white', fontSize: '0.875rem' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 500, marginBottom: '0.125rem' }}>Task</div>
+                  <div style={{ fontSize: '0.9375rem', color: '#1e293b', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {taskToAssign.title}
+                  </div>
+                </div>
+              </div>
+
+              {/* Option Toggle */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.8125rem', 
+                  fontWeight: 500, 
+                  color: '#475569', 
+                  marginBottom: '0.75rem' 
+                }}>
+                  Choose an option
+                </label>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '0.5rem',
+                  background: '#f8fafc',
+                  padding: '0.25rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseCustomDeliverable(false);
+                      setNewCustomDeliverableName('');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.625rem 1rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: !useCustomDeliverable ? 'white' : 'transparent',
+                      color: !useCustomDeliverable ? '#1e293b' : '#64748b',
+                      fontSize: '0.875rem',
+                      fontWeight: !useCustomDeliverable ? 600 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: !useCustomDeliverable ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  >
+                    Existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseCustomDeliverable(true);
+                      setSelectedDeliverableId('');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.625rem 1rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: useCustomDeliverable ? 'white' : 'transparent',
+                      color: useCustomDeliverable ? '#1e293b' : '#64748b',
+                      fontSize: '0.875rem',
+                      fontWeight: useCustomDeliverable ? 600 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: useCustomDeliverable ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  >
+                    Create New
+                  </button>
+                </div>
+              </div>
+
+              {/* Existing Deliverable Selection */}
+              {!useCustomDeliverable && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 500, 
+                    color: '#475569', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    Select Deliverable
+                  </label>
+                  <select
+                    value={selectedDeliverableId}
+                    onChange={(e) => setSelectedDeliverableId(e.target.value)}
+                    className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem', 
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      background: 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    <option value="">-- Choose a deliverable --</option>
+                    {project.deliverables?.map((deliverable: any) => (
+                      <option key={deliverable.id} value={deliverable.id}>
+                        {getDeliverableDisplayName(deliverable)}
+                      </option>
+                    ))}
+                  </select>
+                  {project.deliverables?.length === 0 && (
+                    <p style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#94a3b8', 
+                      marginTop: '0.5rem', 
+                      marginBottom: 0,
+                      fontStyle: 'italic'
+                    }}>
+                      No deliverables available. Create a new one instead.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Custom Deliverable Creation */}
+              {useCustomDeliverable && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 500, 
+                    color: '#475569', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    Deliverable Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustomDeliverableName}
+                    onChange={(e) => setNewCustomDeliverableName(e.target.value)}
+                    placeholder="e.g., Email Templates, Social Posts, Landing Page Copy"
+                    className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem', 
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    autoFocus
+                  />
+                  <p style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#94a3b8', 
+                    marginTop: '0.5rem', 
+                    marginBottom: 0 
+                  }}>
+                    This will create a new custom deliverable for this project
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ 
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              background: '#fafbfc'
+            }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setShowAssignDeliverableModal(false);
+                  setTaskToAssign(null);
+                  setSelectedDeliverableId('');
+                  setNewCustomDeliverableName('');
+                  setUseCustomDeliverable(false);
+                }}
+                disabled={assigningDeliverable}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleAssignDeliverableToTask}
+                disabled={assigningDeliverable || (!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim())}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  background: (!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim()) ? '#cbd5e1' : '#667eea',
+                  cursor: ((!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim())) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {assigningDeliverable ? 'Assigning...' : 'Assign Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Files/Links Modal */}
+      {showFilesLinksModal && project && (
+        <div className="modal-overlay" onClick={() => {
+          setShowFilesLinksModal(false);
+          setFilesLinksSearchQuery('');
+          setFilesLinksFilter('all');
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #e5e7eb', padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FaLink style={{ color: 'white', fontSize: '1rem' }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#1e293b' }}>Files & Links</h2>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>
+                    All shared files and links for this project
+                  </p>
+                </div>
+              </div>
+              <button className="close-button" onClick={() => {
+                setShowFilesLinksModal(false);
+                setFilesLinksSearchQuery('');
+                setFilesLinksFilter('all');
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div style={{ padding: '1.5rem', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Search and Filter Bar */}
+              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+                  <FaSearch style={{
+                    position: 'absolute',
+                    left: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#94a3b8',
+                    fontSize: '0.875rem'
+                  }} />
+                  <input
+                    type="text"
+                    placeholder="Search links, tasks, or users..."
+                    value={filesLinksSearchQuery}
+                    onChange={(e) => setFilesLinksSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => setFilesLinksFilter('all')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: filesLinksFilter === 'all' ? '#667eea' : '#f3f4f6',
+                      color: filesLinksFilter === 'all' ? 'white' : '#64748b',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    All ({getAllFilesAndLinks.length})
+                  </button>
+                  <button
+                    onClick={() => setFilesLinksFilter('task')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: filesLinksFilter === 'task' ? '#3b82f6' : '#f3f4f6',
+                      color: filesLinksFilter === 'task' ? 'white' : '#64748b',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <FaClipboard style={{ fontSize: '0.75rem' }} />
+                    Tasks ({getAllFilesAndLinks.filter(l => l.sourceType === 'Task').length})
+                  </button>
+                  <button
+                    onClick={() => setFilesLinksFilter('email')}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: filesLinksFilter === 'email' ? '#f59e0b' : '#f3f4f6',
+                      color: filesLinksFilter === 'email' ? 'white' : '#64748b',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <FaEnvelope style={{ fontSize: '0.75rem' }} />
+                    Email Logs ({getAllFilesAndLinks.filter(l => l.sourceType === 'Email Log').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Links List */}
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+                {(() => {
+                  // Filter links based on search and filter
+                  let filteredLinks = getAllFilesAndLinks;
+                  
+                  // Apply type filter
+                  if (filesLinksFilter === 'task') {
+                    filteredLinks = filteredLinks.filter(l => l.sourceType === 'Task');
+                  } else if (filesLinksFilter === 'email') {
+                    filteredLinks = filteredLinks.filter(l => l.sourceType === 'Email Log');
+                  }
+                  
+                  // Apply search filter
+                  if (filesLinksSearchQuery.trim()) {
+                    const query = filesLinksSearchQuery.toLowerCase();
+                    filteredLinks = filteredLinks.filter(link => {
+                      return (
+                        link.url.toLowerCase().includes(query) ||
+                        link.taskTitle?.toLowerCase().includes(query) ||
+                        link.assignedTo?.name.toLowerCase().includes(query) ||
+                        link.pmName?.toLowerCase().includes(query) ||
+                        link.source.toLowerCase().includes(query)
+                      );
+                    });
+                  }
+                  
+                  if (filteredLinks.length === 0) {
+                    return (
+                      <div style={{
+                        padding: '3rem',
+                        textAlign: 'center',
+                        background: '#f9fafb',
+                        borderRadius: '12px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <FaLink style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem', opacity: 0.5 }} />
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
+                          No links found
+                        </h3>
+                        <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                          {filesLinksSearchQuery.trim() || filesLinksFilter !== 'all'
+                            ? 'Try adjusting your search or filters'
+                            : 'No files or links have been shared yet'}
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  const formatLinkDisplay = (url: string) => {
+                    try {
+                      const urlObj = new URL(url);
+                      return {
+                        domain: urlObj.hostname,
+                        path: urlObj.pathname + urlObj.search,
+                        full: url
+                      };
+                    } catch {
+                      return {
+                        domain: 'Link',
+                        path: url.length > 60 ? url.substring(0, 60) + '...' : url,
+                        full: url
+                      };
+                    }
+                  };
+                  
+                  const formatDateTime = (date?: Date) => {
+                    if (!date) return 'Unknown date';
+                    return date.toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                  };
+                  
+                  const getLinkTypeIcon = (url: string) => {
+                    const lowerUrl = url.toLowerCase();
+                    if (lowerUrl.includes('figma.com')) return { icon: '🎨', label: 'Figma' };
+                    if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('docs.google.com')) return { icon: '📁', label: 'Google Drive' };
+                    if (lowerUrl.includes('dropbox.com')) return { icon: '📦', label: 'Dropbox' };
+                    if (lowerUrl.includes('notion.so')) return { icon: '📝', label: 'Notion' };
+                    if (lowerUrl.includes('miro.com') || lowerUrl.includes('mural.co')) return { icon: '🖼️', label: 'Whiteboard' };
+                    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('vimeo.com')) return { icon: '🎥', label: 'Video' };
+                    if (lowerUrl.includes('zoom.us') || lowerUrl.includes('meet.google.com')) return { icon: '💬', label: 'Meeting' };
+                    return { icon: '🔗', label: 'Link' };
+                  };
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {filteredLinks.map((link) => {
+                        const linkInfo = formatLinkDisplay(link.url);
+                        const linkType = getLinkTypeIcon(link.url);
+                        
+                        return (
+                          <div
+                            key={link.id}
+                            style={{
+                              background: 'white',
+                              borderRadius: '12px',
+                              border: '1px solid #e5e7eb',
+                              padding: '1.25rem',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                              e.currentTarget.style.borderColor = '#c7d2fe';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                              {/* Left: Icon and Type */}
+                              <div style={{ flexShrink: 0 }}>
+                                <div style={{
+                                  width: '56px',
+                                  height: '56px',
+                                  borderRadius: '12px',
+                                  background: link.sourceType === 'Task' 
+                                    ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                                    : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '1.5rem',
+                                  border: `2px solid ${link.sourceType === 'Task' ? '#3b82f6' : '#f59e0b'}`,
+                                  boxShadow: `0 2px 8px ${link.sourceType === 'Task' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`
+                                }}>
+                                  {link.sourceType === 'Task' ? (
+                                    <FaClipboard style={{ color: '#3b82f6', fontSize: '1.25rem' }} />
+                                  ) : (
+                                    <FaEnvelope style={{ color: '#f59e0b', fontSize: '1.25rem' }} />
+                                  )}
+                                </div>
+                                <div style={{
+                                  marginTop: '0.5rem',
+                                  textAlign: 'center',
+                                  fontSize: '0.625rem',
+                                  color: '#94a3b8',
+                                  fontWeight: 500
+                                }}>
+                                  {linkType.label}
+                                </div>
+                              </div>
+                              
+                              {/* Middle: Link Info */}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ marginBottom: '0.75rem' }}>
+                                  <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      display: 'block',
+                                      fontSize: '1rem',
+                                      fontWeight: 600,
+                                      color: '#667eea',
+                                      textDecoration: 'none',
+                                      marginBottom: '0.25rem',
+                                      wordBreak: 'break-all',
+                                      lineHeight: '1.4'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.textDecoration = 'underline';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.textDecoration = 'none';
+                                    }}
+                                  >
+                                    {linkInfo.domain}
+                                  </a>
+                                  <div style={{
+                                    fontSize: '0.8125rem',
+                                    color: '#64748b',
+                                    wordBreak: 'break-all',
+                                    fontFamily: 'monospace',
+                                    marginTop: '0.25rem'
+                                  }}>
+                                    {linkInfo.path}
+                                  </div>
+                                </div>
+                                
+                                {/* Metadata Grid */}
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                  gap: '0.75rem',
+                                  marginTop: '0.75rem',
+                                  padding: '0.75rem',
+                                  background: '#f9fafb',
+                                  borderRadius: '8px'
+                                }}>
+                                  <div>
+                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Source</div>
+                                    <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                      {link.sourceType}
+                                    </div>
+                                  </div>
+                                  
+                                  {link.taskTitle && (
+                                    <div>
+                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Task</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                        {link.taskTitle}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {link.assignedTo && (
+                                    <div>
+                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Assigned To</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                        {link.assignedTo.name}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {link.pmName && (
+                                    <div>
+                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Shared By</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                        {link.pmName}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {link.taskType && (
+                                    <div>
+                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Type</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                        {link.taskType}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  <div>
+                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Date</div>
+                                    <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                      <FaClock style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                      {formatDateTime(link.date)}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Notes (for email logs) */}
+                                {link.notes && (
+                                  <div style={{
+                                    marginTop: '0.75rem',
+                                    padding: '0.75rem',
+                                    background: '#fef3c7',
+                                    borderRadius: '8px',
+                                    border: '1px solid #fde68a'
+                                  }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 500, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                      <FaStickyNote style={{ fontSize: '0.75rem' }} />
+                                      Notes
+                                    </div>
+                                    <div style={{ fontSize: '0.875rem', color: '#78350f', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                                      {link.notes}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Right: Action Button */}
+                              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <a
+                                  href={link.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    padding: '0.75rem 1.25rem',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'all 0.2s',
+                                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+                                  }}
+                                >
+                                  <FaLink style={{ fontSize: '0.75rem' }} />
+                                  Open Link
+                                </a>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(link.url);
+                                    showToast('Link copied to clipboard!');
+                                  }}
+                                  style={{
+                                    padding: '0.625rem 1rem',
+                                    borderRadius: '8px',
+                                    background: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    color: '#64748b',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.375rem',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#f3f4f6';
+                                    e.currentTarget.style.borderColor = '#d1d5db';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'white';
+                                    e.currentTarget.style.borderColor = '#e5e7eb';
+                                  }}
+                                >
+                                  <FaCopy style={{ fontSize: '0.75rem' }} />
+                                  Copy
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Project Modal */}
       {showEditProjectModal && project && (
         <EditProjectModal
@@ -5723,6 +6968,8 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
     { value: 'STAR', label: 'STAR', color: '#94a3b8' },
     { value: 'Katalyst', label: 'Katalyst', color: '#667eea' },
     { value: 'Private', label: 'Private', color: '#64748b' },
+    { value: 'Premium', label: 'Premium', color: '#8b5cf6' },
+    { value: 'Powered-Up', label: 'Powered-Up', color: '#a855f7' },
   ];
 
   const toggleClientType = (clientType: string) => {
