@@ -2343,612 +2343,559 @@ const PMDashboard: React.FC = () => {
 
       {/* Log Email Side Modal */}
       {showLogEmailModal && projectForEmailLog && (
-        <>
-          <div 
-            className="modal-overlay" 
-            onClick={() => {
-              setShowLogEmailModal(false);
-              setProjectForEmailLog(null);
-              setEmailNotes('');
-              setEmailLinks(['']);
-              setClientUpdates([]);
-                  setEmailLogsTab('logs');
-                  setCommentTexts({});
-            }}
+  <>
+    {/* Overlay */}
+    <div
+      className="modal-overlay"
+      onClick={() => {
+        setShowLogEmailModal(false);
+        setProjectForEmailLog(null);
+        setEmailNotes('');
+        setEmailLinks(['']);
+        setClientUpdates([]);
+        setEmailLogsTab('logs');
+        setCommentTexts({});
+      }}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(15, 23, 42, 0.4)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        zIndex: 1000,
+      }}
+    />
+
+    {/* Drawer */}
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'fixed', top: 0, right: 0,
+        width: '500px', height: '100vh',
+        background: '#ffffff',
+        borderLeft: '1px solid #e2e8f0',
+        boxShadow: '-12px 0 40px rgba(15, 23, 42, 0.12)',
+        zIndex: 1001,
+        display: 'flex', flexDirection: 'column',
+        animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        fontFamily: "'DM Sans', -apple-system, sans-serif",
+      }}
+    >
+
+      {/* ── Header ── */}
+      <div style={{
+        padding: '1.25rem 1.5rem',
+        borderBottom: '1px solid #f1f5f9',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: '#fafbff',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: '38px', height: '38px', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#7c6af7', flexShrink: 0,
+          }}>
+            <FaEnvelope style={{ fontSize: '0.9rem' }} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+              Email Logs
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.775rem', color: '#94a3b8', fontWeight: 400 }}>
+              {projectForEmailLog.clientName}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setShowLogEmailModal(false);
+            setProjectForEmailLog(null);
+            setEmailNotes('');
+            setEmailLinks(['']);
+            setClientUpdates([]);
+            setEmailLogsTab('logs');
+          }}
+          style={{
+            background: 'transparent', border: '1px solid #e2e8f0',
+            cursor: 'pointer', padding: '0.4rem',
+            borderRadius: '8px', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            color: '#94a3b8', width: '32px', height: '32px',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f1f5f9';
+            e.currentTarget.style.color = '#475569';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = '#94a3b8';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+          }}
+        >
+          <FaTimes style={{ fontSize: '0.7rem' }} />
+        </button>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div style={{
+        display: 'flex', gap: '0.25rem',
+        padding: '0.75rem 1.5rem 0',
+        borderBottom: '1px solid #f1f5f9',
+        background: '#fafbff',
+      }}>
+        {(['logs', 'new'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setEmailLogsTab(tab)}
             style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1000,
+              padding: '0.5rem 1rem',
+              background: emailLogsTab === tab ? '#7c6af7' : 'transparent',
+              border: 'none',
+              borderRadius: '8px 8px 0 0',
+              color: emailLogsTab === tab ? '#fff' : '#94a3b8',
+              fontWeight: emailLogsTab === tab ? 600 : 500,
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              letterSpacing: '0.01em',
+              transition: 'all 0.15s',
+              marginBottom: '-1px',
+              borderBottom: emailLogsTab === tab ? '2px solid #7c6af7' : '2px solid transparent',
             }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              right: 0,
-              width: '500px',
-              height: '100vh',
-              background: 'white',
-              boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.15)',
-              zIndex: 1001,
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'slideInRight 0.3s ease-out',
-            }}
-            onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>
-                  Email Logs
-                </h2>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
-                  {projectForEmailLog.clientName}
-                </p>
+            {tab === 'logs' ? `Logs (${clientUpdates.length})` : '+ New Log'}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Body ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#f8fafc' }}>
+        {emailLogsTab === 'logs' ? (
+          loadingUpdates ? (
+            <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#94a3b8' }}>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                border: '2px solid #e2e8f0', borderTopColor: '#7c6af7',
+                animation: 'spin 0.7s linear infinite', margin: '0 auto 1rem',
+              }} />
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>Loading logs…</p>
+            </div>
+          ) : clientUpdates.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '16px',
+                background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}>
+                <FaEnvelope style={{ fontSize: '1.25rem', color: '#7c6af7' }} />
               </div>
-              <button
-                onClick={() => {
-                  setShowLogEmailModal(false);
-                  setProjectForEmailLog(null);
-                  setEmailNotes('');
-                  setEmailLinks(['']);
-                  setClientUpdates([]);
-                  setEmailLogsTab('logs');
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '0.375rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <FaTimes />
-              </button>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.6 }}>
+                No email logs yet.<br />Click <strong style={{ color: '#7c6af7' }}>+ New Log</strong> to create one.
+              </p>
             </div>
-
-            {/* Tabs */}
-            <div style={{
-              display: 'flex',
-              borderBottom: '1px solid #e5e7eb',
-              padding: '0 1.5rem',
-            }}>
-              <button
-                onClick={() => setEmailLogsTab('logs')}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: emailLogsTab === 'logs' ? '2px solid #667eea' : '2px solid transparent',
-                  color: emailLogsTab === 'logs' ? '#667eea' : '#64748b',
-                  fontWeight: emailLogsTab === 'logs' ? 600 : 500,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Logs ({clientUpdates.length})
-              </button>
-              <button
-                onClick={() => setEmailLogsTab('new')}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: emailLogsTab === 'new' ? '2px solid #667eea' : '2px solid transparent',
-                  color: emailLogsTab === 'new' ? '#667eea' : '#64748b',
-                  fontWeight: emailLogsTab === 'new' ? 600 : 500,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                New Log
-              </button>
-            </div>
-
-            {/* Body */}
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '1.5rem',
-            }}>
-              {emailLogsTab === 'logs' ? (
-                /* Existing Logs Tab */
-                loadingUpdates ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                    Loading logs...
-                  </div>
-                ) : clientUpdates.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                    <FaEnvelope style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
-                    <p>No email logs yet. Click "New Log" to create one.</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {clientUpdates.map((update) => (
-                      <div
-                        key={update.id}
-                        style={{
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          padding: '1.5rem',
-                          background: 'white',
-                        }}
-                      >
-                        {/* Log Header */}
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: '1rem',
-                        }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                              <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
-                              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
-                                {update.pm?.name || 'PM'}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {new Date(update.emailSentAt).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </div>
-                          </div>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
-                            color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
-                          }}>
-                            {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
-                          </span>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {clientUpdates.map((update) => (
+                <div
+                  key={update.id}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    background: '#ffffff',
+                    boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+                  }}
+                >
+                  {/* Log Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                      <div style={{
+                        width: '30px', height: '30px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#7c6af7', flexShrink: 0,
+                      }}>
+                        <FaUser style={{ fontSize: '0.65rem' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.8rem' }}>
+                          {update.pm?.name || 'PM'}
                         </div>
-
-                        {/* Notes */}
-                        {update.notes && (
-                          <div style={{ marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>
-                                  Note:
-                                </div>
-                                <div style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                                  {update.notes}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Links */}
-                        {update.links && update.links.length > 0 && (
-                          <div style={{ marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <FaLink style={{ color: '#667eea', fontSize: '0.875rem', flexShrink: 0 }} />
-                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
-                                Links:
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginLeft: '1.5rem' }}>
-                              {update.links.map((link: string, linkIndex: number) => (
-                                <a
-                                  key={linkIndex}
-                                  href={link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    color: '#667eea',
-                                    fontSize: '0.875rem',
-                                    textDecoration: 'none',
-                                    wordBreak: 'break-all',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.textDecoration = 'underline';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.textDecoration = 'none';
-                                  }}
-                                >
-                                  {link}
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Existing Comments */}
-                        {comments[update.id] && comments[update.id].length > 0 && (
-                          <div style={{
-                            marginTop: '1rem',
-                            paddingTop: '1rem',
-                            borderTop: '1px solid #e5e7eb',
-                          }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
-                              Comments ({comments[update.id].length}):
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                              {comments[update.id].map((comment) => (
-                                <div
-                                  key={comment.id}
-                                  style={{
-                                    background: '#f9fafb',
-                                    borderRadius: '6px',
-                                    padding: '0.75rem',
-                                    border: '1px solid #e5e7eb',
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
-                                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>
-                                        {comment.user?.name || 'User'}
-                                      </span>
-                                    </div>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                      {new Date(comment.createdAt).toLocaleString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}
-                                    </span>
-                                  </div>
-                                  <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                                    {comment.text}
-                                  </div>
-                                  {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#667eea' }}>
-                                      Mentioned: {comment.mentionedUserIds.length} user(s)
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Comments Section with @ Mentions */}
-                        <div style={{
-                          marginTop: '1rem',
-                          paddingTop: '1rem',
-                          borderTop: '1px solid #e5e7eb',
-                          position: 'relative',
-                        }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
-                            Add Comment (use @ to mention users):
-                          </div>
-                          <textarea
-                            value={commentTexts[update.id] || ''}
-                            onChange={(e) => {
-                              const cursorPos = e.target.selectionStart || 0;
-                              handleCommentInput(update.id, e.target.value, cursorPos);
-                            }}
-                            placeholder="Write a comment... Use @ to mention users"
-                            style={{
-                              width: '100%',
-                              minHeight: '80px',
-                              padding: '0.75rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              fontSize: '0.875rem',
-                              fontFamily: 'inherit',
-                              resize: 'vertical',
-                              marginBottom: '0.5rem',
-                            }}
-                          />
-                          {showMentionDropdown && showMentionDropdown.updateId === update.id && (
-                            <div style={{
-                              position: 'absolute',
-                              background: 'white',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                              maxHeight: '200px',
-                              overflowY: 'auto',
-                              zIndex: 10000,
-                              top: '100%',
-                              left: '0',
-                              right: '0',
-                              marginTop: '0.25rem',
-                              minWidth: '200px',
-                            }}>
-                              {users.length === 0 ? (
-                                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
-                                  Loading users...
-                                </div>
-                              ) : (
-                                users.map((user: any) => (
-                                <div
-                                  key={user.id}
-                                  onClick={() => {
-                                    const currentText = commentTexts[update.id] || '';
-                                    const beforeCursor = currentText.substring(0, showMentionDropdown.position - 1);
-                                    const afterCursor = currentText.substring(showMentionDropdown.position);
-                                    const newText = `${beforeCursor}@${user.name} ${afterCursor}`;
-                                    setCommentTexts({ ...commentTexts, [update.id]: newText });
-                                    setShowMentionDropdown(null);
-                                    // Focus back on textarea
-                                    setTimeout(() => {
-                                      const textarea = document.querySelector(`textarea[value*="${newText.substring(0, 20)}"]`) as HTMLTextAreaElement;
-                                      if (textarea) {
-                                        const newCursorPos = beforeCursor.length + `@${user.name} `.length;
-                                        textarea.focus();
-                                        textarea.setSelectionRange(newCursorPos, newCursorPos);
-                                      }
-                                    }, 0);
-                                  }}
-                                  style={{
-                                    padding: '0.5rem 0.75rem',
-                                    cursor: 'pointer',
-                                    fontSize: '0.875rem',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f3f4f6';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'white';
-                                  }}
-                                >
-                                  {user.name} ({user.role || 'User'})
-                                </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                          <button
-                            onClick={() => handleAddComment(update.id)}
-                            disabled={!commentTexts[update.id]?.trim() || submittingComment[update.id]}
-                            style={{
-                              background: submittingComment[update.id] ? '#9ca3af' : '#667eea',
-                              border: 'none',
-                              color: 'white',
-                              padding: '0.5rem 1rem',
-                              borderRadius: '6px',
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              cursor: submittingComment[update.id] ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {submittingComment[update.id] ? 'Posting...' : 'Post Comment'}
-                          </button>
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '1px' }}>
+                          {new Date(update.emailSentAt).toLocaleString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
                         </div>
                       </div>
-                    ))}
+                    </div>
+                    <span style={{
+                      padding: '0.2rem 0.65rem',
+                      borderRadius: '20px',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
+                      ...(update.status === 'responded'
+                        ? { background: '#dcfce7', color: '#15803d' }
+                        : update.status === 'published'
+                        ? { background: '#dbeafe', color: '#1d4ed8' }
+                        : { background: '#f1f5f9', color: '#64748b' }),
+                    }}>
+                      {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                    </span>
                   </div>
-                )
-              ) : (
-                /* New Log Tab */
-                <>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '0.5rem', 
-                  fontWeight: 500, 
-                  color: '#1e293b',
-                  fontSize: '0.875rem'
-                }}>
-                  <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b', display: 'inline' }} />
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={emailNotes}
-                  onChange={(e) => setEmailNotes(e.target.value)}
-                  placeholder="Add any notes about this email..."
-                  style={{
-                    width: '100%',
-                    minHeight: '150px',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    lineHeight: '1.5',
-                  }}
-                />
-              </div>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '0.5rem'
-                }}>
-                  <label style={{ 
-                    fontWeight: 500, 
-                    color: '#1e293b',
-                    fontSize: '0.875rem',
-                    margin: 0
-                  }}>
-                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea', display: 'inline' }} />
-                    Links (Optional)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addEmailLink}
-                    style={{
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
-                      padding: '0.375rem 0.75rem',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      color: '#374151',
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e5e7eb';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f3f4f6';
-                    }}
-                  >
-                    <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
-                  </button>
+                  {/* Notes */}
+                  {update.notes && (
+                    <div style={{
+                      marginBottom: '0.875rem',
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: '8px',
+                      padding: '0.75rem',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.75rem', marginTop: '2px', flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#92400e', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Note
+                          </div>
+                          <div style={{ color: '#78350f', fontSize: '0.8rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                            {update.notes}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  {update.links && update.links.length > 0 && (
+                    <div style={{ marginBottom: '0.875rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                        <FaLink style={{ color: '#7c6af7', fontSize: '0.7rem' }} />
+                        <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Links</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '1rem' }}>
+                        {update.links.map((link: string, linkIndex: number) => (
+                          <a
+                            key={linkIndex}
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: '#7c6af7', fontSize: '0.8rem',
+                              textDecoration: 'none', wordBreak: 'break-all',
+                              display: 'flex', alignItems: 'center', gap: '0.25rem',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                          >
+                            ↗ {link}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing Comments */}
+                  {comments[update.id] && comments[update.id].length > 0 && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Comments ({comments[update.id].length})
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {comments[update.id].map((comment) => (
+                          <div
+                            key={comment.id}
+                            style={{
+                              background: '#f8fafc', borderRadius: '8px',
+                              padding: '0.75rem', border: '1px solid #f1f5f9',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div style={{
+                                  width: '20px', height: '20px', borderRadius: '50%',
+                                  background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                }}>
+                                  <FaUser style={{ fontSize: '0.5rem', color: '#7c6af7' }} />
+                                </div>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#1e293b' }}>
+                                  {comment.user?.name || 'User'}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                                {new Date(comment.createdAt).toLocaleString('en-US', {
+                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                              {comment.text}
+                            </div>
+                            {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
+                              <div style={{ marginTop: '0.35rem', fontSize: '0.7rem', color: '#7c6af7', fontWeight: 500 }}>
+                                @ {comment.mentionedUserIds.length} mention{comment.mentionedUserIds.length > 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add Comment */}
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', position: 'relative' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Add comment · use @ to mention
+                    </div>
+                    <textarea
+                      value={commentTexts[update.id] || ''}
+                      onChange={(e) => {
+                        const cursorPos = e.target.selectionStart || 0;
+                        handleCommentInput(update.id, e.target.value, cursorPos);
+                      }}
+                      placeholder="Write a comment…"
+                      style={{
+                        width: '100%', minHeight: '72px',
+                        padding: '0.65rem 0.75rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem', fontFamily: 'inherit',
+                        resize: 'vertical', marginBottom: '0.5rem',
+                        color: '#1e293b', background: '#fff',
+                        outline: 'none', lineHeight: 1.5,
+                        transition: 'border-color 0.15s',
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    />
+                    {showMentionDropdown && showMentionDropdown.updateId === update.id && (
+                      <div style={{
+                        position: 'absolute',
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                        maxHeight: '200px', overflowY: 'auto',
+                        zIndex: 10000, top: '100%', left: 0, right: 0,
+                        marginTop: '0.25rem',
+                      }}>
+                        {users.length === 0 ? (
+                          <div style={{ padding: '0.75rem', fontSize: '0.82rem', color: '#94a3b8' }}>Loading users…</div>
+                        ) : (
+                          users.map((user: any) => (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                const currentText = commentTexts[update.id] || '';
+                                const beforeCursor = currentText.substring(0, showMentionDropdown.position - 1);
+                                const afterCursor = currentText.substring(showMentionDropdown.position);
+                                const newText = `${beforeCursor}@${user.name} ${afterCursor}`;
+                                setCommentTexts({ ...commentTexts, [update.id]: newText });
+                                setShowMentionDropdown(null);
+                                setTimeout(() => {
+                                  const textarea = document.querySelector(`textarea[value*="${newText.substring(0, 20)}"]`) as HTMLTextAreaElement;
+                                  if (textarea) {
+                                    const newCursorPos = beforeCursor.length + `@${user.name} `.length;
+                                    textarea.focus();
+                                    textarea.setSelectionRange(newCursorPos, newCursorPos);
+                                  }
+                                }, 0);
+                              }}
+                              style={{ padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                            >
+                              <div style={{
+                                width: '22px', height: '22px', borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                              }}>
+                                <FaUser style={{ fontSize: '0.5rem', color: '#7c6af7' }} />
+                              </div>
+                              <span style={{ fontWeight: 500, color: '#0f172a' }}>{user.name}</span>
+                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{user.role || 'User'}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => handleAddComment(update.id)}
+                      disabled={!commentTexts[update.id]?.trim() || submittingComment[update.id]}
+                      style={{
+                        background: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#e2e8f0' : '#7c6af7',
+                        border: 'none', color: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#94a3b8' : '#fff',
+                        padding: '0.45rem 0.9rem',
+                        borderRadius: '7px', fontSize: '0.78rem', fontWeight: 600,
+                        cursor: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {submittingComment[update.id] ? 'Posting…' : 'Post Comment'}
+                    </button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )
+        ) : (
+          /* ── New Log Tab ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Notes */}
+            <div style={{
+              background: '#fff', border: '1px solid #e2e8f0',
+              borderRadius: '12px', padding: '1.25rem',
+              boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontWeight: 600, color: '#0f172a', fontSize: '0.82rem' }}>
+                <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.8rem' }} />
+                Notes <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Optional)</span>
+              </label>
+              <textarea
+                value={emailNotes}
+                onChange={(e) => setEmailNotes(e.target.value)}
+                placeholder="Add any notes about this email…"
+                style={{
+                  width: '100%', minHeight: '140px',
+                  padding: '0.75rem', border: '1px solid #e2e8f0',
+                  borderRadius: '8px', fontSize: '0.82rem',
+                  fontFamily: 'inherit', resize: 'vertical',
+                  lineHeight: 1.6, color: '#1e293b', outline: 'none',
+                  transition: 'border-color 0.15s',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+              />
+            </div>
+
+            {/* Links */}
+            <div style={{
+              background: '#fff', border: '1px solid #e2e8f0',
+              borderRadius: '12px', padding: '1.25rem',
+              boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0f172a', fontSize: '0.82rem', margin: 0 }}>
+                  <FaLink style={{ color: '#7c6af7', fontSize: '0.75rem' }} />
+                  Links <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Optional)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={addEmailLink}
+                  style={{
+                    background: '#f1f5f9', border: '1px solid #e2e8f0',
+                    padding: '0.3rem 0.65rem', borderRadius: '6px',
+                    fontSize: '0.72rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '0.25rem',
+                    color: '#475569', fontWeight: 600, fontFamily: 'inherit',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+                >
+                  <FaPlus style={{ fontSize: '0.55rem' }} /> Add Link
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {emailLinks.map((link, index) => (
-                  <div key={index} style={{ 
-                    display: 'flex', 
-                    gap: '0.5rem', 
-                    marginBottom: index < emailLinks.length - 1 ? '0.5rem' : '0',
-                    alignItems: 'flex-start'
-                  }}>
+                  <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <input
                       type="url"
                       value={link}
                       onChange={(e) => updateEmailLink(index, e.target.value)}
                       placeholder="https://example.com"
                       style={{
-                        flex: 1,
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        fontFamily: 'inherit',
+                        flex: 1, padding: '0.65rem 0.75rem',
+                        border: '1px solid #e2e8f0', borderRadius: '8px',
+                        fontSize: '0.82rem', fontFamily: 'inherit',
+                        color: '#1e293b', outline: 'none', transition: 'border-color 0.15s',
                       }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     />
                     {emailLinks.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeEmailLink(index)}
                         style={{
-                          background: '#fee2e2',
-                          border: '1px solid #fecaca',
-                          color: '#dc2626',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: '40px',
+                          background: '#fff1f2', border: '1px solid #fecdd3',
+                          color: '#e11d48', padding: '0.65rem 0.75rem',
+                          borderRadius: '8px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s',
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#fecaca';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#fee2e2';
-                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ffe4e6'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff1f2'; }}
                       >
-                        <FaTimes style={{ fontSize: '0.75rem' }} />
+                        <FaTimes style={{ fontSize: '0.65rem' }} />
                       </button>
                     )}
                   </div>
                 ))}
-                <p style={{ 
-                  fontSize: '0.75rem', 
-                  color: '#64748b', 
-                  marginTop: '0.5rem',
-                  marginBottom: 0
-                }}>
-                  Attach links to relevant documents, files, or resources
-                </p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Footer - Only show in New Log tab */}
-            {emailLogsTab === 'new' && (
-              <div style={{
-                padding: '1.5rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                gap: '0.75rem',
-                justifyContent: 'flex-end',
-              }}>
-                <button
-                  onClick={() => {
-                    setEmailLogsTab('logs');
-                    setEmailNotes('');
-                    setEmailLinks(['']);
-                  }}
-                  style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    color: '#374151',
-                    padding: '0.625rem 1.25rem',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#e5e7eb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#f3f4f6';
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleLogEmailSubmit}
-                  disabled={loggingEmail}
-                  style={{
-                    background: loggingEmail ? '#9ca3af' : '#667eea',
-                    border: 'none',
-                    color: 'white',
-                    padding: '0.625rem 1.25rem',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: loggingEmail ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loggingEmail) {
-                      e.currentTarget.style.background = '#5568d3';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!loggingEmail) {
-                      e.currentTarget.style.background = '#667eea';
-                    }
-                  }}
-                >
-                  <FaPaperPlane />
-                  {loggingEmail ? 'Logging...' : 'Log Email'}
-                </button>
               </div>
-            )}
+              <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.6rem', marginBottom: 0 }}>
+                Attach links to relevant documents, files, or resources
+              </p>
+            </div>
           </div>
-        </>
+        )}
+      </div>
+
+      {/* ── Footer (New Log only) ── */}
+      {emailLogsTab === 'new' && (
+        <div style={{
+          padding: '1rem 1.5rem',
+          borderTop: '1px solid #f1f5f9',
+          display: 'flex', gap: '0.625rem', justifyContent: 'flex-end',
+          background: '#fafbff',
+        }}>
+          <button
+            onClick={() => {
+              setEmailLogsTab('logs');
+              setEmailNotes('');
+              setEmailLinks(['']);
+            }}
+            style={{
+              background: '#fff', border: '1px solid #e2e8f0',
+              color: '#475569', padding: '0.55rem 1.1rem',
+              borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleLogEmailSubmit}
+            disabled={loggingEmail}
+            style={{
+              background: loggingEmail ? '#c4b5fd' : '#7c6af7',
+              border: 'none', color: '#fff',
+              padding: '0.55rem 1.25rem',
+              borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600,
+              cursor: loggingEmail ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              fontFamily: 'inherit', transition: 'all 0.15s',
+              boxShadow: loggingEmail ? 'none' : '0 2px 8px rgba(124,106,247,0.35)',
+            }}
+            onMouseEnter={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#6a58e8'; }}
+            onMouseLeave={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#7c6af7'; }}
+          >
+            <FaPaperPlane style={{ fontSize: '0.75rem' }} />
+            {loggingEmail ? 'Logging…' : 'Log Email'}
+          </button>
+        </div>
       )}
+    </div>
+  </>
+)}
     </div>
   );
 };

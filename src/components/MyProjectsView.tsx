@@ -125,24 +125,23 @@ const MyProjectsView: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get all tasks assigned to the current user
-      const allTasksData = await taskService.getAll();
-      const myTasks = allTasksData.filter((t: any) => t.assignedToId === user?.id);
+      // Get only tasks assigned to the current user (optimized - uses backend filter)
+      const myTasks = await taskService.getAll(undefined, user?.id);
       
       // Get unique project IDs from user's tasks
-      const projectIds = new Set(myTasks.map((t: any) => t.projectId));
+      const projectIds = Array.from(new Set(myTasks.map((t: any) => t.projectId)));
       
-      // Load all projects
-      const allProjects = await projectService.getAll();
-      
-      // Filter to only projects where user has tasks
-      const myProjects = allProjects.filter((p: any) => projectIds.has(p.id));
+      // Load only the projects that the user has tasks in (fetch in parallel)
+      const projectPromises = projectIds.map((id: string) => projectService.getOne(id));
+      const myProjects = await Promise.all(projectPromises);
 
       setProjects(myProjects);
       setTasks(myTasks);
       
-      // Load last email logs for projects
-      await loadLastEmailLogs(myProjects);
+      // Load last email logs for projects (non-blocking - don't await)
+      loadLastEmailLogs(myProjects).catch(err => {
+        console.error('Failed to load email logs:', err);
+      });
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -156,26 +155,16 @@ const MyProjectsView: React.FC = () => {
     loadUsers();
     
     // Set up interval to check for new updates
-    const checkForNewUpdates = async () => {
-      if (projects.length > 0) {
-        await loadLastEmailLogs(projects);
-      }
-    };
-    
     const interval = setInterval(() => {
       if (skipRefreshUntilRef.current && Date.now() < skipRefreshUntilRef.current) {
         return;
       }
       loadUnreadCount();
-      checkForNewUpdates();
     }, 30000); // Check every 30 seconds
-    
-    // Initial check
-    checkForNewUpdates();
     
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

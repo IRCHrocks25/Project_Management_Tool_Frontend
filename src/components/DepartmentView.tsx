@@ -390,7 +390,8 @@ const DepartmentView: React.FC = () => {
       if (task.status === 'In Review' || task.status === 'Client Validation' || task.status === 'Client Review') {
         return 'client_validation';
       }
-      if (task.assignedTo && (task.status === 'In Progress' || task.status === 'Owned')) {
+      // If task is assigned, it should be in "Owned/In Progress" (unless it's in a special status above)
+      if (task.assignedTo || task.assignedToId) {
         return 'owned_in_progress';
       }
       // Default for CRM unassigned or Todo
@@ -2409,12 +2410,34 @@ const DepartmentView: React.FC = () => {
                                 value={task.assignedTo || ''}
                                 onChange={async (e) => {
                                   try {
-                                    await taskService.assign(task.id, e.target.value);
-                                    setTasks((prev) =>
-                                      prev.map((t: any) =>
-                                        t.id === task.id ? { ...t, assignedTo: e.target.value } : t
-                                      )
-                                    );
+                                    const newAssignedToId = e.target.value;
+                                    await taskService.assign(task.id, newAssignedToId);
+                                    
+                                    // For CRM: If assigning a task, update status to "In Progress" to keep it in "Owned/In Progress" column
+                                    if (department === 'CRM' && newAssignedToId && task.status !== 'In Progress' && task.status !== 'Blocked') {
+                                      try {
+                                        await taskService.updateStatus(task.id, 'In Progress', false);
+                                        setTasks((prev) =>
+                                          prev.map((t: any) =>
+                                            t.id === task.id ? { ...t, assignedTo: newAssignedToId, status: 'In Progress' } : t
+                                          )
+                                        );
+                                      } catch (statusError) {
+                                        console.error('Failed to update task status:', statusError);
+                                        // Still update assignment even if status update fails
+                                        setTasks((prev) =>
+                                          prev.map((t: any) =>
+                                            t.id === task.id ? { ...t, assignedTo: newAssignedToId } : t
+                                          )
+                                        );
+                                      }
+                                    } else {
+                                      setTasks((prev) =>
+                                        prev.map((t: any) =>
+                                          t.id === task.id ? { ...t, assignedTo: newAssignedToId } : t
+                                        )
+                                      );
+                                    }
                                   } catch (error) {
                                     console.error('Failed to assign task:', error);
                                     alert('Failed to assign task. Please try again.');
@@ -2716,12 +2739,34 @@ const DepartmentView: React.FC = () => {
                               value={task.assignedTo || ''}
                               onChange={async (e) => {
                                 try {
-                                  await taskService.assign(task.id, e.target.value);
-                                  setTasks((prev) =>
-                                    prev.map((t: any) =>
-                                      t.id === task.id ? { ...t, assignedTo: e.target.value } : t
-                                    )
-                                  );
+                                  const newAssignedToId = e.target.value;
+                                  await taskService.assign(task.id, newAssignedToId);
+                                  
+                                  // For CRM: If assigning a task, update status to "In Progress" to keep it in "Owned/In Progress" column
+                                  if (department === 'CRM' && newAssignedToId && task.status !== 'In Progress' && task.status !== 'Blocked') {
+                                    try {
+                                      await taskService.updateStatus(task.id, 'In Progress', false);
+                                      setTasks((prev) =>
+                                        prev.map((t: any) =>
+                                          t.id === task.id ? { ...t, assignedTo: newAssignedToId, status: 'In Progress' } : t
+                                        )
+                                      );
+                                    } catch (statusError) {
+                                      console.error('Failed to update task status:', statusError);
+                                      // Still update assignment even if status update fails
+                                      setTasks((prev) =>
+                                        prev.map((t: any) =>
+                                          t.id === task.id ? { ...t, assignedTo: newAssignedToId } : t
+                                        )
+                                      );
+                                    }
+                                  } else {
+                                    setTasks((prev) =>
+                                      prev.map((t: any) =>
+                                        t.id === task.id ? { ...t, assignedTo: newAssignedToId } : t
+                                      )
+                                    );
+                                  }
                                 } catch (error) {
                                   console.error('Failed to assign task:', error);
                                   alert('Failed to assign task. Please try again.');

@@ -158,15 +158,15 @@ const AIDeveloperDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Always load ALL tasks for AI Developer dashboard so we can see unassigned work
-      const allTasksData = await taskService.getAll();
+      // Fetch tasks and projects in parallel for better performance
+      const [allTasksData, allProjectsData] = await Promise.all([
+        taskService.getAll(),
+        projectService.getAll()
+      ]);
 
       // Get ALL AI tasks first (regardless of project stage or assignment)
       // Backend TaskType for AI is "AI", so we must match that here
       const aiTasks = allTasksData.filter((t: any) => t.type === 'AI');
-
-      // Load ALL projects once, then derive what we need from here
-      const allProjectsData = await projectService.getAll();
       setAllProjects(allProjectsData); // Store for modal
 
       // Projects that already have AI tasks
@@ -1306,7 +1306,7 @@ const AIDeveloperDashboard: React.FC = () => {
           background: 'rgba(0, 0, 0, 0.2)'
         }}>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/my-projects')}
             style={{
               width: '100%',
               padding: '0.875rem 1rem',

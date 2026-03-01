@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
+import { authService } from '../services/auth.service';
 import './NotificationsModal.css';
 
 interface NotificationsModalProps {
@@ -13,24 +14,36 @@ interface NotificationsModalProps {
 const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = authService.getUser();
 
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const data = await notificationService.getAll();
+      
+      console.log('Raw notifications from API:', {
+        count: data.length,
+        currentUserId: user?.id,
+        sample: data[0],
+        firstFew: data.slice(0, 3)
+      });
+      
+      // Backend already filters by userId in the query, so all returned notifications are for this user
+      // Just use them directly - no additional filtering needed
+      // (Backend query: .where('notification.userId = :userId', { userId }))
       setNotifications(data);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen, loadNotifications]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

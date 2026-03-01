@@ -158,15 +158,15 @@ const DesignerDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Always load ALL tasks for Design dashboard so we can see unassigned work
-      const allTasksData = await taskService.getAll();
+      // Fetch tasks and projects in parallel for better performance
+      const [allTasksData, allProjectsData] = await Promise.all([
+        taskService.getAll(),
+        projectService.getAll()
+      ]);
 
       // Get ALL Design tasks first (regardless of project stage or assignment)
       // Backend TaskType for design is "Design", so we must match that here
       const designTasks = allTasksData.filter((t: any) => t.type === 'Design');
-
-      // Load ALL projects once, then derive what we need from here
-      const allProjectsData = await projectService.getAll();
       setAllProjects(allProjectsData); // Store for modal
 
       // Projects that already have Design tasks

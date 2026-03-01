@@ -9,6 +9,8 @@ export interface Notification {
   message: string;
   projectId?: string;
   taskId?: string;
+  userId?: string; // User ID this notification is for (if backend doesn't filter)
+  assignedToId?: string; // For task notifications - the user assigned to the task
   isRead: boolean;
   createdAt: string;
 }
