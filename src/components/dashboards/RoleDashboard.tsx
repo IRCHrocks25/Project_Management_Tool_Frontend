@@ -6,16 +6,11 @@ import {
   FaBell,
   FaCog,
   FaSignOutAlt,
-  FaFileAlt,
   FaClock,
-  FaFilter,
-  FaSort,
   FaSpinner,
   FaHandPaper,
   FaStickyNote,
-  FaLink,
   FaTimes,
-  FaArrowLeft,
   FaPlus,
   FaCopy,
   FaPalette,
@@ -24,14 +19,8 @@ import {
   FaShareAlt,
   FaDatabase,
   FaSearch,
-  FaClipboardList,
   FaEdit,
   FaSave,
-  FaEllipsisV,
-  FaEye,
-  FaFolder,
-  FaPaperPlane,
-  FaEnvelope,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -113,7 +102,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   
   // All hooks must be called before any conditional returns
   const [projects, setProjects] = useState<any[]>([]);
-  const [allProjects, setAllProjects] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,13 +117,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
   const [deliverableHistory] = useState<Record<string, any[]>>({});
-  const [showNotesModal, setShowNotesModal] = useState(false);
-  const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
-  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  const [bulkAssignUserId] = useState<string>('');
-  const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     projectId: '',
@@ -145,7 +126,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     deliverableId: '',
     assignedToId: ''
   });
-  const [deliverables, setDeliverables] = useState<any[]>([]);
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
@@ -161,17 +141,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     deliverableId: '',
     assignedToId: ''
   });
+  const [deliverables, setDeliverables] = useState<any[]>([]);
   const [editDeliverables, setEditDeliverables] = useState<any[]>([]);
   const [showEditCustomDeliverableInput, setShowEditCustomDeliverableInput] = useState(false);
   const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
   const [isUpdatingTaskInModal, setIsUpdatingTaskInModal] = useState(false);
-  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
-  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [projectForUpdates, setProjectForUpdates] = useState<any>(null);
-  const [clientUpdates, setClientUpdates] = useState<any[]>([]);
-  const [loadingUpdates, setLoadingUpdates] = useState(false);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
-  const [showMentionDropdown, setShowMentionDropdown] = useState<{ updateId: string; position: number } | null>(null);
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
@@ -239,7 +214,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
 
       // Filter tasks by type
       const roleTasks = allTasksData.filter((t: any) => t.type === config.taskType);
-      setAllProjects(allProjectsData);
 
       // Projects that have tasks of this type
       const projectIdsWithRoleTasks = new Set<string>(
@@ -347,40 +321,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     }
   };
 
-  const handleClaimProject = async (projectId: string) => {
-    if (!user?.id) {
-      alert('User not found. Please log in again.');
-      return;
-    }
-
-    try {
-      setUpdatingTask('project-' + projectId);
-      
-      const projectTasks = tasks.filter((t: any) => 
-        t.projectId === projectId && t.type === config?.taskType
-      );
-
-      const unassignedProjectTasks = projectTasks.filter((t: any) => !t.assignedToId);
-
-      if (unassignedProjectTasks.length === 0) {
-        alert('All tasks for this project are already assigned.');
-        setUpdatingTask(null);
-        return;
-      }
-
-      for (const task of unassignedProjectTasks) {
-        await taskService.assign(task.id, user.id);
-      }
-
-      await loadData();
-      alert(`Successfully claimed ${unassignedProjectTasks.length} task(s) for this project!`);
-    } catch (error) {
-      console.error('Failed to claim project:', error);
-      alert('Failed to claim project. Please try again.');
-    } finally {
-      setUpdatingTask(null);
-    }
-  };
 
   const getFilteredAndSortedTasks = () => {
     let filtered = tasks;
@@ -425,10 +365,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return filtered;
   };
 
-  const getProjectsForTasks = () => {
-    const projectIds = new Set(tasks.map((t: any) => t.projectId));
-    return projects.filter((p: any) => projectIds.has(p.id));
-  };
 
   const getGroupedTasks = useMemo(() => {
     const filtered = getFilteredAndSortedTasks();
@@ -555,7 +491,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return <div>Invalid role configuration</div>;
   }
 
-  const { taskType, stages, departmentName, icon: DepartmentIcon, color } = config;
+  const { departmentName, color } = config;
 
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -794,57 +730,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
-  const handleViewUpdatesClick = async (project: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setProjectForUpdates(project);
-    setShowUpdatesModal(true);
-    await loadClientUpdates(project.id);
-  };
-
-  const loadClientUpdates = async (projectId: string) => {
-    try {
-      setLoadingUpdates(true);
-      const updates = await clientUpdatesService.getAllByProject(projectId);
-      setClientUpdates(updates);
-      if (updates && updates.length > 0) {
-        await Promise.all(updates.map(update => loadComments(update.id)));
-      }
-    } catch (error) {
-      console.error('Failed to load client updates:', error);
-      setClientUpdates([]);
-    } finally {
-      setLoadingUpdates(false);
-    }
-  };
-
-  const loadComments = async (updateId: string) => {
-    try {
-      setLoadingComments({ ...loadingComments, [updateId]: true });
-      const commentsData = await clientUpdatesService.getComments(updateId);
-      setComments({ ...comments, [updateId]: commentsData });
-    } catch (error) {
-      console.error('Failed to load comments:', error);
-    } finally {
-      setLoadingComments({ ...loadingComments, [updateId]: false });
-    }
-  };
-
-  const handleSubmitComment = async (updateId: string) => {
-    const commentText = commentTexts[updateId]?.trim();
-    if (!commentText) return;
-
-    try {
-      setSubmittingComment({ ...submittingComment, [updateId]: true });
-      await clientUpdatesService.createComment(updateId, commentText);
-      setCommentTexts({ ...commentTexts, [updateId]: '' });
-      await loadComments(updateId);
-    } catch (error) {
-      console.error('Failed to submit comment:', error);
-      alert('Failed to submit comment. Please try again.');
-    } finally {
-      setSubmittingComment({ ...submittingComment, [updateId]: false });
-    }
-  };
 
   if (loading) {
     return (
@@ -2038,7 +1923,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 <tbody>
                   {getFilteredAndSortedTasks().map((task: any) => {
                     const project = projects.find((p: any) => p.id === task.projectId);
-                    const taskInRevision = project ? isTaskInRevision(task, project) : false;
 
                     return (
                       <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>

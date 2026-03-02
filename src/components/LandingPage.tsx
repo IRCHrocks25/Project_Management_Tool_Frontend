@@ -413,6 +413,7 @@ function useFadeUp(ref: React.RefObject<HTMLElement>) {
     }, { threshold: 0.15 });
     obs.observe(el);
     return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 

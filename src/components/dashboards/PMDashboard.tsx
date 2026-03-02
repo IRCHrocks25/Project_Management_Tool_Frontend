@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaChartLine } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
