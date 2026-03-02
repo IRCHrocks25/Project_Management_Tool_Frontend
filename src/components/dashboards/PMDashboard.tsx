@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaChartLine } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -49,6 +49,8 @@ const PMDashboard: React.FC = () => {
   const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
   const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string; notes?: string; pmId?: string }>>({});
+  const [allEmailLogs, setAllEmailLogs] = useState<Record<string, any[]>>({});
+  const [projectActivities, setProjectActivities] = useState<Record<string, any[]>>({});
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
@@ -61,6 +63,7 @@ const PMDashboard: React.FC = () => {
   const [lastEmailLogDateFilter, setLastEmailLogDateFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
+  const [showPMActivityModal, setShowPMActivityModal] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
 
@@ -102,8 +105,9 @@ const PMDashboard: React.FC = () => {
         // Don't block UI if stats fail
       }
       
-      // Load last email logs in background (non-blocking)
+      // Load last email logs and activity data in background (non-blocking)
       loadLastEmailLogs(projectsData);
+      loadProjectActivities(projectsData);
     } catch (error) {
       console.error('Failed to load data:', error);
       setLoading(false);
@@ -499,17 +503,99 @@ const PMDashboard: React.FC = () => {
       );
       
       setLastEmailLogs(logsMap);
+      
+      // Also load ALL email logs for complete history (not just the most recent)
+      const allLogsMap: Record<string, any[]> = {};
+      await Promise.all(
+        projects.map(async (project) => {
+          try {
+            const updates = await clientUpdatesService.getAllByProject(project.id);
+            if (updates && updates.length > 0) {
+              allLogsMap[project.id] = updates;
+            }
+          } catch (error) {
+            // Silently fail for individual projects
+          }
+        })
+      );
+      setAllEmailLogs(allLogsMap);
     } catch (error) {
       console.error('Failed to load email logs:', error);
     }
   };
 
+  // Load project activity logs to track PM interactions comprehensively
+  const loadProjectActivities = async (projects: any[]) => {
+    try {
+      const activitiesMap: Record<string, any[]> = {};
+      
+      // Load activity for each project in parallel (but limit concurrent requests)
+      const batchSize = 10;
+      for (let i = 0; i < projects.length; i += batchSize) {
+        const batch = projects.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (project) => {
+            try {
+              const activities = await projectService.getActivity(project.id);
+              if (activities && Array.isArray(activities)) {
+                activitiesMap[project.id] = activities;
+              }
+            } catch (error) {
+              // Silently fail for individual projects
+              console.error(`Failed to load activity for project ${project.id}:`, error);
+            }
+          })
+        );
+      }
+      
+      setProjectActivities(activitiesMap);
+    } catch (error) {
+      console.error('Failed to load project activities:', error);
+    }
+  };
+
   // Determine the last PM who interacted with a project
-  // Priority: 1) Most recent client update PM, 2) Most recent task creator/updater (if PM), 3) Project's assigned PM
+  // Priority: Most recent activity between: 1) Activity log PM actions, 2) Email log update PM, 3) Task creator/updater (if PM)
   const getLastActivePM = useMemo(() => {
-    const pmMap = new Map<string, { name: string; id?: string; lastActivity?: Date }>();
+    const pmMap = new Map<string, { name: string; id?: string; lastActivity?: Date; activityType?: string }>();
     
-    // Check client updates (most reliable source)
+    // Create a map of user IDs to user objects for quick lookup
+    const userMap = new Map<string, any>();
+    users.forEach((user: any) => {
+      if (user.id) {
+        userMap.set(user.id, user);
+      }
+    });
+    
+    // Priority 1: Check project activity logs (most comprehensive)
+    // Activity logs should contain: task creation, task updates, email logs, etc.
+    for (const [projectId, activities] of Object.entries(projectActivities)) {
+      if (!activities || activities.length === 0) continue;
+      
+      // Find the most recent PM activity
+      for (const activity of activities) {
+        // Check if activity has a user/PM associated with it
+        const activityUserId = activity.userId || activity.user?.id || activity.createdBy || activity.pmId;
+        const activityUser = activityUserId ? userMap.get(activityUserId) : activity.user;
+        
+        // Check if this is a PM
+        if (activityUser && activityUser.role === 'Project Manager') {
+          const activityDate = new Date(activity.createdAt || activity.date || activity.timestamp || 0);
+          const existing = pmMap.get(projectId);
+          
+          if (!existing || activityDate > (existing.lastActivity || new Date(0))) {
+            pmMap.set(projectId, {
+              name: activityUser.name || activity.user?.name,
+              id: activityUser.id || activityUserId,
+              lastActivity: activityDate,
+              activityType: activity.type || activity.action || 'activity'
+            });
+          }
+        }
+      }
+    }
+    
+    // Priority 2: Check client updates (email logs)
     for (const [projectId, log] of Object.entries(lastEmailLogs)) {
       if (log.pmName && log.date) {
         const activityDate = new Date(log.date);
@@ -518,47 +604,109 @@ const PMDashboard: React.FC = () => {
           pmMap.set(projectId, {
             name: log.pmName,
             id: log.pmId,
-            lastActivity: activityDate
+            lastActivity: activityDate,
+            activityType: 'email_log'
           });
         }
       }
     }
     
     // Check tasks - find most recent task for each project
-    // Note: Tasks might not have PM info directly, but we can check if assignedTo is a PM
-    const projectTaskMap = new Map<string, { task: any; date: Date }>();
+    // Priority: 1) Task created by PM (createdById/createdBy), 2) Task assigned to PM
+    // Note: If backend doesn't expose createdBy, we can only check assigned users
+    const projectTaskMap = new Map<string, { task: any; date: Date; pmId?: string; pmName?: string }>();
     for (const task of tasks) {
       if (!task.projectId) continue;
+      
       const taskDate = new Date(task.updatedAt || task.createdAt || 0);
       const existing = projectTaskMap.get(task.projectId);
-      if (!existing || taskDate > existing.date) {
-        projectTaskMap.set(task.projectId, { task, date: taskDate });
+      
+      // Skip if we already have a more recent task for this project
+      if (existing && taskDate <= existing.date) continue;
+      
+      let pmId: string | undefined;
+      let pmName: string | undefined;
+      
+      // Priority 1: Check if task has a createdBy field (most accurate for determining creator)
+      if ((task as any).createdById) {
+        const creator = userMap.get((task as any).createdById);
+        if (creator && creator.role === 'Project Manager') {
+          pmId = creator.id;
+          pmName = creator.name;
+        }
+      }
+      
+      // Priority 2: Check if task has a createdBy user object
+      if (!pmId && (task as any).createdBy) {
+        const creator = (task as any).createdBy;
+        if (creator && (creator.role === 'Project Manager' || creator.id)) {
+          // If it's already a user object with role, use it
+          if (creator.role === 'Project Manager') {
+            pmId = creator.id;
+            pmName = creator.name;
+          } else {
+            // If it's just an ID, look it up
+            const creatorUser = userMap.get(creator.id);
+            if (creatorUser && creatorUser.role === 'Project Manager') {
+              pmId = creatorUser.id;
+              pmName = creatorUser.name;
+            }
+          }
+        }
+      }
+      
+      // Priority 3: Check if task is assigned to a PM (less accurate but better than nothing)
+      if (!pmId) {
+        const assignedUserId = task.assignedToId || task.assignedTo;
+        if (assignedUserId) {
+          const assignedUser = userMap.get(assignedUserId);
+          if (assignedUser && assignedUser.role === 'Project Manager') {
+            pmId = assignedUser.id;
+            pmName = assignedUser.name;
+          }
+        }
+      }
+      
+      // If we found a PM, store this task
+      if (pmId && pmName) {
+        projectTaskMap.set(task.projectId, {
+          task,
+          date: taskDate,
+          pmId,
+          pmName
+        });
       }
     }
     
-    // For tasks, if the assigned user is a PM, use that
-    // We'll need to check if the user is a PM by their role
-    // Note: This would require loading all users to check roles, so we'll skip for now
-    // Backend support would be needed to track task creator/updater as PM
-    Array.from(projectTaskMap.entries()).forEach(([projectId, { task, date }]) => {
-      if (task.assignedTo) {
-        // Check if assigned user is a PM (we'd need users list, but for now we'll skip this)
-        // This would require loading all users, which we might not have
+    // Merge task PMs into the map, comparing dates
+    // Only use task PMs if we actually found a PM (not just stored the task date)
+    Array.from(projectTaskMap.entries()).forEach(([projectId, { date, pmId, pmName }]) => {
+      // Only process if we found a PM for this task
+      if (!pmId || !pmName) return;
+      
+      const existing = pmMap.get(projectId);
+      if (!existing || date > (existing.lastActivity || new Date(0))) {
+        pmMap.set(projectId, {
+          name: pmName,
+          id: pmId,
+          lastActivity: date
+        });
       }
     });
     
     return pmMap;
-  }, [lastEmailLogs, tasks]);
+  }, [lastEmailLogs, tasks, users, projectActivities]);
 
   // Get the PM name to display for a project
   const getProjectPMName = (project: any): string => {
-    // First check if there's a recent client update PM
+    // First check if there's a recent client update PM or task PM
     const lastPM = getLastActivePM.get(project.id);
     if (lastPM && lastPM.name) {
       return lastPM.name;
     }
     
-    // Fallback to project's assigned PM
+    // Only fallback to project's assigned PM if we have no activity data
+    // This ensures we show the PM who actually worked on the project, not just the project creator
     return project.pm?.name || 'Unassigned';
   };
 
@@ -1135,6 +1283,16 @@ const PMDashboard: React.FC = () => {
                     Settings
                   </button>
                   <div className="dropdown-divider"></div>
+                  <button 
+                    onClick={() => {
+                      setShowAvatarDropdown(false);
+                      setShowPMActivityModal(true);
+                    }}
+                    className="dropdown-item"
+                  >
+                    <FaHistory className="dropdown-icon" />
+                    PM Activity Log
+                  </button>
                   <button 
                     onClick={() => {
                       setShowAvatarDropdown(false);
@@ -2896,6 +3054,550 @@ const PMDashboard: React.FC = () => {
     </div>
   </>
 )}
+
+      {/* PM Activity Log Modal */}
+      {showPMActivityModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '2rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '1200px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '2rem 2.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 700,
+                  color: '#111827',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  <FaHistory style={{ marginRight: '0.75rem', color: '#7c6af7' }} />
+                  PM Activity Log
+                </h2>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#64748b',
+                  margin: 0
+                }}>
+                  Track all Project Manager activities across projects
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPMActivityModal(false)}
+                style={{
+                  padding: '0.5rem',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.color = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+              >
+                <FaTimes style={{ fontSize: '1.25rem' }} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '2rem 2.5rem'
+            }}>
+              {(() => {
+                // Collect all PM activities from all sources
+                const allPMActivities: Array<{
+                  projectId: string;
+                  projectName: string;
+                  pmName: string;
+                  pmId?: string;
+                  activityType: string;
+                  date: Date;
+                  description: string;
+                }> = [];
+
+                // Create user map - include ALL users, especially all PMs
+                const userMap = new Map<string, any>();
+                const allPMs = new Map<string, any>(); // Track all PMs separately
+                users.forEach((user: any) => {
+                  if (user.id) {
+                    userMap.set(user.id, user);
+                    // Track all PMs
+                    if (user.role === 'Project Manager') {
+                      allPMs.set(user.id, user);
+                    }
+                  }
+                });
+
+                // Process activity logs
+                for (const [projectId, activities] of Object.entries(projectActivities)) {
+                  const project = projects.find((p: any) => p.id === projectId);
+                  const projectName = project?.clientName || 'Unknown Project';
+
+                  for (const activity of activities || []) {
+                    const activityUserId = activity.userId || activity.user?.id || activity.createdBy || activity.pmId;
+                    const activityUser = activityUserId ? userMap.get(activityUserId) : activity.user;
+                    
+                    // Check if this is a PM activity - check user role or if activity indicates PM
+                    const isPM = activityUser?.role === 'Project Manager' || 
+                                 activity.user?.role === 'Project Manager' ||
+                                 activity.pmId || 
+                                 activity.pm?.role === 'Project Manager';
+                    
+                    if (isPM) {
+                      const activityDate = new Date(activity.createdAt || activity.date || activity.timestamp || 0);
+                      const activityType = activity.type || activity.action || 'activity';
+                      
+                      // Get PM name from various sources
+                      const pmName = activityUser?.name || 
+                                    activity.user?.name || 
+                                    activity.pm?.name ||
+                                    'Unknown PM';
+                      const pmId = activityUser?.id || 
+                                  activityUserId || 
+                                  activity.pmId ||
+                                  activity.pm?.id;
+                      
+                      allPMActivities.push({
+                        projectId,
+                        projectName,
+                        pmName,
+                        pmId,
+                        activityType,
+                        date: activityDate,
+                        description: activity.description || activity.notes || `${activityType} on ${projectName}`
+                      });
+                    }
+                  }
+                }
+
+                // Process email logs - load ALL email logs, not just the last one
+                // This ensures we capture all PM activities, not just the most recent per project
+                for (const [projectId, log] of Object.entries(lastEmailLogs)) {
+                  if (log.pmName && log.date) {
+                    const project = projects.find((p: any) => p.id === projectId);
+                    const projectName = project?.clientName || 'Unknown Project';
+                    
+                    // Verify this is actually a PM by checking userMap
+                    let pmId = log.pmId;
+                    let pmName = log.pmName;
+                    
+                    // If we have pmId, verify it's a PM
+                    if (pmId) {
+                      const pmUser = userMap.get(pmId);
+                      if (pmUser && pmUser.role === 'Project Manager') {
+                        pmName = pmUser.name; // Use name from userMap for consistency
+                      } else if (!pmUser) {
+                        // PM not found in userMap, but we have pmName, so use it
+                        // This handles cases where userMap might not be fully loaded
+                      }
+                    } else {
+                      // No pmId, try to find PM by name
+                      const pmByName = Array.from(userMap.values()).find(
+                        (u: any) => u.name === pmName && u.role === 'Project Manager'
+                      );
+                      if (pmByName) {
+                        pmId = pmByName.id;
+                        pmName = pmByName.name;
+                      }
+                    }
+                    
+                    // Only add if we have valid PM info
+                    if (pmName && (pmId || pmName !== 'Unknown PM')) {
+                      allPMActivities.push({
+                        projectId,
+                        projectName,
+                        pmName,
+                        pmId,
+                        activityType: 'email_log',
+                        date: new Date(log.date),
+                        description: log.notes ? `Email log: ${log.notes.substring(0, 100)}` : `Email log update for ${projectName}`
+                      });
+                    }
+                  }
+                }
+                
+                // Process ALL email logs (not just the last one per project)
+                // This ensures we capture all PM activities from email logs
+                for (const [projectId, updates] of Object.entries(allEmailLogs)) {
+                  const project = projects.find((p: any) => p.id === projectId);
+                  const projectName = project?.clientName || 'Unknown Project';
+                  
+                  for (const update of updates || []) {
+                    if (update.pm?.name || update.pmId) {
+                      const pmId = update.pmId || (update.pm as any)?.id;
+                      const pmName = update.pm?.name;
+                      
+                      // Verify it's a PM
+                      let verifiedPM = pmId ? userMap.get(pmId) : null;
+                      if (!verifiedPM && pmName) {
+                        verifiedPM = Array.from(userMap.values()).find(
+                          (u: any) => u.name === pmName && u.role === 'Project Manager'
+                        );
+                      }
+                      
+                      if (verifiedPM || (pmName && update.emailSentAt)) {
+                        allPMActivities.push({
+                          projectId,
+                          projectName,
+                          pmName: verifiedPM?.name || pmName,
+                          pmId: verifiedPM?.id || pmId,
+                          activityType: 'email_log',
+                          date: new Date(update.emailSentAt),
+                          description: update.notes ? `Email log: ${update.notes.substring(0, 100)}` : `Email log update for ${projectName}`
+                        });
+                      }
+                    }
+                  }
+                }
+
+                // Process task activities - check ALL tasks, not filtered by current user
+                for (const task of tasks) {
+                  if (!task.projectId) continue;
+                  
+                  const project = projects.find((p: any) => p.id === task.projectId);
+                  const projectName = project?.clientName || 'Unknown Project';
+                  
+                  // Check task creator
+                  const createdById = (task as any).createdById || (task as any).createdBy?.id;
+                  if (createdById) {
+                    const creator = userMap.get(createdById);
+                    // Also check if createdBy object indicates PM
+                    const createdByObj = (task as any).createdBy;
+                    const isCreatorPM = creator?.role === 'Project Manager' || 
+                                       createdByObj?.role === 'Project Manager';
+                    
+                    if (isCreatorPM) {
+                      allPMActivities.push({
+                        projectId: task.projectId,
+                        projectName,
+                        pmName: creator?.name || createdByObj?.name || 'Unknown PM',
+                        pmId: creator?.id || createdById,
+                        activityType: 'task_created',
+                        date: new Date(task.createdAt || 0),
+                        description: `Created task: ${task.title}`
+                      });
+                    }
+                  }
+                  
+                  // Check task assignee (if PM) - check ALL assignees, not just current user
+                  const assignedUserId = task.assignedToId || task.assignedTo;
+                  if (assignedUserId) {
+                    const assignee = userMap.get(assignedUserId);
+                    // Also check if assignedTo object indicates PM
+                    const assignedToObj = task.assignedTo;
+                    const isAssigneePM = assignee?.role === 'Project Manager' ||
+                                        assignedToObj?.role === 'Project Manager';
+                    
+                    if (isAssigneePM) {
+                      const taskDate = new Date(task.updatedAt || task.createdAt || 0);
+                      allPMActivities.push({
+                        projectId: task.projectId,
+                        projectName,
+                        pmName: assignee?.name || assignedToObj?.name || 'Unknown PM',
+                        pmId: assignee?.id || assignedUserId,
+                        activityType: 'task_assigned',
+                        date: taskDate,
+                        description: `Assigned/updated task: ${task.title}`
+                      });
+                    }
+                  }
+                }
+
+                // Sort by date (most recent first)
+                allPMActivities.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                // Group by PM - use pmId as primary key for proper grouping
+                const activitiesByPM = new Map<string, typeof allPMActivities>();
+                
+                // First, add all PMs from the users list (even if no activities)
+                allPMs.forEach((pm) => {
+                  activitiesByPM.set(pm.id, []);
+                });
+                
+                // Then, add activities to their respective PMs
+                // Use pmId as the key for proper grouping, fallback to pmName only if pmId is missing
+                for (const activity of allPMActivities) {
+                  // Prefer pmId for grouping, as it's unique
+                  let pmKey = activity.pmId;
+                  
+                  // If no pmId, try to find PM by name
+                  if (!pmKey && activity.pmName) {
+                    const pmByName = Array.from(allPMs.values()).find(
+                      (pm: any) => pm.name === activity.pmName
+                    );
+                    if (pmByName) {
+                      pmKey = pmByName.id;
+                    } else {
+                      // If we can't find PM by name, use name as fallback (but this might cause grouping issues)
+                      pmKey = activity.pmName;
+                    }
+                  }
+                  
+                  if (pmKey) {
+                    if (!activitiesByPM.has(pmKey)) {
+                      activitiesByPM.set(pmKey, []);
+                    }
+                    activitiesByPM.get(pmKey)!.push(activity);
+                  }
+                }
+
+                if (allPMActivities.length === 0 && allPMs.size === 0) {
+                  return (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '4rem 2rem',
+                      color: '#9ca3af'
+                    }}>
+                      <FaHistory style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
+                      <p style={{ fontSize: '1rem', margin: 0 }}>
+                        No PM activity found yet. Activity will appear here as PMs interact with projects.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {/* Summary */}
+                    <div style={{
+                      padding: '1rem 1.5rem',
+                      background: '#f8fafc',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                            Total Project Managers
+                          </div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>
+                            {allPMs.size} PM{allPMs.size !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                            PMs with Activity
+                          </div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7c6af7' }}>
+                            {Array.from(activitiesByPM.values()).filter(acts => acts.length > 0).length}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                            Total Activities
+                          </div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>
+                            {allPMActivities.length}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PM Activities */}
+                    {Array.from(activitiesByPM.entries())
+                      .sort(([keyA, actsA], [keyB, actsB]) => {
+                        // Sort: PMs with activities first, then by name
+                        if (actsA.length > 0 && actsB.length === 0) return -1;
+                        if (actsA.length === 0 && actsB.length > 0) return 1;
+                        const pmA = allPMs.get(keyA);
+                        const pmB = allPMs.get(keyB);
+                        const nameA = pmA?.name || actsA[0]?.pmName || '';
+                        const nameB = pmB?.name || actsB[0]?.pmName || '';
+                        return nameA.localeCompare(nameB);
+                      })
+                      .map(([pmKey, pmActivities]) => {
+                      // Get PM info - try to find from allPMs first, then from activities
+                      let pmInfo = allPMs.get(pmKey);
+                      if (!pmInfo && pmActivities.length > 0) {
+                        // Try to get from first activity
+                        const firstActivity = pmActivities[0];
+                        pmInfo = {
+                          id: firstActivity.pmId || pmKey,
+                          name: firstActivity.pmName,
+                          role: 'Project Manager'
+                        };
+                      } else if (!pmInfo) {
+                        // Skip if we can't identify the PM
+                        return null;
+                      }
+                      
+                      const pmName = pmInfo.name || 'Unknown PM';
+                      
+                      return (
+                        <div key={pmKey} style={{
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            padding: '1rem 1.5rem',
+                            background: '#f8fafc',
+                            borderBottom: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #7c6af7 0%, #6a58e8 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: '1rem'
+                              }}>
+                                {pmName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#111827', fontSize: '1rem' }}>
+                                  {pmName}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                  {pmActivities.length} {pmActivities.length === 1 ? 'activity' : 'activities'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ padding: '1rem' }}>
+                            {pmActivities.length === 0 ? (
+                              <div style={{
+                                padding: '2rem',
+                                textAlign: 'center',
+                                color: '#94a3b8',
+                                fontSize: '0.875rem',
+                                fontStyle: 'italic'
+                              }}>
+                                No activities recorded yet
+                              </div>
+                            ) : (
+                              pmActivities.slice(0, 10).map((activity, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  padding: '1rem',
+                                  marginBottom: idx < pmActivities.length - 1 ? '0.75rem' : 0,
+                                  background: '#fff',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '8px',
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '1rem'
+                                }}
+                              >
+                                <div style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  background: '#7c6af7',
+                                  marginTop: '0.5rem',
+                                  flexShrink: 0
+                                }} />
+                                <div style={{ flex: 1 }}>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    marginBottom: '0.5rem'
+                                  }}>
+                                    <span style={{
+                                      fontSize: '0.875rem',
+                                      fontWeight: 600,
+                                      color: '#111827'
+                                    }}>
+                                      {activity.projectName}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '0.75rem',
+                                      color: '#64748b',
+                                      padding: '0.25rem 0.5rem',
+                                      background: '#f1f5f9',
+                                      borderRadius: '4px'
+                                    }}>
+                                      {activity.activityType.replace('_', ' ')}
+                                    </span>
+                                  </div>
+                                  <p style={{
+                                    fontSize: '0.875rem',
+                                    color: '#475569',
+                                    margin: '0 0 0.5rem 0'
+                                  }}>
+                                    {activity.description}
+                                  </p>
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                  }}>
+                                    <FaClock style={{ fontSize: '0.625rem' }} />
+                                    {activity.date.toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                              ))
+                            )}
+                            {pmActivities.length > 10 && (
+                              <div style={{
+                                padding: '0.75rem',
+                                textAlign: 'center',
+                                color: '#64748b',
+                                fontSize: '0.875rem'
+                              }}>
+                                + {pmActivities.length - 10} more activities
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

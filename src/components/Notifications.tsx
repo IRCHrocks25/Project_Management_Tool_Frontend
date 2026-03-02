@@ -76,6 +76,7 @@ const Notifications: React.FC = () => {
     switch (type) {
       case 'task':
       case 'task_completed': return <FaCheckCircle className="notification-icon task" />;
+      case 'task_available': return <FaBell className="notification-icon task-available" />; // New type for unassigned tasks
       case 'email': return <FaEnvelope className="notification-icon email" />;
       case 'alert':
       case 'project_stage':

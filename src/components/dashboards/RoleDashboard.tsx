@@ -1,0 +1,2631 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  FaChevronDown,
+  FaUser,
+  FaBell,
+  FaCog,
+  FaSignOutAlt,
+  FaFileAlt,
+  FaClock,
+  FaFilter,
+  FaSort,
+  FaSpinner,
+  FaHandPaper,
+  FaStickyNote,
+  FaLink,
+  FaTimes,
+  FaArrowLeft,
+  FaPlus,
+  FaCopy,
+  FaPalette,
+  FaCode,
+  FaRobot,
+  FaShareAlt,
+  FaDatabase,
+  FaSearch,
+  FaClipboardList,
+  FaEdit,
+  FaSave,
+  FaEllipsisV,
+  FaEye,
+  FaFolder,
+  FaPaperPlane,
+  FaEnvelope,
+} from 'react-icons/fa';
+import { authService } from '../../services/auth.service';
+import { projectService } from '../../services/project.service';
+import { taskService } from '../../services/task.service';
+import { notificationService } from '../../services/notification.service';
+import { deliverableService } from '../../services/deliverable.service';
+import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
+import NotificationsModal from '../NotificationsModal';
+import SendForReviewModal from '../SendForReviewModal';
+import '../Dashboard.css';
+
+// Role configuration mapping
+const ROLE_CONFIG: Record<string, {
+  taskType: string;
+  stages: string[];
+  departmentName: string;
+  icon: React.ComponentType<any>;
+  color: string;
+}> = {
+  'Copy Writing': {
+    taskType: 'Copy',
+    stages: ['Copy', 'Copy Revision'],
+    departmentName: 'Copy Writing Team',
+    icon: FaCopy,
+    color: '#667eea',
+  },
+  'Designer': {
+    taskType: 'Design',
+    stages: ['Design'],
+    departmentName: 'Design Team',
+    icon: FaPalette,
+    color: '#ec4899',
+  },
+  'Developer': {
+    taskType: 'Dev',
+    stages: ['Development'],
+    departmentName: 'Development Team',
+    icon: FaCode,
+    color: '#10b981',
+  },
+  'AI Developer': {
+    taskType: 'AI',
+    stages: ['AI Development', 'Development'],
+    departmentName: 'AI Development Team',
+    icon: FaRobot,
+    color: '#8b5cf6',
+  },
+  'Social Media': {
+    taskType: 'Social Media',
+    stages: [],
+    departmentName: 'Social Media Team',
+    icon: FaShareAlt,
+    color: '#f59e0b',
+  },
+  'CRM': {
+    taskType: 'CRM',
+    stages: [],
+    departmentName: 'CRM Team',
+    icon: FaDatabase,
+    color: '#3b82f6',
+  },
+  'SEO/GEO': {
+    taskType: 'SEO',
+    stages: [],
+    departmentName: 'SEO/GEO Team',
+    icon: FaSearch,
+    color: '#06b6d4',
+  },
+};
+
+interface RoleDashboardProps {
+  role: string;
+}
+
+const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
+  const navigate = useNavigate();
+  const user = authService.getUser();
+  const config = ROLE_CONFIG[role];
+  
+  // All hooks must be called before any conditional returns
+  const [projects, setProjects] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedTaskForReview, setSelectedTaskForReview] = useState<any>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [filter, setFilter] = useState<'all' | 'my_tasks' | 'todo' | 'in_progress' | 'in_review' | 'completed'>('all');
+  const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'created'>('due_date');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [updatingTask, setUpdatingTask] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const skipRefreshUntilRef = useRef<number | null>(null);
+  const [deliverableHistory] = useState<Record<string, any[]>>({});
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedTaskNotes, setSelectedTaskNotes] = useState<any[]>([]);
+  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>('');
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [bulkAssignUserId] = useState<string>('');
+  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [newTaskData, setNewTaskData] = useState({
+    projectId: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    deliverableId: '',
+    assignedToId: ''
+  });
+  const [deliverables, setDeliverables] = useState<any[]>([]);
+  const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
+  const [customDeliverableName, setCustomDeliverableName] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Edit task states
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editTaskData, setEditTaskData] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    deliverableId: '',
+    assignedToId: ''
+  });
+  const [editDeliverables, setEditDeliverables] = useState<any[]>([]);
+  const [showEditCustomDeliverableInput, setShowEditCustomDeliverableInput] = useState(false);
+  const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
+  const [isUpdatingTaskInModal, setIsUpdatingTaskInModal] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  const [projectForUpdates, setProjectForUpdates] = useState<any>(null);
+  const [clientUpdates, setClientUpdates] = useState<any[]>([]);
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [showMentionDropdown, setShowMentionDropdown] = useState<{ updateId: string; position: number } | null>(null);
+  const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
+  const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
+
+  // Department menu items
+  const departmentMenuItems = [
+    { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
+    { id: 'Designer', name: 'Design', icon: FaPalette, color: '#ec4899' },
+    { id: 'Developer', name: 'Development', icon: FaCode, color: '#10b981' },
+    { id: 'AI Developer', name: 'AI Development', icon: FaRobot, color: '#8b5cf6' },
+    { id: 'Social Media', name: 'Social Media', icon: FaShareAlt, color: '#f59e0b' },
+    { id: 'CRM', name: 'CRM', icon: FaDatabase, color: '#3b82f6' },
+    { id: 'SEO/GEO', name: 'SEO/GEO', icon: FaSearch, color: '#06b6d4' },
+  ];
+
+  // Load users once
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const usersData = await authService.getAllUsers();
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    loadUnreadCount();
+    const interval = setInterval(() => {
+      if (skipRefreshUntilRef.current && Date.now() < skipRefreshUntilRef.current) {
+        return;
+      }
+      loadUnreadCount();
+    }, 30000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.avatar-dropdown-container')) {
+        setShowAvatarDropdown(false);
+      }
+    };
+    if (showAvatarDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAvatarDropdown]);
+
+  const loadData = async () => {
+    if (!config) return; // Early return if config is invalid
+    
+    try {
+      setLoading(true);
+
+      const [allTasksData, allProjectsData] = await Promise.all([
+        taskService.getAll(),
+        projectService.getAll()
+      ]);
+
+      // Filter tasks by type
+      const roleTasks = allTasksData.filter((t: any) => t.type === config.taskType);
+      setAllProjects(allProjectsData);
+
+      // Projects that have tasks of this type
+      const projectIdsWithRoleTasks = new Set<string>(
+        roleTasks.map((t: any) => t.projectId)
+      );
+      const projectsWithRoleTasks = allProjectsData.filter((p: any) =>
+        projectIdsWithRoleTasks.has(p.id)
+      );
+
+      // Projects in relevant stages (if stages are configured)
+      const stageProjects = config.stages.length > 0
+        ? allProjectsData.filter((p: any) => config.stages.includes(p.stage))
+        : [];
+
+      // Combine both sets of projects and de-dupe
+      const combinedProjectsMap = new Map<string, any>();
+      [...projectsWithRoleTasks, ...stageProjects].forEach((p: any) => {
+        combinedProjectsMap.set(p.id, p);
+      });
+      const combinedProjects = Array.from(combinedProjectsMap.values());
+
+      // Limit tasks to only those that belong to the combined projects
+      const visibleRoleTasks = roleTasks.filter((t: any) =>
+        combinedProjectsMap.has(t.projectId)
+      );
+
+      setProjects(combinedProjects);
+      setTasks(visibleRoleTasks);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    try {
+      if (skipRefreshUntilRef.current && Date.now() < skipRefreshUntilRef.current) {
+        return;
+      }
+      const count = await notificationService.getUnreadCount();
+      setUnreadNotifications(count);
+    } catch (error) {
+      console.error('Failed to load unread count:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/');
+  };
+
+  const handleTaskStatusUpdate = async (taskId: string, status: string, isCompleted?: boolean, fileUrl?: string, deliverableType?: string) => {
+    try {
+      setUpdatingTask(taskId);
+      await taskService.updateStatus(taskId, status, isCompleted, fileUrl, deliverableType);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  const handleSendForReview = async (task: any) => {
+    setSelectedTaskForReview(task);
+    setShowReviewModal(true);
+    
+    try {
+      const freshProject = await projectService.getOne(task.projectId);
+      setProjects((prevProjects: any[]) => 
+        prevProjects.map((p: any) => p.id === task.projectId ? freshProject : p)
+      );
+    } catch (error) {
+      console.error('Failed to reload project deliverables:', error);
+    }
+  };
+
+  const handleReviewSubmit = async (driveLink: string, deliverableType: string, deliverableId?: string) => {
+    if (!selectedTaskForReview) return;
+    
+    try {
+      setUpdatingTask(selectedTaskForReview.id);
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, driveLink, deliverableType, deliverableId);
+      await loadData();
+      setShowReviewModal(false);
+      setSelectedTaskForReview(null);
+    } catch (error) {
+      console.error('Failed to send for review:', error);
+      alert('Failed to send for review. Please try again.');
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  const handleClaimTask = async (taskId: string) => {
+    try {
+      setUpdatingTask(taskId);
+      await taskService.assign(taskId, user?.id || '');
+      await loadData();
+    } catch (error) {
+      console.error('Failed to claim task:', error);
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  const handleClaimProject = async (projectId: string) => {
+    if (!user?.id) {
+      alert('User not found. Please log in again.');
+      return;
+    }
+
+    try {
+      setUpdatingTask('project-' + projectId);
+      
+      const projectTasks = tasks.filter((t: any) => 
+        t.projectId === projectId && t.type === config?.taskType
+      );
+
+      const unassignedProjectTasks = projectTasks.filter((t: any) => !t.assignedToId);
+
+      if (unassignedProjectTasks.length === 0) {
+        alert('All tasks for this project are already assigned.');
+        setUpdatingTask(null);
+        return;
+      }
+
+      for (const task of unassignedProjectTasks) {
+        await taskService.assign(task.id, user.id);
+      }
+
+      await loadData();
+      alert(`Successfully claimed ${unassignedProjectTasks.length} task(s) for this project!`);
+    } catch (error) {
+      console.error('Failed to claim project:', error);
+      alert('Failed to claim project. Please try again.');
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  const getFilteredAndSortedTasks = () => {
+    let filtered = tasks;
+
+    if (filter === 'my_tasks') {
+      filtered = filtered.filter((t: any) => t.assignedToId === user?.id);
+    } else if (filter === 'todo') {
+      filtered = filtered.filter((t: any) => t.status === 'Todo' && !t.isCompleted);
+    } else if (filter === 'in_progress') {
+      filtered = filtered.filter((t: any) => t.status === 'In Progress');
+    } else if (filter === 'in_review') {
+      filtered = filtered.filter((t: any) => t.status === 'In Review');
+    } else if (filter === 'completed') {
+      filtered = filtered.filter((t: any) => t.isCompleted);
+    }
+
+    if (searchQuery.trim()) {
+      filtered = filtered.filter((t: any) => {
+        const project = projects.find((p: any) => p.id === t.projectId);
+        const projectName = project?.clientName || '';
+        return (
+          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          projectName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      });
+    }
+
+    filtered = [...filtered].sort((a: any, b: any) => {
+      if (sortBy === 'due_date') {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      } else if (sortBy === 'priority') {
+        const priorityOrder: Record<string, number> = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      } else {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    return filtered;
+  };
+
+  const getProjectsForTasks = () => {
+    const projectIds = new Set(tasks.map((t: any) => t.projectId));
+    return projects.filter((p: any) => projectIds.has(p.id));
+  };
+
+  const getGroupedTasks = useMemo(() => {
+    const filtered = getFilteredAndSortedTasks();
+    
+    // Get task status for Kanban columns - comprehensive status handling
+    const getTaskStatus = (task: any): string => {
+      if (task.status === 'Completed' || task.isCompleted) {
+        return 'approved_completed';
+      }
+      
+      if (task.assignedToId) {
+        if (task.status === 'In Progress') {
+          return 'owned_in_progress';
+        }
+        if (task.status === 'In Review') {
+          return 'for_approval';
+        }
+        if (task.status === 'Revision' || task.status === 'Needs Revision') {
+          return 'revision';
+        }
+        if (task.status === 'Elliot Review') {
+          return 'elliot_review';
+        }
+        if (task.status === 'QA Review' || task.status === 'QA') {
+          return 'qa_before_client';
+        }
+        if (task.status === 'Client Review' || task.status === 'Client Validation') {
+          return 'client_validation';
+        }
+        return 'owned_in_progress';
+      }
+      
+      return 'not_started';
+    };
+
+    const grouped: Record<string, any[]> = {
+      'not_started': [],
+      'owned_in_progress': [],
+      'for_approval': [],
+      'revision': [],
+      'elliot_review': [],
+      'approved_completed': [],
+      'qa_before_client': [],
+      'client_validation': []
+    };
+    
+    for (let i = 0; i < filtered.length; i++) {
+      const task = filtered[i];
+      const status = getTaskStatus(task);
+      const group = grouped[status];
+      if (group) {
+        group.push(task);
+      }
+    }
+    
+    return grouped;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
+
+  const projectNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const project of projects) {
+      map.set(project.id, project.clientName || 'Unknown Project');
+    }
+    return map;
+  }, [projects]);
+
+  const getProjectName = (projectId: string): string => {
+    return projectNameMap.get(projectId) || 'Unknown Project';
+  };
+
+  const userNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const userItem of users) {
+      map.set(userItem.id, userItem.name || 'Unassigned');
+    }
+    return map;
+  }, [users]);
+
+  const getUserName = (userId: string): string => {
+    return userNameMap.get(userId) || 'Unassigned';
+  };
+
+  // Load deliverables when project is selected
+  useEffect(() => {
+    const loadDeliverables = async () => {
+      if (newTaskData.projectId) {
+        try {
+          const projectDeliverables = await deliverableService.getAll(newTaskData.projectId);
+          setDeliverables(projectDeliverables);
+        } catch (error) {
+          console.error('Failed to load deliverables:', error);
+          setDeliverables([]);
+        }
+      } else {
+        setDeliverables([]);
+      }
+    };
+    loadDeliverables();
+  }, [newTaskData.projectId]);
+
+  // Load deliverables when editing a task
+  useEffect(() => {
+    const loadEditDeliverables = async () => {
+      if (editingTask?.projectId) {
+        try {
+          const projectDeliverables = await deliverableService.getAll(editingTask.projectId);
+          setEditDeliverables(projectDeliverables);
+        } catch (error) {
+          console.error('Failed to load deliverables:', error);
+          setEditDeliverables([]);
+        }
+      } else {
+        setEditDeliverables([]);
+      }
+    };
+    if (showEditTaskModal && editingTask) {
+      loadEditDeliverables();
+    }
+  }, [showEditTaskModal, editingTask]);
+
+  // Early return after ALL hooks are declared
+  if (!config) {
+    return <div>Invalid role configuration</div>;
+  }
+
+  const { taskType, stages, departmentName, icon: DepartmentIcon, color } = config;
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setEditTaskData({
+      title: task.title || '',
+      description: task.description || '',
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+      deliverableId: task.deliverableId || '',
+      assignedToId: task.assignedToId || ''
+    });
+    setShowEditCustomDeliverableInput(false);
+    setEditCustomDeliverableName('');
+    setShowEditTaskModal(true);
+  };
+
+  const handleUpdateTask = async () => {
+    if (!editingTask || !editTaskData.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    setIsUpdatingTaskInModal(true);
+    try {
+      let deliverableId = editTaskData.deliverableId;
+
+      if (showEditCustomDeliverableInput && editCustomDeliverableName.trim()) {
+        const newDeliverable = await deliverableService.create(
+          editingTask.projectId,
+          'Other',
+          editCustomDeliverableName.trim()
+        );
+        deliverableId = newDeliverable.id;
+        const projectDeliverables = await deliverableService.getAll(editingTask.projectId);
+        setEditDeliverables(projectDeliverables);
+      }
+
+      const updateData: any = {
+        title: editTaskData.title,
+        description: editTaskData.description,
+      };
+
+      if (editTaskData.dueDate) {
+        updateData.dueDate = new Date(editTaskData.dueDate);
+      }
+
+      if (deliverableId) {
+        updateData.deliverableId = deliverableId;
+      }
+
+      await taskService.update(editingTask.id, updateData);
+
+      if (editTaskData.assignedToId !== (editingTask.assignedToId || '')) {
+        if (editTaskData.assignedToId) {
+          await taskService.assign(editingTask.id, editTaskData.assignedToId);
+        } else if (editingTask.assignedToId) {
+          try {
+            await taskService.assign(editingTask.id, '');
+          } catch (error) {
+            console.warn('Failed to unassign task (may not be supported):', error);
+          }
+        }
+      }
+
+      await loadData();
+
+      setShowEditTaskModal(false);
+      setEditingTask(null);
+      setEditTaskData({
+        title: '',
+        description: '',
+        dueDate: '',
+        deliverableId: '',
+        assignedToId: ''
+      });
+      setShowEditCustomDeliverableInput(false);
+      setEditCustomDeliverableName('');
+      alert('Task updated successfully!');
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task. Please try again.');
+    } finally {
+      setIsUpdatingTaskInModal(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskData.projectId || !newTaskData.title.trim()) {
+      alert('Please select a client and enter a task title');
+      return;
+    }
+
+    setCreatingTask(true);
+    try {
+      let deliverableId = newTaskData.deliverableId;
+
+      if (showCustomDeliverableInput && customDeliverableName.trim()) {
+        const newDeliverable = await deliverableService.create(
+          newTaskData.projectId,
+          'Other',
+          customDeliverableName.trim()
+        );
+        deliverableId = newDeliverable.id;
+        const projectDeliverables = await deliverableService.getAll(newTaskData.projectId);
+        setDeliverables(projectDeliverables);
+      }
+
+      const taskData: any = {
+        projectId: newTaskData.projectId,
+        title: newTaskData.title,
+        description: newTaskData.description,
+        type: config?.taskType || '',
+        status: 'Todo',
+        isCompleted: false,
+      };
+
+      if (newTaskData.dueDate) {
+        taskData.dueDate = new Date(newTaskData.dueDate);
+      }
+
+      if (deliverableId) {
+        taskData.deliverableId = deliverableId;
+      }
+
+      if (newTaskData.assignedToId) {
+        taskData.assignedToId = newTaskData.assignedToId;
+      }
+
+      await taskService.create(taskData);
+
+      await loadData();
+
+      setShowAddTaskModal(false);
+      setNewTaskData({
+        projectId: '',
+        title: '',
+        description: '',
+        dueDate: '',
+        deliverableId: '',
+        assignedToId: ''
+      });
+      setShowCustomDeliverableInput(false);
+      setCustomDeliverableName('');
+      alert('Task created successfully!');
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      alert('Failed to create task. Please try again.');
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
+  const getTaskBorderColor = (status: string, isCompleted: boolean, taskInRevision: boolean) => {
+    if (taskInRevision) return '#dc2626';
+    if (isCompleted) return '#10b981';
+    if (status === 'In Review') return '#f59e0b';
+    if (status === 'In Progress') return '#3b82f6';
+    if (status === 'Blocked') return '#ef4444';
+    return '#e5e7eb';
+  };
+
+  const hasRevisionDeliverables = (project: any) => {
+    return project.deliverables?.some((d: any) => 
+      ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) &&
+      d.status === 'Revision'
+    );
+  };
+
+  const isTaskInRevision = (task: any, project: any) => {
+    if (task.deliverableId) {
+      const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+      if (deliverable) {
+        if (deliverable.status === 'Revision') {
+          return true;
+        }
+        
+        const history = deliverableHistory[deliverable.id] || [];
+        if (history.length > 0) {
+          if (task.status === 'In Review') {
+            return false;
+          }
+          
+          if (task.fileUrl) {
+            const fileHistory = history.filter((h: any) => h.fileUrl === task.fileUrl);
+            if (fileHistory.length > 0) {
+              const latestFileHistory = fileHistory[0];
+              if (latestFileHistory.action === 'Revision Requested') {
+                return true;
+              }
+            }
+          }
+          
+          const revisionHistory = history.filter((h: any) => h.action === 'Revision Requested');
+          if (revisionHistory.length > 0) {
+            const latestRevision = revisionHistory[0];
+            if (!task.fileUrl || !latestRevision.fileUrl || latestRevision.fileUrl === task.fileUrl) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  const getTaskNotes = (task: any, project: any) => {
+    if (!task.deliverableId) return [];
+    
+    const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
+    if (!deliverable) return [];
+    
+    const history = deliverableHistory[deliverable.id] || [];
+    const taskNotes: any[] = [];
+    
+    history.forEach((h: any) => {
+      if (h.notes && h.notes.trim() && h.action === 'Revision Requested') {
+        if (task.fileUrl) {
+          if (h.fileUrl === task.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        } else {
+          if (!h.fileUrl) {
+            taskNotes.push({
+              ...h,
+              deliverableType: deliverable.type || deliverable.customType,
+              deliverableId: deliverable.id,
+            });
+          }
+        }
+      }
+    });
+    
+    return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const handleViewUpdatesClick = async (project: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectForUpdates(project);
+    setShowUpdatesModal(true);
+    await loadClientUpdates(project.id);
+  };
+
+  const loadClientUpdates = async (projectId: string) => {
+    try {
+      setLoadingUpdates(true);
+      const updates = await clientUpdatesService.getAllByProject(projectId);
+      setClientUpdates(updates);
+      if (updates && updates.length > 0) {
+        await Promise.all(updates.map(update => loadComments(update.id)));
+      }
+    } catch (error) {
+      console.error('Failed to load client updates:', error);
+      setClientUpdates([]);
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const loadComments = async (updateId: string) => {
+    try {
+      setLoadingComments({ ...loadingComments, [updateId]: true });
+      const commentsData = await clientUpdatesService.getComments(updateId);
+      setComments({ ...comments, [updateId]: commentsData });
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    } finally {
+      setLoadingComments({ ...loadingComments, [updateId]: false });
+    }
+  };
+
+  const handleSubmitComment = async (updateId: string) => {
+    const commentText = commentTexts[updateId]?.trim();
+    if (!commentText) return;
+
+    try {
+      setSubmittingComment({ ...submittingComment, [updateId]: true });
+      await clientUpdatesService.createComment(updateId, commentText);
+      setCommentTexts({ ...commentTexts, [updateId]: '' });
+      await loadComments(updateId);
+    } catch (error) {
+      console.error('Failed to submit comment:', error);
+      alert('Failed to submit comment. Please try again.');
+    } finally {
+      setSubmittingComment({ ...submittingComment, [updateId]: false });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <FaSpinner className="spinner" style={{
+            fontSize: '3rem',
+            marginBottom: '1rem',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <h2 style={{
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            margin: '0 0 0.5rem 0',
+            color: 'white'
+          }}>
+            Loading {departmentName}
+          </h2>
+          <p style={{
+            fontSize: '1rem',
+            margin: 0,
+            opacity: 0.9,
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>
+            Fetching projects and tasks...
+          </p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.6; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const myTasks = tasks.filter((t: any) => t.assignedToId === user?.id);
+  const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
+
+  // Continue with the rest of the component JSX...
+  // Due to size limits, I'll create a simplified version that includes the key parts
+  // The full JSX structure would be identical to CopyDashboard but using config values
+
+  return (
+    <div className="dashboard premium" style={{ display: 'flex', minHeight: '100vh', padding: 0 }}>
+      {/* Sidebar */}
+      <div style={{
+        width: '280px',
+        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        overflowY: 'auto',
+        boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
+        zIndex: 100
+      }}>
+        {/* Sidebar Header */}
+        <div style={{
+          padding: '2rem 1.5rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          background: `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)`
+        }}>
+          <h2 style={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: 'white',
+            margin: '0 0 0.5rem 0',
+            letterSpacing: '-0.02em'
+          }}>
+            Your Department
+          </h2>
+          <p style={{
+            fontSize: '0.875rem',
+            color: 'rgba(255, 255, 255, 0.6)',
+            margin: 0
+          }}>
+            {departmentName}
+          </p>
+        </div>
+
+        {/* Department List - Only show current role */}
+        <div style={{
+          padding: '1rem 0.75rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          {departmentMenuItems.filter(item => item.id === role).map((item) => {
+            const Icon = item.icon;
+            
+            return (
+              <div
+                key={item.id}
+                style={{
+                  width: '100%',
+                  padding: '1rem 1.25rem',
+                  marginBottom: '0.5rem',
+                  border: 'none',
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${item.color}15 0%, ${item.color}25 100%)`,
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  position: 'relative',
+                  textAlign: 'left',
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                  boxShadow: `0 4px 12px ${item.color}30`,
+                  borderLeft: `3px solid ${item.color}`
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: `linear-gradient(135deg, ${item.color} 0%, ${item.color}dd 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: `0 4px 12px ${item.color}40`
+                }}>
+                  <Icon style={{
+                    fontSize: '1.125rem',
+                    color: 'white'
+                  }} />
+                </div>
+                <span style={{
+                  flex: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {item.name}
+                </span>
+                <div style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: item.color,
+                  boxShadow: `0 0 8px ${item.color}`,
+                  animation: 'pulse-dot 2s ease-in-out infinite'
+                }} />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* My Projects Section */}
+        <div style={{
+          flex: 1,
+          padding: '1rem 0.75rem',
+          overflowY: 'auto',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <div style={{
+            padding: '0.5rem 0.75rem',
+            marginBottom: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <h3 style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'rgba(255, 255, 255, 0.5)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              margin: 0
+            }}>
+              My Projects
+            </h3>
+            <button
+              onClick={() => navigate('/my-projects')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                border: 'none',
+                borderRadius: '6px',
+                background: `${color}33`,
+                color: 'rgba(255, 255, 255, 0.9)',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${color}4d`;
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = `${color}33`;
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+              }}
+            >
+              View All
+            </button>
+          </div>
+          {(() => {
+            const myProjectIds = new Set(
+              myTasks.map((t: any) => t.projectId)
+            );
+            const myProjectsList = projects.filter((p: any) => myProjectIds.has(p.id));
+            
+            if (myProjectsList.length === 0) {
+              return (
+                <div style={{
+                  padding: '1rem',
+                  textAlign: 'center',
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  fontSize: '0.8125rem'
+                }}>
+                  No projects yet
+                </div>
+              );
+            }
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {myProjectsList.map((project: any) => {
+                  const projectTasks = myTasks.filter((t: any) => t.projectId === project.id);
+                  const inProgressCount = projectTasks.filter((t: any) => t.status === 'In Progress').length;
+                  const inReviewCount = projectTasks.filter((t: any) => t.status === 'In Review').length;
+                  const completedCount = projectTasks.filter((t: any) => t.isCompleted).length;
+                  
+                  return (
+                    <button
+                      key={project.id}
+                      onClick={() => navigate(`/project/${project.id}`)}
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem 1rem',
+                        border: 'none',
+                        borderRadius: '10px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                        borderLeft: '2px solid transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.borderLeftColor = color;
+                        e.currentTarget.style.transform = 'translateX(4px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.borderLeftColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {project.clientName}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        fontSize: '0.75rem',
+                        color: 'rgba(255, 255, 255, 0.6)'
+                      }}>
+                        {inProgressCount > 0 && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></span>
+                            {inProgressCount} in progress
+                          </span>
+                        )}
+                        {inReviewCount > 0 && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                            {inReviewCount} in review
+                          </span>
+                        )}
+                        {completedCount > 0 && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+                            {completedCount} done
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div style={{
+          padding: '1.5rem',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(0, 0, 0, 0.2)'
+        }}>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              width: '100%',
+              padding: '0.875rem 1rem',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '10px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'rgba(255, 255, 255, 0.9)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            }}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Top Navigation Bar */}
+        <div style={{
+          background: 'white',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '1rem 2rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flex: 1 }}>
+            <h1 style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: '#111827',
+              margin: 0
+            }}>
+              {departmentName}
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button
+              onClick={() => setShowNotificationsModal(true)}
+              style={{
+                position: 'relative',
+                padding: '0.5rem',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                color: '#6b7280',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+                e.currentTarget.style.color = '#111827';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }}
+            >
+              <FaBell style={{ fontSize: '1.25rem' }} />
+              {unreadNotifications > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '0.25rem',
+                  right: '0.25rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.7rem',
+                  fontWeight: 600
+                }}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
+            </button>
+
+            <div className="avatar-dropdown-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.5rem 0.75rem',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.875rem'
+                }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ color: '#111827', fontWeight: 500, fontSize: '0.875rem' }}>
+                  {user?.name}
+                </span>
+                <FaChevronDown style={{ color: '#6b7280', fontSize: '0.75rem' }} />
+              </button>
+
+              {showAvatarDropdown && (
+                <div ref={dropdownRef} style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '0.5rem',
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                  minWidth: '200px',
+                  zIndex: 1000,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '0.75rem' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
+                      {user?.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {user?.role}
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <button
+                      onClick={() => navigate('/profile')}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#374151',
+                        fontSize: '0.875rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FaUser style={{ fontSize: '0.875rem' }} />
+                      Profile
+                    </button>
+                    <button
+                      onClick={() => navigate('/settings')}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#374151',
+                        fontSize: '0.875rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FaCog style={{ fontSize: '0.875rem' }} />
+                      Settings
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#ef4444',
+                        fontSize: '0.875rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#fef2f2';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FaSignOutAlt style={{ fontSize: '0.875rem' }} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Filters and Controls */}
+        <div style={{
+          background: '#f9fafb',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '1.5rem 2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+            <FaSearch style={{ color: '#9ca3af', fontSize: '1rem' }} />
+            <input
+              type="text"
+              placeholder="Search tasks or projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '0.625rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                background: 'white',
+                outline: 'none',
+                transition: 'all 0.2s'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = color;
+                e.target.style.boxShadow = `0 0 0 3px ${color}20`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              style={{
+                padding: '0.625rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                background: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="all">All Tasks</option>
+              <option value="my_tasks">My Tasks</option>
+              <option value="todo">Todo</option>
+              <option value="in_progress">In Progress</option>
+              <option value="in_review">In Review</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              style={{
+                padding: '0.625rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                background: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="due_date">Sort by Due Date</option>
+              <option value="priority">Sort by Priority</option>
+              <option value="created">Sort by Created</option>
+            </select>
+
+            <div style={{ display: 'flex', gap: '0.25rem', background: 'white', padding: '0.25rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <button
+                onClick={() => setViewMode('kanban')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: viewMode === 'kanban' ? color : 'transparent',
+                  color: viewMode === 'kanban' ? 'white' : '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+              >
+                Kanban
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: viewMode === 'list' ? color : 'transparent',
+                  color: viewMode === 'list' ? 'white' : '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+              >
+                List
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowAddTaskModal(true)}
+              style={{
+                padding: '0.625rem 1.25rem',
+                border: 'none',
+                borderRadius: '8px',
+                background: color,
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.9';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <FaPlus />
+              Add Task
+            </button>
+          </div>
+        </div>
+
+        {/* Task Content Area */}
+        <div style={{
+          flex: 1,
+          padding: '2rem',
+          overflowY: 'auto',
+          background: '#f9fafb'
+        }}>
+          {viewMode === 'kanban' ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
+              gap: '1.5rem',
+              paddingBottom: '1rem',
+              paddingTop: '0.5rem',
+              width: '100%',
+              minHeight: '400px',
+              gridAutoFlow: 'row'
+            }}>
+              {[
+                { id: 'not_started', title: 'Not yet started', color: '#6b7280' },
+                { id: 'owned_in_progress', title: 'Owned/In Progress', color: '#3b82f6' },
+                { id: 'for_approval', title: 'For Approval', color: '#f59e0b' },
+                { id: 'revision', title: 'Revision', color: '#ef4444' },
+                { id: 'elliot_review', title: 'Elliot Review', color: '#8b5cf6' },
+                { id: 'approved_completed', title: 'Approved/Completed', color: '#10b981' },
+                { id: 'qa_before_client', title: 'QA Before Sending to Client', color: '#06b6d4' },
+                { id: 'client_validation', title: 'Client Validation', color: '#f97316' }
+              ].map((column) => {
+                const statusTasks = groupedTasks[column.id] || [];
+
+                return (
+                  <div key={column.id} style={{
+                    width: '100%',
+                    minWidth: '280px',
+                    maxWidth: '100%',
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    border: '2px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    transition: 'all 0.2s',
+                    height: 'fit-content',
+                    maxHeight: 'calc(100vh - 300px)',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      padding: '1rem',
+                      background: '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0',
+                      borderRadius: '12px 12px 0 0'
+                    }}>
+                      <h3 style={{
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        color: '#1e293b',
+                        margin: '0 0 0.25rem 0'
+                      }}>
+                        {column.title}
+                      </h3>
+                      <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                        {statusTasks.length} task(s)
+                      </span>
+                    </div>
+                    <div style={{
+                      padding: '0.75rem',
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: '200px',
+                      maxHeight: 'calc(100vh - 400px)'
+                    }}>
+                      {statusTasks.map((task: any) => {
+                        const project = projects.find((p: any) => p.id === task.projectId);
+                        const taskInRevision = project ? isTaskInRevision(task, project) : false;
+                        const taskNotes = project ? getTaskNotes(task, project) : [];
+                        const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
+
+                        return (
+                          <div
+                            key={task.id}
+                            style={{
+                              padding: '0.75rem',
+                              marginBottom: '0.75rem',
+                              border: taskInRevision ? '2px solid #dc2626' : `1px solid ${borderColor}`,
+                              borderRadius: '8px',
+                              background: 'white',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              position: 'relative',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}
+                            onClick={(e) => {
+                              const target = e.target as HTMLElement;
+                              
+                              // Don't navigate if clicking buttons or interactive elements
+                              if (target.closest('button[data-edit-task]') || 
+                                  target.closest('button') ||
+                                  target.tagName === 'BUTTON' ||
+                                  (target.tagName === 'svg' && target.closest('button')) ||
+                                  (target.tagName === 'path' && target.closest('button'))) {
+                                return;
+                              }
+                              
+                              if (target.closest('input[type="checkbox"]') || 
+                                  target.closest('select') || 
+                                  target.tagName === 'INPUT' || 
+                                  target.tagName === 'SELECT') {
+                                return;
+                              }
+                              
+                              navigate(`/project/${task.projectId}`);
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#f8fafc';
+                              e.currentTarget.style.borderColor = color;
+                              e.currentTarget.style.boxShadow = `0 4px 8px ${color}25`;
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.borderColor = taskInRevision ? '#dc2626' : borderColor;
+                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            {taskInRevision && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '0',
+                                right: '0',
+                                background: '#dc2626',
+                                color: 'white',
+                                padding: '0.25rem 0.5rem',
+                                fontSize: '0.625rem',
+                                fontWeight: 600,
+                                borderBottomLeftRadius: '6px',
+                                borderTopRightRadius: '6px',
+                                zIndex: 10
+                              }}>
+                                REVISION
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '0.25rem'
+                                }}>
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    color: color,
+                                    fontWeight: 500
+                                  }}>
+                                    {getProjectName(task.projectId)}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    data-edit-task="true"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      handleEditTask(task);
+                                    }}
+                                    onMouseDown={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                    }}
+                                    style={{
+                                      background: 'transparent',
+                                      border: `1px solid ${color}`,
+                                      color: color,
+                                      cursor: 'pointer',
+                                      padding: '0.5rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '6px',
+                                      transition: 'all 0.2s',
+                                      zIndex: 100,
+                                      position: 'relative',
+                                      outline: 'none',
+                                      minWidth: '36px',
+                                      minHeight: '36px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = `${color}15`;
+                                      e.currentTarget.style.color = color;
+                                      e.currentTarget.style.borderColor = color;
+                                      e.currentTarget.style.transform = 'scale(1.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'transparent';
+                                      e.currentTarget.style.color = color;
+                                      e.currentTarget.style.borderColor = color;
+                                      e.currentTarget.style.transform = 'scale(1)';
+                                    }}
+                                    title="Edit Task"
+                                  >
+                                    <FaEdit style={{ fontSize: '1rem', pointerEvents: 'none' }} />
+                                  </button>
+                                </div>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  marginBottom: '0.5rem',
+                                  flexWrap: 'wrap'
+                                }}>
+                                  <h4 style={{
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    color: '#111827',
+                                    margin: 0,
+                                    flex: 1,
+                                    minWidth: 0
+                                  }}>
+                                    {task.title}
+                                  </h4>
+                                  <span style={{
+                                    padding: '0.125rem 0.5rem',
+                                    borderRadius: '0.25rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    background: task.isCompleted ? '#d1fae5' : task.status === 'In Review' ? '#fef3c7' : '#f3f4f6',
+                                    color: task.isCompleted ? '#065f46' : task.status === 'In Review' ? '#92400e' : '#374151',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {task.isCompleted ? 'Completed' : task.status}
+                                  </span>
+                                </div>
+                                {task.description && (
+                                  <p style={{
+                                    color: '#64748b',
+                                    fontSize: '0.75rem',
+                                    margin: '0 0 0.5rem 0',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical'
+                                  }}>
+                                    {task.description}
+                                  </p>
+                                )}
+                                {taskNotes.length > 0 && (
+                                  <div style={{
+                                    marginTop: '0.5rem',
+                                    marginBottom: '0.5rem',
+                                    padding: '0.5rem',
+                                    background: '#fef3c7',
+                                    border: '1px solid #fde68a',
+                                    borderRadius: '6px',
+                                    fontSize: '0.7rem',
+                                    color: '#92400e'
+                                  }}>
+                                    <FaStickyNote style={{ fontSize: '0.625rem', marginRight: '0.25rem', display: 'inline' }} />
+                                    Revision notes available
+                                  </div>
+                                )}
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '1rem',
+                                  fontSize: '0.75rem',
+                                  color: '#64748b',
+                                  marginBottom: '0.5rem'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <FaUser style={{ fontSize: '0.75rem' }} />
+                                    <span>{task.assignedToId ? getUserName(task.assignedToId) : 'Unassigned'}</span>
+                                  </div>
+                                  {task.dueDate && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <FaClock style={{ fontSize: '0.75rem' }} />
+                                      <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {!task.assignedToId && (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        await handleClaimTask(task.id);
+                                      } catch (error) {
+                                        console.error('Failed to claim task:', error);
+                                      }
+                                    }}
+                                    disabled={updatingTask === task.id}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.5rem',
+                                      border: 'none',
+                                      borderRadius: '0.375rem',
+                                      background: '#10b981',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '0.5rem'
+                                    }}
+                                  >
+                                    {updatingTask === task.id ? (
+                                      <FaSpinner className="spinner" />
+                                    ) : (
+                                      <>
+                                        <FaHandPaper /> Claim Task
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                                {task.assignedToId && (
+                                  <>
+                                    <div style={{
+                                      width: '100%',
+                                      padding: '0.5rem',
+                                      border: '1px solid #e2e8f0',
+                                      borderRadius: '0.375rem',
+                                      fontSize: '0.75rem',
+                                      color: '#64748b',
+                                      textAlign: 'center',
+                                      background: task.assignedToId === user?.id ? '#d1fae5' : '#f3f4f6',
+                                      marginBottom: '0.5rem'
+                                    }}>
+                                      {task.assignedToId === user?.id ? 'Assigned to you' : `Assigned to ${getUserName(task.assignedToId)}`}
+                                    </div>
+                                    {!task.isCompleted && task.assignedToId === user?.id && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                        {task.status === 'Todo' && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleTaskStatusUpdate(task.id, 'In Progress');
+                                            }}
+                                            disabled={updatingTask === task.id}
+                                            style={{
+                                              width: '100%',
+                                              padding: '0.5rem',
+                                              border: 'none',
+                                              borderRadius: '0.375rem',
+                                              background: '#3b82f6',
+                                              color: 'white',
+                                              cursor: 'pointer',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 500,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '0.5rem'
+                                            }}
+                                          >
+                                            {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Start'}
+                                          </button>
+                                        )}
+                                        {(task.status === 'In Progress' || (hasRevisionDeliverables(project || {}) && task.status === 'In Review')) && (
+                                          <>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSendForReview(task);
+                                              }}
+                                              disabled={updatingTask === task.id}
+                                              style={{
+                                                width: '100%',
+                                                padding: '0.5rem',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                background: '#f59e0b',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem'
+                                              }}
+                                            >
+                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : hasRevisionDeliverables(project || {}) ? 'Resubmit' : 'Send for Review'}
+                                            </button>
+                                            {!hasRevisionDeliverables(project || {}) && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleTaskStatusUpdate(task.id, 'Completed', true);
+                                                }}
+                                                disabled={updatingTask === task.id}
+                                                style={{
+                                                  width: '100%',
+                                                  padding: '0.5rem',
+                                                  border: 'none',
+                                                  borderRadius: '0.375rem',
+                                                  background: '#10b981',
+                                                  color: 'white',
+                                                  cursor: 'pointer',
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 500,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  gap: '0.5rem'
+                                                }}
+                                              >
+                                                {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Complete'}
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                        {task.status === 'In Review' && !hasRevisionDeliverables(project || {}) && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleTaskStatusUpdate(task.id, 'Completed', true);
+                                            }}
+                                            disabled={updatingTask === task.id}
+                                            style={{
+                                              width: '100%',
+                                              padding: '0.5rem',
+                                              border: 'none',
+                                              borderRadius: '0.375rem',
+                                              background: '#10b981',
+                                              color: 'white',
+                                              cursor: 'pointer',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 500,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '0.5rem'
+                                            }}
+                                          >
+                                            {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Mark Complete'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {statusTasks.length === 0 && (
+                        <div style={{
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: '#9ca3af',
+                          fontSize: '0.875rem'
+                        }}>
+                          No tasks
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              overflow: 'hidden'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Task</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Project</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Status</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Due Date</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Assigned To</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getFilteredAndSortedTasks().map((task: any) => {
+                    const project = projects.find((p: any) => p.id === task.projectId);
+                    const taskInRevision = project ? isTaskInRevision(task, project) : false;
+
+                    return (
+                      <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
+                            {task.title}
+                          </div>
+                          {task.description && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              {task.description.substring(0, 100)}...
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
+                          {getProjectName(task.projectId)}
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            background: task.isCompleted ? '#d1fae5' : task.status === 'In Progress' ? '#dbeafe' : task.status === 'In Review' ? '#fef3c7' : '#f3f4f6',
+                            color: task.isCompleted ? '#065f46' : task.status === 'In Progress' ? '#1e40af' : task.status === 'In Review' ? '#92400e' : '#374151'
+                          }}>
+                            {task.isCompleted ? 'Completed' : task.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
+                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}
+                        </td>
+                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
+                          {task.assignedToId ? getUserName(task.assignedToId) : 'Unassigned'}
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => navigate(`/project/${task.projectId}`)}
+                              style={{
+                                padding: '0.375rem 0.75rem',
+                                border: 'none',
+                                borderRadius: '6px',
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleEditTask(task)}
+                              style={{
+                                padding: '0.375rem 0.75rem',
+                                border: 'none',
+                                borderRadius: '6px',
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {getFilteredAndSortedTasks().length === 0 && (
+                <div style={{
+                  padding: '3rem',
+                  textAlign: 'center',
+                  color: '#9ca3af',
+                  fontSize: '0.875rem'
+                }}>
+                  No tasks found
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      <NotificationsModal
+        isOpen={showNotificationsModal}
+        onClose={() => {
+          setShowNotificationsModal(false);
+          loadUnreadCount();
+          loadData();
+        }}
+      />
+
+      {selectedTaskForReview && (
+        <SendForReviewModal
+          isOpen={showReviewModal}
+          taskTitle={selectedTaskForReview.title || ''}
+          projectDeliverables={projects.find((p: any) => p.id === selectedTaskForReview.projectId)?.deliverables || []}
+          taskDeliverableId={selectedTaskForReview.deliverableId}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedTaskForReview(null);
+          }}
+          onSubmit={handleReviewSubmit}
+        />
+      )}
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '2rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              padding: '2rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: '#111827',
+                margin: 0
+              }}>
+                Create New Task
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddTaskModal(false);
+                  setNewTaskData({
+                    projectId: '',
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowCustomDeliverableInput(false);
+                  setCustomDeliverableName('');
+                }}
+                style={{
+                  padding: '0.5rem',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.color = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              padding: '2rem 2.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem'
+            }}>
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Project *
+                </label>
+                <select
+                  value={newTaskData.projectId}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, projectId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">Select a project</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.clientName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Task Title *
+                </label>
+                <input
+                  type="text"
+                  value={newTaskData.title}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, title: e.target.value })}
+                  placeholder="Enter task title"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Description
+                </label>
+                <textarea
+                  value={newTaskData.description}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, description: e.target.value })}
+                  placeholder="Enter task description"
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={newTaskData.dueDate}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, dueDate: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Assign To
+                </label>
+                <select
+                  value={newTaskData.assignedToId}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '1.5rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowAddTaskModal(false);
+                  setNewTaskData({
+                    projectId: '',
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowCustomDeliverableInput(false);
+                  setCustomDeliverableName('');
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={creatingTask || !newTaskData.projectId || !newTaskData.title.trim()}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: creatingTask || !newTaskData.projectId || !newTaskData.title.trim() ? '#9ca3af' : color,
+                  color: 'white',
+                  cursor: creatingTask || !newTaskData.projectId || !newTaskData.title.trim() ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {creatingTask ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <FaPlus />
+                    Create Task
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal - Similar structure to Add Task Modal */}
+      {showEditTaskModal && editingTask && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '2rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              padding: '2rem 2.5rem',
+              borderBottom: '1px solid #f3f4f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: '#111827',
+                margin: 0
+              }}>
+                Edit Task
+              </h2>
+              <button
+                onClick={() => {
+                  setShowEditTaskModal(false);
+                  setEditingTask(null);
+                  setEditTaskData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowEditCustomDeliverableInput(false);
+                  setEditCustomDeliverableName('');
+                }}
+                style={{
+                  padding: '0.5rem',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: '#6b7280'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div style={{
+              padding: '2rem 2.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem'
+            }}>
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Task Title *
+                </label>
+                <input
+                  type="text"
+                  value={editTaskData.title}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, title: e.target.value })}
+                  placeholder="Enter task title"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Description
+                </label>
+                <textarea
+                  value={editTaskData.description}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, description: e.target.value })}
+                  placeholder="Enter task description"
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={editTaskData.dueDate}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, dueDate: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                  Assign To
+                </label>
+                <select
+                  value={editTaskData.assignedToId}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, assignedToId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '1.5rem 2.5rem',
+              borderTop: '1px solid #f3f4f6',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowEditTaskModal(false);
+                  setEditingTask(null);
+                  setEditTaskData({
+                    title: '',
+                    description: '',
+                    dueDate: '',
+                    deliverableId: '',
+                    assignedToId: ''
+                  });
+                  setShowEditCustomDeliverableInput(false);
+                  setEditCustomDeliverableName('');
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateTask}
+                disabled={isUpdatingTaskInModal || !editTaskData.title.trim()}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: isUpdatingTaskInModal || !editTaskData.title.trim() ? '#9ca3af' : color,
+                  color: 'white',
+                  cursor: isUpdatingTaskInModal || !editTaskData.title.trim() ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {isUpdatingTaskInModal ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FaSave />
+                    Update Task
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RoleDashboard;
+
