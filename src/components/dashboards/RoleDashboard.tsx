@@ -27,7 +27,6 @@ import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
-import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
 import NotificationsModal from '../NotificationsModal';
 import SendForReviewModal from '../SendForReviewModal';
 import '../Dashboard.css';
@@ -141,15 +140,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     deliverableId: '',
     assignedToId: ''
   });
-  const [deliverables, setDeliverables] = useState<any[]>([]);
-  const [editDeliverables, setEditDeliverables] = useState<any[]>([]);
+  const [, setDeliverables] = useState<any[]>([]);
+  const [, setEditDeliverables] = useState<any[]>([]);
   const [showEditCustomDeliverableInput, setShowEditCustomDeliverableInput] = useState(false);
   const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
   const [isUpdatingTaskInModal, setIsUpdatingTaskInModal] = useState(false);
-  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
-  const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
-  const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
-  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
 
   // Department menu items
   const departmentMenuItems = [
@@ -1922,8 +1917,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 </thead>
                 <tbody>
                   {getFilteredAndSortedTasks().map((task: any) => {
-                    const project = projects.find((p: any) => p.id === task.projectId);
-
                     return (
                       <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '1rem' }}>
