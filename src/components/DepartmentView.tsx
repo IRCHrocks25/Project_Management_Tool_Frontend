@@ -39,6 +39,7 @@ const DepartmentView: React.FC = () => {
   const [customDeliverableName, setCustomDeliverableName] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [markTaskCompleteOnCreate, setMarkTaskCompleteOnCreate] = useState(false);
   
   // Searchable client dropdown states
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -208,11 +209,11 @@ const DepartmentView: React.FC = () => {
         const allTasksData = await taskService.getAll();
         
         // Step 2: Quickly filter tasks by type (early filtering)
+        // Include completed tasks so they can appear in "Approved/Completed" column
         const departmentTaskType = taskType;
         const relevantTasks = allTasksData.filter((t: any) => 
-          t.type === departmentTaskType && 
-          !t.isCompleted &&
-          t.status !== 'Completed'
+          t.type === departmentTaskType
+          // Removed filter for completed tasks - they should show in approved_completed column
         );
         
         // Step 3: Fetch projects - use cache if available
@@ -325,14 +326,14 @@ const DepartmentView: React.FC = () => {
       );
       
       // Reload tasks - optimized
+      // Include completed tasks so they can appear in "Approved/Completed" column
       const allTasksData = await taskService.getAll();
       const taskType = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
         t.type === taskType && 
-        !t.isCompleted &&
-        t.status !== 'Completed' &&
         projectIdsSet.has(t.projectId)
+        // Removed filter for completed tasks - they should show in approved_completed column
       );
       setTasks(departmentTasks);
       setSelectedTasks(new Set());
@@ -399,18 +400,31 @@ const DepartmentView: React.FC = () => {
     }
     
     // Standard status mapping for other departments
+    
+    // PRIORITY 1: Check for revision status/markers FIRST (revision takes highest priority)
+    // Revision status should override completed status
+    if (task.description && task.description.includes('--- Column: Revision ---')) {
+      return 'revision';
+    }
+    if (task.status === 'Revision' || task.status === 'Needs Revision') {
+      return 'revision';
+    }
+    
+    // PRIORITY 2: Completed tasks automatically go to "Approved/Completed" column
+    // This takes high priority (after revision) - completed tasks should move here automatically
+    if (task.status === 'Completed' || task.isCompleted) {
+      // Only return approved_completed if not in revision (revision takes priority)
+      // We already checked for revision above, so if we reach here, it's safe to mark as completed
+      return 'approved_completed';
+    }
+    
     // If task has a file URL and deliverable, check deliverable status
     if (task.fileUrl && task.deliverableId) {
       // This would require fetching deliverable data, but for now we'll use task status
       // You might need to load deliverable data separately if needed
     }
     
-    // Use task status to determine column
-    if (task.status === 'Completed' || task.isCompleted) {
-      return 'approved_completed';
-    }
-    
-    // Check for column markers in description FIRST (regardless of assignment status)
+    // Check for column markers in description (regardless of assignment status)
     // This ensures tasks moved to specific columns appear in the correct column even if unassigned
     if (task.status === 'In Review' && task.description) {
       if (task.description.includes('--- Column: Revision ---')) {
@@ -787,14 +801,14 @@ const DepartmentView: React.FC = () => {
       }
 
       // Reload tasks
+      // Include completed tasks so they can appear in "Approved/Completed" column
       const allTasksData = await taskService.getAll();
       const taskTypeForFilter = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
         t.type === taskTypeForFilter && 
-        !t.isCompleted &&
-        t.status !== 'Completed' &&
         projectIdsSet.has(t.projectId)
+        // Removed filter for completed tasks - they should show in approved_completed column
       );
       setTasks(departmentTasks);
 
@@ -1258,6 +1272,30 @@ const DepartmentView: React.FC = () => {
     }
   };
 
+  // Handle task status change
+  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+    try {
+      const isCompleted = newStatus === 'Completed';
+      await taskService.updateStatus(taskId, newStatus, isCompleted);
+      
+      // Reload tasks to reflect changes
+      const allTasksData = await taskService.getAll();
+      const taskType = getTaskTypeForDepartment(department || '');
+      const projectIdsSet = new Set(projects.map((p: any) => p.id));
+      const departmentTasks = allTasksData.filter((t: any) => 
+        t.type === taskType && 
+        projectIdsSet.has(t.projectId)
+        // Include completed tasks so they can appear in approved_completed column
+      );
+      setTasks(departmentTasks);
+      
+      showNotification(`Task status updated to ${newStatus} ✓`, 'success');
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+      showNotification('Failed to update task status', 'error');
+    }
+  };
+
   // Handle create task
   const handleCreateTask = async () => {
     if (!newTaskData.projectId || !newTaskData.title.trim()) {
@@ -1288,8 +1326,8 @@ const DepartmentView: React.FC = () => {
         title: newTaskData.title,
         description: newTaskData.description,
         type: taskType,
-        status: 'Todo',
-        isCompleted: false,
+        status: markTaskCompleteOnCreate ? 'Completed' : 'Todo', // Apply quick complete status
+        isCompleted: markTaskCompleteOnCreate, // Apply quick complete flag
       };
 
       if (newTaskData.dueDate) {
@@ -1307,14 +1345,14 @@ const DepartmentView: React.FC = () => {
       await taskService.create(taskData);
 
       // Reload tasks - optimized
+      // Include completed tasks so they can appear in "Approved/Completed" column
       const allTasksData = await taskService.getAll();
       const taskTypeForFilter = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
         t.type === taskTypeForFilter && 
-        !t.isCompleted &&
-        t.status !== 'Completed' &&
         projectIdsSet.has(t.projectId)
+        // Removed filter for completed tasks - they should show in approved_completed column
       );
       setTasks(departmentTasks);
 
@@ -1332,6 +1370,7 @@ const DepartmentView: React.FC = () => {
       setCustomDeliverableName('');
       setClientSearchQuery('');
       setShowClientDropdown(false);
+      setMarkTaskCompleteOnCreate(false); // Reset checkbox state
       alert('Task created successfully!');
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -2449,7 +2488,8 @@ const DepartmentView: React.FC = () => {
                                   padding: '0.375rem',
                                   border: '1px solid #e2e8f0',
                                   borderRadius: '0.375rem',
-                                  fontSize: '0.75rem'
+                                  fontSize: '0.75rem',
+                                  marginBottom: '0.5rem'
                                 }}
                               >
                                 <option value="">Unassigned</option>
@@ -2457,6 +2497,52 @@ const DepartmentView: React.FC = () => {
                                   <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
                               </select>
+                              
+                              {/* Status Dropdown */}
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.25rem'
+                              }}>
+                                <label style={{
+                                  fontSize: '0.7rem',
+                                  color: '#64748b',
+                                  fontWeight: 500
+                                }}>
+                                  Status:
+                                </label>
+                                <select
+                                  value={task.status || 'Todo'}
+                                  onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    width: '100%',
+                                    padding: '0.375rem',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.75rem',
+                                    background: 'white',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {department === 'CRM' ? (
+                                    <>
+                                      <option value="Todo">Todo</option>
+                                      <option value="In Progress">In Progress</option>
+                                      <option value="In Review">In Review</option>
+                                      <option value="Blocked">Blocked</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="Todo">Todo</option>
+                                      <option value="In Progress">In Progress</option>
+                                      <option value="In Review">In Review</option>
+                                      <option value="Completed">Completed</option>
+                                      <option value="Blocked">Blocked</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2879,6 +2965,7 @@ const DepartmentView: React.FC = () => {
             setCustomDeliverableName('');
             setClientSearchQuery('');
             setShowClientDropdown(false);
+            setMarkTaskCompleteOnCreate(false); // Reset checkbox
           }}
           style={{
             position: 'fixed',
@@ -2956,6 +3043,7 @@ const DepartmentView: React.FC = () => {
                   });
                   setShowCustomDeliverableInput(false);
                   setCustomDeliverableName('');
+                  setMarkTaskCompleteOnCreate(false); // Reset checkbox
                 }}
                 style={{
                   background: 'none',
@@ -3400,6 +3488,7 @@ const DepartmentView: React.FC = () => {
                   setCustomDeliverableName('');
                   setClientSearchQuery('');
                   setShowClientDropdown(false);
+                  setMarkTaskCompleteOnCreate(false); // Reset checkbox
                 }}
                 disabled={creatingTask}
                 style={{
@@ -4357,6 +4446,42 @@ const DepartmentView: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </div>
+
+              {/* Mark as Completed Checkbox - for PMs to quickly mark tasks as done */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                padding: '1rem',
+                background: '#f9fafb',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <input
+                  type="checkbox"
+                  id="markCompleteCheckbox"
+                  checked={markTaskCompleteOnCreate}
+                  onChange={(e) => setMarkTaskCompleteOnCreate(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    cursor: 'pointer',
+                    accentColor: '#667eea'
+                  }}
+                />
+                <label 
+                  htmlFor="markCompleteCheckbox"
+                  style={{ 
+                    fontWeight: 500, 
+                    color: '#374151', 
+                    fontSize: '0.9375rem',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  ✓ Mark as completed (for work already done)
+                </label>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

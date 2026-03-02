@@ -42,8 +42,12 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
   useEffect(() => {
     if (isOpen) {
       loadNotifications();
+      // Refresh unread count when modal opens
+      if (onUpdate) {
+        onUpdate();
+      }
     }
-  }, [isOpen, loadNotifications]);
+  }, [isOpen, loadNotifications, onUpdate]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

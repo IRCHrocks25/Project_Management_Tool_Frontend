@@ -169,11 +169,14 @@ export const clientUpdatesService = {
     return response.data;
   },
 
-  async uploadImage(file: File): Promise<string> {
+  async uploadImage(file: File, projectId?: string): Promise<string> {
     const formData = new FormData();
     formData.append('image', file);
+    const url = projectId 
+      ? `${API_URL}/client-updates/upload-image?projectId=${projectId}`
+      : `${API_URL}/client-updates/upload-image`;
     const response = await axios.post(
-      `${API_URL}/client-updates/upload-image`,
+      url,
       formData,
       {
         ...getAuthHeaders(),
@@ -186,11 +189,14 @@ export const clientUpdatesService = {
     return response.data.url;
   },
 
-  async uploadImagePublic(file: File): Promise<string> {
+  async uploadImagePublic(file: File, projectId?: string): Promise<string> {
     const formData = new FormData();
     formData.append('image', file);
+    const url = projectId
+      ? `/client-updates/upload-image-public?projectId=${projectId}`
+      : `/client-updates/upload-image-public`;
     const response = await publicAxios.post(
-      `/client-updates/upload-image-public`,
+      url,
       formData,
       {
         headers: {

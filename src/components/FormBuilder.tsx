@@ -196,7 +196,8 @@ const FormBuilder: React.FC = () => {
   const handleImageUpload = async (file: File): Promise<string> => {
     try {
       setUploadingImage(true);
-      const url = await clientUpdatesService.uploadImage(file);
+      // Pass projectId to organize files by client name in Cloudinary
+      const url = await clientUpdatesService.uploadImage(file, projectId || undefined);
       return url;
     } catch (error: any) {
       console.error('Failed to upload image:', error);

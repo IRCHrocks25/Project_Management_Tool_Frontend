@@ -267,6 +267,11 @@ const ProjectDetail: React.FC = () => {
   const [showAddTaskFromDeliverableModal, setShowAddTaskFromDeliverableModal] = useState(false);
   const [selectedDeliverableForTask, setSelectedDeliverableForTask] = useState<string | null>(null);
   const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
+  // Attachment state for "Add Task to Deliverable" modal
+  const [newTaskAttachmentType, setNewTaskAttachmentType] = useState<'none' | 'link' | 'file'>('none');
+  const [newTaskAttachmentUrl, setNewTaskAttachmentUrl] = useState('');
+  const [newTaskAttachmentUploading, setNewTaskAttachmentUploading] = useState(false);
+  const [markTaskCompleteOnCreate, setMarkTaskCompleteOnCreate] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [clientUpdates, setClientUpdates] = useState<ClientUpdate[]>([]);
   const [loadingUpdates, setLoadingUpdates] = useState(false);
@@ -556,7 +561,8 @@ const ProjectDetail: React.FC = () => {
 
   const handleImageUpload = async (file: File): Promise<string> => {
     try {
-      const url = await clientUpdatesService.uploadImage(file);
+      // Pass projectId to organize files by client name in Cloudinary
+      const url = await clientUpdatesService.uploadImage(file, id || undefined);
       return url;
     } catch (error: any) {
       console.error('Failed to upload image:', error);
@@ -1063,6 +1069,18 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+    try {
+      const isCompleted = newStatus === 'Completed';
+      await taskService.updateStatus(taskId, newStatus, isCompleted);
+      loadProject();
+      showToast(`Task status updated to ${newStatus} ✓`);
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+      showToast('Failed to update task status');
+    }
+  };
+
   const handleSubmitOnboarding = async (taskId: string, submissionData: string, submissionType: 'url' | 'text') => {
     try {
       setSubmittingTask(taskId);
@@ -1294,13 +1312,18 @@ const ProjectDetail: React.FC = () => {
         title: `${deliverableType} - ${newTaskData.department}`,
         description: newTaskData.notes || '',
         type: taskType,
-        status: 'Todo',
-        isCompleted: false,
+        status: markTaskCompleteOnCreate ? 'Completed' : 'Todo',
+        isCompleted: markTaskCompleteOnCreate,
         deliverableId: selectedDeliverableForTask,
       };
 
       if (newTaskData.assignedToId) {
         taskData.assignedToId = newTaskData.assignedToId;
+      }
+
+      // If the user attached a link or uploaded file, include it on the task
+      if (newTaskAttachmentType !== 'none' && newTaskAttachmentUrl) {
+        taskData.fileUrl = newTaskAttachmentUrl;
       }
 
       await taskService.create(taskData);
@@ -1309,6 +1332,9 @@ const ProjectDetail: React.FC = () => {
       setShowAddTaskFromDeliverableModal(false);
       setSelectedDeliverableForTask(null);
       setNewTaskData({ department: '', notes: '', assignedToId: '' });
+      setNewTaskAttachmentType('none');
+      setNewTaskAttachmentUrl('');
+      setMarkTaskCompleteOnCreate(false);
     } catch (error: any) {
       console.error('Failed to create task:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
@@ -1424,6 +1450,21 @@ const ProjectDetail: React.FC = () => {
 
   // Collect all files/links with detailed information
   const getAllFilesAndLinks = useMemo(() => {
+    // Helper to normalize URLs (ensure they have https:// protocol)
+    const normalizeUrl = (url: string): string => {
+      if (!url) return url;
+      // If URL already has protocol, return as-is
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      // If it's a Cloudinary URL (starts with res.cloudinary.com), add https://
+      if (url.startsWith('res.cloudinary.com') || url.includes('cloudinary.com')) {
+        return `https://${url}`;
+      }
+      // For other URLs, try to add https://
+      return `https://${url}`;
+    };
+
     const allLinks: Array<{
       id: string;
       url: string;
@@ -1444,7 +1485,7 @@ const ProjectDetail: React.FC = () => {
       if (task.fileUrl) {
         allLinks.push({
           id: `task-${task.id}`,
-          url: task.fileUrl,
+          url: normalizeUrl(task.fileUrl),
           source: task.title || 'Task',
           sourceType: 'Task',
           date: task.updatedAt ? new Date(task.updatedAt) : task.createdAt ? new Date(task.createdAt) : undefined,
@@ -1463,7 +1504,7 @@ const ProjectDetail: React.FC = () => {
           if (link && link.trim()) {
             allLinks.push({
               id: `update-${update.id}-${linkIndex}`,
-              url: link.trim(),
+              url: normalizeUrl(link.trim()),
               source: `Email Log - ${update.pm?.name || 'PM'}`,
               sourceType: 'Email Log',
               date: update.emailSentAt ? new Date(update.emailSentAt) : update.createdAt ? new Date(update.createdAt) : undefined,
@@ -2446,6 +2487,171 @@ const ProjectDetail: React.FC = () => {
                 })()}
               </div>
 
+              {/* Completed Deliverables Section - Shows where completed work is stored */}
+              {(() => {
+                const completedTasks = tasks.filter((t: any) => t.isCompleted && t.fileUrl);
+                if (completedTasks.length === 0) return null;
+
+                return (
+                  <div className="overview-card premium-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <FaCheckCircle style={{ color: '#10b981', fontSize: '1.25rem' }} />
+                        <h3 className="card-title" style={{ margin: 0 }}>Completed Deliverables</h3>
+                      </div>
+                      <div style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '12px',
+                        background: '#d1fae5',
+                        color: '#065f46',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        {completedTasks.length}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '1rem' }}>
+                      Completed tasks with files stored for client access
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {completedTasks.slice(0, 5).map((task: any) => {
+                        const formatLinkDisplay = (url: string) => {
+                          try {
+                            const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+                            return urlObj.hostname + urlObj.pathname.substring(0, 30) + (urlObj.pathname.length > 30 ? '...' : '');
+                          } catch {
+                            return url.length > 40 ? url.substring(0, 40) + '...' : url;
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={task.id}
+                            style={{
+                              padding: '0.875rem',
+                              background: '#f0fdf4',
+                              borderRadius: '8px',
+                              border: '1px solid #bbf7d0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#dcfce7';
+                              e.currentTarget.style.borderColor = '#86efac';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#f0fdf4';
+                              e.currentTarget.style.borderColor = '#bbf7d0';
+                            }}
+                          >
+                            <FaCheckCircle style={{ color: '#10b981', fontSize: '1rem', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                color: '#1e293b',
+                                marginBottom: '0.25rem'
+                              }}>
+                                {task.title}
+                              </div>
+                              <a
+                                href={task.fileUrl.startsWith('http') ? task.fileUrl : `https://${task.fileUrl}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: '#667eea',
+                                  textDecoration: 'none',
+                                  wordBreak: 'break-all',
+                                  display: 'block'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.textDecoration = 'underline';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.textDecoration = 'none';
+                                }}
+                              >
+                                {formatLinkDisplay(task.fileUrl)}
+                              </a>
+                            </div>
+                            <button
+                              onClick={() => handleTaskComplete(task.id, false)}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                padding: '0.375rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#6b7280',
+                                transition: 'all 0.2s',
+                                flexShrink: 0
+                              }}
+                              title="Mark as incomplete"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f3f4f6';
+                                e.currentTarget.style.borderColor = '#9ca3af';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.borderColor = '#d1d5db';
+                              }}
+                            >
+                              <FaCircle style={{ fontSize: '0.75rem' }} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {completedTasks.length > 5 && (
+                        <div style={{
+                          padding: '0.625rem',
+                          textAlign: 'center',
+                          fontSize: '0.8125rem',
+                          color: '#667eea',
+                          fontWeight: 500
+                        }}>
+                          +{completedTasks.length - 5} more completed tasks
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                      <button
+                        onClick={() => setShowFilesLinksModal(true)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <FaLink style={{ marginRight: '0.5rem' }} />
+                        View All Files & Links
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {project.stage === 'Ready to Close' && (
                 <div className="overview-card premium-card closure-card-premium">
                   <h3 className="card-title">Ready to Close</h3>
@@ -3032,6 +3238,26 @@ const ProjectDetail: React.FC = () => {
                 // AUTOMATIC STATUS ASSIGNMENTS (based on task/deliverable status):
                 // These take priority over manual status columns
                 
+                // 0. Completed: Check if task is completed - this takes HIGH PRIORITY (after revision)
+                // Completed tasks automatically go to "Approved/Completed" column
+                if (relatedTask && (relatedTask.isCompleted || relatedTask.status === 'Completed')) {
+                  // Check if it's in revision first (revision takes highest priority)
+                  if (!isPlaceholder) {
+                    const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
+                    const fileHistory = deliverableHistory[fileHistoryKey] || [];
+                    const latestHistory = fileHistory[0];
+                    const hasRevisionRequest = latestHistory?.action === 'Revision Requested';
+                    const isDeliverableInRevision = selectedDeliverable.status === 'Revision';
+                    
+                    // If in revision, stay in revision (revision takes priority over completed)
+                    if (hasRevisionRequest || isDeliverableInRevision) {
+                      return 'revision';
+                    }
+                  }
+                  // Not in revision, so move to approved/completed
+                  return 'approved_completed';
+                }
+                
                 // 1. Revision: Check if file has "Revision Requested" in history OR deliverable status is 'Revision'
                 // This takes HIGHEST PRIORITY - if in revision, it stays in revision (unless resubmitted)
                 if (!isPlaceholder) {
@@ -3324,6 +3550,8 @@ const ProjectDetail: React.FC = () => {
                               onClick={() => {
                                 setSelectedDeliverableForTask(selectedDeliverable.id);
                                 setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                                setNewTaskAttachmentType('none');
+                                setNewTaskAttachmentUrl('');
                                 setShowAddTaskFromDeliverableModal(true);
                               }}
                               style={{
@@ -3637,6 +3865,54 @@ const ProjectDetail: React.FC = () => {
                                       </div>
                                     );
                                   })()}
+                                  
+                                  {/* Status Dropdown - Show for tasks */}
+                                  {relatedTask && (
+                                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                                      <label style={{ 
+                                        display: 'block', 
+                                        fontSize: '0.75rem', 
+                                        fontWeight: 500, 
+                                        color: '#64748b', 
+                                        marginBottom: '0.375rem' 
+                                      }}>
+                                        Status:
+                                      </label>
+                                      <select
+                                        value={relatedTask.isCompleted ? 'Completed' : (relatedTask.status || 'Todo')}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          handleTaskStatusChange(relatedTask.id, e.target.value);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          width: '100%',
+                                          padding: '0.5rem',
+                                          borderRadius: '6px',
+                                          border: '1px solid #d1d5db',
+                                          fontSize: '0.8125rem',
+                                          background: 'white',
+                                          color: '#1e293b',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.borderColor = '#667eea';
+                                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.borderColor = '#d1d5db';
+                                          e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                      >
+                                        <option value="Todo">Todo</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="In Review">In Review</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Blocked">Blocked</option>
+                                      </select>
+                                    </div>
+                                  )}
                                 </div>
                                 {fileHistory.length > 0 && (
                                   <div className="kanban-card-footer">
@@ -5530,14 +5806,14 @@ const ProjectDetail: React.FC = () => {
       {/* Add Custom Deliverable Modal */}
       {showAddTaskFromDeliverableModal && selectedDeliverableForTask && (
         <div className="modal-overlay" onClick={() => setShowAddTaskFromDeliverableModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
               <h2>Add Task to Deliverable</h2>
               <button className="close-button" onClick={() => setShowAddTaskFromDeliverableModal(false)}>
                 <FaTimes />
               </button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
               <div className="form-group">
                 <label>Department *</label>
                 <select
@@ -5568,6 +5844,84 @@ const ProjectDetail: React.FC = () => {
                 />
               </div>
               <div className="form-group">
+                <label>Attach (Optional)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className={`btn-secondary ${newTaskAttachmentType === 'link' ? 'active' : ''}`}
+                    style={{
+                      flex: 1,
+                      background: newTaskAttachmentType === 'link' ? '#e0e7ff' : undefined,
+                    }}
+                    onClick={() => {
+                      setNewTaskAttachmentType(
+                        newTaskAttachmentType === 'link' ? 'none' : 'link'
+                      );
+                    }}
+                  >
+                    Add Link
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn-secondary ${newTaskAttachmentType === 'file' ? 'active' : ''}`}
+                    style={{
+                      flex: 1,
+                      background: newTaskAttachmentType === 'file' ? '#e0f2fe' : undefined,
+                    }}
+                    onClick={() => {
+                      setNewTaskAttachmentType(
+                        newTaskAttachmentType === 'file' ? 'none' : 'file'
+                      );
+                    }}
+                  >
+                    Upload File
+                  </button>
+                </div>
+
+                {newTaskAttachmentType === 'link' && (
+                  <input
+                    type="url"
+                    className="form-input"
+                    value={newTaskAttachmentUrl}
+                    onChange={(e) => setNewTaskAttachmentUrl(e.target.value)}
+                    placeholder="Paste a URL (Google Drive, Loom, Figma, etc.)"
+                  />
+                )}
+
+                {newTaskAttachmentType === 'file' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <input
+                      type="file"
+                      className="form-input"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          setNewTaskAttachmentUploading(true);
+                          // Reuse existing Cloudinary image upload helper
+                          const url = await handleImageUpload(file);
+                          setNewTaskAttachmentUrl(url);
+                        } catch (error) {
+                          console.error('Failed to upload attachment:', error);
+                          alert('Failed to upload file. Please try again.');
+                        } finally {
+                          setNewTaskAttachmentUploading(false);
+                        }
+                      }}
+                    />
+                    {newTaskAttachmentUploading && (
+                      <small style={{ color: '#64748b' }}>Uploading to Cloudinary...</small>
+                    )}
+                    {!newTaskAttachmentUploading && newTaskAttachmentUrl && (
+                      <small style={{ color: '#16a34a' }}>
+                        File uploaded and optimized ✓
+                      </small>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
                 <label>Assign To (Optional)</label>
                 <select
                   value={newTaskData.assignedToId}
@@ -5593,6 +5947,26 @@ const ProjectDetail: React.FC = () => {
                     ))}
                 </select>
               </div>
+              
+              {/* Quick Complete Option for PMs */}
+              {authService.getUser()?.role === 'Project Manager' && (
+                <div className="form-group" style={{ marginTop: '1rem', padding: '0.75rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={markTaskCompleteOnCreate}
+                      onChange={(e) => setMarkTaskCompleteOnCreate(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.875rem', color: '#0369a1', fontWeight: 500 }}>
+                      ✓ Mark as completed (for work already done)
+                    </span>
+                  </label>
+                  <small style={{ display: 'block', marginTop: '0.25rem', color: '#0284c7', fontSize: '0.75rem' }}>
+                    Use this when adding tasks for work that's already finished
+                  </small>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button
@@ -5602,6 +5976,9 @@ const ProjectDetail: React.FC = () => {
                   setShowAddTaskFromDeliverableModal(false);
                   setSelectedDeliverableForTask(null);
                   setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                  setNewTaskAttachmentType('none');
+                  setNewTaskAttachmentUrl('');
+                  setMarkTaskCompleteOnCreate(false);
                 }}
                 disabled={creatingTask}
               >
@@ -6620,6 +6997,7 @@ const ProjectDetail: React.FC = () => {
                   }
                   
                   const formatLinkDisplay = (url: string) => {
+                    // URL is already normalized in getAllFilesAndLinks, but ensure it's still valid
                     try {
                       const urlObj = new URL(url);
                       return {
@@ -6628,10 +7006,12 @@ const ProjectDetail: React.FC = () => {
                         full: url
                       };
                     } catch {
+                      // If URL parsing fails, try adding https://
+                      const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
                       return {
                         domain: 'Link',
-                        path: url.length > 60 ? url.substring(0, 60) + '...' : url,
-                        full: url
+                        path: normalizedUrl.length > 60 ? normalizedUrl.substring(0, 60) + '...' : normalizedUrl,
+                        full: normalizedUrl
                       };
                     }
                   };
@@ -6649,6 +7029,107 @@ const ProjectDetail: React.FC = () => {
                   
                   const getLinkTypeIcon = (url: string) => {
                     const lowerUrl = url.toLowerCase();
+                    
+                    // Detect file extensions from Cloudinary URLs or regular URLs
+                    const getFileExtension = (url: string): string | null => {
+                      // First, try to extract extension from URL path (standard format)
+                      const urlMatch = url.match(/\.([a-z0-9]+)(?:\?|$|#)/i);
+                      if (urlMatch) {
+                        return urlMatch[1].toLowerCase();
+                      }
+                      
+                      // For Cloudinary URLs, check multiple patterns
+                      // Pattern 1: /upload/v123456/folder/filename.ext
+                      const cloudinaryPattern1 = url.match(/\/upload\/[^/]+\/[^/]+\/([^/?]+)/);
+                      if (cloudinaryPattern1) {
+                        const filename = cloudinaryPattern1[1];
+                        const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+                        if (extMatch) {
+                          return extMatch[1].toLowerCase();
+                        }
+                      }
+                      
+                      // Pattern 2: /raw/upload/v123456/folder/filename.ext
+                      const cloudinaryPattern2 = url.match(/\/raw\/upload\/[^/]+\/[^/]+\/([^/?]+)/);
+                      if (cloudinaryPattern2) {
+                        const filename = cloudinaryPattern2[1];
+                        const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+                        if (extMatch) {
+                          return extMatch[1].toLowerCase();
+                        }
+                      }
+                      
+                      // Pattern 3: Check for format parameter in Cloudinary URL
+                      const formatMatch = url.match(/[?&]format=([a-z0-9]+)/i);
+                      if (formatMatch) {
+                        return formatMatch[1].toLowerCase();
+                      }
+                      
+                      return null;
+                    };
+
+                    const extension = getFileExtension(url);
+                    
+                    // Map file extensions to types
+                    if (extension) {
+                      const fileTypeMap: Record<string, { icon: string; label: string }> = {
+                        // Documents
+                        'pdf': { icon: '📄', label: 'PDF' },
+                        'doc': { icon: '📝', label: 'DOC' },
+                        'docx': { icon: '📝', label: 'DOCX' },
+                        'txt': { icon: '📄', label: 'TXT' },
+                        'rtf': { icon: '📄', label: 'RTF' },
+                        'odt': { icon: '📝', label: 'ODT' },
+                        // Spreadsheets
+                        'xls': { icon: '📊', label: 'XLS' },
+                        'xlsx': { icon: '📊', label: 'XLSX' },
+                        'csv': { icon: '📊', label: 'CSV' },
+                        'ods': { icon: '📊', label: 'ODS' },
+                        // Presentations
+                        'ppt': { icon: '📽️', label: 'PPT' },
+                        'pptx': { icon: '📽️', label: 'PPTX' },
+                        'odp': { icon: '📽️', label: 'ODP' },
+                        // Images
+                        'jpg': { icon: '🖼️', label: 'JPG' },
+                        'jpeg': { icon: '🖼️', label: 'JPEG' },
+                        'png': { icon: '🖼️', label: 'PNG' },
+                        'gif': { icon: '🖼️', label: 'GIF' },
+                        'svg': { icon: '🖼️', label: 'SVG' },
+                        'webp': { icon: '🖼️', label: 'WEBP' },
+                        'bmp': { icon: '🖼️', label: 'BMP' },
+                        // Videos
+                        'mp4': { icon: '🎥', label: 'MP4' },
+                        'mov': { icon: '🎥', label: 'MOV' },
+                        'avi': { icon: '🎥', label: 'AVI' },
+                        'mkv': { icon: '🎥', label: 'MKV' },
+                        'webm': { icon: '🎥', label: 'WEBM' },
+                        // Audio
+                        'mp3': { icon: '🎵', label: 'MP3' },
+                        'wav': { icon: '🎵', label: 'WAV' },
+                        'ogg': { icon: '🎵', label: 'OGG' },
+                        // Archives
+                        'zip': { icon: '📦', label: 'ZIP' },
+                        'rar': { icon: '📦', label: 'RAR' },
+                        '7z': { icon: '📦', label: '7Z' },
+                        'tar': { icon: '📦', label: 'TAR' },
+                        'gz': { icon: '📦', label: 'GZ' },
+                        // Code
+                        'js': { icon: '💻', label: 'JS' },
+                        'ts': { icon: '💻', label: 'TS' },
+                        'html': { icon: '💻', label: 'HTML' },
+                        'css': { icon: '💻', label: 'CSS' },
+                        'json': { icon: '💻', label: 'JSON' },
+                        'xml': { icon: '💻', label: 'XML' },
+                      };
+                      
+                      if (fileTypeMap[extension]) {
+                        return fileTypeMap[extension];
+                      }
+                      // Unknown extension, show it
+                      return { icon: '📎', label: extension.toUpperCase() };
+                    }
+                    
+                    // Check for known service domains
                     if (lowerUrl.includes('figma.com')) return { icon: '🎨', label: 'Figma' };
                     if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('docs.google.com')) return { icon: '📁', label: 'Google Drive' };
                     if (lowerUrl.includes('dropbox.com')) return { icon: '📦', label: 'Dropbox' };
@@ -6656,6 +7137,12 @@ const ProjectDetail: React.FC = () => {
                     if (lowerUrl.includes('miro.com') || lowerUrl.includes('mural.co')) return { icon: '🖼️', label: 'Whiteboard' };
                     if (lowerUrl.includes('youtube.com') || lowerUrl.includes('vimeo.com')) return { icon: '🎥', label: 'Video' };
                     if (lowerUrl.includes('zoom.us') || lowerUrl.includes('meet.google.com')) return { icon: '💬', label: 'Meeting' };
+                    if (lowerUrl.includes('loom.com')) return { icon: '🎥', label: 'Loom' };
+                    if (lowerUrl.includes('cloudinary.com') && lowerUrl.includes('/raw/upload/')) {
+                      // Cloudinary raw upload without detected extension
+                      return { icon: '📎', label: 'File' };
+                    }
+                    
                     return { icon: '🔗', label: 'Link' };
                   };
                   
@@ -6723,7 +7210,7 @@ const ProjectDetail: React.FC = () => {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ marginBottom: '0.75rem' }}>
                                   <a
-                                    href={link.url}
+                                    href={linkInfo.full}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
@@ -6844,10 +7331,17 @@ const ProjectDetail: React.FC = () => {
                               {/* Right: Action Button */}
                               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <a
-                                  href={link.url}
+                                  href={linkInfo.full}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // For PDFs, ensure they open in a new tab with proper headers
+                                    if (linkInfo.full.toLowerCase().includes('.pdf') || linkInfo.full.includes('/raw/upload/')) {
+                                      window.open(linkInfo.full, '_blank', 'noopener,noreferrer');
+                                      e.preventDefault();
+                                    }
+                                  }}
                                   style={{
                                     padding: '0.75rem 1.25rem',
                                     borderRadius: '8px',
@@ -6877,7 +7371,7 @@ const ProjectDetail: React.FC = () => {
                                 </a>
                                 <button
                                   onClick={() => {
-                                    navigator.clipboard.writeText(link.url);
+                                    navigator.clipboard.writeText(linkInfo.full);
                                     showToast('Link copied to clipboard!');
                                   }}
                                   style={{

@@ -2457,6 +2457,17 @@ const CopyDashboard: React.FC = () => {
         <NotificationsModal
           isOpen={showNotificationsModal}
           onClose={() => setShowNotificationsModal(false)}
+          onUpdate={loadUnreadCount}
+          onMarkAllAsRead={() => {
+            setUnreadNotifications(0);
+            // Prevent refresh for 5 seconds after marking all as read
+            skipRefreshUntilRef.current = Date.now() + 5000;
+            // After 5 seconds, refresh to get accurate count from server
+            setTimeout(() => {
+              skipRefreshUntilRef.current = null;
+              loadUnreadCount();
+            }, 5000);
+          }}
         />
         <SendForReviewModal
           isOpen={showReviewModal}
