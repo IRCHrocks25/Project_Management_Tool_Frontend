@@ -146,6 +146,23 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [editCustomDeliverableName, setEditCustomDeliverableName] = useState('');
   const [isUpdatingTaskInModal, setIsUpdatingTaskInModal] = useState(false);
 
+  // Forward task state (for cross-department collaboration)
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardingTask, setForwardingTask] = useState<any>(null);
+  const [forwarding, setForwarding] = useState(false);
+  const [forwardData, setForwardData] = useState({
+    targetDepartment: '',
+    notes: '',
+    links: ''
+  });
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returningTask, setReturningTask] = useState<any>(null);
+  const [returning, setReturning] = useState(false);
+  const [returnData, setReturnData] = useState({
+    notes: '',
+    links: ''
+  });
+
   // Department menu items
   const departmentMenuItems = [
     { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
@@ -156,6 +173,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     { id: 'CRM', name: 'CRM', icon: FaDatabase, color: '#3b82f6' },
     { id: 'SEO/GEO', name: 'SEO/GEO', icon: FaSearch, color: '#06b6d4' },
   ];
+
+  const getTaskTypeForDepartment = (departmentId: string): string => {
+    return ROLE_CONFIG[departmentId]?.taskType || '';
+  };
 
   // Load users once
   useEffect(() => {
@@ -284,6 +305,178 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       );
     } catch (error) {
       console.error('Failed to reload project deliverables:', error);
+    }
+  };
+
+  const handleOpenForwardModal = (task: any) => {
+    setForwardingTask(task);
+    setForwardData({
+      targetDepartment: '',
+      notes: '',
+      links: ''
+    });
+    setShowForwardModal(true);
+  };
+
+  const handleOpenReturnModal = (task: any) => {
+    setReturningTask(task);
+    setReturnData({
+      notes: '',
+      links: ''
+    });
+    setShowReturnModal(true);
+  };
+
+  const handleForwardTask = async () => {
+    if (!forwardingTask || !forwardData.targetDepartment) {
+      alert('Please select a target department to forward this task to.');
+      return;
+    }
+
+    const targetTaskType = getTaskTypeForDepartment(forwardData.targetDepartment);
+    if (!targetTaskType) {
+      alert('Selected department is not configured for tasks yet.');
+      return;
+    }
+
+    setForwarding(true);
+    try {
+      const targetDept = departmentMenuItems.find(d => d.id === forwardData.targetDepartment);
+      const deptName = targetDept?.name || forwardData.targetDepartment;
+
+      const linkMetadata = `[[LINKED_ORIGIN_TASK_ID:${forwardingTask.id}]]\n[[LINKED_ORIGIN_DEPARTMENT:${departmentName}]]\n[[LINKED_TARGET_DEPARTMENT:${deptName}]]\n`;
+
+      let newTaskDescription = `${linkMetadata}\nForwarded from ${departmentName}\n\nOriginal Task: ${forwardingTask.title}`;
+      if (forwardingTask.description) {
+        newTaskDescription += `\n\nOriginal Description:\n${forwardingTask.description}`;
+      }
+      if (forwardData.notes) {
+        newTaskDescription += `\n\n--- Forwarding Notes ---\n${forwardData.notes}`;
+      }
+      if (forwardData.links) {
+        newTaskDescription += `\n\n--- Forwarding Links ---\n${forwardData.links}`;
+      }
+
+      const newTaskData: any = {
+        projectId: forwardingTask.projectId,
+        title: `${forwardingTask.title} (Forwarded from ${departmentName})`,
+        description: newTaskDescription,
+        type: targetTaskType,
+        status: 'Todo',
+        isCompleted: false,
+      };
+
+      if (forwardingTask.dueDate) {
+        newTaskData.dueDate = new Date(forwardingTask.dueDate);
+      }
+
+      if (forwardingTask.deliverableId) {
+        newTaskData.deliverableId = forwardingTask.deliverableId;
+      }
+
+      const createdTask = await taskService.create(newTaskData);
+
+      const forwardNote = `\n\n--- Forwarded to ${deptName} on ${new Date().toLocaleString()} ---\n${forwardData.notes ? `Notes: ${forwardData.notes}\n` : ''}${forwardData.links ? `Links: ${forwardData.links}` : ''}`;
+      const originLinkMetadata = `\n[[LINKED_TARGET_TASK_ID:${createdTask.id}]]\n[[LINKED_TARGET_DEPARTMENT:${deptName}]]\n`;
+      const updatedDescription = (forwardingTask.description || '') + originLinkMetadata + forwardNote;
+
+      // Keep backend status unchanged (to respect allowed enum values) and just
+      // append metadata + forward note for UI/tracking.
+      await taskService.update(forwardingTask.id, {
+        description: updatedDescription
+      });
+
+      await loadData();
+
+      setShowForwardModal(false);
+      setForwardingTask(null);
+      setForwardData({
+        targetDepartment: '',
+        notes: '',
+        links: ''
+      });
+      alert(`Task forwarded to ${deptName}. A new task has been created in that department.`);
+    } catch (error) {
+      console.error('Failed to forward task:', error);
+      alert('Failed to forward task. Please try again.');
+    } finally {
+      setForwarding(false);
+    }
+  };
+
+  const handleReturnTaskToOrigin = async () => {
+    if (!returningTask) return;
+    const linked = getLinkedOriginInfo(returningTask);
+    if (!linked?.originTaskId) {
+      alert('Linked origin task not found for this forwarded task.');
+      return;
+    }
+
+    try {
+      setReturning(true);
+      setUpdatingTask(returningTask.id);
+
+      // Update this department's task description with return notes/links
+      if (returnData.notes || returnData.links) {
+        const returnNote = `\n\n--- Returned to ${linked.originDepartmentName || 'origin department'} on ${new Date().toLocaleString()} ---\n${returnData.notes ? `Notes: ${returnData.notes}\n` : ''}${returnData.links ? `Links: ${returnData.links}` : ''}`;
+        const updatedDesc = (returningTask.description || '') + returnNote;
+        await taskService.update(returningTask.id, { description: updatedDesc });
+      }
+
+      await taskService.updateStatus(linked.originTaskId, 'In Review');
+      await taskService.updateStatus(returningTask.id, 'Completed', true);
+      await loadData();
+      alert(`Task returned to ${linked.originDepartmentName || 'origin department'} for approval.`);
+    } catch (error) {
+      console.error('Failed to return task to origin department:', error);
+      alert('Failed to return task. Please try again.');
+    } finally {
+      setUpdatingTask(null);
+      setReturning(false);
+      setShowReturnModal(false);
+      setReturningTask(null);
+      setReturnData({ notes: '', links: '' });
+    }
+  };
+
+  const handleSendBackToTargetForRevision = async (task: any) => {
+    const linked = getLinkedTargetInfo(task);
+    if (!linked?.targetTaskId) {
+      alert('Linked department task not found for this task.');
+      return;
+    }
+
+    try {
+      setUpdatingTask(task.id);
+      // For now, don't change task.status to a non-enum value.
+      // Just append revision notes/links to both tasks so teams see the context.
+      if (returnData.notes || returnData.links) {
+        const revisionNote = `\n\n--- Sent back for revision on ${new Date().toLocaleString()} ---\n${returnData.notes ? `Notes: ${returnData.notes}\n` : ''}${returnData.links ? `Links: ${returnData.links}` : ''}`;
+        const updatedOriginDesc = (task.description || '') + revisionNote;
+        await taskService.update(task.id, { description: updatedOriginDesc });
+      }
+
+      const targetTask = tasks.find((t: any) => t.id === linked.targetTaskId);
+      const targetPrevAssignee = targetTask?.assignedToId || null;
+      const targetPrevDescription = targetTask?.description || '';
+
+      // Also append a simple revision marker on the linked department task
+      await taskService.update(linked.targetTaskId, {
+        description: targetPrevDescription +
+          `\n\n--- Marked as Revision by ${departmentName} on ${new Date().toLocaleString()} ---`
+      });
+
+      // Ensure the task remains assigned to the same person who originally claimed it
+      if (targetPrevAssignee) {
+        await taskService.assign(linked.targetTaskId, targetPrevAssignee);
+      }
+      await loadData();
+      alert(`Marked for revision and sent back to ${linked.targetDepartmentName || 'linked department'}.`);
+    } catch (error) {
+      console.error('Failed to send task back for revision:', error);
+      alert('Failed to send back for revision. Please try again.');
+    } finally {
+      setUpdatingTask(null);
     }
   };
 
@@ -725,6 +918,36 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
+  const getLinkedOriginInfo = (task: any) => {
+    if (!task?.description) return null;
+    const desc: string = task.description;
+    const originTaskMatch = desc.match(/\[\[LINKED_ORIGIN_TASK_ID:([^\]]+)\]\]/);
+    const originDeptMatch = desc.match(/\[\[LINKED_ORIGIN_DEPARTMENT:([^\]]+)\]\]/);
+    const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
+
+    if (!originTaskMatch) return null;
+
+    return {
+      originTaskId: originTaskMatch[1],
+      originDepartmentName: originDeptMatch ? originDeptMatch[1] : '',
+      targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
+    };
+  };
+
+  const getLinkedTargetInfo = (task: any) => {
+    if (!task?.description) return null;
+    const desc: string = task.description;
+    const targetTaskMatch = desc.match(/\[\[LINKED_TARGET_TASK_ID:([^\]]+)\]\]/);
+    const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
+
+    if (!targetTaskMatch) return null;
+
+    return {
+      targetTaskId: targetTaskMatch[1],
+      targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
+    };
+  };
+
 
   if (loading) {
     return (
@@ -775,6 +998,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
 
   const myTasks = tasks.filter((t: any) => t.assignedToId === user?.id);
   const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
+  const isAIDeveloper = config.taskType === 'AI';
 
   // Continue with the rest of the component JSX...
   // Due to size limits, I'll create a simplified version that includes the key parts
@@ -1510,6 +1734,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                         const taskInRevision = project ? isTaskInRevision(task, project) : false;
                         const taskNotes = project ? getTaskNotes(task, project) : [];
                         const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
+                        const linkedOrigin = getLinkedOriginInfo(task);
+                        const linkedTarget = getLinkedTargetInfo(task);
 
                         return (
                           <div
@@ -1798,7 +2024,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleSendForReview(task);
+                                                if (isAIDeveloper) {
+                                                  handleOpenForwardModal(task);
+                                                } else {
+                                                  handleSendForReview(task);
+                                                }
                                               }}
                                               disabled={updatingTask === task.id}
                                               style={{
@@ -1817,9 +2047,17 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                                 gap: '0.5rem'
                                               }}
                                             >
-                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : hasRevisionDeliverables(project || {}) ? 'Resubmit' : 'Send for Review'}
+                                              {updatingTask === task.id ? (
+                                                <FaSpinner className="spinner" />
+                                              ) : isAIDeveloper ? (
+                                                'Forward to Department'
+                                              ) : hasRevisionDeliverables(project || {}) ? (
+                                                'Resubmit'
+                                              ) : (
+                                                'Send for Review'
+                                              )}
                                             </button>
-                                            {!hasRevisionDeliverables(project || {}) && (
+                                            {!hasRevisionDeliverables(project || {}) && !linkedOrigin && (
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
@@ -1847,11 +2085,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                             )}
                                           </>
                                         )}
-                                        {task.status === 'In Review' && !hasRevisionDeliverables(project || {}) && (
+                                        {linkedOrigin && (
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleTaskStatusUpdate(task.id, 'Completed', true);
+                                              handleOpenReturnModal(task);
                                             }}
                                             disabled={updatingTask === task.id}
                                             style={{
@@ -1859,7 +2097,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                               padding: '0.5rem',
                                               border: 'none',
                                               borderRadius: '0.375rem',
-                                              background: '#10b981',
+                                              background: '#4f46e5',
                                               color: 'white',
                                               cursor: 'pointer',
                                               fontSize: '0.75rem',
@@ -1870,7 +2108,93 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                               gap: '0.5rem'
                                             }}
                                           >
-                                            {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Mark Complete'}
+                                            {updatingTask === task.id ? (
+                                              <FaSpinner className="spinner" />
+                                            ) : (
+                                              `Return to ${linkedOrigin.originDepartmentName || 'Origin Dept'} for Approval`
+                                            )}
+                                          </button>
+                                        )}
+                                        {task.status === 'In Review' && !hasRevisionDeliverables(project || {}) && !linkedTarget && (
+                                          <>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTaskStatusUpdate(task.id, 'In Progress');
+                                              }}
+                                              disabled={updatingTask === task.id}
+                                              style={{
+                                                width: '100%',
+                                                padding: '0.5rem',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem'
+                                              }}
+                                            >
+                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Back to In Progress'}
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTaskStatusUpdate(task.id, 'Completed', true);
+                                              }}
+                                              disabled={updatingTask === task.id}
+                                              style={{
+                                                width: '100%',
+                                                padding: '0.5rem',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                background: '#10b981',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem'
+                                              }}
+                                            >
+                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Mark Complete'}
+                                            </button>
+                                          </>
+                                        )}
+                                        {linkedTarget && task.status === 'In Review' && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSendBackToTargetForRevision(task);
+                                            }}
+                                            disabled={updatingTask === task.id}
+                                            style={{
+                                              width: '100%',
+                                              padding: '0.5rem',
+                                              border: 'none',
+                                              borderRadius: '0.375rem',
+                                              background: '#dc2626',
+                                              color: 'white',
+                                              cursor: 'pointer',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 500,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '0.5rem'
+                                            }}
+                                          >
+                                            {updatingTask === task.id ? (
+                                              <FaSpinner className="spinner" />
+                                            ) : (
+                                              `Send Back to ${linkedTarget.targetDepartmentName || 'Linked Dept'} for Revision`
+                                            )}
                                           </button>
                                         )}
                                       </div>
@@ -2026,6 +2350,521 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           }}
           onSubmit={handleReviewSubmit}
         />
+      )}
+
+      {/* Return to Origin Modal */}
+      {showReturnModal && returningTask && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '2rem'
+          }}
+          onClick={() => {
+            if (!returning) {
+              setShowReturnModal(false);
+              setReturningTask(null);
+              setReturnData({ notes: '', links: '' });
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    color: '#111827'
+                  }}
+                >
+                  Return Task to Origin Department
+                </h2>
+                <p
+                  style={{
+                    margin: '0.25rem 0 0 0',
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
+                  }}
+                >
+                  Add any notes or links you want the origin department to see when reviewing this
+                  work.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (returning) return;
+                  setShowReturnModal(false);
+                  setReturningTask(null);
+                  setReturnData({ notes: '', links: '' });
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: returning ? 'not-allowed' : 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '999px',
+                  color: '#6b7280'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '1.75rem 2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                overflowY: 'auto'
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: '#eff6ff',
+                  borderRadius: '10px',
+                  border: '1px solid #bfdbfe',
+                  fontSize: '0.875rem',
+                  color: '#1d4ed8'
+                }}
+              >
+                <strong>Task:</strong> {returningTask.title}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={returnData.notes}
+                  onChange={(e) =>
+                    setReturnData({
+                      ...returnData,
+                      notes: e.target.value
+                    })
+                  }
+                  rows={4}
+                  disabled={returning}
+                  placeholder="Explain what was done, any important decisions, or what you want the origin team to check."
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.9375rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Links / Documentation (Optional)
+                </label>
+                <textarea
+                  value={returnData.links}
+                  onChange={(e) =>
+                    setReturnData({
+                      ...returnData,
+                      links: e.target.value
+                    })
+                  }
+                  rows={3}
+                  disabled={returning}
+                  placeholder="Paste Drive links, Figma links, Looms, or any other relevant URLs here..."
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.9375rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (returning) return;
+                  setShowReturnModal(false);
+                  setReturningTask(null);
+                  setReturnData({ notes: '', links: '' });
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  background: 'white',
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: returning ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReturnTaskToOrigin}
+                disabled={returning}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: returning ? '#9ca3af' : color,
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: returning ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {returning ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Returning...
+                  </>
+                ) : (
+                  'Return Task'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forward Task Modal - for AI Developer cross-department handoff */}
+      {showForwardModal && forwardingTask && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '2rem'
+          }}
+          onClick={() => {
+            if (!forwarding) {
+              setShowForwardModal(false);
+              setForwardingTask(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    color: '#111827'
+                  }}
+                >
+                  Forward Task to Another Department
+                </h2>
+                <p
+                  style={{
+                    margin: '0.25rem 0 0 0',
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
+                  }}
+                >
+                  Share this AI task with another team along with your notes and links. A new task
+                  will be created in their department.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (forwarding) return;
+                  setShowForwardModal(false);
+                  setForwardingTask(null);
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: forwarding ? 'not-allowed' : 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '999px',
+                  color: '#6b7280'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '1.75rem 2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                overflowY: 'auto'
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: '#eff6ff',
+                  borderRadius: '10px',
+                  border: '1px solid #bfdbfe',
+                  fontSize: '0.875rem',
+                  color: '#1d4ed8'
+                }}
+              >
+                <strong>Task:</strong> {forwardingTask.title}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Forward to Department *
+                </label>
+                <select
+                  value={forwardData.targetDepartment}
+                  onChange={(e) =>
+                    setForwardData({
+                      ...forwardData,
+                      targetDepartment: e.target.value
+                    })
+                  }
+                  disabled={forwarding}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.9375rem',
+                    background: '#ffffff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">Select department...</option>
+                  {departmentMenuItems
+                    .filter((d) => d.id !== role)
+                    .map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={forwardData.notes}
+                  onChange={(e) =>
+                    setForwardData({
+                      ...forwardData,
+                      notes: e.target.value
+                    })
+                  }
+                  rows={4}
+                  disabled={forwarding}
+                  placeholder="Explain what you need from the other department, context, expectations, etc."
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.9375rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Links / Documentation (Optional)
+                </label>
+                <textarea
+                  value={forwardData.links}
+                  onChange={(e) =>
+                    setForwardData({
+                      ...forwardData,
+                      links: e.target.value
+                    })
+                  }
+                  rows={3}
+                  disabled={forwarding}
+                  placeholder="Paste any Drive links, Looms, docs, or other URLs here..."
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.9375rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (forwarding) return;
+                  setShowForwardModal(false);
+                  setForwardingTask(null);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  background: 'white',
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: forwarding ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleForwardTask}
+                disabled={forwarding || !forwardData.targetDepartment}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background:
+                    forwarding || !forwardData.targetDepartment ? '#9ca3af' : color,
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor:
+                    forwarding || !forwardData.targetDepartment
+                      ? 'not-allowed'
+                      : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {forwarding ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Forwarding...
+                  </>
+                ) : (
+                  <>
+                    <FaShareAlt />
+                    Forward Task
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Task Modal */}

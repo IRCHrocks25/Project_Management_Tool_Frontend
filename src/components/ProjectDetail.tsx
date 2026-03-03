@@ -1909,7 +1909,7 @@ const ProjectDetail: React.FC = () => {
           onClick={() => setActiveTab('onboarding')}
         >
           <FaFileAlt className="tab-icon" />
-          Onboarding
+          Branding Documents
         </button>
         <button
           className={`tab-item ${activeTab === 'timeline' ? 'active' : ''}`}
@@ -2786,7 +2786,7 @@ const ProjectDetail: React.FC = () => {
           <div className="tab-content fade-in">
             <div className="onboarding-info-section">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>Onboarding Information</h3>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>Branding Documents</h3>
                 {project?.stage !== 'Onboarding' && (
                   <span style={{ 
                     padding: '0.5rem 1rem', 
@@ -2803,7 +2803,7 @@ const ProjectDetail: React.FC = () => {
               {tasks.filter((t) => t.type === 'Onboarding' && t.isCompleted && t.submissionData).length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                   <FaFileAlt style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
-                  <p>No onboarding information submitted yet.</p>
+                  <p>No Branding Documents submitted yet.</p>
                   {project?.stage === 'Onboarding' ? (
                     <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#94a3b8' }}>
                       Submit information in the Tasks tab to see it here.

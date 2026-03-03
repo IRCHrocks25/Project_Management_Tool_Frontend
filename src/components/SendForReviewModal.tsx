@@ -26,7 +26,7 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
   taskDeliverableId,
 }) => {
   const [fileLink, setFileLink] = useState('');
-  const [linkType, setLinkType] = useState<'drive' | 'figma' | 'preview'>(isDevTask ? 'preview' : 'drive');
+  const [linkType, setLinkType] = useState<'drive' | 'figma' | 'preview' | 'generic'>(isDevTask ? 'preview' : 'drive');
   const [deliverableType, setDeliverableType] = useState('');
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string>('');
   const [error, setError] = useState('');
@@ -57,8 +57,12 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
     if (!fileLink.trim()) {
       if (isDevTask) {
         setError('Please enter a preview/deployment URL');
+      } else if (linkType === 'figma') {
+        setError('Please enter a Figma link');
+      } else if (linkType === 'drive') {
+        setError('Please enter a Google Drive link');
       } else {
-        setError(`Please enter a ${linkType === 'figma' ? 'Figma' : 'Google Drive'} link`);
+        setError('Please enter a valid link');
       }
       return;
     }
@@ -85,6 +89,14 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
     } else if (linkType === 'figma') {
       if (!fileLink.includes('figma.com')) {
         setError('Please enter a valid Figma link');
+        return;
+      }
+    } else if (linkType === 'generic') {
+      // Accept any valid URL
+      try {
+        new URL(fileLink);
+      } catch {
+        setError('Please enter a valid URL');
         return;
       }
     }
@@ -208,49 +220,82 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
             )}
           </div>
 
-          {(isDesignTask || isDevTask) && (
-            <div className="form-group-review">
-              <label>
-                {isDevTask ? (
-                  <FaGlobe className="label-icon" />
-                ) : (
-                  <FaFigma className="label-icon" />
-                )}
-                Link Type
-              </label>
-              <div className="link-type-selector">
-                {isDevTask ? (
-                  <div className="link-type-info" style={{ padding: '0.75rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 600 }}>
-                    <FaGlobe />
-                    <span>Preview/Deployment URL</span>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={`link-type-btn ${linkType === 'figma' ? 'active' : ''}`}
-                      onClick={() => {
-                        setLinkType('figma');
-                        setError('');
-                      }}
-                    >
-                      <FaFigma /> Figma
-                    </button>
-                    <button
-                      type="button"
-                      className={`link-type-btn ${linkType === 'drive' ? 'active' : ''}`}
-                      onClick={() => {
-                        setLinkType('drive');
-                        setError('');
-                      }}
-                    >
-                      <FaGoogleDrive /> Google Drive
-                    </button>
-                  </>
-                )}
-              </div>
+          <div className="form-group-review">
+            <label>
+              {isDevTask ? (
+                <FaGlobe className="label-icon" />
+              ) : isDesignTask ? (
+                <FaFigma className="label-icon" />
+              ) : (
+                <FaLink className="label-icon" />
+              )}
+              Link Type
+            </label>
+            <div className="link-type-selector">
+              {isDevTask ? (
+                <div className="link-type-info" style={{ padding: '0.75rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 600 }}>
+                  <FaGlobe />
+                  <span>Preview/Deployment URL</span>
+                </div>
+              ) : isDesignTask ? (
+                <>
+                  <button
+                    type="button"
+                    className={`link-type-btn ${linkType === 'figma' ? 'active' : ''}`}
+                    onClick={() => {
+                      setLinkType('figma');
+                      setError('');
+                    }}
+                  >
+                    <FaFigma /> Figma
+                  </button>
+                  <button
+                    type="button"
+                    className={`link-type-btn ${linkType === 'drive' ? 'active' : ''}`}
+                    onClick={() => {
+                      setLinkType('drive');
+                      setError('');
+                    }}
+                  >
+                    <FaGoogleDrive /> Google Drive
+                  </button>
+                  <button
+                    type="button"
+                    className={`link-type-btn ${linkType === 'generic' ? 'active' : ''}`}
+                    onClick={() => {
+                      setLinkType('generic');
+                      setError('');
+                    }}
+                  >
+                    <FaLink /> Other Link
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={`link-type-btn ${linkType === 'drive' ? 'active' : ''}`}
+                    onClick={() => {
+                      setLinkType('drive');
+                      setError('');
+                    }}
+                  >
+                    <FaGoogleDrive /> Google Drive
+                  </button>
+                  <button
+                    type="button"
+                    className={`link-type-btn ${linkType === 'generic' ? 'active' : ''}`}
+                    onClick={() => {
+                      setLinkType('generic');
+                      setError('');
+                    }}
+                  >
+                    <FaLink /> Other Link
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="form-group-review">
             <label>
@@ -258,10 +303,18 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
                 <FaGlobe className="label-icon" />
               ) : linkType === 'figma' ? (
                 <FaFigma className="label-icon" />
+              ) : linkType === 'generic' ? (
+                <FaLink className="label-icon" />
               ) : (
                 <FaGoogleDrive className="label-icon" />
               )}
-              {isDevTask ? 'Preview/Deployment URL' : linkType === 'figma' ? 'Figma' : 'Google Drive'} Link
+              {isDevTask
+                ? 'Preview/Deployment URL'
+                : linkType === 'figma'
+                ? 'Figma Link'
+                : linkType === 'drive'
+                ? 'Google Drive Link'
+                : 'Link'}
             </label>
             <div className="input-wrapper">
               <FaLink className="input-icon" />
@@ -273,11 +326,13 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
                   setError('');
                 }}
                 placeholder={
-                  isDevTask 
+                  isDevTask
                     ? 'https://example.com or https://preview.example.com'
-                    : linkType === 'figma' 
-                    ? 'https://www.figma.com/file/...' 
-                    : 'https://drive.google.com/file/d/...'
+                    : linkType === 'figma'
+                    ? 'https://www.figma.com/file/...'
+                    : linkType === 'drive'
+                    ? 'https://drive.google.com/file/d/...'
+                    : 'https://your-link-here.com/...'
                 }
                 className="drive-link-input"
                 required
@@ -286,10 +341,13 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
             </div>
             {error && <div className="error-message">{error}</div>}
             <p className="input-hint">
-              {isDevTask 
+              {isDevTask
                 ? 'Paste the preview or deployment URL for the landing page. This will be visible to the PM and added to client files.'
-                : `Paste the ${linkType === 'figma' ? 'Figma' : 'Google Drive'} link to your ${isDesignTask ? 'design' : 'copy'} files. This will be visible to the PM and added to client files.`
-              }
+                : linkType === 'figma'
+                ? `Paste the Figma link to your ${isDesignTask ? 'design' : 'asset'} files. This will be visible to the PM and added to client files.`
+                : linkType === 'drive'
+                ? `Paste the Google Drive link to your ${isDesignTask ? 'design' : 'copy'} files. This will be visible to the PM and added to client files.`
+                : 'Paste any valid URL (Loom, GitHub, Notion, etc.). This will be visible to the PM and added to client files.'}
             </p>
           </div>
 
