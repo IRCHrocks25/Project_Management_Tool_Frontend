@@ -999,6 +999,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const myTasks = tasks.filter((t: any) => t.assignedToId === user?.id);
   const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
   const isAIDeveloper = config.taskType === 'AI';
+  const isTeamLead = !!user?.isTeamLead;
 
   // Continue with the rest of the component JSX...
   // Due to size limits, I'll create a simplified version that includes the key parts
@@ -1991,7 +1992,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                     }}>
                                       {task.assignedToId === user?.id ? 'Assigned to you' : `Assigned to ${getUserName(task.assignedToId)}`}
                                     </div>
-                                    {!task.isCompleted && task.assignedToId === user?.id && (
+                                    {!task.isCompleted && (task.assignedToId === user?.id || isTeamLead) && (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                                         {task.status === 'Todo' && (
                                           <button

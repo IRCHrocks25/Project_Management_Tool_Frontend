@@ -28,6 +28,7 @@ export interface AuthResponse {
     name: string;
     email: string;
     role: string;
+    isTeamLead?: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -117,6 +118,24 @@ export const authService = {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
+    return response.data;
+  },
+
+  async setTeamLead(userId: string, isTeamLead: boolean): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/auth/users/${userId}/team-lead`,
+      { isTeamLead },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    // If current user was updated, refresh localStorage copy
+    const currentUser = this.getUser();
+    if (currentUser && currentUser.id === userId) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
     return response.data;
   },
 
