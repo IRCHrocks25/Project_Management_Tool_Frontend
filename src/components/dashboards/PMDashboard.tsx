@@ -86,7 +86,9 @@ const PMDashboard: React.FC = () => {
       // Load projects and tasks first (critical for UI) - stats can load after
       const [projectsData, allTasksData] = await Promise.all([
         projectService.getAll(),
-        taskService.getAll(), // Load all tasks for multi-column view (limited to 200 in backend)
+        // Load all tasks (no 200-task cap) so per-department project counts
+        // and multi-department views include older tasks as well
+        taskService.getAll(undefined, undefined, { all: true }),
       ]);
       
       // Set projects and tasks immediately for faster UI rendering

@@ -206,7 +206,8 @@ const DepartmentView: React.FC = () => {
         
         // Step 1: Fetch ALL tasks first (we need to filter by type)
         // This is still needed to find which projects have tasks of this type
-        const allTasksData = await taskService.getAll();
+        // Use all=true to avoid the default 200-task limit from the backend
+        const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
         
         // Step 2: Quickly filter tasks by type (early filtering)
         // Include completed tasks so they can appear in "Approved/Completed" column
@@ -327,7 +328,7 @@ const DepartmentView: React.FC = () => {
       
       // Reload tasks - optimized
       // Include completed tasks so they can appear in "Approved/Completed" column
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskType = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -608,6 +609,14 @@ const DepartmentView: React.FC = () => {
     return null;
   };
 
+  // Get current month in YYYY-MM format (for new projects created from Excel)
+  const getCurrentMonth = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
+
   // Map Excel status to task status
   const mapStatusToTaskStatus = (excelStatus: string): string => {
     const statusLower = excelStatus?.toLowerCase().trim() || '';
@@ -668,22 +677,46 @@ const DepartmentView: React.FC = () => {
         }
 
         const firstRow = jsonData[0] as any;
-        const hasClient = 'Client' in firstRow || 'client' in firstRow || 'CLIENT' in firstRow;
+        const hasClient =
+          'Clients' in firstRow ||
+          'clients' in firstRow ||
+          'CLIENTS' in firstRow ||
+          'Client' in firstRow ||
+          'client' in firstRow ||
+          'CLIENT' in firstRow;
 
         if (!hasClient) {
-          setImportError('Excel file must contain a "Client" column');
+          setImportError('Excel file must contain a "Clients" (or legacy "Client") column');
           return;
         }
 
         // Normalize column names and prepare preview
         const normalizedData = jsonData.map((row: any, index: number) => {
-          const client = row.Client || row.client || row.CLIENT || '';
+          // Support both legacy "Client" and new "Clients" column names
+          const client =
+            row.Clients ||
+            row.clients ||
+            row.CLIENTS ||
+            row.Client ||
+            row.client ||
+            row.CLIENT ||
+            '';
           const status = row.Status || row.status || row.STATUS || '';
           const systemStatus = row['System = Status'] || row['system = status'] || row['SYSTEM = STATUS'] || status;
+          const taskTitle =
+            row['Task Title'] ||
+            row['task title'] ||
+            row.TaskTitle ||
+            row.taskTitle ||
+            '';
           
           // Find matching project
           const project = findProjectByClientName(client);
           const taskStatus = mapStatusToTaskStatus(systemStatus || status);
+          
+          // Compute final task title (same logic as in handleBulkCreateTasks)
+          const finalTaskTitle = (taskTitle && String(taskTitle).trim()) || 
+            `${department} Task - ${client}`;
           
           return {
             rowIndex: index + 2, // Excel row number (1-indexed, +1 for header)
@@ -693,7 +726,8 @@ const DepartmentView: React.FC = () => {
             taskStatus,
             project: project ? { id: project.id, name: project.clientName } : null,
             matched: !!project,
-            error: !project ? 'Project not found' : null
+            error: !project ? 'Project not found (will be created automatically)' : null,
+            taskTitle: finalTaskTitle,
           };
         });
 
@@ -713,9 +747,11 @@ const DepartmentView: React.FC = () => {
       return;
     }
 
-    const validRows = excelPreview.filter((row: any) => row.matched && row.project);
+    // Process all rows that have a client name; if a matching project is not found,
+    // a new project will be created automatically during import.
+    const validRows = excelPreview.filter((row: any) => !!row.client);
     if (validRows.length === 0) {
-      setImportError('No valid projects found. Please ensure client names match existing projects.');
+      setImportError('No valid rows found. Please ensure the "Clients" column has values.');
       return;
     }
 
@@ -725,6 +761,9 @@ const DepartmentView: React.FC = () => {
     const taskType = getTaskTypeForDepartment(department || '');
     const results = { success: 0, failed: 0 };
     const errors: string[] = [];
+    const currentMonth = getCurrentMonth();
+    const currentUser = authService.getUser?.();
+    const pmId = currentUser?.id || '';
 
     try {
       // Process tasks in batches to avoid overwhelming the backend
@@ -734,18 +773,51 @@ const DepartmentView: React.FC = () => {
         
         await Promise.allSettled(
           batch.map(async (row: any) => {
-            if (!row.project || !row.project.id) {
-              errors.push(`Row ${row.rowIndex}: Missing project`);
-              results.failed++;
-              return;
-            }
-
             try {
+              // Ensure we have a project for this client - create one if it doesn't exist
+              let projectId = row.project?.id;
+              let projectName = row.project?.name;
+
+              if (!projectId) {
+                try {
+                  const createdProject = await projectService.create({
+                    clientName: row.client,
+                    clientType: 'Private',
+                    package: 'Standard',
+                    priority: 'Medium',
+                    targetCloseMonth: currentMonth,
+                    notes: '',
+                    pmId,
+                  });
+                  projectId = createdProject.id;
+                  projectName = createdProject.clientName;
+                  // Update row so subsequent logic can treat this as matched
+                  row.project = { id: projectId, name: projectName };
+                  row.matched = true;
+                  row.error = null;
+                } catch (projectErr: any) {
+                  const errorMsg = projectErr.response?.data?.message || projectErr.message || 'Unknown error';
+                  errors.push(`Row ${row.rowIndex} (${row.client}): Failed to create project - ${errorMsg}`);
+                  results.failed++;
+                  return;
+                }
+              }
+
+              if (!projectId) {
+                errors.push(`Row ${row.rowIndex} (${row.client}): Missing project`);
+                results.failed++;
+                return;
+              }
+
               // Create task - always start with 'Todo' status, then update if needed
               // The backend might not accept certain statuses on initial creation
+              const taskTitle =
+                (row.taskTitle && String(row.taskTitle).trim()) ||
+                `${department} Task - ${row.client}`;
+
               const taskData: any = {
-                projectId: row.project.id,
-                title: `${department} Task - ${row.client}`,
+                projectId,
+                title: taskTitle,
                 description: `Task created from Excel import. Original Status: ${row.status}`,
                 type: taskType,
                 status: 'Todo', // Always start with Todo
@@ -802,7 +874,7 @@ const DepartmentView: React.FC = () => {
 
       // Reload tasks
       // Include completed tasks so they can appear in "Approved/Completed" column
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskTypeForFilter = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -1002,7 +1074,7 @@ const DepartmentView: React.FC = () => {
       }
 
       // Reload tasks - optimized
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskTypeForFilter = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -1093,7 +1165,7 @@ const DepartmentView: React.FC = () => {
       });
 
       // Reload tasks - optimized
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskType = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -1279,7 +1351,7 @@ const DepartmentView: React.FC = () => {
       await taskService.updateStatus(taskId, newStatus, isCompleted);
       
       // Reload tasks to reflect changes
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskType = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -1346,7 +1418,7 @@ const DepartmentView: React.FC = () => {
 
       // Reload tasks - optimized
       // Include completed tasks so they can appear in "Approved/Completed" column
-      const allTasksData = await taskService.getAll();
+      const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
       const taskTypeForFilter = getTaskTypeForDepartment(department || '');
       const projectIdsSet = new Set(projects.map((p: any) => p.id));
       const departmentTasks = allTasksData.filter((t: any) => 
@@ -2044,7 +2116,7 @@ const DepartmentView: React.FC = () => {
                           // Update task status to "In Review" (valid enum value) - we track client validation separately in logs
                           await taskService.updateStatus(task.id, 'In Review', false);
                           // Reload tasks
-                          const allTasksData = await taskService.getAll();
+                          const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
                           const taskType = getTaskTypeForDepartment(department || '');
                           const projectIdsSet = new Set(projects.map((p: any) => p.id));
                           const departmentTasks = allTasksData.filter((t: any) => 
@@ -2149,7 +2221,7 @@ const DepartmentView: React.FC = () => {
                             }
                             await taskService.updateStatus(task.id, newStatus, false);
                             // Reload tasks
-                            const allTasksData = await taskService.getAll();
+                            const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
                             const taskType = getTaskTypeForDepartment(department || '');
                             const projectIdsSet = new Set(projects.map((p: any) => p.id));
                             const departmentTasks = allTasksData.filter((t: any) => 
@@ -2208,7 +2280,7 @@ const DepartmentView: React.FC = () => {
                         await taskService.updateStatus(task.id, newStatus, column.id === 'approved_completed');
                         
                         // Reload tasks - optimized
-                        const allTasksData = await taskService.getAll();
+                        const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
                         const taskType = getTaskTypeForDepartment(department || '');
                         const projectIdsSet = new Set(projects.map((p: any) => p.id));
                         const departmentTasks = allTasksData.filter((t: any) => 
@@ -3733,6 +3805,7 @@ const DepartmentView: React.FC = () => {
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Row</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Client</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Task Title</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Task Status</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Project</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Match</th>
@@ -3750,6 +3823,9 @@ const DepartmentView: React.FC = () => {
                             <td style={{ padding: '0.75rem', color: '#6b7280' }}>{row.rowIndex}</td>
                             <td style={{ padding: '0.75rem', color: '#111827' }}>{row.client}</td>
                             <td style={{ padding: '0.75rem', color: '#111827' }}>{row.status}</td>
+                            <td style={{ padding: '0.75rem', color: '#111827', fontWeight: 500 }}>
+                              {row.taskTitle || '-'}
+                            </td>
                             <td style={{ padding: '0.75rem', color: '#111827' }}>
                               <span style={{
                                 padding: '0.25rem 0.5rem',
@@ -3814,24 +3890,46 @@ const DepartmentView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleBulkCreateTasks}
-                disabled={uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0}
+        disabled={
+          uploadingTasks ||
+          excelPreview.length === 0 ||
+          excelPreview.filter((r: any) => !!r.client).length === 0
+        }
                 style={{
-                  background: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? '#cbd5e1' : '#667eea',
+          background:
+            uploadingTasks ||
+            excelPreview.length === 0 ||
+            excelPreview.filter((r: any) => !!r.client).length === 0
+              ? '#cbd5e1'
+              : '#667eea',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
                   fontSize: '0.9375rem',
-                  cursor: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? 'not-allowed' : 'pointer',
+          cursor:
+            uploadingTasks ||
+            excelPreview.length === 0 ||
+            excelPreview.filter((r: any) => !!r.client).length === 0
+              ? 'not-allowed'
+              : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   transition: 'all 0.2s',
-                  opacity: uploadingTasks || excelPreview.length === 0 || excelPreview.filter((r: any) => r.matched).length === 0 ? 0.5 : 1
+          opacity:
+            uploadingTasks ||
+            excelPreview.length === 0 ||
+            excelPreview.filter((r: any) => !!r.client).length === 0
+              ? 0.5
+              : 1
                 }}
               >
-                <FaUpload /> {uploadingTasks ? 'Creating Tasks...' : `Create ${excelPreview.filter((r: any) => r.matched).length} Task(s)`}
+        <FaUpload />{' '}
+        {uploadingTasks
+          ? 'Creating Tasks...'
+          : `Create ${excelPreview.filter((r: any) => !!r.client).length} Task(s)`}
               </button>
             </div>
           </div>

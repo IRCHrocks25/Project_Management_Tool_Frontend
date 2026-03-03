@@ -12,12 +12,20 @@ const getAuthHeaders = () => {
 };
 
 export const taskService = {
-  async getAll(projectId?: string, assignedToId?: string): Promise<any[]> {
+  async getAll(
+    projectId?: string,
+    assignedToId?: string,
+    options?: { all?: boolean; limit?: number }
+  ): Promise<any[]> {
     const params = new URLSearchParams();
     if (projectId) params.append('projectId', projectId);
     if (assignedToId) params.append('assignedToId', assignedToId);
-    
-    const response = await axios.get(`${API_URL}/tasks?${params.toString()}`, getAuthHeaders());
+    if (options?.all) params.append('all', 'true');
+    if (options?.limit !== undefined) params.append('limit', String(options.limit));
+
+    const queryString = params.toString();
+    const url = queryString ? `${API_URL}/tasks?${queryString}` : `${API_URL}/tasks`;
+    const response = await axios.get(url, getAuthHeaders());
     return response.data;
   },
 
