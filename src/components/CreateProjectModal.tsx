@@ -248,6 +248,46 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           return;
         }
 
+        // Helper function to normalize and validate client type
+        // Handles variations like: "Powered-Up", "Powered-up", "powered-up", "Powered Up", "powered up", etc.
+        const normalizeClientType = (input: string): string | null => {
+          if (!input || !input.trim()) return null;
+          
+          const normalized = input.trim();
+          const lowerNormalized = normalized.toLowerCase();
+          
+          // Map variations to valid client types (all lowercase for case-insensitive matching)
+          const clientTypeMap: Record<string, string> = {
+            'icon': 'ICON',
+            'star': 'STAR',
+            'katalyst': 'Katalyst',
+            'private': 'Private',
+            'premium': 'Premium',
+            'powered-up': 'Powered-Up', // Handles: "Powered-Up", "Powered-up", "powered-up", "POWERED-UP"
+            'powered up': 'Powered-Up', // Handles: "Powered Up", "powered up", "POWERED UP"
+            'poweredup': 'Powered-Up', // Handles: "PoweredUp", "poweredup", "POWEREDUP"
+          };
+          
+          // Check exact match first (case-insensitive - converts to lowercase before lookup)
+          const exactMatch = clientTypeMap[lowerNormalized];
+          if (exactMatch) return exactMatch;
+          
+          // Fallback: Check against valid client types (case-insensitive with flexible matching)
+          const validTypes = clientTypes.map(ct => ct.value);
+          const matchedType = validTypes.find(type => {
+            const typeLower = type.toLowerCase();
+            return (
+              typeLower === lowerNormalized || 
+              typeLower.replace(/-/g, ' ') === lowerNormalized ||
+              typeLower.replace(/-/g, '') === lowerNormalized ||
+              lowerNormalized.replace(/-/g, ' ') === typeLower ||
+              lowerNormalized.replace(/-/g, '') === typeLower
+            );
+          });
+          
+          return matchedType || null;
+        };
+
         // Normalize column names and prepare preview
         const normalizedData = jsonData.map((row: any) => {
           const client = row.Client || row.client || row.CLIENT || '';
@@ -255,14 +295,26 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           const notes = row.Notes || row.notes || row.NOTES || '';
           const clientTypeFromColumn = row['Client Type'] || row['client type'] || row.clientType || row['CLIENT TYPE'] || '';
           
-          // If Client Type column exists and contains "Premium" or "Powered-Up", use it
-          // Otherwise, infer from package
+          // Normalize and validate client type from column
           let clientType: string;
-          if (clientTypeFromColumn && (clientTypeFromColumn.trim() === 'Premium' || clientTypeFromColumn.trim() === 'Powered-Up')) {
-            clientType = clientTypeFromColumn.trim();
+          let clientTypeWarning: string | undefined;
+          const normalizedClientType = normalizeClientType(clientTypeFromColumn);
+          
+          if (normalizedClientType) {
+            // Use the normalized client type from the column
+            clientType = normalizedClientType;
+            // Show warning if the input was different from the normalized value
+            if (clientTypeFromColumn.trim() !== normalizedClientType) {
+              clientTypeWarning = `Normalized "${clientTypeFromColumn.trim()}" to "${normalizedClientType}"`;
+            }
           } else {
+            // Fall back to inferring from package
             const mapped = mapPackageToClientTypeAndPackage(packageValue);
             clientType = mapped.clientType;
+            // Show warning if client type column had a value but couldn't be normalized
+            if (clientTypeFromColumn && clientTypeFromColumn.trim()) {
+              clientTypeWarning = `Invalid client type "${clientTypeFromColumn.trim()}", inferred "${clientType}" from package`;
+            }
           }
           
           return {
@@ -271,6 +323,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             clientType,
             notes,
             originalPackage: packageValue,
+            clientTypeWarning,
           };
         });
 
@@ -307,11 +360,25 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         try {
           // If "Premium" or "Powered-Up" is the client type, ensure "Katalyst" is included for CRM assignment
           const clientType = row.clientType;
+          
+          // Debug logging
+          console.log(`Creating project for ${row.client}:`, {
+            clientType,
+            package: row.package,
+            hasClientType: !!clientType,
+            clientTypeValue: clientType
+          });
+          
+          // Validate clientType is set
+          if (!clientType) {
+            throw new Error('Client type is missing. Please ensure Client Type column is properly formatted.');
+          }
+          
           const secondaryClientTypes = (clientType === 'Premium' || clientType === 'Powered-Up')
             ? ['Katalyst'] 
             : undefined;
           
-          const createdProject = await projectService.create({
+          const projectData = {
             clientName: row.client,
             clientType: clientType,
             secondaryClientTypes: secondaryClientTypes, // Include Katalyst for Premium and Powered-Up
@@ -320,7 +387,12 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
             targetCloseMonth: currentMonth,
             notes: row.notes || '',
             pmId: user?.id || '',
-          });
+          };
+          
+          console.log(`Project data for ${row.client}:`, projectData);
+          
+          const createdProject = await projectService.create(projectData);
+          console.log(`Successfully created project for ${row.client}:`, createdProject);
           
           // If Premium or Powered-Up, automatically create a default CRM task
           if (clientType === 'Premium' || clientType === 'Powered-Up') {
@@ -333,7 +405,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                 status: 'Todo',
                 isCompleted: false,
               });
-            } catch (taskError) {
+              console.log(`Successfully created CRM task for ${row.client}`);
+            } catch (taskError: any) {
               console.error(`Failed to create default CRM task for ${row.client}:`, taskError);
               // Don't fail the project creation if task creation fails
             }
@@ -341,14 +414,27 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           
           results.success++;
         } catch (err: any) {
+          console.error(`Error creating project for ${row.client}:`, err);
           const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
-          errors.push(`${row.client}: ${errorMsg}`);
+          const fullError = `${row.client}: ${errorMsg}`;
+          console.error(`Full error details:`, {
+            client: row.client,
+            clientType: row.clientType,
+            error: errorMsg,
+            response: err.response?.data
+          });
+          errors.push(fullError);
           results.failed++;
         }
       }
 
+      // Show success or error message
       if (results.failed > 0) {
         setError(`${results.success} projects created successfully. ${results.failed} failed:\n${errors.join('\n')}`);
+      } else if (results.success > 0) {
+        setError(`✅ Successfully created ${results.success} project${results.success === 1 ? '' : 's'}!`);
+        // Clear success message after 3 seconds
+        setTimeout(() => setError(''), 3000);
       }
 
       // Always refresh dashboard data after bulk create, but don't auto-close the modal
@@ -358,6 +444,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         onSuccess();
       }
     } catch (err: any) {
+      console.error('Fatal error in bulk create:', err);
       setError('Failed to create projects: ' + (err.message || 'Unknown error'));
     } finally {
       setUploading(false);
@@ -498,7 +585,24 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
           </button>
         </div>
 
-        {error && <div className="error-message" style={{ whiteSpace: 'pre-wrap' }}>{error}</div>}
+        {error && (
+          <div 
+            className="error-message" 
+            style={{ 
+              whiteSpace: 'pre-wrap',
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              borderRadius: '0.375rem',
+              backgroundColor: error.startsWith('✅') ? '#d1fae5' : '#fee2e2',
+              color: error.startsWith('✅') ? '#065f46' : '#991b1b',
+              border: `1px solid ${error.startsWith('✅') ? '#86efac' : '#fecaca'}`,
+              fontSize: '0.875rem',
+              fontWeight: 500
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         {uploadMode === 'excel' ? (
           <div className="create-project-form" style={{ padding: '1rem' }}>
@@ -548,7 +652,23 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                         <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.75rem' }}>{row.client}</td>
                           <td style={{ padding: '0.75rem' }}>{row.package}</td>
-                          <td style={{ padding: '0.75rem' }}>{row.clientType}</td>
+                          <td style={{ padding: '0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span>{row.clientType}</span>
+                              {row.clientTypeWarning && (
+                                <span 
+                                  style={{ 
+                                    fontSize: '0.75rem', 
+                                    color: '#f59e0b',
+                                    fontStyle: 'italic'
+                                  }}
+                                  title={row.clientTypeWarning}
+                                >
+                                  ⚠️ {row.clientTypeWarning}
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td style={{ padding: '0.75rem', color: '#64748b' }}>{row.notes || '-'}</td>
                         </tr>
                       ))}
