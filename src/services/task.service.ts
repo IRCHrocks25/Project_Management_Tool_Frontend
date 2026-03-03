@@ -43,6 +43,15 @@ export const taskService = {
     return response.data;
   },
 
+  async assignMultiple(id: string, userIds: string[]): Promise<any> {
+    const response = await axios.patch(
+      `${API_URL}/tasks/${id}/assign`,
+      { userIds },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
   async create(createTaskDto: any): Promise<any> {
     const response = await axios.post(
       `${API_URL}/tasks`,

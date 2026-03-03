@@ -163,6 +163,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     links: ''
   });
 
+  // Assign task state (for team leads)
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningTask, setAssigningTask] = useState<any>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
+
   // Department menu items
   const departmentMenuItems = [
     { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
@@ -507,6 +513,59 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     } finally {
       setUpdatingTask(null);
     }
+  };
+
+  const handleOpenAssignModal = (task: any) => {
+    setAssigningTask(task);
+    // Initialize with existing assignees if any
+    const existingAssignees: string[] = [];
+    if (task.assignees && task.assignees.length > 0) {
+      existingAssignees.push(...task.assignees.map((a: any) => a.userId || a.user?.id));
+    } else if (task.assignedToId) {
+      // Fallback to legacy assignedToId
+      existingAssignees.push(task.assignedToId);
+    }
+    setAssignUserIds(existingAssignees);
+    setShowAssignModal(true);
+  };
+
+  const handleAssignTask = async () => {
+    if (!assigningTask || assignUserIds.length === 0) {
+      alert('Please select at least one team member to assign this task to.');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      setUpdatingTask(assigningTask.id);
+      await taskService.assignMultiple(assigningTask.id, assignUserIds);
+      await loadData();
+      setShowAssignModal(false);
+      setAssigningTask(null);
+      setAssignUserIds([]);
+      alert(`Task assigned to ${assignUserIds.length} team member(s) successfully!`);
+    } catch (error) {
+      console.error('Failed to assign task:', error);
+      alert('Failed to assign task. Please try again.');
+    } finally {
+      setUpdatingTask(null);
+      setAssigning(false);
+    }
+  };
+
+  const toggleAssignee = (userId: string) => {
+    setAssignUserIds(prev => {
+      if (prev.includes(userId)) {
+        return prev.filter(id => id !== userId);
+      } else {
+        return [...prev, userId];
+      }
+    });
+  };
+
+  // Filter users by the same role/department
+  const getDepartmentUsers = () => {
+    return users.filter((u: any) => u.role === role);
   };
 
 
@@ -996,7 +1055,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     );
   }
 
-  const myTasks = tasks.filter((t: any) => t.assignedToId === user?.id);
+  const myTasks = tasks.filter((t: any) => {
+    const assignees = t.assignees || [];
+    const assigneeIds = assignees.length > 0 
+      ? assignees.map((a: any) => a.userId || a.user?.id)
+      : (t.assignedToId ? [t.assignedToId] : []);
+    return assigneeIds.includes(user?.id || '');
+  });
   const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
   const isAIDeveloper = config.taskType === 'AI';
   const isTeamLead = !!user?.isTeamLead;
@@ -1928,11 +1993,30 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                   gap: '1rem',
                                   fontSize: '0.75rem',
                                   color: '#64748b',
-                                  marginBottom: '0.5rem'
+                                  marginBottom: '0.5rem',
+                                  flexWrap: 'wrap'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
                                     <FaUser style={{ fontSize: '0.75rem' }} />
-                                    <span>{task.assignedToId ? getUserName(task.assignedToId) : 'Unassigned'}</span>
+                                    {(() => {
+                                      const assignees = task.assignees || [];
+                                      const assigneeIds = assignees.length > 0 
+                                        ? assignees.map((a: any) => a.userId || a.user?.id)
+                                        : (task.assignedToId ? [task.assignedToId] : []);
+                                      
+                                      if (assigneeIds.length === 0) {
+                                        return <span>Unassigned</span>;
+                                      } else if (assigneeIds.length === 1) {
+                                        return <span>{getUserName(assigneeIds[0])}</span>;
+                                      } else {
+                                        return (
+                                          <span>
+                                            {assigneeIds.slice(0, 2).map((id: string) => getUserName(id)).join(', ')}
+                                            {assigneeIds.length > 2 && ` +${assigneeIds.length - 2} more`}
+                                          </span>
+                                        );
+                                      }
+                                    })()}
                                   </div>
                                   {task.dueDate && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -1941,58 +2025,152 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                     </div>
                                   )}
                                 </div>
-                                {!task.assignedToId && (
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        await handleClaimTask(task.id);
-                                      } catch (error) {
-                                        console.error('Failed to claim task:', error);
-                                      }
-                                    }}
-                                    disabled={updatingTask === task.id}
-                                    style={{
-                                      width: '100%',
-                                      padding: '0.5rem',
-                                      border: 'none',
-                                      borderRadius: '0.375rem',
-                                      background: '#10b981',
-                                      color: 'white',
-                                      cursor: 'pointer',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 500,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: '0.5rem'
-                                    }}
-                                  >
-                                    {updatingTask === task.id ? (
-                                      <FaSpinner className="spinner" />
-                                    ) : (
-                                      <>
-                                        <FaHandPaper /> Claim Task
-                                      </>
+                                {(() => {
+                                  const assignees = task.assignees || [];
+                                  const assigneeIds = assignees.length > 0 
+                                    ? assignees.map((a: any) => a.userId || a.user?.id)
+                                    : (task.assignedToId ? [task.assignedToId] : []);
+                                  return assigneeIds.length === 0;
+                                })() && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          await handleClaimTask(task.id);
+                                        } catch (error) {
+                                          console.error('Failed to claim task:', error);
+                                        }
+                                      }}
+                                      disabled={updatingTask === task.id}
+                                      style={{
+                                        width: '100%',
+                                        padding: '0.5rem',
+                                        border: 'none',
+                                        borderRadius: '0.375rem',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
+                                      }}
+                                    >
+                                      {updatingTask === task.id ? (
+                                        <FaSpinner className="spinner" />
+                                      ) : (
+                                        <>
+                                          <FaHandPaper /> Claim Task
+                                        </>
+                                      )}
+                                    </button>
+                                    {isTeamLead && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenAssignModal(task);
+                                        }}
+                                        disabled={updatingTask === task.id}
+                                        style={{
+                                          width: '100%',
+                                          padding: '0.5rem',
+                                          border: `1px solid ${color}`,
+                                          borderRadius: '0.375rem',
+                                          background: 'transparent',
+                                          color: color,
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '0.5rem'
+                                        }}
+                                      >
+                                        <FaUser /> Assign to Team Member
+                                      </button>
                                     )}
-                                  </button>
+                                  </div>
                                 )}
                                 {task.assignedToId && (
                                   <>
-                                    <div style={{
-                                      width: '100%',
-                                      padding: '0.5rem',
-                                      border: '1px solid #e2e8f0',
-                                      borderRadius: '0.375rem',
-                                      fontSize: '0.75rem',
-                                      color: '#64748b',
-                                      textAlign: 'center',
-                                      background: task.assignedToId === user?.id ? '#d1fae5' : '#f3f4f6',
-                                      marginBottom: '0.5rem'
-                                    }}>
-                                      {task.assignedToId === user?.id ? 'Assigned to you' : `Assigned to ${getUserName(task.assignedToId)}`}
-                                    </div>
-                                    {!task.isCompleted && (task.assignedToId === user?.id || isTeamLead) && (
+                                    {(() => {
+                                      const assignees = task.assignees || [];
+                                      const assigneeIds = assignees.length > 0 
+                                        ? assignees.map((a: any) => a.userId || a.user?.id)
+                                        : (task.assignedToId ? [task.assignedToId] : []);
+                                      const isAssignedToMe = assigneeIds.includes(user?.id || '');
+                                      const displayText = assigneeIds.length === 0 
+                                        ? 'Unassigned'
+                                        : assigneeIds.length === 1
+                                        ? (isAssignedToMe ? 'Assigned to you' : `Assigned to ${getUserName(assigneeIds[0])}`)
+                                        : isAssignedToMe
+                                        ? `Assigned to you + ${assigneeIds.length - 1} other${assigneeIds.length > 2 ? 's' : ''}`
+                                        : `Assigned to ${assigneeIds.length} team member${assigneeIds.length > 1 ? 's' : ''}`;
+                                      
+                                      return (
+                                        <div style={{
+                                          width: '100%',
+                                          padding: '0.35rem 0.75rem',
+                                          borderRadius: '999px',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          color: isAssignedToMe ? '#047857' : '#4b5563',
+                                          textAlign: 'center',
+                                          background: isAssignedToMe ? '#ecfdf5' : '#f3f4f6',
+                                          marginBottom: '0.5rem',
+                                          borderLeft: isAssignedToMe ? '4px solid #10b981' : '4px solid #e5e7eb',
+                                          boxShadow: '0 0 0 1px rgba(148, 163, 184, 0.15)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          gap: '0.5rem'
+                                        }}>
+                                          <span style={{ flex: 1, textAlign: 'left' }}>
+                                            {displayText}
+                                            {assigneeIds.length > 1 && !isAssignedToMe && (
+                                              <span style={{ fontSize: '0.625rem', opacity: 0.7, display: 'block', marginTop: '0.125rem' }}>
+                                                {assigneeIds.slice(0, 2).map((id: string) => getUserName(id)).join(', ')}
+                                                {assigneeIds.length > 2 && ` +${assigneeIds.length - 2} more`}
+                                              </span>
+                                            )}
+                                          </span>
+                                          {isTeamLead && !task.isCompleted && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenAssignModal(task);
+                                              }}
+                                              style={{
+                                                padding: '0.25rem 0.5rem',
+                                                border: `1px solid ${color}`,
+                                                borderRadius: '0.25rem',
+                                                background: 'transparent',
+                                                color: color,
+                                                cursor: 'pointer',
+                                                fontSize: '0.625rem',
+                                                fontWeight: 600,
+                                                whiteSpace: 'nowrap'
+                                              }}
+                                              title="Update members for this task"
+                                            >
+                                              {assigneeIds.length > 0 ? 'Update Members' : 'Assign Members'}
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                    {(() => {
+                                      const assignees = task.assignees || [];
+                                      const assigneeIds = assignees.length > 0 
+                                        ? assignees.map((a: any) => a.userId || a.user?.id)
+                                        : (task.assignedToId ? [task.assignedToId] : []);
+                                      const isAssignedToMe = assigneeIds.includes(user?.id || '');
+                                      return !task.isCompleted && (isAssignedToMe || isTeamLead);
+                                    })() && (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                                         {task.status === 'Todo' && (
                                           <button
@@ -2022,14 +2200,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                         )}
                                         {(task.status === 'In Progress' || (hasRevisionDeliverables(project || {}) && task.status === 'In Review')) && (
                                           <>
+                                            {/* Primary review action */}
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (isAIDeveloper) {
-                                                  handleOpenForwardModal(task);
-                                                } else {
-                                                  handleSendForReview(task);
-                                                }
+                                                handleSendForReview(task);
                                               }}
                                               disabled={updatingTask === task.id}
                                               style={{
@@ -2050,14 +2225,44 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                             >
                                               {updatingTask === task.id ? (
                                                 <FaSpinner className="spinner" />
-                                              ) : isAIDeveloper ? (
-                                                'Forward to Department'
                                               ) : hasRevisionDeliverables(project || {}) ? (
                                                 'Resubmit'
                                               ) : (
                                                 'Send for Review'
                                               )}
                                             </button>
+
+                                            {/* For AI Developer only: extra option to forward instead of just review */}
+                                            {isAIDeveloper && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleOpenForwardModal(task);
+                                                }}
+                                                disabled={updatingTask === task.id}
+                                                style={{
+                                                  width: '100%',
+                                                  padding: '0.5rem',
+                                                  border: 'none',
+                                                  borderRadius: '0.375rem',
+                                                  background: '#4f46e5',
+                                                  color: 'white',
+                                                  cursor: 'pointer',
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 500,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  gap: '0.5rem'
+                                                }}
+                                              >
+                                                {updatingTask === task.id ? (
+                                                  <FaSpinner className="spinner" />
+                                                ) : (
+                                                  'Forward to Department'
+                                                )}
+                                              </button>
+                                            )}
                                             {!hasRevisionDeliverables(project || {}) && !linkedOrigin && (
                                               <button
                                                 onClick={(e) => {
@@ -3333,6 +3538,253 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                   <>
                     <FaSave />
                     Update Task
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Task Modal - for team leads */}
+      {showAssignModal && assigningTask && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '2rem'
+          }}
+          onClick={() => {
+            if (!assigning) {
+              setShowAssignModal(false);
+              setAssigningTask(null);
+              setAssignUserIds([]);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    color: '#111827'
+                  }}
+                >
+                  {assigningTask.assignees?.length > 0 || assigningTask.assignedToId
+                    ? 'Update Task Members'
+                    : 'Assign Task Members'}
+                </h2>
+                <p
+                  style={{
+                    margin: '0.25rem 0 0 0',
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
+                  }}
+                >
+                  Select one or more team members from your department to assign this task to.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (assigning) return;
+                  setShowAssignModal(false);
+                  setAssigningTask(null);
+                  setAssignUserIds([]);
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: assigning ? 'not-allowed' : 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '999px',
+                  color: '#6b7280'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '1.75rem 2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                overflowY: 'auto'
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: '#eff6ff',
+                  borderRadius: '10px',
+                  border: '1px solid #bfdbfe',
+                  fontSize: '0.875rem',
+                  color: '#1d4ed8'
+                }}
+              >
+                <strong>Task:</strong> {assigningTask.title}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontSize: '0.9375rem'
+                  }}
+                >
+                  Assign to Team Members * (Select multiple)
+                </label>
+                <div style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  padding: '0.75rem',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  background: '#ffffff'
+                }}>
+                  {getDepartmentUsers().length === 0 ? (
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                      No team members found in your department.
+                    </p>
+                  ) : (
+                    getDepartmentUsers().map((teamMember: any) => (
+                      <label
+                        key={teamMember.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.625rem',
+                          borderRadius: '6px',
+                          cursor: assigning ? 'not-allowed' : 'pointer',
+                          transition: 'background 0.2s',
+                          opacity: assigning ? 0.6 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!assigning) {
+                            e.currentTarget.style.background = '#f9fafb';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={assignUserIds.includes(teamMember.id)}
+                          onChange={() => toggleAssignee(teamMember.id)}
+                          disabled={assigning}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: assigning ? 'not-allowed' : 'pointer',
+                            accentColor: color
+                          }}
+                        />
+                        <span style={{ fontSize: '0.9375rem', color: '#374151', flex: 1 }}>
+                          {teamMember.name} {teamMember.id === user?.id && <span style={{ color: '#6b7280' }}>(You)</span>}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {assignUserIds.length > 0 && (
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                    {assignUserIds.length} team member{assignUserIds.length > 1 ? 's' : ''} selected
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (assigning) return;
+                  setShowAssignModal(false);
+                  setAssigningTask(null);
+                  setAssignUserIds([]);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  background: 'white',
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: assigning ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAssignTask}
+                disabled={assigning || assignUserIds.length === 0}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: assigning || assignUserIds.length === 0 ? '#9ca3af' : color,
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: assigning || assignUserIds.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {assigning ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <FaUser />
+                    {assignUserIds.length > 0 ? `Assign to ${assignUserIds.length} Member${assignUserIds.length > 1 ? 's' : ''}` : 'Assign Task'}
                   </>
                 )}
               </button>
