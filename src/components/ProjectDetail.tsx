@@ -2681,7 +2681,7 @@ const ProjectDetail: React.FC = () => {
             ) : (
               <div className="tasks-list premium-tasks">
                 {tasks
-                  .filter((task) => task.type === 'Onboarding')
+                  .filter((task) => task.type === 'Onboarding' || task.type === 'Intake')
                   .map((task) => (
                     <div key={task.id} className={`task-item-premium onboarding-task ${task.isCompleted ? 'completed' : ''}`}>
                       <button
@@ -2800,7 +2800,7 @@ const ProjectDetail: React.FC = () => {
                   </span>
                 )}
               </div>
-              {tasks.filter((t) => t.type === 'Onboarding' && t.isCompleted && t.submissionData).length === 0 ? (
+              {tasks.filter((t) => (t.type === 'Onboarding' || t.type === 'Intake') && t.isCompleted && t.submissionData).length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                   <FaFileAlt style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
                   <p>No Branding Documents submitted yet.</p>
@@ -2817,7 +2817,7 @@ const ProjectDetail: React.FC = () => {
               ) : (
                 <div className="onboarding-items">
                   {tasks
-                    .filter((t) => t.type === 'Onboarding' && t.isCompleted && t.submissionData)
+                    .filter((t) => (t.type === 'Onboarding' || t.type === 'Intake') && t.isCompleted && t.submissionData)
                     .map((task) => (
                       <div key={task.id} className="onboarding-item-card" style={{ padding: '1.5rem', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '1rem' }}>
                         <h4 style={{ marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: 600 }}>{task.title}</h4>
