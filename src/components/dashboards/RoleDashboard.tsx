@@ -230,7 +230,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       setLoading(true);
 
       const [allTasksData, allProjectsData] = await Promise.all([
-        taskService.getAll(),
+        taskService.getAll(undefined, undefined, { all: true }),
         projectService.getAll()
       ]);
 
