@@ -32,6 +32,8 @@ import { taskService } from '../services/task.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
+import EditTaskModal from './EditTaskModal';
+import TaskDetailSideModal from './TaskDetailSideModal';
 import './ProjectDetail.css';
 
 // Activity Log Kanban Component
@@ -212,6 +214,10 @@ const ActivityLogKanban: React.FC<{ activities: any[] }> = ({ activities }) => {
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const currentUser = authService.getUser();
+  const isPM = currentUser?.role === 'Project Manager';
+  const isTeamLead = !!currentUser?.isTeamLead;
+  const canAssignOwners = isPM || isTeamLead;
   const [project, setProject] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const tasksRef = useRef<any[]>([]);
@@ -257,6 +263,10 @@ const ProjectDetail: React.FC = () => {
   const [showAddTeamMemberModal, setShowAddTeamMemberModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [addingTeamMember, setAddingTeamMember] = useState(false);
+  const [showInlineEditTaskModal, setShowInlineEditTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<any | null>(null);
   const [deliverableTeamMembers, setDeliverableTeamMembers] = useState<Record<string, any[]>>({});
   const [showAddDeliverableTeamMemberModal, setShowAddDeliverableTeamMemberModal] = useState(false);
   const [selectedDeliverableForTeam, setSelectedDeliverableForTeam] = useState<string | null>(null);
@@ -267,9 +277,9 @@ const ProjectDetail: React.FC = () => {
   const [showAddTaskFromDeliverableModal, setShowAddTaskFromDeliverableModal] = useState(false);
   const [selectedDeliverableForTask, setSelectedDeliverableForTask] = useState<string | null>(null);
   const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
-  // Attachment state for "Add Task to Deliverable" modal
-  const [newTaskAttachmentType, setNewTaskAttachmentType] = useState<'none' | 'link' | 'file'>('none');
-  const [newTaskAttachmentUrl, setNewTaskAttachmentUrl] = useState('');
+  // Attachment state for "Add Task to Deliverable" modal - support multiple links and files
+  const [newTaskLinks, setNewTaskLinks] = useState<string[]>(['']);
+  const [newTaskFileUrls, setNewTaskFileUrls] = useState<string[]>([]);
   const [newTaskAttachmentUploading, setNewTaskAttachmentUploading] = useState(false);
   const [markTaskCompleteOnCreate, setMarkTaskCompleteOnCreate] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -1321,9 +1331,17 @@ const ProjectDetail: React.FC = () => {
         taskData.assignedToId = newTaskData.assignedToId;
       }
 
-      // If the user attached a link or uploaded file, include it on the task
-      if (newTaskAttachmentType !== 'none' && newTaskAttachmentUrl) {
-        taskData.fileUrl = newTaskAttachmentUrl;
+      // If the user attached links or uploaded files, include them on the task
+      const links = newTaskLinks.filter((link) => link.trim() !== '');
+      const allAttachmentUrls = [...links, ...newTaskFileUrls];
+      if (allAttachmentUrls.length > 0) {
+        // Append attachments block to description so all URLs are visible & clickable
+        const attachmentsBlock =
+          '\n\n--- Attachments ---\n' + allAttachmentUrls.join('\n');
+        taskData.description = (taskData.description || '') + attachmentsBlock;
+
+        // Keep first URL as primary fileUrl for backward compatibility
+        taskData.fileUrl = allAttachmentUrls[0];
       }
 
       await taskService.create(taskData);
@@ -1332,8 +1350,8 @@ const ProjectDetail: React.FC = () => {
       setShowAddTaskFromDeliverableModal(false);
       setSelectedDeliverableForTask(null);
       setNewTaskData({ department: '', notes: '', assignedToId: '' });
-      setNewTaskAttachmentType('none');
-      setNewTaskAttachmentUrl('');
+      setNewTaskLinks(['']);
+      setNewTaskFileUrls([]);
       setMarkTaskCompleteOnCreate(false);
     } catch (error: any) {
       console.error('Failed to create task:', error);
@@ -3550,8 +3568,8 @@ const ProjectDetail: React.FC = () => {
                               onClick={() => {
                                 setSelectedDeliverableForTask(selectedDeliverable.id);
                                 setNewTaskData({ department: '', notes: '', assignedToId: '' });
-                                setNewTaskAttachmentType('none');
-                                setNewTaskAttachmentUrl('');
+                                setNewTaskLinks(['']);
+                                setNewTaskFileUrls([]);
                                 setShowAddTaskFromDeliverableModal(true);
                               }}
                               style={{
@@ -3598,7 +3616,15 @@ const ProjectDetail: React.FC = () => {
                             
                             // Get task info for owner and date
                             const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
-                            const ownerName = link.assignedToName || relatedTask?.assignedTo?.name || 'Unassigned';
+                            const relatedAssignees = relatedTask?.assignees || [];
+                            const relatedAssigneeIds = relatedAssignees.length > 0
+                              ? relatedAssignees.map((a: any) => a.userId || a.user?.id)
+                              : (relatedTask?.assignedToId ? [relatedTask.assignedToId] : []);
+                            const primaryAssigneeId = relatedAssigneeIds[0] || '';
+                            const relatedOwnerName = primaryAssigneeId
+                              ? (allUsers.find((u: any) => u.id === primaryAssigneeId)?.name || 'Unassigned')
+                              : relatedTask?.assignedTo?.name;
+                            const ownerName = link.assignedToName || relatedOwnerName || 'Unassigned';
                             const displayDate = link.updatedAt || link.createdAt || relatedTask?.updatedAt || relatedTask?.createdAt;
                             const formattedDate = displayDate ? new Date(displayDate).toLocaleString('en-US', { 
                               month: 'short', 
@@ -3623,6 +3649,12 @@ const ProjectDetail: React.FC = () => {
                                 draggable={!link.url.startsWith('task-')}
                                 onDragStart={(e) => handleFileDragStart(e, link)}
                                 onDragEnd={handleFileDragEnd}
+                                onClick={() => {
+                                  if (relatedTask) {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }
+                                }}
                                 style={isInRevision ? {
                                   border: '2px solid #dc2626',
                                   borderLeft: '4px solid #dc2626',
@@ -3702,7 +3734,7 @@ const ProjectDetail: React.FC = () => {
                                     </a>
                                   )}
                                 </div>
-                                <div className="kanban-card-meta">
+                          <div className="kanban-card-meta">
                                   <div className="kanban-card-owner">
                                     <span className="kanban-meta-label">Owner:</span>
                                     <span className="kanban-meta-value">{ownerName}</span>
@@ -3801,6 +3833,40 @@ const ProjectDetail: React.FC = () => {
                                       </button>
                                     </div>
                                   )}
+
+                                  {canAssignOwners && link.taskId && (
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const relatedTaskForEdit = tasks.find((t: any) => t.id === link.taskId);
+                                          if (!relatedTaskForEdit) return;
+                                          setEditingTask(relatedTaskForEdit);
+                                          setShowInlineEditTaskModal(true);
+                                        }}
+                                        style={{
+                                          width: '100%',
+                                          padding: '0.35rem 0.5rem',
+                                          borderRadius: '6px',
+                                          border: '1px solid #e5e7eb',
+                                          background: '#f9fafb',
+                                          color: '#374151',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '0.375rem',
+                                          marginTop: '0.25rem'
+                                        }}
+                                      >
+                                        <FaEdit style={{ fontSize: '0.7rem' }} />
+                                        Edit Task
+                                      </button>
+                                    </div>
+                                  )}
+
                                   {formattedDate && (
                                     <div className="kanban-card-date" style={{ marginTop: '0.5rem' }}>
                                       <span className="kanban-meta-label">Date:</span>
@@ -4491,7 +4557,13 @@ const ProjectDetail: React.FC = () => {
                                   e.currentTarget.style.borderColor = '#e5e7eb';
                                 }}
                               >
-                                <div style={{ flex: 1, minWidth: 0 }}>
+                                <div 
+                                  style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setSelectedTaskDetail(task);
+                                    setShowTaskDetailModal(true);
+                                  }}
+                                >
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                                     <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {task.title}
@@ -4511,12 +4583,21 @@ const ProjectDetail: React.FC = () => {
                                     </span>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
-                                    {task.assignedTo && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
-                                        <FaUser style={{ fontSize: '0.625rem' }} />
-                                        <span>{task.assignedTo.name || 'Unassigned'}</span>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const assignees = task.assignees || [];
+                                      const assigneeIds = assignees.length > 0
+                                        ? assignees.map((a: any) => a.userId || a.user?.id)
+                                        : (task.assignedToId ? [task.assignedToId] : []);
+                                      if (assigneeIds.length === 0) return null;
+                                      const primaryId = assigneeIds[0];
+                                      const primaryName = (allUsers.find((u: any) => u.id === primaryId)?.name) || task.assignedTo?.name || 'Unassigned';
+                                      return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                          <FaUser style={{ fontSize: '0.625rem' }} />
+                                          <span>{primaryName}</span>
+                                        </div>
+                                      );
+                                    })()}
                                     {task.dueDate && (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
                                         <FaClock style={{ fontSize: '0.625rem' }} />
@@ -5401,6 +5482,51 @@ const ProjectDetail: React.FC = () => {
         )}
       </div>
 
+      {/* Inline Edit Task Modal for PMs / Leads */}
+      {showInlineEditTaskModal && editingTask && canAssignOwners && (
+        <EditTaskModal
+          isOpen={showInlineEditTaskModal}
+          onClose={() => {
+            setShowInlineEditTaskModal(false);
+            setEditingTask(null);
+          }}
+          task={editingTask}
+          projectId={id!}
+          onUpdate={async () => {
+            await loadProject();
+            setShowInlineEditTaskModal(false);
+            setEditingTask(null);
+          }}
+          onDelete={async () => {
+            await loadProject();
+            setShowInlineEditTaskModal(false);
+            setEditingTask(null);
+          }}
+        />
+      )}
+
+      {/* Reusable Task Detail Side Modal for project tasks */}
+      <TaskDetailSideModal
+        isOpen={showTaskDetailModal}
+        task={selectedTaskDetail}
+        onClose={() => {
+          setShowTaskDetailModal(false);
+          setSelectedTaskDetail(null);
+        }}
+        allUsers={allUsers}
+        getProjectName={(projectId: string) => {
+          if (!project) return 'Unknown Project';
+          if (project.id === projectId) return project.clientName || 'Unknown Project';
+          // Fallback: look in relatedProjects if present
+          const related = (project.relatedProjects || []).find((p: any) => p.id === projectId);
+          return related?.clientName || project.clientName || 'Unknown Project';
+        }}
+        onEditTask={(task: any) => {
+          if (!canAssignOwners) return;
+          setEditingTask(task);
+          setShowInlineEditTaskModal(true);
+        }}
+      />
 
       {/* Add Team Member Modal */}
       {/* Add Deliverable Team Member Modal */}
@@ -5844,109 +5970,110 @@ const ProjectDetail: React.FC = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Attach (Optional)</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className={`btn-secondary ${newTaskAttachmentType === 'link' ? 'active' : ''}`}
-                    style={{
-                      flex: 1,
-                      background: newTaskAttachmentType === 'link' ? '#e0e7ff' : undefined,
-                    }}
-                    onClick={() => {
-                      setNewTaskAttachmentType(
-                        newTaskAttachmentType === 'link' ? 'none' : 'link'
-                      );
-                    }}
+                <label>Attach Links (Optional)</label>
+                {newTaskLinks.map((link, index) => (
+                  <div
+                    key={index}
+                    style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}
                   >
-                    Add Link
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn-secondary ${newTaskAttachmentType === 'file' ? 'active' : ''}`}
-                    style={{
-                      flex: 1,
-                      background: newTaskAttachmentType === 'file' ? '#e0f2fe' : undefined,
-                    }}
-                    onClick={() => {
-                      setNewTaskAttachmentType(
-                        newTaskAttachmentType === 'file' ? 'none' : 'file'
-                      );
-                    }}
-                  >
-                    Upload File
-                  </button>
-                </div>
-
-                {newTaskAttachmentType === 'link' && (
-                  <input
-                    type="url"
-                    className="form-input"
-                    value={newTaskAttachmentUrl}
-                    onChange={(e) => setNewTaskAttachmentUrl(e.target.value)}
-                    placeholder="Paste a URL (Google Drive, Loom, Figma, etc.)"
-                  />
-                )}
-
-                {newTaskAttachmentType === 'file' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <input
-                      type="file"
+                      type="url"
                       className="form-input"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-
-                        try {
-                          setNewTaskAttachmentUploading(true);
-                          // Reuse existing Cloudinary image upload helper
-                          const url = await handleImageUpload(file);
-                          setNewTaskAttachmentUrl(url);
-                        } catch (error) {
-                          console.error('Failed to upload attachment:', error);
-                          alert('Failed to upload file. Please try again.');
-                        } finally {
-                          setNewTaskAttachmentUploading(false);
-                        }
+                      value={link}
+                      onChange={(e) => {
+                        const updated = [...newTaskLinks];
+                        updated[index] = e.target.value;
+                        setNewTaskLinks(updated);
                       }}
+                      placeholder="Paste a URL (Google Drive, Loom, Figma, etc.)"
                     />
-                    {newTaskAttachmentUploading && (
-                      <small style={{ color: '#64748b' }}>Uploading to Cloudinary...</small>
-                    )}
-                    {!newTaskAttachmentUploading && newTaskAttachmentUrl && (
-                      <small style={{ color: '#16a34a' }}>
-                        File uploaded and optimized ✓
-                      </small>
+                    {newTaskLinks.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                          const updated = newTaskLinks.filter((_, i) => i !== index);
+                          setNewTaskLinks(updated.length ? updated : ['']);
+                        }}
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        Remove
+                      </button>
                     )}
                   </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setNewTaskLinks([...newTaskLinks, ''])}
+                  style={{ marginTop: '0.25rem' }}
+                >
+                  + Add Another Link
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label>Attach Files (Optional)</label>
+                <input
+                  type="file"
+                  className="form-input"
+                  multiple
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    try {
+                      setNewTaskAttachmentUploading(true);
+                      const uploadedUrls: string[] = [];
+                      for (const file of files) {
+                        const url = await handleImageUpload(file as File);
+                        uploadedUrls.push(url);
+                      }
+                      setNewTaskFileUrls((prev) => [...prev, ...uploadedUrls]);
+                    } catch (error) {
+                      console.error('Failed to upload attachments:', error);
+                      alert('Failed to upload file(s). Please try again.');
+                    } finally {
+                      setNewTaskAttachmentUploading(false);
+                    }
+                  }}
+                />
+                {newTaskAttachmentUploading && (
+                  <small style={{ color: '#64748b' }}>Uploading to Cloudinary...</small>
+                )}
+                {newTaskFileUrls.length > 0 && !newTaskAttachmentUploading && (
+                  <small style={{ color: '#16a34a', display: 'block', marginTop: '0.25rem' }}>
+                    {newTaskFileUrls.length} file(s) uploaded ✓
+                  </small>
                 )}
               </div>
-              <div className="form-group">
-                <label>Assign To (Optional)</label>
-                <select
-                  value={newTaskData.assignedToId}
-                  onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
-                  className="form-input"
-                >
-                  <option value="">-- Unassigned --</option>
-                  {allUsers
-                    .filter((user) => 
-                      (newTaskData.department === 'Design' && user.role === 'Designer') ||
-                      (newTaskData.department === 'Copy Writing' && user.role === 'Copy Writing') ||
-                      (newTaskData.department === 'Development' && user.role === 'Developer') ||
-                      (newTaskData.department === 'AI Team' && user.role === 'AI Developer') ||
-                      (newTaskData.department === 'Social Media Team' && user.role === 'Social Media') ||
-                      (newTaskData.department === 'CRM' && user.role === 'CRM') ||
-                      (newTaskData.department === 'SEO/GEO Team' && user.role === 'SEO/GEO') ||
-                      (newTaskData.department === 'Onboarding' && (user.role === 'Project Manager' || user.role === 'FOUNDER/CEO'))
-                    )
-                    .map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.role})
-                      </option>
-                    ))}
-                </select>
-              </div>
+              {canAssignOwners && (
+                <div className="form-group">
+                  <label>Assign To (Optional)</label>
+                  <select
+                    value={newTaskData.assignedToId}
+                    onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {allUsers
+                      .filter((user) => 
+                        (newTaskData.department === 'Design' && user.role === 'Designer') ||
+                        (newTaskData.department === 'Copy Writing' && user.role === 'Copy Writing') ||
+                        (newTaskData.department === 'Development' && user.role === 'Developer') ||
+                        (newTaskData.department === 'AI Team' && user.role === 'AI Developer') ||
+                        (newTaskData.department === 'Social Media Team' && user.role === 'Social Media') ||
+                        (newTaskData.department === 'CRM' && user.role === 'CRM') ||
+                        (newTaskData.department === 'SEO/GEO Team' && user.role === 'SEO/GEO') ||
+                        (newTaskData.department === 'Onboarding' && (user.role === 'Project Manager' || user.role === 'FOUNDER/CEO'))
+                      )
+                      .map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.role})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               
               {/* Quick Complete Option for PMs */}
               {authService.getUser()?.role === 'Project Manager' && (
@@ -5976,8 +6103,8 @@ const ProjectDetail: React.FC = () => {
                   setShowAddTaskFromDeliverableModal(false);
                   setSelectedDeliverableForTask(null);
                   setNewTaskData({ department: '', notes: '', assignedToId: '' });
-                  setNewTaskAttachmentType('none');
-                  setNewTaskAttachmentUrl('');
+                  setNewTaskLinks(['']);
+                  setNewTaskFileUrls([]);
                   setMarkTaskCompleteOnCreate(false);
                 }}
                 disabled={creatingTask}

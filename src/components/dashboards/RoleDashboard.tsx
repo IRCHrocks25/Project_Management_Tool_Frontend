@@ -23,9 +23,6 @@ import {
   FaSave,
   FaFileAlt,
   FaLink,
-  FaHistory,
-  FaCheckCircle,
-  FaExclamationCircle,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -174,11 +171,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [assigning, setAssigning] = useState(false);
   const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
 
+  // Bulk selection state for list view
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+
   // Task detail modal state
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any>(null);
-  const [taskHistory, setTaskHistory] = useState<any[]>([]);
-  const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
 
   // Department menu items
   const departmentMenuItems = [
@@ -234,25 +232,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAvatarDropdown]);
 
-  // Define close handler early so it can be used in useEffect
+  // Define close handler early so it can be used across handlers
   const handleCloseTaskDetail = useCallback(() => {
     setShowTaskDetailModal(false);
     setSelectedTaskDetail(null);
-    setTaskHistory([]);
   }, []);
-
-  // Handle Escape key to close task detail modal
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showTaskDetailModal) {
-        handleCloseTaskDetail();
-      }
-    };
-    if (showTaskDetailModal) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [showTaskDetailModal, handleCloseTaskDetail]);
 
   const loadData = async () => {
     if (!config) return; // Early return if config is invalid
@@ -599,23 +583,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return users.filter((u: any) => u.role === role);
   };
 
-  const handleOpenTaskDetail = async (task: any) => {
+  const handleOpenTaskDetail = (task: any) => {
     setSelectedTaskDetail(task);
     setShowTaskDetailModal(true);
-    setLoadingTaskHistory(true);
-    setTaskHistory([]);
-
-    try {
-      // Load deliverable history if task has a deliverableId
-      if (task.deliverableId) {
-        const history = await deliverableService.getHistory(task.deliverableId);
-        setTaskHistory(history || []);
-      }
-    } catch (error) {
-      console.error('Failed to load task history:', error);
-    } finally {
-      setLoadingTaskHistory(false);
-    }
   };
 
 
@@ -1668,7 +1638,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
@@ -1771,6 +1741,61 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               <FaPlus />
               Add Task
             </button>
+
+            {isTeamLead && viewMode === 'list' && (
+              <button
+                onClick={async () => {
+                  if (selectedTaskIds.length === 0) return;
+                  const confirmed = window.confirm(
+                    `Delete ${selectedTaskIds.length} selected task${selectedTaskIds.length > 1 ? 's' : ''}? This cannot be undone.`
+                  );
+                  if (!confirmed) return;
+
+                  try {
+                    // Mark as updating to block other actions while deleting
+                    setUpdatingTask('bulk-delete');
+
+                    // Delete all selected tasks in parallel so failures surface clearly
+                    await Promise.all(
+                      selectedTaskIds.map((id) =>
+                        taskService.delete(id).catch((error) => {
+                          console.error('Failed to delete task in bulk operation:', error);
+                          throw error;
+                        })
+                      )
+                    );
+
+                    await loadData();
+                    setSelectedTaskIds([]);
+                    alert(`Deleted ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''}.`);
+                  } catch (error) {
+                    console.error('Failed to bulk delete tasks:', error);
+                    alert('Failed to delete the selected tasks. Please check the console for details or try again.');
+                  } finally {
+                    setUpdatingTask(null);
+                  }
+                }}
+                disabled={selectedTaskIds.length === 0 || updatingTask === 'bulk-delete'}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: selectedTaskIds.length === 0 ? '#e5e7eb' : '#fee2e2',
+                  color: selectedTaskIds.length === 0 ? '#9ca3af' : '#b91c1c',
+                  cursor:
+                    selectedTaskIds.length === 0 || updatingTask === 'bulk-delete'
+                      ? 'not-allowed'
+                      : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {updatingTask === 'bulk-delete'
+                  ? 'Deleting selected...'
+                  : `Delete Selected (${selectedTaskIds.length})`}
+              </button>
+            )}
           </div>
         </div>
 
@@ -2488,6 +2513,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                    {isTeamLead && (
+                      <th style={{ padding: '1rem', textAlign: 'center', width: '40px' }}>
+                        <input
+                          type="checkbox"
+                          checked={getFilteredAndSortedTasks().length > 0 && selectedTaskIds.length === getFilteredAndSortedTasks().length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTaskIds(getFilteredAndSortedTasks().map((t: any) => t.id));
+                            } else {
+                              setSelectedTaskIds([]);
+                            }
+                          }}
+                        />
+                      </th>
+                    )}
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Task</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Project</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Status</th>
@@ -2498,8 +2538,24 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 </thead>
                 <tbody>
                   {getFilteredAndSortedTasks().map((task: any) => {
+                    const isSelected = selectedTaskIds.includes(task.id);
                     return (
                       <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        {isTeamLead && (
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTaskIds((prev) => [...prev, task.id]);
+                                } else {
+                                  setSelectedTaskIds((prev) => prev.filter((id) => id !== task.id));
+                                }
+                              }}
+                            />
+                          </td>
+                        )}
                         <td style={{ padding: '1rem' }}>
                           <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
                             {task.title}
@@ -2532,7 +2588,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                           {task.assignedToId ? getUserName(task.assignedToId) : 'Unassigned'}
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <button
                               onClick={() => navigate(`/project/${task.projectId}`)}
                               style={{
@@ -2563,6 +2619,37 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                             >
                               Edit
                             </button>
+                            {isTeamLead && (
+                              <button
+                                onClick={async () => {
+                                  const confirmed = window.confirm('Are you sure you want to delete this task? This cannot be undone.');
+                                  if (!confirmed) return;
+                                  try {
+                                    setUpdatingTask(task.id);
+                                    await taskService.delete(task.id);
+                                    await loadData();
+                                  } catch (error) {
+                                    console.error('Failed to delete task:', error);
+                                    alert('Failed to delete task. Please try again.');
+                                  } finally {
+                                    setUpdatingTask(null);
+                                  }
+                                }}
+                                disabled={updatingTask === task.id}
+                                style={{
+                                  padding: '0.375rem 0.75rem',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: '#fee2e2',
+                                  color: '#b91c1c',
+                                  cursor: updatingTask === task.id ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500
+                                }}
+                              >
+                                {updatingTask === task.id ? 'Deleting…' : 'Delete'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -4172,143 +4259,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               </div>
             )}
 
-            {/* Task History */}
-            <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <FaHistory style={{ fontSize: '0.75rem' }} />
-                Activity History
-              </div>
-              
-              {loadingTaskHistory ? (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '2rem',
-                  color: '#9ca3af'
-                }}>
-                  <FaSpinner className="spinner" style={{ marginRight: '0.5rem' }} />
-                  Loading history...
-                </div>
-              ) : taskHistory.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {taskHistory.map((historyItem: any, index: number) => (
-                    <div
-                      key={index}
-                      style={{
-                        padding: '0.75rem',
-                        background: 'white',
-                        borderRadius: '6px',
-                        border: '1px solid #e5e7eb',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '0.5rem'
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem'
-                        }}>
-                          {historyItem.action === 'Approved' && (
-                            <FaCheckCircle style={{ color: '#10b981', fontSize: '0.875rem' }} />
-                          )}
-                          {historyItem.action === 'Revision Requested' && (
-                            <FaExclamationCircle style={{ color: '#ef4444', fontSize: '0.875rem' }} />
-                          )}
-                          <span style={{
-                            fontWeight: 600,
-                            color: '#111827'
-                          }}>
-                            {historyItem.action || 'Updated'}
-                          </span>
-                        </div>
-                        {historyItem.createdAt && (
-                          <span style={{
-                            fontSize: '0.75rem',
-                            color: '#9ca3af'
-                          }}>
-                            {new Date(historyItem.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        )}
-                      </div>
-                      {historyItem.notes && (
-                        <div style={{
-                          color: '#6b7280',
-                          marginTop: '0.5rem',
-                          whiteSpace: 'pre-wrap',
-                          fontSize: '0.8125rem',
-                          lineHeight: '1.5'
-                        }}>
-                          {historyItem.notes}
-                        </div>
-                      )}
-                      {historyItem.fileUrl && (
-                        <a
-                          href={historyItem.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            color: '#2563eb',
-                            textDecoration: 'none',
-                            fontSize: '0.8125rem',
-                            marginTop: '0.5rem',
-                            wordBreak: 'break-all'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.textDecoration = 'underline';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.textDecoration = 'none';
-                          }}
-                        >
-                          <FaLink style={{ fontSize: '0.75rem', flexShrink: 0 }} />
-                          <span>{historyItem.fileUrl}</span>
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  padding: '1rem',
-                  textAlign: 'center',
-                  color: '#9ca3af',
-                  fontSize: '0.875rem'
-                }}>
-                  No activity history available
-                </div>
-              )}
-            </div>
+            {/* Task History now handled inside TaskDetailSideModal */}
 
             {/* Action Buttons */}
             <div style={{

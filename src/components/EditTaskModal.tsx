@@ -3,6 +3,7 @@ import { FaTimes, FaSave, FaTrash } from 'react-icons/fa';
 import { taskService } from '../services/task.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
+import { clientUpdatesService } from '../services/client-updates.service';
 import './EditTaskModal.css';
 
 interface EditTaskModalProps {
@@ -33,6 +34,32 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCustomDeliverableInput, setShowCustomDeliverableInput] = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [assignedToId, setAssignedToId] = useState<string>('');
+  const [department, setDepartment] = useState<string>('');
+  const [attachmentLinks, setAttachmentLinks] = useState<string[]>(['']);
+  const [attachmentFileUrls, setAttachmentFileUrls] = useState<string[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    // Reuse same backend/webp → Cloudinary pipeline as other components
+    const url = await clientUpdatesService.uploadImage(file, projectId);
+    return url;
+  };
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await authService.getAllUsers?.();
+        if (users) {
+          setAllUsers(users);
+        }
+      } catch (error) {
+        console.error('Failed to load users for edit task modal:', error);
+      }
+    };
+    loadUsers();
+  }, []);
 
   const loadDeliverables = async () => {
     try {
@@ -53,6 +80,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       });
       setShowCustomDeliverableInput(false);
       setCustomDeliverableName('');
+      setAssignedToId(task.assignedToId || '');
+      setDepartment(task.department || '');
+      setAttachmentLinks(['']);
+      setAttachmentFileUrls(task.fileUrl ? [task.fileUrl] : []);
       loadDeliverables();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,7 +135,6 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         await loadDeliverables();
       }
 
-      const user = authService.getUser();
       const updateData: any = {
         title: formData.title,
         description: formData.description,
@@ -118,13 +148,28 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         updateData.deliverableId = deliverableId;
       }
 
+      // Handle attachments: append links/files to description, keep first as fileUrl
+      const links = attachmentLinks.filter((link) => link.trim() !== '');
+      const allAttachmentUrls = [...links, ...attachmentFileUrls];
+      if (allAttachmentUrls.length > 0) {
+        const attachmentsBlock =
+          '\n\n--- Attachments ---\n' + allAttachmentUrls.join('\n');
+        updateData.description = (updateData.description || '') + attachmentsBlock;
+        updateData.fileUrl = allAttachmentUrls[0];
+      }
+
       await taskService.update(task.id, updateData);
-      
-      // If a deliverable is associated (especially custom), assign it to the current user if:
-      // 1. Task is not assigned, AND
-      // 2. User is not a Project Manager (PMs don't own tasks)
-      if (deliverableId && user?.id && !task.assignedToId && user.role !== 'Project Manager' && user.role !== 'FOUNDER/CEO') {
-        await taskService.assign(task.id, user.id);
+
+      // Handle owner assignment changes
+      if (assignedToId && assignedToId !== task.assignedToId) {
+        await taskService.assign(task.id, assignedToId);
+      } else if (!assignedToId && task.assignedToId) {
+        // Try to unassign if backend supports assigning to empty string
+        try {
+          await taskService.assign(task.id, '');
+        } catch (err) {
+          console.warn('Unassign not supported by backend:', err);
+        }
       }
       
       onUpdate();
@@ -264,6 +309,132 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
                     <FaTimes />
                   </button>
                 </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="department">Department (for owner filtering)</label>
+              <select
+                id="department"
+                value={department}
+                onChange={(e) => {
+                  setDepartment(e.target.value);
+                  // Clear owner if it no longer matches department
+                  setAssignedToId('');
+                }}
+              >
+                <option value="">All Departments</option>
+                <option value="Design">Design</option>
+                <option value="Copy Writing">Copy Writing</option>
+                <option value="Development">Development</option>
+                <option value="AI Team">AI Team</option>
+                <option value="Social Media Team">Social Media Team</option>
+                <option value="CRM">CRM</option>
+                <option value="SEO/GEO Team">SEO/GEO Team</option>
+                <option value="Onboarding">Onboarding</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="assignedTo">Owner (Assignee)</label>
+              <select
+                id="assignedTo"
+                name="assignedToId"
+                value={assignedToId}
+                onChange={(e) => setAssignedToId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {allUsers
+                  .filter((user: any) => {
+                    if (!department) return true;
+                    if (department === 'Design') return user.role === 'Designer';
+                    if (department === 'Copy Writing') return user.role === 'Copy Writing';
+                    if (department === 'Development') return user.role === 'Developer';
+                    if (department === 'AI Team') return user.role === 'AI Developer';
+                    if (department === 'Social Media Team') return user.role === 'Social Media';
+                    if (department === 'CRM') return user.role === 'CRM';
+                    if (department === 'SEO/GEO Team') return user.role === 'SEO/GEO';
+                    if (department === 'Onboarding') return user.role === 'Project Manager' || user.role === 'FOUNDER/CEO';
+                    return true;
+                  })
+                  .map((user: any) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Links (Optional)</label>
+              {attachmentLinks.map((link, index) => (
+                <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="url"
+                    className="form-input"
+                    value={link}
+                    onChange={(e) => {
+                      const updated = [...attachmentLinks];
+                      updated[index] = e.target.value;
+                      setAttachmentLinks(updated);
+                    }}
+                    placeholder="Paste a URL (Google Drive, Loom, Figma, etc.)"
+                  />
+                  {attachmentLinks.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        const updated = attachmentLinks.filter((_, i) => i !== index);
+                        setAttachmentLinks(updated.length ? updated : ['']);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setAttachmentLinks([...attachmentLinks, ''])}
+              >
+                + Add Another Link
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Files (Optional)</label>
+              <input
+                type="file"
+                multiple
+                className="form-input"
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (!files.length) return;
+                  try {
+                    setUploadingAttachments(true);
+                    const uploaded: string[] = [];
+                    for (const file of files) {
+                      const url = await handleImageUpload(file as File);
+                      uploaded.push(url);
+                    }
+                    setAttachmentFileUrls((prev) => [...prev, ...uploaded]);
+                  } catch (error) {
+                    console.error('Failed to upload attachments:', error);
+                    alert('Failed to upload file(s). Please try again.');
+                  } finally {
+                    setUploadingAttachments(false);
+                  }
+                }}
+              />
+              {uploadingAttachments && (
+                <small style={{ color: '#64748b' }}>Uploading attachments...</small>
+              )}
+              {attachmentFileUrls.length > 0 && !uploadingAttachments && (
+                <small style={{ color: '#16a34a' }}>
+                  {attachmentFileUrls.length} file(s) uploaded ✓
+                </small>
               )}
             </div>
 
