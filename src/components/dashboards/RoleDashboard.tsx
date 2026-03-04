@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaChevronDown,
@@ -21,6 +21,11 @@ import {
   FaSearch,
   FaEdit,
   FaSave,
+  FaFileAlt,
+  FaLink,
+  FaHistory,
+  FaCheckCircle,
+  FaExclamationCircle,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -169,6 +174,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [assigning, setAssigning] = useState(false);
   const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
 
+  // Task detail modal state
+  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<any>(null);
+  const [taskHistory, setTaskHistory] = useState<any[]>([]);
+  const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
+
   // Department menu items
   const departmentMenuItems = [
     { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
@@ -222,6 +233,26 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAvatarDropdown]);
+
+  // Define close handler early so it can be used in useEffect
+  const handleCloseTaskDetail = useCallback(() => {
+    setShowTaskDetailModal(false);
+    setSelectedTaskDetail(null);
+    setTaskHistory([]);
+  }, []);
+
+  // Handle Escape key to close task detail modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showTaskDetailModal) {
+        handleCloseTaskDetail();
+      }
+    };
+    if (showTaskDetailModal) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showTaskDetailModal, handleCloseTaskDetail]);
 
   const loadData = async () => {
     if (!config) return; // Early return if config is invalid
@@ -566,6 +597,25 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   // Filter users by the same role/department
   const getDepartmentUsers = () => {
     return users.filter((u: any) => u.role === role);
+  };
+
+  const handleOpenTaskDetail = async (task: any) => {
+    setSelectedTaskDetail(task);
+    setShowTaskDetailModal(true);
+    setLoadingTaskHistory(true);
+    setTaskHistory([]);
+
+    try {
+      // Load deliverable history if task has a deliverableId
+      if (task.deliverableId) {
+        const history = await deliverableService.getHistory(task.deliverableId);
+        setTaskHistory(history || []);
+      }
+    } catch (error) {
+      console.error('Failed to load task history:', error);
+    } finally {
+      setLoadingTaskHistory(false);
+    }
   };
 
 
@@ -1836,7 +1886,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                 return;
                               }
                               
-                              navigate(`/project/${task.projectId}`);
+                              // Open task detail modal instead of navigating
+                              handleOpenTaskDetail(task);
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.background = '#f8fafc';
@@ -3790,6 +3841,568 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Task Detail Side Modal */}
+      {showTaskDetailModal && selectedTaskDetail && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '500px',
+            background: 'white',
+            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+            zIndex: 1200,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'slideInRight 0.3s ease-out'
+          }}
+        >
+          <style>{`
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+              }
+              to {
+                transform: translateX(0);
+              }
+            }
+          `}</style>
+          
+          {/* Modal Header */}
+          <div style={{
+            padding: '1.5rem 2rem',
+            borderBottom: '1px solid #e5e7eb',
+            background: '#f9fafb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10
+          }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: '#111827',
+                margin: '0 0 0.25rem 0'
+              }}>
+                Task Details
+              </h2>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                margin: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {selectedTaskDetail.title}
+              </p>
+            </div>
+            <button
+              onClick={handleCloseTaskDetail}
+              style={{
+                padding: '0.5rem',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                color: '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e5e7eb';
+                e.currentTarget.style.color = '#111827';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }}
+            >
+              <FaTimes />
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '1.5rem 2rem'
+          }}>
+            {/* Task Status Badge */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <span style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                background: selectedTaskDetail.isCompleted ? '#d1fae5' : 
+                           selectedTaskDetail.status === 'In Review' ? '#fef3c7' : 
+                           selectedTaskDetail.status === 'In Progress' ? '#dbeafe' : '#f3f4f6',
+                color: selectedTaskDetail.isCompleted ? '#065f46' : 
+                       selectedTaskDetail.status === 'In Review' ? '#92400e' : 
+                       selectedTaskDetail.status === 'In Progress' ? '#1e40af' : '#374151',
+                display: 'inline-block'
+              }}>
+                {selectedTaskDetail.isCompleted ? 'Completed' : selectedTaskDetail.status}
+              </span>
+            </div>
+
+            {/* Project Info */}
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.5rem'
+              }}>
+                Project
+              </div>
+              <div style={{
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#111827'
+              }}>
+                {getProjectName(selectedTaskDetail.projectId)}
+              </div>
+            </div>
+
+            {/* Assignees */}
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <FaUser style={{ fontSize: '0.75rem' }} />
+                Assigned To
+              </div>
+              {(() => {
+                const assignees = selectedTaskDetail.assignees || [];
+                const assigneeIds = assignees.length > 0 
+                  ? assignees.map((a: any) => a.userId || a.user?.id)
+                  : (selectedTaskDetail.assignedToId ? [selectedTaskDetail.assignedToId] : []);
+                
+                if (assigneeIds.length === 0) {
+                  return (
+                    <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
+                      Unassigned
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {assigneeIds.map((id: string) => (
+                      <div key={id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: '#374151'
+                      }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          flexShrink: 0
+                        }}>
+                          {getUserName(id).charAt(0).toUpperCase()}
+                        </div>
+                        <span>{getUserName(id)}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Due Date */}
+            {selectedTaskDetail.dueDate && (
+              <div style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <FaClock style={{ fontSize: '0.75rem' }} />
+                  Due Date
+                </div>
+                <div style={{
+                  fontSize: '0.875rem',
+                  color: '#374151'
+                }}>
+                  {new Date(selectedTaskDetail.dueDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {selectedTaskDetail.description && (
+              <div style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <FaStickyNote style={{ fontSize: '0.75rem' }} />
+                  Description
+                </div>
+                <div style={{
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6'
+                }}>
+                  {selectedTaskDetail.description}
+                </div>
+              </div>
+            )}
+
+            {/* Files/Links */}
+            {selectedTaskDetail.fileUrl && (
+              <div style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: '#eff6ff',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#1d4ed8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <FaLink style={{ fontSize: '0.75rem' }} />
+                  Files & Links
+                </div>
+                <a
+                  href={selectedTaskDetail.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                    wordBreak: 'break-all'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}
+                >
+                  <FaFileAlt style={{ fontSize: '0.875rem', flexShrink: 0 }} />
+                  <span>{selectedTaskDetail.fileUrl}</span>
+                </a>
+              </div>
+            )}
+
+            {/* Task History */}
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <FaHistory style={{ fontSize: '0.75rem' }} />
+                Activity History
+              </div>
+              
+              {loadingTaskHistory ? (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '2rem',
+                  color: '#9ca3af'
+                }}>
+                  <FaSpinner className="spinner" style={{ marginRight: '0.5rem' }} />
+                  Loading history...
+                </div>
+              ) : taskHistory.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {taskHistory.map((historyItem: any, index: number) => (
+                    <div
+                      key={index}
+                      style={{
+                        padding: '0.75rem',
+                        background: 'white',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '0.5rem'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          {historyItem.action === 'Approved' && (
+                            <FaCheckCircle style={{ color: '#10b981', fontSize: '0.875rem' }} />
+                          )}
+                          {historyItem.action === 'Revision Requested' && (
+                            <FaExclamationCircle style={{ color: '#ef4444', fontSize: '0.875rem' }} />
+                          )}
+                          <span style={{
+                            fontWeight: 600,
+                            color: '#111827'
+                          }}>
+                            {historyItem.action || 'Updated'}
+                          </span>
+                        </div>
+                        {historyItem.createdAt && (
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: '#9ca3af'
+                          }}>
+                            {new Date(historyItem.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      {historyItem.notes && (
+                        <div style={{
+                          color: '#6b7280',
+                          marginTop: '0.5rem',
+                          whiteSpace: 'pre-wrap',
+                          fontSize: '0.8125rem',
+                          lineHeight: '1.5'
+                        }}>
+                          {historyItem.notes}
+                        </div>
+                      )}
+                      {historyItem.fileUrl && (
+                        <a
+                          href={historyItem.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#2563eb',
+                            textDecoration: 'none',
+                            fontSize: '0.8125rem',
+                            marginTop: '0.5rem',
+                            wordBreak: 'break-all'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.textDecoration = 'underline';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.textDecoration = 'none';
+                          }}
+                        >
+                          <FaLink style={{ fontSize: '0.75rem', flexShrink: 0 }} />
+                          <span>{historyItem.fileUrl}</span>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  padding: '1rem',
+                  textAlign: 'center',
+                  color: '#9ca3af',
+                  fontSize: '0.875rem'
+                }}>
+                  No activity history available
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              marginTop: '2rem',
+              paddingTop: '1.5rem',
+              borderTop: '1px solid #e5e7eb'
+            }}>
+              <button
+                onClick={() => {
+                  handleCloseTaskDetail();
+                  navigate(`/project/${selectedTaskDetail.projectId}`);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  border: `1px solid ${color}`,
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  color: color,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${color}15`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                View Full Project
+              </button>
+              <button
+                onClick={() => {
+                  handleCloseTaskDetail();
+                  handleEditTask(selectedTaskDetail);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: color,
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                <FaEdit />
+                Edit Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for task detail modal */}
+      {showTaskDetailModal && (
+        <div
+          onClick={handleCloseTaskDetail}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1199,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
         </div>
       )}
     </div>
