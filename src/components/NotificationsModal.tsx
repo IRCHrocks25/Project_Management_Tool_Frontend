@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
 import { authService } from '../services/auth.service';
@@ -15,6 +16,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const user = authService.getUser();
+  const navigate = useNavigate();
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -49,21 +51,6 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
     }
   }, [isOpen, loadNotifications, onUpdate]);
 
-  const handleMarkAsRead = async (id: string) => {
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-      );
-      // Trigger parent update to refresh unread count
-      if (onUpdate) {
-        onUpdate();
-      }
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-    }
-  };
-
   const handleMarkAllAsRead = async () => {
     try {
       // Immediately reset count to 0 for instant feedback
@@ -86,6 +73,35 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
           onUpdate();
         }, 500);
       }
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      // Optimistically mark as read in backend and local state
+      if (!notification.isRead) {
+        await notificationService.markAsRead(notification.id);
+        setNotifications(prev =>
+          prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
+        );
+        if (onUpdate) {
+          onUpdate();
+        }
+      }
+
+      // Navigate based on notification context
+      if (notification.projectId) {
+        // Project-related notifications → go to project detail
+        navigate(`/project/${notification.projectId}`);
+        onClose();
+        return;
+      }
+
+      // Fallback: go to main dashboard if we don't have a projectId
+      navigate('/dashboard');
+      onClose();
+    } catch (error) {
+      console.error('Failed to handle notification click:', error);
     }
   };
 
@@ -159,7 +175,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
                   <div
                     key={notification.id}
                     className={`notification-item ${notification.isRead ? 'read' : 'unread'}`}
-                    onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="notification-icon-wrapper">
                       {getNotificationIcon(notification.type)}
