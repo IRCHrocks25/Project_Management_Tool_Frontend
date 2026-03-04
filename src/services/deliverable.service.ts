@@ -77,5 +77,9 @@ export const deliverableService = {
   async removeTeamMember(deliverableId: string, userId: string): Promise<void> {
     await axios.delete(`${API_URL}/deliverables/${deliverableId}/team-members/${userId}`, getAuthHeaders());
   },
+
+  async delete(id: string): Promise<void> {
+    await axios.delete(`${API_URL}/deliverables/${id}`, getAuthHeaders());
+  },
 };
 

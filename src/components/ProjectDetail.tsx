@@ -1022,6 +1022,45 @@ const ProjectDetail: React.FC = () => {
     return deliverable.customType || deliverable.type;
   };
 
+  const handleDeleteCustomDeliverable = async (deliverableId: string) => {
+    if (!project) return;
+
+    const deliverable = project.deliverables?.find((d: any) => d.id === deliverableId);
+    if (!deliverable) return;
+
+    // Only allow deleting custom deliverables (type "Other" or has customType)
+    const isCustom = deliverable.type === 'Other' || !!deliverable.customType;
+    if (!isCustom) {
+      alert('Only custom deliverables can be deleted.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete custom deliverable "${getDeliverableDisplayName(deliverable)}"?\n\n` +
+      'This will remove the deliverable and its history. Tasks explicitly linked to it must be unlinked first.'
+    );
+    if (!confirmed) return;
+
+    try {
+      await deliverableService.delete(deliverableId);
+      // Reload project to refresh deliverables list
+      const updatedProject = await projectService.getOne(id!);
+      setProject(updatedProject);
+
+      // If the deleted deliverable was active, clear the active tab
+      if (activeDeliverableTab === deliverableId) {
+        setActiveDeliverableTab(
+          updatedProject.deliverables?.length ? updatedProject.deliverables[0].id : null
+        );
+      }
+
+      showToast('Custom deliverable deleted ✓');
+    } catch (error: any) {
+      console.error('Failed to delete custom deliverable:', error);
+      alert(error?.response?.data?.message || 'Failed to delete custom deliverable');
+    }
+  };
+
   const handleCreateCustomDeliverable = async () => {
     if (!newDeliverableName.trim() || !project) return;
 
@@ -2968,7 +3007,29 @@ const ProjectDetail: React.FC = () => {
                         }
                       }}
                     >
-                      {getDeliverableDisplayName(deliverable)}
+                      <span>{getDeliverableDisplayName(deliverable)}</span>
+                      {(deliverable.type === 'Other' || !!deliverable.customType) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCustomDeliverable(deliverable.id);
+                          }}
+                          style={{
+                            marginLeft: '0.5rem',
+                            fontSize: '0.7rem',
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '999px',
+                            border: 'none',
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            cursor: 'pointer',
+                          }}
+                          title="Delete custom deliverable"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </button>
                   ))}
                 </div>
