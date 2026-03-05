@@ -473,15 +473,26 @@ const AIDeveloperDashboard: React.FC = () => {
 
   // Get task status for Kanban columns
   const getTaskStatus = (task: any): string => {
+    // Completed always goes to Approved/Completed
     if (task.status === 'Completed' || task.isCompleted) {
       return 'approved_completed';
     }
+
+    const desc: string = task.description || '';
+
+    // Column markers in description (for In Review sub-states)
+    if (desc.includes('--- Column: Revision ---')) return 'revision';
+    if (desc.includes('--- Column: Elliot Review ---')) return 'elliot_review';
+    if (desc.includes('--- Column: QA Review ---')) return 'qa_before_client';
+    if (desc.includes('--- Column: Client Review ---')) return 'client_validation';
+    if (desc.includes('--- Column: For Approval ---')) return 'for_approval';
     
     if (task.assignedTo) {
       if (task.status === 'In Progress') {
         return 'owned_in_progress';
       }
       if (task.status === 'In Review') {
+        // In Review with no marker defaults to For Approval
         return 'for_approval';
       }
       if (task.status === 'Revision' || task.status === 'Needs Revision') {

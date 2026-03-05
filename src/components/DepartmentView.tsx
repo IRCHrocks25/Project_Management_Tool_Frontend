@@ -104,6 +104,17 @@ const DepartmentView: React.FC = () => {
   const [submittingClientValidationComment, setSubmittingClientValidationComment] = useState<Record<string, boolean>>({});
   const [clientValidationComments, setClientValidationComments] = useState<Record<string, ClientUpdateComment[]>>({});
   const [loadingClientValidationComments, setLoadingClientValidationComments] = useState<Record<string, boolean>>({});
+
+  // Status change modal state for task status dropdown (mirror ProjectDetail behavior)
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [statusChangeContext, setStatusChangeContext] = useState<{
+    taskId: string;
+    newStatus: string;
+    label: string;
+  } | null>(null);
+  const [statusChangeNotes, setStatusChangeNotes] = useState('');
+  const [statusChangeAttachment, setStatusChangeAttachment] = useState('');
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   
   // Notification modal state
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -113,6 +124,7 @@ const DepartmentView: React.FC = () => {
   // Task detail modal state
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any>(null);
+  const currentUser = authService.getUser?.();
 
   // Map department name to task type
   const getTaskTypeForDepartment = (dept: string): string => {
@@ -406,14 +418,52 @@ const DepartmentView: React.FC = () => {
     }
     
     // Standard status mapping for other departments
-    
-    // PRIORITY 1: Check for revision status/markers FIRST (revision takes highest priority)
-    // Revision status should override completed status
-    if (task.description && task.description.includes('--- Column: Revision ---')) {
-      return 'revision';
+
+    // FIRST: Try to derive the lane from the latest structured
+    // "--- Status Change --- / New Column: X" block in the description.
+    // This reflects the user's last explicit move regardless of raw enum.
+    if (task.description) {
+      try {
+        const desc: string = task.description;
+        const regex = /--- Status Change ---[\s\S]*?New Column:\s*(.+?)\s*(?:\r?\n|$)/g;
+        let match: RegExpExecArray | null;
+        let lastLabel: string | null = null;
+        // Walk all matches and keep the last one
+        while ((match = regex.exec(desc)) !== null) {
+          lastLabel = (match[1] || '').trim();
+        }
+
+        if (lastLabel) {
+          const labelToColumn: Record<string, string> = {
+            'Not Yet Started': 'not_started',
+            'Owned/In Progress': 'owned_in_progress',
+            'For Approval': 'for_approval',
+            'Revision': 'revision',
+            'Elliot Review': 'elliot_review',
+            'Approved/Completed': 'approved_completed',
+            'QA Before Sending to Client': 'qa_before_client',
+            'Client Validation': 'client_validation',
+          };
+          const colId = labelToColumn[lastLabel];
+          if (colId) {
+            return colId;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse status change blocks for task:', task.id, e);
+      }
     }
-    if (task.status === 'Revision' || task.status === 'Needs Revision') {
-      return 'revision';
+
+    // PRIORITY 1: Check for revision status/markers FIRST (revision takes highest priority)
+    // BUT: don't force "Revision" column when backend status is generic "In Review"
+    // In Review uses explicit column markers (For Approval / Elliot / QA / Client Validation)
+    if (task.status !== 'In Review') {
+      if (task.description && task.description.includes('--- Column: Revision ---')) {
+        return 'revision';
+      }
+      if (task.status === 'Revision' || task.status === 'Needs Revision') {
+        return 'revision';
+      }
     }
     
     // PRIORITY 2: Completed tasks automatically go to "Approved/Completed" column
@@ -433,8 +483,9 @@ const DepartmentView: React.FC = () => {
     // Check for column markers in description (regardless of assignment status)
     // This ensures tasks moved to specific columns appear in the correct column even if unassigned
     if (task.status === 'In Review' && task.description) {
-      if (task.description.includes('--- Column: Revision ---')) {
-        return 'revision';
+      // For In Review, let the *latest* explicit marker win; we prefer specific review lanes
+      if (task.description.includes('--- Column: For Approval ---')) {
+        return 'for_approval';
       }
       if (task.description.includes('--- Column: Elliot Review ---')) {
         return 'elliot_review';
@@ -445,11 +496,17 @@ const DepartmentView: React.FC = () => {
       if (task.description.includes('--- Column: Client Review ---')) {
         return 'client_validation';
       }
-      if (task.description.includes('--- Column: For Approval ---')) {
-        return 'for_approval';
+      if (task.description.includes('--- Column: Revision ---')) {
+        return 'revision';
       }
     }
     
+    // If task is in Blocked status (we label it as Client Validation in the UI),
+    // keep it in the Client Validation column, regardless of assignment.
+    if (task.status === 'Blocked') {
+      return 'client_validation';
+    }
+
     // Check if assigned
     if (task.assignedTo) {
       // Legacy status checks (for backward compatibility)
@@ -1361,11 +1418,223 @@ const DepartmentView: React.FC = () => {
     }
   };
 
-  // Handle task status change
-  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+  // Helper: log status change to task description + deliverable history (mirrors ProjectDetail behavior)
+  const logStatusChangeForTask = async (
+    task: any,
+    backendStatus: string,
+    columnId?: string,
+    extraNotes?: string,
+    extraAttachment?: string
+  ) => {
     try {
-      const isCompleted = newStatus === 'Completed';
-      await taskService.updateStatus(taskId, newStatus, isCompleted);
+      const project = projects.find((p: any) => p.id === task.projectId);
+      if (!project) return;
+
+      const deliverableId: string | undefined = task.deliverableId || undefined;
+      const fileUrl: string | undefined = task.fileUrl || undefined;
+
+      // 1) Append structured status-change block to description
+      const currentDesc: string = task.description || '';
+      let updatedDesc = currentDesc;
+
+      const statusLabelMap: Record<string, string> = {
+        not_started: 'Not Yet Started',
+        owned_in_progress: 'Owned/In Progress',
+        for_approval: 'For Approval',
+        revision: 'Revision',
+        elliot_review: 'Elliot Review',
+        approved_completed: 'Approved/Completed',
+        qa_before_client: 'QA Before Sending to Client',
+        client_validation: 'Client Validation',
+        Todo: 'Not Yet Started',
+        'In Progress': 'Owned/In Progress',
+        'In Review': 'For Approval',
+        Completed: 'Approved/Completed',
+        Blocked: 'Client Validation',
+      };
+
+      const key = columnId || backendStatus;
+      const targetLabel = statusLabelMap[key] || backendStatus;
+      const timestamp = new Date().toLocaleString();
+
+      let logBlock = `\n\n--- Status Change ---\nNew Column: ${targetLabel}\nBy: ${currentUser?.name || 'Unknown'}\nAt: ${timestamp}`;
+      if (extraNotes && extraNotes.trim()) {
+        logBlock += `\nNotes: ${extraNotes.trim()}`;
+      }
+      if (extraAttachment && extraAttachment.trim()) {
+        logBlock += `\nAttachment: ${extraAttachment.trim()}`;
+      }
+
+      updatedDesc += logBlock;
+
+      if (updatedDesc !== currentDesc) {
+        try {
+          await taskService.update(task.id, { description: updatedDesc });
+        } catch (descError) {
+          console.warn('Failed to update task description with status change log:', descError);
+        }
+      }
+
+      // 2) Also push an entry into deliverable history so Task Detail Activity History shows it
+      if (deliverableId && fileUrl) {
+        try {
+          // Map to deliverable status similar to ProjectDetail
+          let deliverableStatus =
+            project.deliverables?.find((d: any) => d.id === deliverableId)?.status || 'Not Started';
+
+          switch (columnId) {
+            case 'revision':
+              deliverableStatus = 'Revision';
+              break;
+            case 'elliot_review':
+              deliverableStatus = 'Ready for Review';
+              break;
+            case 'approved_completed':
+              deliverableStatus = 'Approved';
+              break;
+            case 'qa_before_client':
+              deliverableStatus = 'Ready for Review';
+              break;
+            case 'client_validation':
+              deliverableStatus = 'Client Review';
+              break;
+            case 'for_approval':
+              deliverableStatus = 'Ready for Review';
+              break;
+            default:
+              // For non-review moves, leave deliverable status as-is
+              break;
+          }
+
+          let details = '';
+          if (extraNotes && extraNotes.trim()) {
+            details += `Notes: ${extraNotes.trim()}`;
+          }
+          if (extraAttachment && extraAttachment.trim()) {
+            if (details) details += '\n';
+            details += `Attachment: ${extraAttachment.trim()}`;
+          }
+
+          let baseNote = `Status moved to "${targetLabel}" by ${currentUser?.name || 'Unknown'}.`;
+          if (details) {
+            baseNote += `\n${details}`;
+          }
+
+          await deliverableService.updateStatus(
+            deliverableId,
+            deliverableStatus,
+            baseNote,
+            fileUrl
+          );
+        } catch (historyError) {
+          console.warn('Failed to record deliverable history for department status change:', historyError);
+        }
+      }
+    } catch (e) {
+      console.warn('logStatusChangeForTask failed:', e);
+    }
+  };
+
+  // Handle task status change (list/table dropdown)
+  const handleTaskStatusChange = async (
+    taskId: string,
+    newStatus: string,
+    extraNotes?: string,
+    extraAttachment?: string
+  ) => {
+    try {
+      // Map UI statuses to backend enum-safe statuses
+      // Backend only accepts: 'Todo', 'In Progress', 'In Review', 'Completed', 'Blocked'
+      let backendStatus = newStatus;
+      switch (newStatus) {
+        case 'Revision':
+        case 'Elliot Review':
+        case 'QA Review':
+          backendStatus = 'In Review';
+          break;
+        default:
+          backendStatus = newStatus;
+      }
+
+      const isCompleted = backendStatus === 'Completed';
+      const task = tasks.find((t: any) => t.id === taskId);
+
+      // For non-CRM departments, keep column markers in sync with status changes
+      if (task && department !== 'CRM') {
+        const currentDesc: string = task.description || '';
+        // Remove any existing column markers (more lenient pattern – matches with or without leading newlines)
+        let cleanedDesc = currentDesc.replace(/--- Column: [^-]+ ---/g, '');
+
+        let columnMarker: string | null = null;
+        switch (newStatus) {
+          case 'In Review':
+            // Treat plain "In Review" from dropdown as "For Approval" column
+            columnMarker = '\n\n--- Column: For Approval ---';
+            break;
+          case 'Revision':
+            columnMarker = '\n\n--- Column: Revision ---';
+            break;
+          case 'Elliot Review':
+            columnMarker = '\n\n--- Column: Elliot Review ---';
+            break;
+          case 'QA Review':
+            columnMarker = '\n\n--- Column: QA Review ---';
+            break;
+          case 'Blocked':
+            // Blocked in department view corresponds to Client Validation column
+            columnMarker = '\n\n--- Column: Client Review ---';
+            break;
+          default:
+            // Todo, In Progress, Completed → clear markers (stay with cleanedDesc)
+            break;
+        }
+
+        const updatedDesc = columnMarker ? cleanedDesc + columnMarker : cleanedDesc;
+        if (updatedDesc !== currentDesc) {
+          try {
+            await taskService.update(task.id, { description: updatedDesc });
+          } catch (descError) {
+            console.warn('Failed to sync column marker for department status change:', descError);
+          }
+        }
+      }
+
+      await taskService.updateStatus(taskId, backendStatus, isCompleted);
+
+      // Log description + deliverable history similar to ProjectDetail
+      if (task) {
+        // Map plain enum to a pseudo column id for logging
+        let columnId: string | undefined;
+        switch (newStatus) {
+          case 'Todo':
+            columnId = 'not_started';
+            break;
+          case 'In Progress':
+            columnId = 'owned_in_progress';
+            break;
+          case 'In Review':
+            columnId = 'for_approval';
+            break;
+          case 'Revision':
+            columnId = 'revision';
+            break;
+          case 'Elliot Review':
+            columnId = 'elliot_review';
+            break;
+          case 'QA Review':
+            columnId = 'qa_before_client';
+            break;
+          case 'Completed':
+            columnId = 'approved_completed';
+            break;
+          case 'Blocked':
+            columnId = 'client_validation';
+            break;
+          default:
+            columnId = undefined;
+        }
+        await logStatusChangeForTask(task, newStatus, columnId, extraNotes, extraAttachment);
+      }
       
       // Reload tasks to reflect changes
       const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
@@ -2299,8 +2568,11 @@ const DepartmentView: React.FC = () => {
                             }
                           }
                         }
-                        
+
                         await taskService.updateStatus(task.id, newStatus, column.id === 'approved_completed');
+
+                        // Log status change & deliverable history (mirror ProjectDetail)
+                        await logStatusChangeForTask(task, newStatus, column.id);
                         
                         // Reload tasks - optimized
                         const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
@@ -2626,7 +2898,50 @@ const DepartmentView: React.FC = () => {
                                 </label>
                                 <select
                                   value={task.status || 'Todo'}
-                                  onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
+                              onChange={(e) => {
+                                const selectedStatus = e.target.value;
+
+                                // For CRM, keep simple behavior (no notes modal here)
+                                if (department === 'CRM') {
+                                  handleTaskStatusChange(task.id, selectedStatus);
+                                  return;
+                                }
+
+                                // For department boards, open notes modal for review/approval-style moves
+                                const modalStatuses = [
+                                  'In Review',      // For Approval
+                                  'Revision',       // Revision column
+                                  'Elliot Review',  // Elliot Review column
+                                  'QA Review',      // QA Before Sending to Client
+                                  'Completed',      // Approved/Completed
+                                  'Blocked',        // Client Validation
+                                ];
+
+                                if (modalStatuses.includes(selectedStatus)) {
+                                  const labelMap: Record<string, string> = {
+                                    'Todo': 'Not Yet Started',
+                                    'In Progress': 'Owned/In Progress',
+                                    'In Review': 'For Approval',
+                                    'Revision': 'Revision',
+                                    'Elliot Review': 'Elliot Review',
+                                    'QA Review': 'QA Before Sending to Client',
+                                    'Completed': 'Approved/Completed',
+                                    'Blocked': 'Client Validation',
+                                  };
+
+                                  setStatusChangeContext({
+                                    taskId: task.id,
+                                    newStatus: selectedStatus,
+                                    label: labelMap[selectedStatus] || selectedStatus,
+                                  });
+                                  setStatusChangeNotes('');
+                                  setStatusChangeAttachment('');
+                                  setShowStatusChangeModal(true);
+                                } else {
+                                  // Simple statuses can update immediately
+                                  handleTaskStatusChange(task.id, selectedStatus);
+                                }
+                              }}
                                   onClick={(e) => e.stopPropagation()}
                                   style={{
                                     width: '100%',
@@ -2640,6 +2955,7 @@ const DepartmentView: React.FC = () => {
                                 >
                                   {department === 'CRM' ? (
                                     <>
+                                      {/* Keep CRM labels as-is for clarity in that workflow */}
                                       <option value="Todo">Todo</option>
                                       <option value="In Progress">In Progress</option>
                                       <option value="In Review">In Review</option>
@@ -2647,11 +2963,15 @@ const DepartmentView: React.FC = () => {
                                     </>
                                   ) : (
                                     <>
-                                      <option value="Todo">Todo</option>
-                                      <option value="In Progress">In Progress</option>
-                                      <option value="In Review">In Review</option>
-                                      <option value="Completed">Completed</option>
-                                      <option value="Blocked">Blocked</option>
+                                      {/* Mirror core enum statuses to kanban language without changing underlying values */}
+                                      <option value="Todo">Not Yet Started</option>
+                                      <option value="In Progress">Owned/In Progress</option>
+                                      <option value="In Review">For Approval</option>
+                                <option value="Revision">Revision</option>
+                                <option value="Elliot Review">Elliot Review</option>
+                                <option value="QA Review">QA Before Sending to Client</option>
+                                      <option value="Completed">Approved/Completed</option>
+                                      <option value="Blocked">Client Validation</option>
                                     </>
                                   )}
                                 </select>
@@ -5719,6 +6039,237 @@ const DepartmentView: React.FC = () => {
             )}
           </div>
         </>
+      )}
+
+      {/* Status Change Notes Modal for task status updates (Department boards) */}
+      {showStatusChangeModal && statusChangeContext && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (statusChangeLoading) return;
+            setShowStatusChangeModal(false);
+            setStatusChangeContext(null);
+            setStatusChangeNotes('');
+            setStatusChangeAttachment('');
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2100,
+          }}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem',
+            }}
+          >
+            <div
+              className="modal-header"
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: '#111827',
+                }}
+              >
+                Update Status – {statusChangeContext.label}
+              </h2>
+              <button
+                className="close-button"
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeAttachment('');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '999px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div
+              className="modal-body"
+              style={{
+                padding: '1.5rem 2rem',
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              <p style={{ marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
+                Add notes and links so PMs and team leads can see why this task moved into "
+                {statusChangeContext.label}".
+              </p>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label
+                  htmlFor="status-change-notes"
+                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+                >
+                  Notes (Optional)
+                </label>
+                <textarea
+                  id="status-change-notes"
+                  value={statusChangeNotes}
+                  onChange={(e) => setStatusChangeNotes(e.target.value)}
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    minHeight: '100px',
+                    fontFamily: 'inherit',
+                    fontSize: '0.9rem',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                  }}
+                  placeholder="Add context about this status change..."
+                  disabled={statusChangeLoading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label
+                  htmlFor="status-change-attachment"
+                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+                >
+                  Attachment/Link (Optional)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FaLink style={{ color: '#6b7280', fontSize: '0.875rem' }} />
+                  <input
+                    id="status-change-attachment"
+                    type="url"
+                    value={statusChangeAttachment}
+                    onChange={(e) => setStatusChangeAttachment(e.target.value)}
+                    className="form-input"
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '0.9rem',
+                    }}
+                    placeholder="https://example.com or Google Drive/Figma link..."
+                    disabled={statusChangeLoading}
+                  />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
+                  Use this to attach references, client feedback, or handoff links.
+                </p>
+              </div>
+            </div>
+
+            <div
+              className="modal-footer"
+              style={{
+                padding: '1.25rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeAttachment('');
+                }}
+                disabled={statusChangeLoading}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  color: '#374151',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={async () => {
+                  if (!statusChangeContext) return;
+                  try {
+                    setStatusChangeLoading(true);
+                    await handleTaskStatusChange(
+                      statusChangeContext.taskId,
+                      statusChangeContext.newStatus,
+                      statusChangeNotes,
+                      statusChangeAttachment
+                    );
+                    setShowStatusChangeModal(false);
+                    setStatusChangeContext(null);
+                    setStatusChangeNotes('');
+                    setStatusChangeAttachment('');
+                  } finally {
+                    setStatusChangeLoading(false);
+                  }
+                }}
+                disabled={statusChangeLoading}
+                style={{
+                  background: statusChangeLoading ? '#9ca3af' : '#667eea',
+                  border: 'none',
+                  color: 'white',
+                  padding: '0.6rem 1.4rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {statusChangeLoading ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Notification Modal */}

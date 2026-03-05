@@ -252,6 +252,17 @@ const ProjectDetail: React.FC = () => {
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
   const [brandingNotes, setBrandingNotes] = useState('');
   const [brandingAttachment, setBrandingAttachment] = useState('');
+
+  // Status change modal state for task kanban/status dropdown
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [statusChangeContext, setStatusChangeContext] = useState<{
+    taskId: string;
+    columnId: string;
+    label: string;
+  } | null>(null);
+  const [statusChangeNotes, setStatusChangeNotes] = useState('');
+  const [statusChangeAttachment, setStatusChangeAttachment] = useState('');
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [submittingTask, setSubmittingTask] = useState<string | null>(null);
   const [submissionForm, setSubmissionForm] = useState<{ taskId: string; data: string; type: 'url' | 'text' } | null>(null);
   const [showAddDeliverableModal, setShowAddDeliverableModal] = useState(false);
@@ -1022,45 +1033,6 @@ const ProjectDetail: React.FC = () => {
     return deliverable.customType || deliverable.type;
   };
 
-  const handleDeleteCustomDeliverable = async (deliverableId: string) => {
-    if (!project) return;
-
-    const deliverable = project.deliverables?.find((d: any) => d.id === deliverableId);
-    if (!deliverable) return;
-
-    // Only allow deleting custom deliverables (type "Other" or has customType)
-    const isCustom = deliverable.type === 'Other' || !!deliverable.customType;
-    if (!isCustom) {
-      alert('Only custom deliverables can be deleted.');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Delete custom deliverable "${getDeliverableDisplayName(deliverable)}"?\n\n` +
-      'This will remove the deliverable and its history. Tasks explicitly linked to it must be unlinked first.'
-    );
-    if (!confirmed) return;
-
-    try {
-      await deliverableService.delete(deliverableId);
-      // Reload project to refresh deliverables list
-      const updatedProject = await projectService.getOne(id!);
-      setProject(updatedProject);
-
-      // If the deleted deliverable was active, clear the active tab
-      if (activeDeliverableTab === deliverableId) {
-        setActiveDeliverableTab(
-          updatedProject.deliverables?.length ? updatedProject.deliverables[0].id : null
-        );
-      }
-
-      showToast('Custom deliverable deleted ✓');
-    } catch (error: any) {
-      console.error('Failed to delete custom deliverable:', error);
-      alert(error?.response?.data?.message || 'Failed to delete custom deliverable');
-    }
-  };
-
   const handleCreateCustomDeliverable = async () => {
     if (!newDeliverableName.trim() || !project) return;
 
@@ -1118,12 +1090,189 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+  const handleTaskStatusChange = async (taskId: string, newStatus: string, extraNotes?: string, extraAttachment?: string) => {
     try {
-      const isCompleted = newStatus === 'Completed';
-      await taskService.updateStatus(taskId, newStatus, isCompleted);
-      loadProject();
-      showToast(`Task status updated to ${newStatus} ✓`);
+      // Map UI/kanban status to backend enum + optional column marker
+      let backendStatus = newStatus;
+      let columnLabel: string | null = null;
+
+      switch (newStatus) {
+        case 'not_started':
+        case 'Todo':
+          backendStatus = 'Todo';
+          columnLabel = null;
+          break;
+        case 'owned_in_progress':
+        case 'In Progress':
+          backendStatus = 'In Progress';
+          columnLabel = null;
+          break;
+        case 'for_approval':
+          backendStatus = 'In Review';
+          columnLabel = 'For Approval';
+          break;
+        case 'revision':
+          backendStatus = 'In Review';
+          columnLabel = 'Revision';
+          break;
+        case 'elliot_review':
+          backendStatus = 'In Review';
+          columnLabel = 'Elliot Review';
+          break;
+        case 'qa_before_client':
+          backendStatus = 'In Review';
+          columnLabel = 'QA Review';
+          break;
+        case 'approved_completed':
+        case 'Completed':
+          backendStatus = 'Completed';
+          columnLabel = null;
+          break;
+        case 'client_validation':
+          backendStatus = 'In Review';
+          columnLabel = 'Client Review';
+          break;
+        default:
+          backendStatus = newStatus;
+      }
+
+      // Prepare deliverable context (for activity history)
+      let deliverableId: string | undefined;
+      let deliverableType: string | undefined;
+      let fileUrl: string | undefined;
+
+      // Update column marker in description to keep department kanban in sync
+      if (project) {
+        const task = project.tasks?.find((t: any) => t.id === taskId);
+        if (task) {
+          fileUrl = task.fileUrl || undefined;
+          deliverableId = task.deliverableId || undefined;
+          if (deliverableId) {
+            const deliverable = project.deliverables?.find((d: any) => d.id === deliverableId);
+            if (deliverable) {
+              deliverableType = deliverable.customType || deliverable.type;
+            }
+          }
+
+          const currentDesc: string = task.description || '';
+          const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+          let updatedDesc = cleanedDesc;
+
+          if (columnLabel) {
+            const columnMarker = `\n\n--- Column: ${columnLabel} ---`;
+            if (!cleanedDesc.includes(columnMarker)) {
+              updatedDesc = cleanedDesc + columnMarker;
+            }
+          }
+
+          // Append structured status-change log with notes/attachment (optional)
+          if ((extraNotes && extraNotes.trim()) || (extraAttachment && extraAttachment.trim())) {
+            const timestamp = new Date().toLocaleString();
+            const statusLabelMap: Record<string, string> = {
+              not_started: 'Not Yet Started',
+              owned_in_progress: 'Owned/In Progress',
+              for_approval: 'For Approval',
+              revision: 'Revision',
+              elliot_review: 'Elliot Review',
+              approved_completed: 'Approved/Completed',
+              qa_before_client: 'QA Before Sending to Client',
+              client_validation: 'Client Validation',
+            };
+            const targetLabel = statusLabelMap[newStatus] || newStatus;
+            let logBlock = `\n\n--- Status Change ---\nNew Column: ${targetLabel}\nBy: ${currentUser?.name || 'Unknown'}\nAt: ${timestamp}`;
+            if (extraNotes && extraNotes.trim()) {
+              logBlock += `\nNotes: ${extraNotes.trim()}`;
+            }
+            if (extraAttachment && extraAttachment.trim()) {
+              logBlock += `\nAttachment: ${extraAttachment.trim()}`;
+            }
+            updatedDesc += logBlock;
+          }
+
+          if (updatedDesc !== currentDesc) {
+            try {
+              await taskService.update(taskId, { description: updatedDesc });
+            } catch (descError) {
+              console.warn('Failed to update task description with column marker:', descError);
+            }
+          }
+        }
+      }
+
+      // For deliverable-linked tasks, also log into deliverable history so Activity History is populated
+      if (project && deliverableId && fileUrl) {
+        try {
+          // Build notes for history entry
+          const statusLabelMap: Record<string, string> = {
+            not_started: 'Not Yet Started',
+            owned_in_progress: 'Owned/In Progress',
+            for_approval: 'For Approval',
+            revision: 'Revision',
+            elliot_review: 'Elliot Review',
+            approved_completed: 'Approved/Completed',
+            qa_before_client: 'QA Before Sending to Client',
+            client_validation: 'Client Validation',
+          };
+          const targetLabel = statusLabelMap[newStatus] || newStatus;
+
+          let details = '';
+          if (extraNotes && extraNotes.trim()) {
+            details += `Notes: ${extraNotes.trim()}`;
+          }
+          if (extraAttachment && extraAttachment.trim()) {
+            if (details) details += '\n';
+            details += `Attachment: ${extraAttachment.trim()}`;
+          }
+
+          let baseNote = `Status moved to "${targetLabel}" by ${currentUser?.name || 'Unknown'}.`;
+          if (details) {
+            baseNote += `\n${details}`;
+          }
+
+          // Map column → deliverable status (align with Kanban drag/drop behavior)
+          let deliverableStatus = (project.deliverables?.find((d: any) => d.id === deliverableId)?.status) || 'Not Started';
+          switch (newStatus) {
+            case 'revision':
+              deliverableStatus = 'Revision';
+              break;
+            case 'elliot_review':
+              // Elliot Review is a staging area while deliverable is ready for review
+              deliverableStatus = 'Ready for Review';
+              break;
+            case 'approved_completed':
+              deliverableStatus = 'Approved';
+              break;
+            case 'qa_before_client':
+              deliverableStatus = 'Ready for Review';
+              break;
+            case 'client_validation':
+              deliverableStatus = 'Client Review';
+              break;
+            case 'for_approval':
+              // For approval generally means deliverable is ready for PM review
+              deliverableStatus = 'Ready for Review';
+              break;
+            default:
+              // leave as-is for not_started / owned_in_progress, etc.
+              break;
+          }
+
+          await deliverableService.updateStatus(
+            deliverableId,
+            deliverableStatus,
+            baseNote,
+            fileUrl
+          );
+        } catch (historyError) {
+          console.warn('Failed to record deliverable history for status change:', historyError);
+          // Non-blocking – status update should still succeed
+        }
+      }
+
+      const isCompleted = backendStatus === 'Completed';
+      await taskService.updateStatus(taskId, backendStatus, isCompleted, fileUrl, deliverableType, deliverableId);
+      await loadProject();
+      showToast(`Task status updated ✓`);
     } catch (error) {
       console.error('Failed to update task status:', error);
       showToast('Failed to update task status');
@@ -3007,29 +3156,7 @@ const ProjectDetail: React.FC = () => {
                         }
                       }}
                     >
-                      <span>{getDeliverableDisplayName(deliverable)}</span>
-                      {(deliverable.type === 'Other' || !!deliverable.customType) && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCustomDeliverable(deliverable.id);
-                          }}
-                          style={{
-                            marginLeft: '0.5rem',
-                            fontSize: '0.7rem',
-                            padding: '0.15rem 0.4rem',
-                            borderRadius: '999px',
-                            border: 'none',
-                            background: '#fee2e2',
-                            color: '#b91c1c',
-                            cursor: 'pointer',
-                          }}
-                          title="Delete custom deliverable"
-                        >
-                          ✕
-                        </button>
-                      )}
+                      {getDeliverableDisplayName(deliverable)}
                     </button>
                   ))}
                 </div>
@@ -3409,9 +3536,29 @@ const ProjectDetail: React.FC = () => {
                 // Note: Elliot Review is manually draggable - this section is kept for future use
                 // Since revision takes priority, this won't be reached if revision is active
                 
-                // 2. For Approval: When task is submitted for review (status = 'In Review')
-                // This takes priority - if task is in review, it's automatically in "For Approval"
+                // 2. For Approval / Review sub-stages:
+                // When task is submitted for review (status = 'In Review'), use column markers on the task
+                // to decide which review column it should live in.
                 if (relatedTask && relatedTask.status === 'In Review') {
+                  const desc: string = relatedTask.description || '';
+                  
+                  if (desc.includes('--- Column: Revision ---')) {
+                    return 'revision';
+                  }
+                  if (desc.includes('--- Column: Elliot Review ---')) {
+                    return 'elliot_review';
+                  }
+                  if (desc.includes('--- Column: QA Review ---')) {
+                    return 'qa_before_client';
+                  }
+                  if (desc.includes('--- Column: Client Review ---')) {
+                    return 'client_validation';
+                  }
+                  if (desc.includes('--- Column: For Approval ---')) {
+                    return 'for_approval';
+                  }
+                  
+                  // No marker = default to For Approval
                   return 'for_approval';
                 }
                 
@@ -4006,10 +4153,101 @@ const ProjectDetail: React.FC = () => {
                                         Status:
                                       </label>
                                       <select
-                                        value={relatedTask.isCompleted ? 'Completed' : (relatedTask.status || 'Todo')}
+                                        value={(() => {
+                                          // Mirror DepartmentView/RoleDashboard kanban mapping so value corresponds to a kanban column id
+                                          const task: any = relatedTask;
+                                          
+                                          // Revision takes priority even over completed
+                                          if (task.description && task.description.includes('--- Column: Revision ---')) {
+                                            return 'revision';
+                                          }
+                                          if (task.status === 'Revision' || task.status === 'Needs Revision') {
+                                            return 'revision';
+                                          }
+
+                                          // Completed tasks → Approved/Completed column
+                                          if (task.status === 'Completed' || task.isCompleted) {
+                                            return 'approved_completed';
+                                          }
+
+                                          // Column markers for review stages
+                                          if (task.status === 'In Review' && task.description) {
+                                            if (task.description.includes('--- Column: Elliot Review ---')) {
+                                              return 'elliot_review';
+                                            }
+                                            if (task.description.includes('--- Column: QA Review ---')) {
+                                              return 'qa_before_client';
+                                            }
+                                            if (task.description.includes('--- Column: Client Review ---')) {
+                                              return 'client_validation';
+                                            }
+                                            if (task.description.includes('--- Column: For Approval ---')) {
+                                              return 'for_approval';
+                                            }
+                                          }
+
+                                          // Legacy explicit statuses used in dashboards
+                                          if (task.status === 'Elliot Review') return 'elliot_review';
+                                          if (task.status === 'QA Review' || task.status === 'QA') return 'qa_before_client';
+                                          if (task.status === 'Client Review' || task.status === 'Client Validation') return 'client_validation';
+                                          if (task.status === 'For Approval' || task.status === 'Ready for Review') return 'for_approval';
+
+                                          // Default mapping for basics
+                                          if (task.status === 'In Progress') return 'owned_in_progress';
+                                          if (task.status === 'Todo' || !task.status) return 'not_started';
+
+                                          return 'not_started';
+                                        })()}
                                         onChange={(e) => {
                                           e.stopPropagation();
-                                          handleTaskStatusChange(relatedTask.id, e.target.value);
+                                          
+                                          const newColumnId = e.target.value;
+                                          
+                                          // Permission: PMs / team leads can move any task.
+                                          // Regular users can only move tasks they are assigned to.
+                                          const assignees = relatedTask.assignees || [];
+                                          const assigneeIds = assignees.length > 0
+                                            ? assignees.map((a: any) => a.userId || a.user?.id)
+                                            : (relatedTask.assignedToId ? [relatedTask.assignedToId] : []);
+                                          const isOwner = assigneeIds.includes(currentUser?.id);
+                                          
+                                          if (!canAssignOwners && !isOwner) {
+                                            showToast('You can only update the status of tasks assigned to you.');
+                                            return;
+                                          }
+
+                                          // For review columns, open a modal to capture notes/links
+                                          const modalColumns = [
+                                            'for_approval',
+                                            'revision',
+                                            'elliot_review',
+                                            'approved_completed',
+                                            'qa_before_client',
+                                            'client_validation',
+                                          ];
+
+                                          if (modalColumns.includes(newColumnId)) {
+                                            const labelMap: Record<string, string> = {
+                                              for_approval: 'For Approval',
+                                              revision: 'Revision',
+                                              elliot_review: 'Elliot Review',
+                                              approved_completed: 'Approved/Completed',
+                                              qa_before_client: 'QA Before Sending to Client',
+                                              client_validation: 'Client Validation',
+                                            };
+
+                                            setStatusChangeContext({
+                                              taskId: relatedTask.id,
+                                              columnId: newColumnId,
+                                              label: labelMap[newColumnId] || newColumnId,
+                                            });
+                                            setStatusChangeNotes('');
+                                            setStatusChangeAttachment('');
+                                            setShowStatusChangeModal(true);
+                                          } else {
+                                            // Simple columns can update immediately
+                                            handleTaskStatusChange(relatedTask.id, newColumnId);
+                                          }
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                         style={{
@@ -4032,11 +4270,15 @@ const ProjectDetail: React.FC = () => {
                                           e.currentTarget.style.boxShadow = 'none';
                                         }}
                                       >
-                                        <option value="Todo">Todo</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="In Review">In Review</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Blocked">Blocked</option>
+                                        {/* Kanban-aligned values that map to specific columns; handler converts to backend enums */}
+                                        <option value="not_started">Not Yet Started</option>
+                                        <option value="owned_in_progress">Owned/In Progress</option>
+                                        <option value="for_approval">For Approval</option>
+                                        <option value="revision">Revision</option>
+                                        <option value="elliot_review">Elliot Review</option>
+                                        <option value="approved_completed">Approved/Completed</option>
+                                        <option value="qa_before_client">QA Before Sending to Client</option>
+                                        <option value="client_validation">Client Validation</option>
                                       </select>
                                     </div>
                                   )}
@@ -5769,6 +6011,121 @@ const ProjectDetail: React.FC = () => {
                 style={{ background: '#dc2626', borderColor: '#dc2626' }}
               >
                 {updatingDeliverable === revisionDeliverable.id ? 'Requesting...' : 'Request Revision'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Notes Modal for task status updates */}
+      {showStatusChangeModal && statusChangeContext && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (statusChangeLoading) return;
+            setShowStatusChangeModal(false);
+            setStatusChangeContext(null);
+            setStatusChangeNotes('');
+            setStatusChangeAttachment('');
+          }}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '600px' }}
+          >
+            <div className="modal-header">
+              <h2>Update Status – {statusChangeContext.label}</h2>
+              <button
+                className="close-button"
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeAttachment('');
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
+                Add notes and links so PMs and team leads can see why this task moved into "{statusChangeContext.label}".
+              </p>
+
+              <div className="form-group">
+                <label htmlFor="status-change-notes">Notes (Optional)</label>
+                <textarea
+                  id="status-change-notes"
+                  value={statusChangeNotes}
+                  onChange={(e) => setStatusChangeNotes(e.target.value)}
+                  className="form-input"
+                  style={{ width: '100%', padding: '0.75rem', minHeight: '100px', fontFamily: 'inherit' }}
+                  placeholder="Add context about this status change..."
+                  disabled={statusChangeLoading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="status-change-attachment">Attachment/Link (Optional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FaLink style={{ color: '#6b7280', fontSize: '0.875rem' }} />
+                  <input
+                    id="status-change-attachment"
+                    type="url"
+                    value={statusChangeAttachment}
+                    onChange={(e) => setStatusChangeAttachment(e.target.value)}
+                    className="form-input"
+                    style={{ flex: 1, padding: '0.75rem' }}
+                    placeholder="https://example.com or Google Drive/Figma link..."
+                    disabled={statusChangeLoading}
+                  />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
+                  Use this to attach references, client feedback, or handoff links.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeAttachment('');
+                }}
+                disabled={statusChangeLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={async () => {
+                  if (!statusChangeContext) return;
+                  try {
+                    setStatusChangeLoading(true);
+                    await handleTaskStatusChange(
+                      statusChangeContext.taskId,
+                      statusChangeContext.columnId,
+                      statusChangeNotes,
+                      statusChangeAttachment
+                    );
+                    setShowStatusChangeModal(false);
+                    setStatusChangeContext(null);
+                    setStatusChangeNotes('');
+                    setStatusChangeAttachment('');
+                  } finally {
+                    setStatusChangeLoading(false);
+                  }
+                }}
+                disabled={statusChangeLoading}
+              >
+                {statusChangeLoading ? 'Updating...' : 'Update Status'}
               </button>
             </div>
           </div>
