@@ -78,6 +78,15 @@ export const deliverableService = {
     await axios.delete(`${API_URL}/deliverables/${deliverableId}/team-members/${userId}`, getAuthHeaders());
   },
 
+  async update(id: string, data: { customType?: string }): Promise<any> {
+    const response = await axios.patch(
+      `${API_URL}/deliverables/${id}`,
+      data,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
   async delete(id: string): Promise<void> {
     await axios.delete(`${API_URL}/deliverables/${id}`, getAuthHeaders());
   },

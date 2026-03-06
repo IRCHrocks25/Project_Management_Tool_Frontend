@@ -560,7 +560,7 @@ export default function LandingPage() {
               {[
                 ["01","Workflow Clarity","Stage-based tracking","Move projects smoothly from Copy → Design → Dev with clear ownership and approvals."],
                 ["02","Client Email Timeline","Never lose the thread","Automatically logs the last time a client was emailed, what was sent, and by whom."],
-                ["03","Revisions & Deliverables","Revision-proof delivery","Track revision rounds and deliverables (Logo, Brand Book, Landing Page) without manual checking."],
+                ["03","Revisions & Deliverables","Revision-proof delivery","Track revision rounds and deliverables (Logo, Brand Book, Home Page) without manual checking."],
               ].map(([n,t,k,b]) => (
                 <div className="feat" key={n}>
                   <div className="feat-num">{n}</div>

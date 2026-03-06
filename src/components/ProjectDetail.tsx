@@ -26,6 +26,7 @@ import {
   FaClipboard,
   FaCopy,
   FaSearch,
+  FaTrash,
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
@@ -234,7 +235,7 @@ const ProjectDetail: React.FC = () => {
   const [revisionNotes, setRevisionNotes] = useState('');
   const [revisionAttachment, setRevisionAttachment] = useState('');
   const [deliverableHistory, setDeliverableHistory] = useState<Record<string, any[]>>({});
-  const [draggedFile, setDraggedFile] = useState<{ deliverableId: string; fileUrl: string; department: string } | null>(null);
+  const [draggedFile, setDraggedFile] = useState<{ deliverableId: string; fileUrl: string; department: string; taskId?: string } | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [brandingCalls, setBrandingCalls] = useState<Record<string, { zoomLink: string; isDone: boolean; notes: string; attachmentLink: string }>>({
     'call1': { zoomLink: '', isDone: false, notes: '', attachmentLink: '' },
@@ -287,6 +288,11 @@ const ProjectDetail: React.FC = () => {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [showAddTaskFromDeliverableModal, setShowAddTaskFromDeliverableModal] = useState(false);
   const [selectedDeliverableForTask, setSelectedDeliverableForTask] = useState<string | null>(null);
+  const [editingTaskTitleId, setEditingTaskTitleId] = useState<string | null>(null);
+  const [editingTaskTitleValue, setEditingTaskTitleValue] = useState<string>('');
+  const [editingDeliverableId, setEditingDeliverableId] = useState<string | null>(null);
+  const [editingDeliverableName, setEditingDeliverableName] = useState<string>('');
+  const [showDeleteDeliverableConfirm, setShowDeleteDeliverableConfirm] = useState<string | null>(null);
   const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
   // Attachment state for "Add Task to Deliverable" modal - support multiple links and files
   const [newTaskLinks, setNewTaskLinks] = useState<string[]>(['']);
@@ -1030,7 +1036,20 @@ const ProjectDetail: React.FC = () => {
 
   // Helper function to get deliverable display name
   const getDeliverableDisplayName = (deliverable: any) => {
-    return deliverable.customType || deliverable.type;
+    if (deliverable.customType) {
+      return deliverable.customType;
+    }
+    // Map backend enum values to display names
+    const displayNameMap: Record<string, string> = {
+      'Home Page': 'Home Page',
+      'Copy of Home Page': 'Copy of Home Page',
+      'Logo': 'Logo',
+      'Brand Book': 'Brand Book',
+      'Speaker Kit': 'Speaker Kit',
+      'Social Banners': 'Social Banners',
+      'Other': 'Other',
+    };
+    return displayNameMap[deliverable.type] || deliverable.type;
   };
 
   const handleCreateCustomDeliverable = async () => {
@@ -1059,6 +1078,56 @@ const ProjectDetail: React.FC = () => {
       alert(error.response?.data?.message || 'Failed to create custom deliverable');
     } finally {
       setCreatingDeliverable(false);
+    }
+  };
+
+  const handleUpdateCustomDeliverable = async (deliverableId: string, newName: string) => {
+    if (!newName.trim() || !project) return;
+
+    try {
+      await deliverableService.update(deliverableId, { customType: newName.trim() });
+      
+      // Reload project to get updated deliverables
+      const updatedProject = await projectService.getOne(id!);
+      setProject(updatedProject);
+      
+      setEditingDeliverableId(null);
+      setEditingDeliverableName('');
+      showToast('Deliverable updated ✓');
+    } catch (error: any) {
+      console.error('Failed to update custom deliverable:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update deliverable';
+      console.error('Full error:', error);
+      console.error('Error response:', error.response?.data);
+      showToast(`Error: ${errorMessage}. The backend may not support updating deliverables.`);
+    }
+  };
+
+  const handleDeleteCustomDeliverable = async (deliverableId: string) => {
+    if (!project) return;
+
+    try {
+      await deliverableService.delete(deliverableId);
+      
+      // Reload project to get updated deliverables
+      const updatedProject = await projectService.getOne(id!);
+      setProject(updatedProject);
+      
+      // If the deleted deliverable was active, switch to first available deliverable
+      if (activeDeliverableTab === deliverableId) {
+        const remainingDeliverables = updatedProject.deliverables || [];
+        if (remainingDeliverables.length > 0) {
+          setActiveDeliverableTab(remainingDeliverables[0].id);
+        } else {
+          setActiveDeliverableTab(null);
+        }
+      }
+      
+      setShowDeleteDeliverableConfirm(null);
+      showToast('Deliverable deleted ✓');
+    } catch (error: any) {
+      console.error('Failed to delete custom deliverable:', error);
+      showToast(error.response?.data?.message || 'Failed to delete deliverable');
     }
   };
 
@@ -1276,6 +1345,47 @@ const ProjectDetail: React.FC = () => {
     } catch (error) {
       console.error('Failed to update task status:', error);
       showToast('Failed to update task status');
+    }
+  };
+
+  const handleSaveTaskTitle = async (taskId: string, newTitle: string) => {
+    try {
+      const task = tasks.find((t: any) => t.id === taskId);
+      if (!task) return;
+
+      const currentDesc = task.description || '';
+      // Remove column markers and status change logs to get the base description
+      let cleanedDesc = currentDesc
+        .replace(/\n\n--- Column: [^-]+ ---/g, '')
+        .replace(/\n\n--- Status Change ---[\s\S]*/g, '')
+        .trim();
+
+      // Split by newlines to preserve the rest of the description
+      const lines = cleanedDesc.split('\n');
+      const restOfDescription = lines.length > 1 ? '\n' + lines.slice(1).join('\n') : '';
+
+      // Update the first line with the new title
+      const updatedDescription = newTitle.trim() + restOfDescription;
+
+      // Re-add column markers and status logs if they existed
+      let finalDescription = updatedDescription;
+      const columnMatch = currentDesc.match(/\n\n--- Column: [^-]+ ---/);
+      if (columnMatch) {
+        finalDescription += columnMatch[0];
+      }
+      const statusChangeMatch = currentDesc.match(/\n\n--- Status Change ---[\s\S]*/);
+      if (statusChangeMatch) {
+        finalDescription += statusChangeMatch[0];
+      }
+
+      await taskService.update(taskId, { description: finalDescription });
+      await loadProject();
+      setEditingTaskTitleId(null);
+      setEditingTaskTitleValue('');
+      showToast('Task title updated ✓');
+    } catch (error) {
+      console.error('Failed to update task title:', error);
+      showToast('Failed to update task title');
     }
   };
 
@@ -1607,10 +1717,10 @@ const ProjectDetail: React.FC = () => {
       console.log('File approved successfully:', result);
       await loadProject();
       
-      // Check if this was a Landing Page design approval - if so, show special message
+      // Check if this was a Home Page design approval - if so, show special message
       const isDesignFile = fileUrl.includes('figma.com') || fileUrl.includes('figma');
-      if (deliverableType === 'Landing Page' && isDesignFile) {
-        showToast('Landing Page design approved ✓ - Project moved to Development');
+      if (deliverableType === 'Home Page' && isDesignFile) {
+        showToast('Home Page design approved ✓ - Project moved to Development');
       } else {
         showToast(`${department} file approved ✓`);
       }
@@ -2453,10 +2563,10 @@ const ProjectDetail: React.FC = () => {
                         // Fallback to deliverable type if no task found
                         if (['Logo', 'Social Banners', 'Speaker Kit'].includes(deliverableType)) {
                           department = 'Design';
-                        } else if (deliverableType === 'Landing Page') {
-                          // Landing Page can be Design or AI - default to Design if no task info
+                        } else if (deliverableType === 'Home Page') {
+                          // Home Page can be Design or AI - default to Design if no task info
                           department = 'Design';
-                        } else if (['Brand Book', 'Copy of Landing Page', 'Other'].includes(deliverableType)) {
+                        } else if (['Brand Book', 'Copy of Home Page', 'Other'].includes(deliverableType)) {
                           department = 'Copy Writing';
                         }
                       }
@@ -3145,20 +3255,170 @@ const ProjectDetail: React.FC = () => {
             <div className="deliverable-sub-tabs-container">
               {project.deliverables && project.deliverables.length > 0 && (
                 <div className="deliverable-sub-tabs">
-                  {project.deliverables.map((deliverable: any) => (
-                    <button
-                      key={deliverable.id}
-                      className={`deliverable-sub-tab ${activeDeliverableTab === deliverable.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setActiveDeliverableTab(deliverable.id);
-                        if (!activeDeliverableTab) {
-                          setActiveDeliverableTab(deliverable.id);
-                        }
-                      }}
-                    >
-                      {getDeliverableDisplayName(deliverable)}
-                    </button>
-                  ))}
+                  {project.deliverables.map((deliverable: any) => {
+                    const isCustomDeliverable = deliverable.type === 'Other' || deliverable.customType;
+                    const isEditing = editingDeliverableId === deliverable.id;
+                    
+                    return (
+                      <div
+                        key={deliverable.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          position: 'relative'
+                        }}
+                      >
+                        {isEditing ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            background: 'white',
+                            border: '2px solid #667eea',
+                            borderRadius: '8px',
+                            padding: '0.25rem 0.5rem'
+                          }}>
+                            <input
+                              type="text"
+                              value={editingDeliverableName}
+                              onChange={(e) => setEditingDeliverableName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (editingDeliverableName.trim()) {
+                                    handleUpdateCustomDeliverable(deliverable.id, editingDeliverableName);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setEditingDeliverableId(null);
+                                  setEditingDeliverableName('');
+                                }
+                              }}
+                              autoFocus
+                              style={{
+                                border: 'none',
+                                outline: 'none',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                minWidth: '120px',
+                                padding: '0.25rem'
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (editingDeliverableName.trim()) {
+                                  handleUpdateCustomDeliverable(deliverable.id, editingDeliverableName);
+                                }
+                              }}
+                              style={{
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '0.25rem 0.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              title="Save"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingDeliverableId(null);
+                                setEditingDeliverableName('');
+                              }}
+                              style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '0.25rem 0.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              title="Cancel"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              className={`deliverable-sub-tab ${activeDeliverableTab === deliverable.id ? 'active' : ''}`}
+                              onClick={() => {
+                                setActiveDeliverableTab(deliverable.id);
+                                if (!activeDeliverableTab) {
+                                  setActiveDeliverableTab(deliverable.id);
+                                }
+                              }}
+                            >
+                              {getDeliverableDisplayName(deliverable)}
+                            </button>
+                            {isCustomDeliverable && canAssignOwners && (
+                              <div style={{
+                                display: 'flex',
+                                gap: '0.125rem',
+                                marginLeft: '0.25rem'
+                              }}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingDeliverableId(deliverable.id);
+                                    setEditingDeliverableName(deliverable.customType || deliverable.type);
+                                  }}
+                                  style={{
+                                    background: '#f3f4f6',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '0.25rem 0.375rem',
+                                    cursor: 'pointer',
+                                    color: '#667eea',
+                                    fontSize: '0.75rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#e5e7eb'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                  title="Edit deliverable name"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDeleteDeliverableConfirm(deliverable.id);
+                                  }}
+                                  style={{
+                                    background: '#f3f4f6',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '0.25rem 0.375rem',
+                                    cursor: 'pointer',
+                                    color: '#dc2626',
+                                    fontSize: '0.75rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                  title="Delete deliverable"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <button
@@ -3285,7 +3545,7 @@ const ProjectDetail: React.FC = () => {
                       // If a task has a deliverableId, it should ONLY appear in that deliverable
                       if (!task.deliverableId) {
                         // Copy tasks
-                        if (task.type === 'Copy' && ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(deliverableType)) {
+                        if (task.type === 'Copy' && ['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other', 'Home Page'].includes(deliverableType)) {
                           if (task.fileUrl) {
                             links.push({
                               department: 'Copy Writing',
@@ -3314,7 +3574,7 @@ const ProjectDetail: React.FC = () => {
                           }
                         }
                         // Design tasks
-                        if (task.type === 'Design' && ['Logo', 'Social Banners', 'Landing Page', 'Brand Book'].includes(deliverableType)) {
+                        if (task.type === 'Design' && ['Logo', 'Social Banners', 'Home Page', 'Brand Book'].includes(deliverableType)) {
                           if (task.fileUrl) {
                             links.push({
                               department: 'Design',
@@ -3343,7 +3603,7 @@ const ProjectDetail: React.FC = () => {
                           }
                         }
                         // Dev tasks
-                        if (task.type === 'Dev' && deliverableType === 'Landing Page') {
+                        if (task.type === 'Dev' && deliverableType === 'Home Page') {
                           if (task.fileUrl) {
                             links.push({
                               department: 'Development',
@@ -3385,11 +3645,11 @@ const ProjectDetail: React.FC = () => {
                   const isLiveUrl = selectedDeliverable.fileUrl.startsWith('http') && !isFigma && !isDrive;
                   
                   let dept = 'Deliverable';
-                  if (['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
+                  if (['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
                     dept = 'Copy Writing';
                   } else if (['Logo', 'Social Banners'].includes(deliverableType)) {
                     dept = 'Design';
-                  } else if (deliverableType === 'Landing Page') {
+                  } else if (deliverableType === 'Home Page') {
                     dept = isLiveUrl ? 'Development' : 'Design';
                   }
                   
@@ -3597,7 +3857,8 @@ const ProjectDetail: React.FC = () => {
                 setDraggedFile({
                   deliverableId: selectedDeliverable.id,
                   fileUrl: link.url,
-                  department: link.department
+                  department: link.department,
+                  taskId: link.taskId
                 });
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/html', link.url);
@@ -3633,7 +3894,56 @@ const ProjectDetail: React.FC = () => {
                 const fileUrl = draggedFile.fileUrl;
                 if (fileUrl.startsWith('task-')) return; // Can't move placeholder tasks
 
-                // Only allow dropping on manual action columns
+                // If this is a task (has taskId), allow dragging to any column including automatic ones
+                // and update the task status accordingly
+                if (draggedFile.taskId) {
+                  try {
+                    // For review columns, open a modal to capture notes/links
+                    const modalColumns = [
+                      'for_approval',
+                      'revision',
+                      'elliot_review',
+                      'approved_completed',
+                      'qa_before_client',
+                      'client_validation',
+                    ];
+
+                    if (modalColumns.includes(targetColumnId)) {
+                      const labelMap: Record<string, string> = {
+                        for_approval: 'For Approval',
+                        revision: 'Revision',
+                        elliot_review: 'Elliot Review',
+                        approved_completed: 'Approved/Completed',
+                        qa_before_client: 'QA Before Sending to Client',
+                        client_validation: 'Client Validation',
+                      };
+
+                      setStatusChangeContext({
+                        taskId: draggedFile.taskId,
+                        columnId: targetColumnId,
+                        label: labelMap[targetColumnId] || targetColumnId,
+                      });
+                      setStatusChangeNotes('');
+                      setStatusChangeAttachment('');
+                      setShowStatusChangeModal(true);
+                    } else {
+                      // Simple columns can update immediately
+                      await handleTaskStatusChange(draggedFile.taskId, targetColumnId);
+                    }
+                    
+                    setDragOverColumn(null);
+                    setDraggedFile(null);
+                    return;
+                  } catch (error: any) {
+                    console.error('Failed to update task status:', error);
+                    showToast(`Failed to move task: ${error?.message || 'Unknown error'}`);
+                    setDragOverColumn(null);
+                    setDraggedFile(null);
+                    return;
+                  }
+                }
+
+                // Only allow dropping on manual action columns for deliverables (non-task files)
                 // Automatic columns (not_started, owned_in_progress, for_approval) cannot be dragged to
                 // Manual columns: elliot_review, revision, approved_completed, qa_before_client, client_validation
                 const manualColumns = ['elliot_review', 'revision', 'approved_completed', 'qa_before_client', 'client_validation'];
@@ -3841,6 +4151,64 @@ const ProjectDetail: React.FC = () => {
                               minute: '2-digit'
                             }) : '';
                             
+                            // Extract first sentence from task description for card title
+                            const getTaskTitleFromDescription = (description: string | null | undefined): string => {
+                              if (!description) return '';
+                              // Remove column markers and status change logs
+                              let cleanedDesc = description
+                                .replace(/\n\n--- Column: [^-]+ ---/g, '')
+                                .replace(/\n\n--- Status Change ---[\s\S]*/g, '')
+                                .trim();
+                              
+                              // Remove leading newlines and whitespace
+                              cleanedDesc = cleanedDesc.replace(/^\s*\n+\s*/, '').trim();
+                              
+                              if (!cleanedDesc) return '';
+                              
+                              // Split by newlines and take the first non-empty line
+                              const firstLine = cleanedDesc.split('\n')[0]?.trim();
+                              if (firstLine && firstLine.length > 0) {
+                                // Extract first sentence (up to first period, exclamation, or question mark)
+                                // If no punctuation, take the entire first line (up to 100 chars)
+                                const firstSentenceMatch = firstLine.match(/^[^.!?\n]+[.!?]?/);
+                                if (firstSentenceMatch) {
+                                  let sentence = firstSentenceMatch[0].trim();
+                                  // Remove trailing punctuation if it's just a single character (might be incomplete)
+                                  if (sentence.length > 1 && /^[.!?]$/.test(sentence[sentence.length - 1])) {
+                                    // Keep it if it's part of the sentence
+                                  }
+                                  // Limit to 100 characters for display
+                                  return sentence.length > 100 ? sentence.substring(0, 100).trim() + '...' : sentence;
+                                }
+                                // If no sentence ending found, take first 100 characters of first line
+                                return firstLine.length > 100 ? firstLine.substring(0, 100).trim() + '...' : firstLine;
+                              }
+                              
+                              // Fallback: take first 100 characters of entire cleaned description
+                              return cleanedDesc.length > 100 ? cleanedDesc.substring(0, 100).trim() + '...' : cleanedDesc;
+                            };
+                            // Prioritize description extraction over task.title - use first sentence of description as title
+                            // This makes it easier to identify tasks at a glance
+                            let taskTitle = '';
+                            if (relatedTask?.description) {
+                              taskTitle = getTaskTitleFromDescription(relatedTask.description);
+                            }
+                            
+                            // Fallback to task.title if description extraction didn't work
+                            if (!taskTitle && relatedTask?.title && relatedTask.title.trim()) {
+                              taskTitle = relatedTask.title.trim();
+                            }
+                            
+                            // Fallback to link.taskTitle if task.title also doesn't exist
+                            if (!taskTitle && link.taskTitle && link.taskTitle.trim()) {
+                              taskTitle = link.taskTitle.trim();
+                            }
+                            
+                            // If we still don't have a title but have a task, use a default
+                            if (!taskTitle && relatedTask) {
+                              taskTitle = `${link.department} Task`;
+                            }
+                            
                             // Get deliverable team members for this deliverable
                             const deliverableMembers = deliverableTeamMembers[selectedDeliverable.id] || [];
                             const isPM = authService.getUser()?.role === 'Project Manager';
@@ -3925,21 +4293,256 @@ const ProjectDetail: React.FC = () => {
                                 </div>
                                 <div className="kanban-card-body">
                                   {link.url.startsWith('task-') ? (
-                                    <div className="kanban-card-link">
-                                      {link.department}
-                                      <span className="kanban-card-assigned">Assigned</span>
-                                    </div>
+                                    relatedTask && editingTaskTitleId === relatedTask.id ? (
+                                      <div style={{ 
+                                        marginBottom: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                      }}>
+                                        <input
+                                          type="text"
+                                          value={editingTaskTitleValue}
+                                          onChange={(e) => setEditingTaskTitleValue(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault();
+                                              if (editingTaskTitleValue.trim()) {
+                                                handleSaveTaskTitle(relatedTask.id, editingTaskTitleValue);
+                                              }
+                                            } else if (e.key === 'Escape') {
+                                              setEditingTaskTitleId(null);
+                                              setEditingTaskTitleValue('');
+                                            }
+                                          }}
+                                          autoFocus
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{
+                                            flex: 1,
+                                            padding: '0.375rem 0.5rem',
+                                            fontSize: '0.9375rem',
+                                            fontWeight: 600,
+                                            color: '#1e293b',
+                                            border: '2px solid #667eea',
+                                            borderRadius: '6px',
+                                            background: 'white',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (editingTaskTitleValue.trim()) {
+                                              handleSaveTaskTitle(relatedTask.id, editingTaskTitleValue);
+                                            }
+                                          }}
+                                          style={{
+                                            padding: '0.375rem 0.5rem',
+                                            background: '#10b981',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.75rem'
+                                          }}
+                                          title="Save"
+                                        >
+                                          ✓
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingTaskTitleId(null);
+                                            setEditingTaskTitleValue('');
+                                          }}
+                                          style={{
+                                            padding: '0.375rem 0.5rem',
+                                            background: '#ef4444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.75rem'
+                                          }}
+                                          title="Cancel"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        className="kanban-card-link" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) {
+                                            setEditingTaskTitleId(relatedTask.id);
+                                            setEditingTaskTitleValue(taskTitle || link.department);
+                                          }
+                                        }}
+                                        style={{ 
+                                          fontWeight: 600, 
+                                          fontSize: '0.9375rem', 
+                                          color: '#1e293b',
+                                          cursor: (relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) ? 'pointer' : 'default',
+                                          padding: '0.25rem',
+                                          borderRadius: '4px',
+                                          transition: 'background-color 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          if (relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) {
+                                            e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                        title={(relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) ? 'Click to edit title' : ''}
+                                      >
+                                        {taskTitle || link.department}
+                                        <span className="kanban-card-assigned">Assigned</span>
+                                      </div>
+                                    )
                                   ) : (
-                                    <a
-                                      href={link.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="kanban-card-link"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {link.department}
-                                      <FaChevronRight className="kanban-link-icon" />
-                                    </a>
+                                    <>
+                                      {taskTitle && relatedTask && (
+                                        editingTaskTitleId === relatedTask.id ? (
+                                          <div style={{ 
+                                            marginBottom: '0.5rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem'
+                                          }}>
+                                            <input
+                                              type="text"
+                                              value={editingTaskTitleValue}
+                                              onChange={(e) => setEditingTaskTitleValue(e.target.value)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  e.preventDefault();
+                                                  if (editingTaskTitleValue.trim()) {
+                                                    handleSaveTaskTitle(relatedTask.id, editingTaskTitleValue);
+                                                  }
+                                                } else if (e.key === 'Escape') {
+                                                  setEditingTaskTitleId(null);
+                                                  setEditingTaskTitleValue('');
+                                                }
+                                              }}
+                                              autoFocus
+                                              onClick={(e) => e.stopPropagation()}
+                                              style={{
+                                                flex: 1,
+                                                padding: '0.375rem 0.5rem',
+                                                fontSize: '0.9375rem',
+                                                fontWeight: 600,
+                                                color: '#1e293b',
+                                                border: '2px solid #667eea',
+                                                borderRadius: '6px',
+                                                background: 'white',
+                                                outline: 'none'
+                                              }}
+                                            />
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (editingTaskTitleValue.trim()) {
+                                                  handleSaveTaskTitle(relatedTask.id, editingTaskTitleValue);
+                                                }
+                                              }}
+                                              style={{
+                                                padding: '0.375rem 0.5rem',
+                                                background: '#10b981',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem'
+                                              }}
+                                              title="Save"
+                                            >
+                                              ✓
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingTaskTitleId(null);
+                                                setEditingTaskTitleValue('');
+                                              }}
+                                              style={{
+                                                padding: '0.375rem 0.5rem',
+                                                background: '#ef4444',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem'
+                                              }}
+                                              title="Cancel"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div 
+                                            className="kanban-card-link"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (canAssignOwners || relatedTask?.assignedToId === currentUser?.id) {
+                                                setEditingTaskTitleId(relatedTask.id);
+                                                setEditingTaskTitleValue(taskTitle);
+                                              }
+                                            }}
+                                            style={{ 
+                                              fontWeight: 600, 
+                                              fontSize: '0.9375rem',
+                                              color: '#1e293b',
+                                              marginBottom: '0.5rem',
+                                              lineHeight: '1.4',
+                                              cursor: (canAssignOwners || relatedTask?.assignedToId === currentUser?.id) ? 'pointer' : 'default',
+                                              display: 'block',
+                                              wordBreak: 'break-word',
+                                              padding: '0.25rem',
+                                              borderRadius: '4px',
+                                              transition: 'background-color 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              if (canAssignOwners || relatedTask?.assignedToId === currentUser?.id) {
+                                                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                              }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.backgroundColor = 'transparent';
+                                            }}
+                                            title={(canAssignOwners || relatedTask?.assignedToId === currentUser?.id) ? 'Click to edit title' : ''}
+                                          >
+                                            {taskTitle}
+                                          </div>
+                                        )
+                                      )}
+                                      <a
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="kanban-card-link"
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={taskTitle ? {
+                                          fontSize: '0.8125rem',
+                                          color: '#64748b',
+                                          fontWeight: 400,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem'
+                                        } : {}}
+                                      >
+                                        {link.department}
+                                        <FaChevronRight className="kanban-link-icon" />
+                                      </a>
+                                    </>
                                   )}
                                 </div>
                           <div className="kanban-card-meta">
@@ -4314,8 +4917,8 @@ const ProjectDetail: React.FC = () => {
                   // Find tasks that reference this deliverable type
                   tasks.forEach((task: any) => {
                     if (task.fileUrl) {
-                      // Copy tasks can link to: Brand Book, Copy of Landing Page, Speaker Kit, Other, Landing Page
-                      if (task.type === 'Copy' && ['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other', 'Landing Page'].includes(deliverableType)) {
+                      // Copy tasks can link to: Brand Book, Copy of Home Page, Speaker Kit, Other, Home Page
+                      if (task.type === 'Copy' && ['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other', 'Home Page'].includes(deliverableType)) {
                         links.push({
                           department: 'Copy Writing',
                           type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
@@ -4323,8 +4926,8 @@ const ProjectDetail: React.FC = () => {
                           taskTitle: task.title
                         });
                       }
-                      // Design tasks can link to: Logo, Social Banners, Landing Page, Brand Book
-                      if (task.type === 'Design' && ['Logo', 'Social Banners', 'Landing Page', 'Brand Book'].includes(deliverableType)) {
+                      // Design tasks can link to: Logo, Social Banners, Home Page, Brand Book
+                      if (task.type === 'Design' && ['Logo', 'Social Banners', 'Home Page', 'Brand Book'].includes(deliverableType)) {
                         links.push({
                           department: 'Design',
                           type: task.fileUrl.includes('figma.com') ? 'Figma' : 'Google Drive',
@@ -4332,8 +4935,8 @@ const ProjectDetail: React.FC = () => {
                           taskTitle: task.title
                         });
                       }
-                      // Dev tasks for Landing Page (live URL)
-                      if (task.type === 'Dev' && deliverableType === 'Landing Page') {
+                      // Dev tasks for Home Page (live URL)
+                      if (task.type === 'Dev' && deliverableType === 'Home Page') {
                         links.push({
                           department: 'Development',
                           type: 'Live URL',
@@ -4352,11 +4955,11 @@ const ProjectDetail: React.FC = () => {
                     
                     // Determine department based on deliverable type
                     let dept = 'Deliverable';
-                    if (['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
+                    if (['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other'].includes(deliverableType)) {
                       dept = 'Copy Writing';
                     } else if (['Logo', 'Social Banners'].includes(deliverableType)) {
                       dept = 'Design';
-                    } else if (deliverableType === 'Landing Page') {
+                    } else if (deliverableType === 'Home Page') {
                       dept = isLiveUrl ? 'Development' : 'Design';
                     }
                     
@@ -4380,13 +4983,13 @@ const ProjectDetail: React.FC = () => {
                 
                 // Determine which departments are involved with this deliverable
                 const getDeliverableDepartments = (type: string) => {
-                  if (type === 'Landing Page') {
+                  if (type === 'Home Page') {
                     return [
                       { name: 'Copy Writing', color: '#667eea', icon: '📝' },
                       { name: 'Design', color: '#8b5cf6', icon: '🎨' },
                       { name: 'Development', color: '#10b981', icon: '💻' }
                     ];
-                  } else if (['Brand Book', 'Copy of Landing Page', 'Speaker Kit', 'Other'].includes(type)) {
+                  } else if (['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other'].includes(type)) {
                     return [{ name: 'Copy Writing', color: '#667eea', icon: '📝' }];
                   } else if (['Logo', 'Social Banners'].includes(type)) {
                     return [{ name: 'Design', color: '#8b5cf6', icon: '🎨' }];
@@ -4398,7 +5001,7 @@ const ProjectDetail: React.FC = () => {
                 
                 // Get workflow stage context
                 const getWorkflowContext = (status: string, type: string, depts: any[]) => {
-                  if (type === 'Landing Page') {
+                  if (type === 'Home Page') {
                     switch (status) {
                       case 'Not Started':
                         return `Waiting for Copy → Design → Dev workflow to begin`;
@@ -5256,7 +5859,7 @@ const ProjectDetail: React.FC = () => {
                       <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <FaExclamationTriangle style={{ color: '#10b981', fontSize: '1rem' }} />
-                          <span>Landing Page Revisions</span>
+                          <span>Home Page Revisions</span>
                         </div>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
@@ -6347,6 +6950,59 @@ const ProjectDetail: React.FC = () => {
         );
       })()}
 
+      {/* Delete Deliverable Confirmation Modal */}
+      {showDeleteDeliverableConfirm && project && (() => {
+        const deliverableToDelete = project.deliverables?.find((d: any) => d.id === showDeleteDeliverableConfirm);
+        if (!deliverableToDelete) return null;
+        
+        return (
+          <div className="modal-overlay" onClick={() => setShowDeleteDeliverableConfirm(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <h2>Delete Custom Deliverable</h2>
+                <button className="modal-close" onClick={() => setShowDeleteDeliverableConfirm(null)}>
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '1rem', color: '#64748b' }}>
+                  Are you sure you want to delete <strong>"{getDeliverableDisplayName(deliverableToDelete)}"</strong>?
+                </p>
+                <p style={{ marginBottom: '1rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                  ⚠️ This action cannot be undone. All tasks associated with this deliverable will remain but will no longer be linked to a deliverable.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowDeleteDeliverableConfirm(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-danger"
+                  onClick={() => handleDeleteCustomDeliverable(showDeleteDeliverableConfirm)}
+                  style={{
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <FaTrash /> Delete Deliverable
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Add Custom Deliverable Modal */}
       {showAddTaskFromDeliverableModal && selectedDeliverableForTask && (
         <div className="modal-overlay" onClick={() => setShowAddTaskFromDeliverableModal(false)}>
@@ -7282,7 +7938,7 @@ const ProjectDetail: React.FC = () => {
                     type="text"
                     value={newCustomDeliverableName}
                     onChange={(e) => setNewCustomDeliverableName(e.target.value)}
-                    placeholder="e.g., Email Templates, Social Posts, Landing Page Copy"
+                    placeholder="e.g., Email Templates, Social Posts, Home Page Copy"
                     className="form-input"
                     style={{ 
                       width: '100%', 

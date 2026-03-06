@@ -103,7 +103,7 @@ export const projectService = {
     return response.data;
   },
 
-  async update(id: string, data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[] }): Promise<any> {
+  async update(id: string, data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[]; pmId?: string }): Promise<any> {
     const response = await axios.patch(`${API_URL}/projects/${id}`, data, getAuthHeaders());
     return response.data;
   },

@@ -94,5 +94,32 @@ export const taskService = {
     );
     return response.data;
   },
+
+  // Task Conversation Methods
+  async getConversations(taskId: string): Promise<any[]> {
+    const response = await axios.get(
+      `${API_URL}/tasks/${taskId}/conversations`,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async createQuestion(taskId: string, text: string, mentionedUserIds?: string[]): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/tasks/${taskId}/questions`,
+      { text, mentionedUserIds },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async createComment(questionId: string, text: string, mentionedUserIds?: string[]): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/tasks/questions/${questionId}/comments`,
+      { text, mentionedUserIds },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
 };
 

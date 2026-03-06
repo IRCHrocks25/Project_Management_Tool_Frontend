@@ -47,8 +47,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
   const allDeliverables = [
     'Logo',
     'Brand Book',
-    'Landing Page',
-    'Copy of Landing Page',
+    'Home Page',
+    'Copy of Home Page',
     'Speaker Kit',
     'Social Banners',
     'Other',
@@ -157,7 +157,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
     }
     
     if (formData.package === 'Premium' || formData.package === 'ICON Package') {
-      deliverables.push('Landing Page');
+      deliverables.push('Home Page');
     }
     
     if (formData.package !== 'Starter') {

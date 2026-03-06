@@ -4504,7 +4504,7 @@ const DepartmentView: React.FC = () => {
                       type="text"
                       value={templateData.title}
                       onChange={(e) => setTemplateData({ ...templateData, title: e.target.value })}
-                      placeholder="e.g., Create Copy for Landing Page"
+                      placeholder="e.g., Create Copy for Home Page"
                       style={{
                         width: '100%',
                         padding: '0.75rem',

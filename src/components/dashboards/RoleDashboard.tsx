@@ -177,6 +177,73 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   // Task detail modal state
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any>(null);
+  const [taskDetailTab, setTaskDetailTab] = useState<'details' | 'conversation'>('details');
+  
+  // Conversation state
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [newQuestionText, setNewQuestionText] = useState('');
+  const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+  const [submittingComments, setSubmittingComments] = useState<Record<string, boolean>>({});
+  const [showMentionDropdown, setShowMentionDropdown] = useState<{ questionId?: string; commentId?: string; position: number } | null>(null);
+  
+  // Helper to get display text (without USER_ID patterns) for textarea
+  const getDisplayText = (text: string): string => {
+    return renderTextWithMentions(text);
+  };
+  
+  // Helper to update text while preserving USER_ID patterns
+  const updateTextWithMentions = (currentText: string, newDisplayText: string): string => {
+    // Extract all existing mentions with IDs from current text
+    // eslint-disable-next-line no-useless-escape
+    const mentionRegex = /@([^\[]+)\[\[USER_ID:([^\]]+)\]\]/g;
+    const existingMentions = new Map<string, string>(); // Map of name -> userId
+    
+    let match;
+    const regex = new RegExp(mentionRegex);
+    while ((match = regex.exec(currentText)) !== null) {
+      const name = match[1].trim();
+      const userId = match[2];
+      existingMentions.set(name, userId);
+    }
+    
+    // Find mentions in new display text and restore IDs
+    const newMentionRegex = /@([^\s@\n]+(?:\s+[^\s@\n]+)*)/g;
+    let result = newDisplayText;
+    const matches = Array.from(newDisplayText.matchAll(newMentionRegex));
+    
+    // Process from end to start to maintain correct indices
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i];
+      const name = match[1].trim();
+      const userId = existingMentions.get(name);
+      
+      if (userId && match.index !== undefined) {
+        // Replace name-only mention with full mention including ID
+        const start = match.index;
+        const end = start + match[0].length;
+        result = result.substring(0, start) + `@${name}[[USER_ID:${userId}]]` + result.substring(end);
+      }
+    }
+    
+    return result;
+  };
+
+  // Drag and drop state
+  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+  // Status change modal state (for drag and drop)
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [statusChangeContext, setStatusChangeContext] = useState<{
+    taskId: string;
+    targetColumnId: string;
+    targetColumnLabel: string;
+  } | null>(null);
+  const [statusChangeNotes, setStatusChangeNotes] = useState('');
+  const [statusChangeLinks, setStatusChangeLinks] = useState<string[]>(['']);
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false);
 
   // Department menu items
   const departmentMenuItems = [
@@ -585,7 +652,120 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
 
   const handleOpenTaskDetail = (task: any) => {
     setSelectedTaskDetail(task);
+    setTaskDetailTab('details');
     setShowTaskDetailModal(true);
+    if (task?.id) {
+      loadConversations(task.id);
+    }
+  };
+
+  const loadConversations = async (taskId: string) => {
+    try {
+      setLoadingConversations(true);
+      const data = await taskService.getConversations(taskId);
+      setConversations(data);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+      setConversations([]);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  const extractMentions = (text: string): string[] => {
+    // Match @name[[USER_ID:uuid]] format - extract the ID directly
+    // eslint-disable-next-line no-useless-escape
+    const mentionRegex = /@[^\[]+\[\[USER_ID:([^\]]+)\]\]/g;
+    const matches = Array.from(text.matchAll(mentionRegex));
+    if (!matches || matches.length === 0) return [];
+    
+    const mentionedUserIds: string[] = [];
+    const foundIds = new Set<string>(); // Prevent duplicates
+    
+    matches.forEach(match => {
+      const userId = match[1]; // Extract the user ID from the pattern
+      if (userId && !foundIds.has(userId)) {
+        foundIds.add(userId);
+        mentionedUserIds.push(userId);
+      }
+    });
+    return mentionedUserIds;
+  };
+
+  // Render text with mentions - show name but hide the ID part
+  const renderTextWithMentions = (text: string) => {
+    if (!text) return text;
+    // Replace @name[[USER_ID:uuid]] with just @name for display
+    // eslint-disable-next-line no-useless-escape
+    return text.replace(/@([^\[]+)\[\[USER_ID:[^\]]+\]\]/g, '@$1');
+  };
+
+  const handleCreateQuestion = async () => {
+    if (!selectedTaskDetail?.id || !newQuestionText.trim()) return;
+    
+    try {
+      setSubmittingQuestion(true);
+      const mentionedUserIds = extractMentions(newQuestionText);
+      console.log('Extracted mentions:', mentionedUserIds, 'from text:', newQuestionText);
+      if (mentionedUserIds.length > 0) {
+        console.log('Mentioned users:', mentionedUserIds.map(id => {
+          const user = users.find((u: any) => u.id === id);
+          return user ? user.name : id;
+        }));
+      }
+      await taskService.createQuestion(selectedTaskDetail.id, newQuestionText, mentionedUserIds);
+      setNewQuestionText('');
+      await loadConversations(selectedTaskDetail.id);
+    } catch (error: any) {
+      console.error('Failed to create question:', error);
+      alert(`Failed to create question: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
+    } finally {
+      setSubmittingQuestion(false);
+    }
+  };
+
+  const handleCreateComment = async (questionId: string) => {
+    const commentText = newCommentTexts[questionId];
+    if (!commentText?.trim()) return;
+    
+    try {
+      setSubmittingComments({ ...submittingComments, [questionId]: true });
+      const mentionedUserIds = extractMentions(commentText);
+      console.log('Extracted mentions from comment:', mentionedUserIds, 'from text:', commentText);
+      if (mentionedUserIds.length > 0) {
+        console.log('Mentioned users:', mentionedUserIds.map(id => {
+          const user = users.find((u: any) => u.id === id);
+          return user ? user.name : id;
+        }));
+      }
+      await taskService.createComment(questionId, commentText, mentionedUserIds);
+      setNewCommentTexts({ ...newCommentTexts, [questionId]: '' });
+      if (selectedTaskDetail?.id) {
+        await loadConversations(selectedTaskDetail.id);
+      }
+    } catch (error: any) {
+      console.error('Failed to create comment:', error);
+      alert(`Failed to create comment: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
+    } finally {
+      setSubmittingComments({ ...submittingComments, [questionId]: false });
+    }
+  };
+
+  const handleMentionInput = (text: string, questionId?: string, commentId?: string) => {
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const afterAt = text.substring(lastAtIndex + 1);
+      // Check if we're typing a mention (not already completed with USER_ID)
+      // Allow word characters and spaces, but not if it already has [[USER_ID:
+      // eslint-disable-next-line no-useless-escape
+      if (afterAt.match(/^[^\[]*$/) && !afterAt.includes('[[USER_ID:')) {
+        setShowMentionDropdown({ questionId, commentId, position: lastAtIndex + 1 });
+      } else {
+        setShowMentionDropdown(null);
+      }
+    } else {
+      setShowMentionDropdown(null);
+    }
   };
 
 
@@ -932,7 +1112,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
 
   const hasRevisionDeliverables = (project: any) => {
     return project.deliverables?.some((d: any) => 
-      ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) &&
+      ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) &&
       d.status === 'Revision'
     );
   };
@@ -1037,6 +1217,173 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
     };
   };
+
+  // Convert URLs in text to clickable links
+  const renderDescriptionWithLinks = (text: string) => {
+    if (!text) return null;
+    
+    // URL regex pattern - matches http://, https://, and www. URLs
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Add text before the URL
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      // Add the URL as a clickable link
+      let url = match[0];
+      // Add https:// if it starts with www.
+      if (url.startsWith('www.')) {
+        url = 'https://' + url;
+      }
+      
+      parts.push(
+        <a
+          key={key++}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#2563eb',
+            textDecoration: 'none',
+            wordBreak: 'break-all',
+            borderBottom: '1px solid transparent',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.textDecoration = 'underline';
+            e.currentTarget.style.borderBottomColor = '#2563eb';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.textDecoration = 'none';
+            e.currentTarget.style.borderBottomColor = 'transparent';
+          }}
+        >
+          {match[0]}
+        </a>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? <>{parts}</> : text;
+  };
+
+  // Map column ID to backend status and column marker
+  const mapColumnToStatus = (columnId: string): { status: string; columnMarker?: string; isCompleted: boolean } => {
+    switch (columnId) {
+      case 'not_started':
+        return { status: 'Todo', isCompleted: false };
+      case 'owned_in_progress':
+        return { status: 'In Progress', isCompleted: false };
+      case 'for_approval':
+        return { status: 'In Review', columnMarker: '\n\n--- Column: For Approval ---', isCompleted: false };
+      case 'revision':
+        return { status: 'In Review', columnMarker: '\n\n--- Column: Revision ---', isCompleted: false };
+      case 'elliot_review':
+        return { status: 'In Review', columnMarker: '\n\n--- Column: Elliot Review ---', isCompleted: false };
+      case 'qa_before_client':
+        return { status: 'In Review', columnMarker: '\n\n--- Column: QA Review ---', isCompleted: false };
+      case 'client_validation':
+        return { status: 'In Review', columnMarker: '\n\n--- Column: Client Review ---', isCompleted: false };
+      case 'approved_completed':
+        return { status: 'Completed', isCompleted: true };
+      default:
+        return { status: 'Todo', isCompleted: false };
+    }
+  };
+
+  // Handle status change from drag and drop modal
+  const handleStatusChangeFromDrag = async () => {
+    if (!statusChangeContext) return;
+    
+    try {
+      setStatusChangeLoading(true);
+      const task = tasks.find((t: any) => t.id === statusChangeContext.taskId);
+      if (!task) return;
+
+      const { status, columnMarker, isCompleted } = mapColumnToStatus(statusChangeContext.targetColumnId);
+      
+      // Update description with column marker if needed
+      if (columnMarker) {
+        const currentDesc = task.description || '';
+        const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+        if (!cleanedDesc.includes(columnMarker)) {
+          try {
+            await taskService.update(task.id, {
+              description: cleanedDesc + columnMarker
+            });
+          } catch (descError) {
+            console.warn('Failed to update description with column marker:', descError);
+          }
+        }
+      } else {
+        // Clear column markers when moving to non-review columns
+        const currentDesc = task.description || '';
+        if (currentDesc.includes('--- Column:')) {
+          try {
+            const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+            await taskService.update(task.id, {
+              description: cleanedDesc
+            });
+          } catch (descError) {
+            console.warn('Failed to clear column marker:', descError);
+          }
+        }
+      }
+
+      // Update task status
+      await taskService.updateStatus(statusChangeContext.taskId, status, isCompleted);
+
+      // Log status change with notes and links
+      const currentDesc = task.description || '';
+      const timestamp = new Date().toLocaleString();
+      let logBlock = `\n\n--- Status Change ---\nNew Column: ${statusChangeContext.targetColumnLabel}\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
+      
+      if (statusChangeNotes && statusChangeNotes.trim()) {
+        logBlock += `\nNotes: ${statusChangeNotes.trim()}`;
+      }
+      
+      const validLinks = statusChangeLinks.filter(link => link.trim());
+      if (validLinks.length > 0) {
+        logBlock += `\nAttachments:\n${validLinks.map(link => `- ${link.trim()}`).join('\n')}`;
+      }
+
+      const updatedDesc = currentDesc + logBlock;
+      try {
+        await taskService.update(task.id, { description: updatedDesc });
+      } catch (descError) {
+        console.warn('Failed to update task description with status change log:', descError);
+      }
+
+      // Reload data
+      await loadData();
+      
+      // Close modal
+      setShowStatusChangeModal(false);
+      setStatusChangeContext(null);
+      setStatusChangeNotes('');
+      setStatusChangeLinks(['']);
+      
+      alert(`Task moved to ${statusChangeContext.targetColumnLabel} ✓`);
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+      alert('Failed to update task status. Please try again.');
+    } finally {
+      setStatusChangeLoading(false);
+    }
+  };
+
 
 
   if (loading) {
@@ -1841,21 +2188,63 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 const statusTasks = groupedTasks[column.id] || [];
 
                 return (
-                  <div key={column.id} style={{
-                    width: '100%',
-                    minWidth: '280px',
-                    maxWidth: '100%',
-                    background: 'white',
-                    borderRadius: '12px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    border: '2px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transition: 'all 0.2s',
-                    height: 'fit-content',
-                    maxHeight: 'calc(100vh - 300px)',
-                    position: 'relative'
-                  }}>
+                  <div 
+                    key={column.id} 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverColumn(column.id);
+                    }}
+                    onDragLeave={() => setDragOverColumn(null)}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDragOverColumn(null);
+                      if (!draggedTask) return;
+                      
+                      const task = tasks.find((t: any) => t.id === draggedTask);
+                      if (!task) return;
+                      
+                      // Map column ID to status label
+                      const columnLabelMap: Record<string, string> = {
+                        'not_started': 'Not Yet Started',
+                        'owned_in_progress': 'Owned/In Progress',
+                        'for_approval': 'For Approval',
+                        'revision': 'Revision',
+                        'elliot_review': 'Elliot Review',
+                        'approved_completed': 'Approved/Completed',
+                        'qa_before_client': 'QA Before Sending to Client',
+                        'client_validation': 'Client Validation',
+                      };
+                      
+                      const targetLabel = columnLabelMap[column.id] || column.title;
+                      
+                      // Open modal to capture notes and links
+                      setStatusChangeContext({
+                        taskId: draggedTask,
+                        targetColumnId: column.id,
+                        targetColumnLabel: targetLabel,
+                      });
+                      setStatusChangeNotes('');
+                      setStatusChangeLinks(['']);
+                      setShowStatusChangeModal(true);
+                      setDraggedTask(null);
+                    }}
+                    style={{
+                      width: '100%',
+                      minWidth: '280px',
+                      maxWidth: '100%',
+                      background: 'white',
+                      borderRadius: '12px',
+                      boxShadow: dragOverColumn === column.id ? '0 4px 12px rgba(99,102,241,0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
+                      border: dragOverColumn === column.id ? '2px solid #6366f1' : '2px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'all 0.2s',
+                      height: 'fit-content',
+                      maxHeight: 'calc(100vh - 300px)',
+                      position: 'relative'
+                    }}
+                  >
                     <div style={{
                       padding: '1rem',
                       background: '#f8fafc',
@@ -1892,13 +2281,31 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                         return (
                           <div
                             key={task.id}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedTask(task.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                              const target = e.target as HTMLElement;
+                              if (target.closest('.kanban-task-card')) {
+                                (target.closest('.kanban-task-card') as HTMLElement).style.opacity = '0.5';
+                              }
+                            }}
+                            onDragEnd={(e) => {
+                              const target = e.target as HTMLElement;
+                              if (target.closest('.kanban-task-card')) {
+                                (target.closest('.kanban-task-card') as HTMLElement).style.opacity = '1';
+                              }
+                              setDraggedTask(null);
+                              setDragOverColumn(null);
+                            }}
+                            className="kanban-task-card"
                             style={{
                               padding: '0.75rem',
                               marginBottom: '0.75rem',
                               border: taskInRevision ? '2px solid #dc2626' : `1px solid ${borderColor}`,
                               borderRadius: '8px',
                               background: 'white',
-                              cursor: 'pointer',
+                              cursor: draggedTask === task.id ? 'grabbing' : 'grab',
                               transition: 'all 0.2s',
                               position: 'relative',
                               boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -4030,12 +4437,55 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             </button>
           </div>
 
+          {/* Tabs */}
+          <div style={{
+            display: 'flex',
+            borderBottom: '1px solid #e5e7eb',
+            background: '#f9fafb',
+            padding: '0 2rem'
+          }}>
+            <button
+              onClick={() => setTaskDetailTab('details')}
+              style={{
+                padding: '0.75rem 1rem',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: taskDetailTab === 'details' ? color : '#6b7280',
+                borderBottom: taskDetailTab === 'details' ? `2px solid ${color}` : '2px solid transparent',
+                transition: 'all 0.2s'
+              }}
+            >
+              Details
+            </button>
+            <button
+              onClick={() => setTaskDetailTab('conversation')}
+              style={{
+                padding: '0.75rem 1rem',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: taskDetailTab === 'conversation' ? color : '#6b7280',
+                borderBottom: taskDetailTab === 'conversation' ? `2px solid ${color}` : '2px solid transparent',
+                transition: 'all 0.2s'
+              }}
+            >
+              Conversation
+            </button>
+          </div>
+
           {/* Modal Content */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
             padding: '1.5rem 2rem'
           }}>
+            {taskDetailTab === 'details' ? (
+              <>
             {/* Task Status Badge */}
             <div style={{ marginBottom: '1.5rem' }}>
               <span style={{
@@ -4216,7 +4666,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                   whiteSpace: 'pre-wrap',
                   lineHeight: '1.6'
                 }}>
-                  {selectedTaskDetail.description}
+                  {renderDescriptionWithLinks(selectedTaskDetail.description)}
                 </div>
               </div>
             )}
@@ -4343,6 +4793,371 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 Edit Task
               </button>
             </div>
+              </>
+            ) : (
+              /* Conversation Tab */
+              <div>
+                {/* Conversations List */}
+                {loadingConversations ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                    <FaSpinner className="spinner" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} />
+                    <div>Loading conversations...</div>
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
+                    No questions yet. Be the first to ask!
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {conversations.map((question: any) => (
+                      <div key={question.id} style={{
+                        padding: '1rem',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        {/* Question */}
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '0.5rem'
+                          }}>
+                            <div style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              flexShrink: 0
+                            }}>
+                              {question.user?.name?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                color: '#111827'
+                              }}>
+                                {question.user?.name || 'Unknown'}
+                              </div>
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: '#6b7280'
+                              }}>
+                                {new Date(question.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: '0.875rem',
+                            color: '#374151',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.5',
+                            marginLeft: '2.25rem'
+                          }}>
+                            {renderTextWithMentions(question.text)}
+                          </div>
+                        </div>
+
+                        {/* Comments */}
+                        {question.comments && question.comments.length > 0 && (
+                          <div style={{
+                            marginLeft: '2.25rem',
+                            paddingLeft: '1rem',
+                            borderLeft: '2px solid #e5e7eb',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                          }}>
+                            {question.comments.map((comment: any) => (
+                              <div key={comment.id} style={{
+                                padding: '0.75rem',
+                                background: 'white',
+                                borderRadius: '6px',
+                                border: '1px solid #e5e7eb'
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  marginBottom: '0.5rem'
+                                }}>
+                                  <div style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '0.625rem',
+                                    flexShrink: 0
+                                  }}>
+                                    {comment.user?.name?.charAt(0).toUpperCase() || '?'}
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{
+                                      fontSize: '0.8125rem',
+                                      fontWeight: 600,
+                                      color: '#111827'
+                                    }}>
+                                      {comment.user?.name || 'Unknown'}
+                                    </div>
+                                    <div style={{
+                                      fontSize: '0.6875rem',
+                                      color: '#6b7280'
+                                    }}>
+                                      {new Date(comment.createdAt).toLocaleString()}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div style={{
+                                  fontSize: '0.8125rem',
+                                  color: '#374151',
+                                  whiteSpace: 'pre-wrap',
+                                  lineHeight: '1.5',
+                                  marginLeft: '1.75rem'
+                                }}>
+                                  {renderTextWithMentions(comment.text)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Comment Input */}
+                        <div style={{
+                          marginTop: '0.75rem',
+                          marginLeft: '2.25rem',
+                          paddingLeft: '1rem',
+                          borderLeft: '2px solid #e5e7eb'
+                        }}>
+                          <div style={{ position: 'relative' }}>
+                            <textarea
+                              value={getDisplayText(newCommentTexts[question.id] || '')}
+                              onChange={(e) => {
+                                const displayValue = e.target.value;
+                                const currentText = newCommentTexts[question.id] || '';
+                                // Update text while preserving existing USER_ID patterns
+                                const updatedText = updateTextWithMentions(currentText, displayValue);
+                                setNewCommentTexts({ ...newCommentTexts, [question.id]: updatedText });
+                                handleMentionInput(updatedText, question.id);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                  handleCreateComment(question.id);
+                                }
+                              }}
+                              placeholder="Add a comment... Use @ to mention someone"
+                              rows={2}
+                              style={{
+                                width: '100%',
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '0.8125rem',
+                                fontFamily: 'inherit',
+                                resize: 'vertical'
+                              }}
+                            />
+                            {showMentionDropdown && showMentionDropdown.questionId === question.id && (
+                              <div style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: 0,
+                                right: 0,
+                                marginBottom: '0.5rem',
+                                background: 'white',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                zIndex: 1000
+                              }}>
+                                {users.filter((u: any) => {
+                                  const commentText = newCommentTexts[question.id] || '';
+                                  const textAfterAt = commentText.substring(showMentionDropdown.position);
+                                  // Remove any existing USER_ID pattern for matching
+                                  const searchTerm = textAfterAt.replace(/\[\[USER_ID:[^\]]+\]\]/g, '').toLowerCase();
+                                  return u.name.toLowerCase().includes(searchTerm);
+                                }).slice(0, 5).map((u: any) => (
+                                  <div
+                                    key={u.id}
+                                    onClick={() => {
+                                      const commentText = newCommentTexts[question.id] || '';
+                                      const beforeCursor = commentText.substring(0, showMentionDropdown.position - 1);
+                                      const afterCursor = commentText.substring(showMentionDropdown.position);
+                                      // Insert mention with user ID: @Name[[USER_ID:uuid]]
+                                      const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] ` + afterCursor.replace(/^@[^\s@]*/, '');
+                                      setNewCommentTexts({ ...newCommentTexts, [question.id]: newText });
+                                      setShowMentionDropdown(null);
+                                    }}
+                                    style={{
+                                      padding: '0.5rem 0.75rem',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8125rem',
+                                      borderBottom: '1px solid #f3f4f6'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#f9fafb';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'white';
+                                    }}
+                                  >
+                                    {u.name}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleCreateComment(question.id)}
+                            disabled={!newCommentTexts[question.id]?.trim() || submittingComments[question.id]}
+                            style={{
+                              marginTop: '0.5rem',
+                              padding: '0.375rem 0.75rem',
+                              border: 'none',
+                              borderRadius: '6px',
+                              background: (!newCommentTexts[question.id]?.trim() || submittingComments[question.id]) ? '#9ca3af' : color,
+                              color: 'white',
+                              cursor: (!newCommentTexts[question.id]?.trim() || submittingComments[question.id]) ? 'not-allowed' : 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 600
+                            }}
+                          >
+                            {submittingComments[question.id] ? 'Posting...' : 'Post Comment'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* New Question Form - At the bottom */}
+                <div style={{
+                  marginTop: '2rem',
+                  padding: '1rem',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Ask a Question
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <textarea
+                      value={getDisplayText(newQuestionText)}
+                      onChange={(e) => {
+                        const displayValue = e.target.value;
+                        // Update text while preserving existing USER_ID patterns
+                        const updatedText = updateTextWithMentions(newQuestionText, displayValue);
+                        setNewQuestionText(updatedText);
+                        handleMentionInput(updatedText);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          handleCreateQuestion();
+                        }
+                      }}
+                      placeholder="Type your question... Use @ to mention someone"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                    />
+                    {showMentionDropdown && !showMentionDropdown.questionId && !showMentionDropdown.commentId && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        right: 0,
+                        marginBottom: '0.5rem',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        zIndex: 1000
+                      }}>
+                      {users.filter((u: any) => {
+                        const textAfterAt = newQuestionText.substring(showMentionDropdown.position);
+                        // Remove any existing USER_ID pattern for matching
+                        const searchTerm = textAfterAt.replace(/\[\[USER_ID:[^\]]+\]\]/g, '').toLowerCase();
+                        return u.name.toLowerCase().includes(searchTerm);
+                      }).slice(0, 5).map((u: any) => (
+                          <div
+                            key={u.id}
+                            onClick={() => {
+                              const beforeCursor = newQuestionText.substring(0, showMentionDropdown.position - 1);
+                              const afterCursor = newQuestionText.substring(showMentionDropdown.position);
+                              // Insert mention with user ID: @Name[[USER_ID:uuid]]
+                              const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] ` + afterCursor.replace(/^@[^\s@]*/, '');
+                              setNewQuestionText(newText);
+                              setShowMentionDropdown(null);
+                            }}
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              borderBottom: '1px solid #f3f4f6'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                            }}
+                          >
+                            {u.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleCreateQuestion}
+                    disabled={!newQuestionText.trim() || submittingQuestion}
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '6px',
+                      background: (!newQuestionText.trim() || submittingQuestion) ? '#9ca3af' : color,
+                      color: 'white',
+                      cursor: (!newQuestionText.trim() || submittingQuestion) ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    {submittingQuestion ? 'Posting...' : 'Post Question'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -4365,6 +5180,280 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               to { opacity: 1; }
             }
           `}</style>
+        </div>
+      )}
+
+      {/* Status Change Modal (for drag and drop) */}
+      {showStatusChangeModal && statusChangeContext && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2100,
+          }}
+          onClick={() => {
+            if (statusChangeLoading) return;
+            setShowStatusChangeModal(false);
+            setStatusChangeContext(null);
+            setStatusChangeNotes('');
+            setStatusChangeLinks(['']);
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              margin: '1rem',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: '#111827',
+                }}
+              >
+                Update Status – {statusChangeContext.targetColumnLabel}
+              </h2>
+              <button
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeLinks(['']);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  padding: '0.5rem',
+                  borderRadius: '999px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              <p style={{ marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
+                Add notes and links so PMs and team leads can see why this task moved into "{statusChangeContext.targetColumnLabel}".
+              </p>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label
+                  htmlFor="status-change-notes"
+                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+                >
+                  Notes (Optional)
+                </label>
+                <textarea
+                  id="status-change-notes"
+                  value={statusChangeNotes}
+                  onChange={(e) => setStatusChangeNotes(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    minHeight: '100px',
+                    fontFamily: 'inherit',
+                    fontSize: '0.9rem',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                  }}
+                  placeholder="Add context about this status change..."
+                  disabled={statusChangeLoading}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+                >
+                  Links / Attachments (Optional)
+                </label>
+                {statusChangeLinks.map((link, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <FaLink style={{ color: '#6b7280', fontSize: '0.875rem', flexShrink: 0 }} />
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => {
+                        const newLinks = [...statusChangeLinks];
+                        newLinks[index] = e.target.value;
+                        setStatusChangeLinks(newLinks);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        border: '1px solid #d1d5db',
+                        fontSize: '0.9rem',
+                      }}
+                      placeholder="https://example.com or Google Drive/Figma link..."
+                      disabled={statusChangeLoading}
+                    />
+                    {statusChangeLinks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newLinks = statusChangeLinks.filter((_, i) => i !== index);
+                          setStatusChangeLinks(newLinks);
+                        }}
+                        disabled={statusChangeLoading}
+                        style={{
+                          padding: '0.5rem',
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#fef2f2';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setStatusChangeLinks([...statusChangeLinks, ''])}
+                  disabled={statusChangeLoading}
+                  style={{
+                    marginTop: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #d1d5db',
+                    background: 'white',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f9fafb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                  }}
+                >
+                  <FaPlus style={{ fontSize: '0.75rem' }} />
+                  Add Another Link
+                </button>
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
+                  Use this to attach references, client feedback, or handoff links.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '1.25rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (statusChangeLoading) return;
+                  setShowStatusChangeModal(false);
+                  setStatusChangeContext(null);
+                  setStatusChangeNotes('');
+                  setStatusChangeLinks(['']);
+                }}
+                disabled={statusChangeLoading}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  color: '#374151',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStatusChangeFromDrag}
+                disabled={statusChangeLoading}
+                style={{
+                  background: statusChangeLoading ? '#9ca3af' : color,
+                  border: 'none',
+                  color: 'white',
+                  padding: '0.6rem 1.4rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {statusChangeLoading ? (
+                  <>
+                    <FaSpinner className="spinner" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Status'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

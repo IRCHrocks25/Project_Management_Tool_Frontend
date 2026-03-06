@@ -15,6 +15,8 @@ import ClientUpdateFormView from './components/ClientUpdateFormView';
 import FormBuilder from './components/FormBuilder';
 import DepartmentView from './components/DepartmentView';
 import MyProjectsView from './components/MyProjectsView';
+import DepartmentActivityLog from './components/DepartmentActivityLog';
+import PMActivityLog from './components/PMActivityLog';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -122,7 +124,23 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
-        {/* Fallback route - redirect to landing page if route not found */}
+        <Route
+          path="/department-activity-log"
+          element={
+            <PrivateRoute>
+              <DepartmentActivityLog />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/pm-activity-log"
+          element={
+            <PrivateRoute>
+              <PMActivityLog />
+            </PrivateRoute>
+          }
+        />
+        {/* Fallback route - redirect to Home Page if route not found */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

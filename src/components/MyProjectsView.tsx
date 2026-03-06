@@ -185,7 +185,7 @@ const MyProjectsView: React.FC = () => {
 
   const hasRevisionDeliverables = (project: any) => {
     return project.deliverables?.some((d: any) => 
-      ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) &&
+      ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) &&
       d.status === 'Revision'
     );
   };

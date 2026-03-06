@@ -123,18 +123,18 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
   // Show all deliverables from the project, including custom ones
   // For design tasks: show design-related + custom deliverables
   // For copy tasks: show copy-related + custom deliverables  
-  // For dev tasks: show Landing Page + custom deliverables
+  // For dev tasks: show Home Page + custom deliverables
   const relevantDeliverables = isDevTask
     ? projectDeliverables.filter((d: any) => 
-        d.type === 'Landing Page' || (d.type === 'Other' && d.customType)
+        d.type === 'Home Page' || (d.type === 'Other' && d.customType)
       )
     : isDesignTask
     ? projectDeliverables.filter((d: any) => 
-        ['Logo', 'Social Banners', 'Speaker Kit', 'Brand Book', 'Landing Page'].includes(d.type) || 
+        ['Logo', 'Social Banners', 'Speaker Kit', 'Brand Book', 'Home Page'].includes(d.type) || 
         (d.type === 'Other' && d.customType)
       )
     : projectDeliverables.filter((d: any) => 
-        ['Brand Book', 'Copy of Landing Page', 'Landing Page', 'Speaker Kit', 'Other'].includes(d.type) || 
+        ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) || 
         (d.type === 'Other' && d.customType)
       );
   
@@ -342,7 +342,7 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
             {error && <div className="error-message">{error}</div>}
             <p className="input-hint">
               {isDevTask
-                ? 'Paste the preview or deployment URL for the landing page. This will be visible to the PM and added to client files.'
+                ? 'Paste the preview or deployment URL for the Home Page. This will be visible to the PM and added to client files.'
                 : linkType === 'figma'
                 ? `Paste the Figma link to your ${isDesignTask ? 'design' : 'asset'} files. This will be visible to the PM and added to client files.`
                 : linkType === 'drive'
