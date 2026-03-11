@@ -10,9 +10,11 @@ interface NotificationsModalProps {
   onClose: () => void;
   onUpdate?: () => void; // Callback to refresh unread count in parent
   onMarkAllAsRead?: () => void; // Callback to immediately reset count to 0
+  /** When provided and user clicks a mention/response notification, open task in slide modal instead of navigating */
+  onOpenTaskConversation?: (projectId: string, taskId: string) => void | Promise<void>;
 }
 
-const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead }) => {
+const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead, onOpenTaskConversation }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const user = authService.getUser();
@@ -22,14 +24,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
     try {
       setLoading(true);
       const data = await notificationService.getAll();
-      
-      console.log('Raw notifications from API:', {
-        count: data.length,
-        currentUserId: user?.id,
-        sample: data[0],
-        firstFew: data.slice(0, 3)
-      });
-      
+
       // Backend already filters by userId in the query, so all returned notifications are for this user
       // Just use them directly - no additional filtering needed
       // (Backend query: .where('notification.userId = :userId', { userId }))
@@ -91,8 +86,13 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
 
       // Navigate based on notification context
       if (notification.projectId) {
-        // Conversation notifications (mention, task_update) → go to project and open task conversation
+        // Conversation notifications (mention, task_update, someone responded) → open task in slide modal if callback provided
         const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
+        if (isConversation && onOpenTaskConversation && notification.taskId) {
+          await onOpenTaskConversation(notification.projectId, notification.taskId);
+          onClose();
+          return;
+        }
         const url = isConversation
           ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
           : `/project/${notification.projectId}`;

@@ -650,12 +650,23 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return users.filter((u: any) => u.role === role);
   };
 
-  const handleOpenTaskDetail = (task: any) => {
+  const handleOpenTaskDetail = (task: any, tab?: 'details' | 'conversation') => {
     setSelectedTaskDetail(task);
-    setTaskDetailTab('details');
+    setTaskDetailTab(tab || 'details');
     setShowTaskDetailModal(true);
     if (task?.id) {
       loadConversations(task.id);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by NotificationsModal onOpenTaskConversation
+  const handleOpenTaskConversationFromNotification = async (projectId: string, taskId: string) => {
+    try {
+      const task = await taskService.getOne(taskId);
+      handleOpenTaskDetail(task, 'conversation');
+    } catch (error) {
+      console.error('Failed to load task:', error);
+      navigate(`/project/${projectId}?task=${taskId}&tab=conversation`);
     }
   };
 
@@ -1709,8 +1720,41 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         <div style={{
           padding: '1.5rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(0, 0, 0, 0.2)'
+          background: 'rgba(0, 0, 0, 0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem'
         }}>
+          <button
+            onClick={() => navigate('/forum')}
+            style={{
+              width: '100%',
+              padding: '0.875rem 1rem',
+              border: `1px solid ${color}`,
+              borderRadius: '10px',
+              background: `${color}20`,
+              color: 'rgba(255, 255, 255, 0.95)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${color}40`;
+              e.currentTarget.style.borderColor = color;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = `${color}20`;
+              e.currentTarget.style.borderColor = color;
+            }}
+          >
+            <FaStickyNote style={{ fontSize: '0.875rem' }} />
+            Forum
+          </button>
           <button
             onClick={() => navigate('/dashboard')}
             style={{
@@ -3098,6 +3142,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           loadUnreadCount();
           loadData();
         }}
+        onOpenTaskConversation={handleOpenTaskConversationFromNotification}
       />
 
       {selectedTaskForReview && (

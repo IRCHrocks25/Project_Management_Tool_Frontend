@@ -18,6 +18,7 @@ import MyProjectsView from './components/MyProjectsView';
 import DepartmentActivityLog from './components/DepartmentActivityLog';
 import PMActivityLog from './components/PMActivityLog';
 import TasksDueTodayView from './components/TasksDueTodayView';
+import ForumConversations from './components/ForumConversations';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -138,6 +139,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <PMActivityLog />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/forum"
+          element={
+            <PrivateRoute>
+              <ForumConversations />
             </PrivateRoute>
           }
         />

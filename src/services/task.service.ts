@@ -33,6 +33,11 @@ export const taskService = {
     return this.getAll(projectId);
   },
 
+  async getOne(id: string): Promise<any> {
+    const response = await axios.get(`${API_URL}/tasks/${id}`, getAuthHeaders());
+    return response.data;
+  },
+
   async updateStatus(id: string, status: string, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<any> {
     const response = await axios.patch(
       `${API_URL}/tasks/${id}/status`,
@@ -99,6 +104,14 @@ export const taskService = {
   async getConversations(taskId: string): Promise<any[]> {
     const response = await axios.get(
       `${API_URL}/tasks/${taskId}/conversations`,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async getAllConversations(): Promise<any[]> {
+    const response = await axios.get(
+      `${API_URL}/tasks/conversations/all`,
       getAuthHeaders()
     );
     return response.data;
