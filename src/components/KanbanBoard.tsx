@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight, FaUser } from 'react-icons/fa';
+import { FaClock, FaEnvelope, FaExclamationTriangle, FaChevronLeft, FaChevronRight, FaUser, FaCheck, FaEllipsisV } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
+import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import './KanbanBoard.css';
 
@@ -21,6 +22,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   const pendingUpdatesRef = useRef<Map<string, any>>(new Map());
   // Track manually dragged projects (projectId -> targetStage) to show them even without tasks
   const manuallyDraggedRef = useRef<Map<string, string>>(new Map());
+  // When "Done" is clicked, exclude project from source column until refetch (handles task-based columns)
+  const doneFromColumnRef = useRef<Map<string, string>>(new Map());
   // Track previous projects to prevent infinite loops
   const previousProjectsRef = useRef<string>('');
   
@@ -35,7 +38,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
     
     previousProjectsRef.current = projectsKey;
-    
+    // Clear done-from-column exclusions after refetch (data is fresh)
+    doneFromColumnRef.current.clear();
+
     if (pendingUpdatesRef.current.size > 0) {
       // Merge server data with pending optimistic updates
       setLocalProjects((prevLocal) => {
@@ -183,6 +188,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
         // This ensures projects show up based on their stage even if they don't have tasks yet
         // For CRM column, also show projects with Katalyst client type (primary or secondary)
         const filtered = localProjects.filter((p: any) => {
+          // Exclude projects that were just marked "Done" from this column (removes immediately)
+          if (doneFromColumnRef.current.get(p.id) === displayStage) {
+            return false;
+          }
           // Show if it has tasks of this type
           if (projectIdsWithActiveTasks.has(p.id)) {
             return true;
@@ -226,7 +235,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
         // CRITICAL FALLBACK: If no projects found with task-based filtering, 
         // fall back to pure stage-based filtering to ensure projects always show up
         if (filtered.length === 0 && internalStagesForColumn.length > 0) {
-          return localProjects.filter((p: any) => internalStagesForColumn.includes(p.stage));
+          return localProjects.filter((p: any) =>
+            doneFromColumnRef.current.get(p.id) !== displayStage && internalStagesForColumn.includes(p.stage)
+          );
         }
         
         return filtered;
@@ -235,7 +246,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       // For "Ready to Close" stage, use stage-based logic
       if (displayStage === 'Ready to Close') {
         return localProjects.filter((p) => 
-          p.stage === 'Ready to Close' || p.stage === 'Closed'
+          doneFromColumnRef.current.get(p.id) !== displayStage &&
+          (p.stage === 'Ready to Close' || p.stage === 'Closed')
         );
       }
       
@@ -263,7 +275,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
           ...onboardingStageProjects.map((p: any) => p.id)
         ]);
         
-        return localProjects.filter((p) => combined.has(p.id));
+        return localProjects.filter((p) =>
+          doneFromColumnRef.current.get(p.id) !== displayStage && combined.has(p.id)
+        );
       }
     }
     
@@ -298,7 +312,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       internalStages.push(displayStage);
     }
     
-    const filtered = localProjects.filter((p) => internalStages.includes(p.stage));
+    const filtered = localProjects.filter((p) =>
+      doneFromColumnRef.current.get(p.id) !== displayStage && internalStages.includes(p.stage)
+    );
     return filtered;
   };
 
@@ -366,6 +382,91 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     return displayStage;
   };
 
+  // Stage progression: when "Done" is clicked, move to next column
+  const STAGE_ORDER = ['Onboarding', 'Copy Writing', 'Design', 'Development', 'AI Team', 'Social Media Team', 'CRM', 'SEO/GEO Team', 'Ready to Close'];
+  const getNextStageForDisplay = (displayStage: string): { displayStage: string; internalStage: string } | null => {
+    const idx = STAGE_ORDER.indexOf(displayStage);
+    if (idx < 0 || idx >= STAGE_ORDER.length - 1) return null;
+    const nextDisplay = STAGE_ORDER[idx + 1];
+    const internalStage = mapDisplayStageToInternal(nextDisplay);
+    return { displayStage: nextDisplay, internalStage };
+  };
+
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
+  const [, setExclusionVersion] = useState(0);
+
+  const getTaskTypesForDisplayStage = (displayStage: string): string[] => {
+    const map: Record<string, string[]> = {
+      'Copy Writing': ['Copy'],
+      'Design': ['Design'],
+      'Development': ['Dev'],
+      'AI Team': ['AI'],
+      'Social Media Team': ['Social Media'],
+      'CRM': ['CRM'],
+      'SEO/GEO Team': ['SEO/GEO'],
+      'Onboarding': ['Onboarding'],
+    };
+    return map[displayStage] || [];
+  };
+
+  const handleMarkDone = async (projectId: string, fromDisplayStage: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenCardMenuId(null);
+    const project = localProjects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    // Exclude from source column immediately so card disappears
+    doneFromColumnRef.current.set(projectId, fromDisplayStage);
+    flushSync(() => setExclusionVersion((v) => v + 1));
+
+    const next = getNextStageForDisplay(fromDisplayStage);
+    if (!next) {
+      // Ready to Close → mark project as Closed/Complete
+      try {
+        await projectService.close(projectId);
+        pendingUpdatesRef.current.delete(projectId);
+        manuallyDraggedRef.current.set(projectId, 'Closed');
+        flushSync(() => {
+          setLocalProjects((prev) =>
+            prev.map((p) => (p.id === projectId ? { ...p, stage: 'Closed' } : p))
+          );
+        });
+        showToast('Project marked as complete ✓');
+        onUpdate();
+      } catch (err) {
+        console.error('Failed to close project:', err);
+        doneFromColumnRef.current.delete(projectId);
+        showToast('Failed to mark complete. Please try again.');
+      }
+      return;
+    }
+
+    // Complete tasks of this column's type so project stays removed after refetch
+    const taskTypes = getTaskTypesForDisplayStage(fromDisplayStage);
+    if (taskTypes.length > 0 && tasks.length > 0) {
+      const tasksToComplete = tasks.filter(
+        (t: any) => t.projectId === projectId && taskTypes.includes(t.type) && !t.isCompleted
+      );
+      try {
+        await Promise.all(
+          tasksToComplete.map((t: any) =>
+            taskService.updateStatus(t.id, 'Completed', true)
+          )
+        );
+      } catch (taskErr) {
+        console.error('Failed to complete tasks:', taskErr);
+        // Continue with stage change; doneFromColumnRef will hide until refetch
+      }
+    }
+
+    try {
+      await handleStageChange(projectId, next.displayStage);
+    } catch {
+      doneFromColumnRef.current.delete(projectId);
+      throw new Error('Stage update failed');
+    }
+  };
+
   const handleStageChange = async (projectId: string, displayStage: string) => {
     const project = localProjects.find((p) => p.id === projectId);
     if (!project) return;
@@ -419,6 +520,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
         )
       );
       showToast(`Failed to move to ${displayStage}. Please try again.`);
+      throw error;
     }
   };
 
@@ -581,12 +683,24 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
 
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  // Close card menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (openCardMenuId && !(e.target as Element).closest('.card-done-menu-wrapper')) {
+        setOpenCardMenuId(null);
+      }
+    };
+    if (openCardMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openCardMenuId]);
 
   return (
     <div className="kanban-board-wrapper">
       <div className="kanban-instructions">
         <span className="instruction-icon">💡</span>
-        <span>Click on any project card to view details • Drag cards to move between stages</span>
+        <span>Click on any project card to view details • Drag cards to move between stages • Use ⋯ menu to mark Done for this stage</span>
       </div>
       {scrollState.isScrolledLeft && (
         <button 
@@ -625,6 +739,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
               </div>
               <div className="column-cards premium-cards">
                 {stageProjects.map((project) => {
+                  const columnDisplayStage = stage;
                   const daysInStage = getDaysInStage(project);
                   const daysSinceEmail = getDaysSinceEmail(project);
                   const isDragging = draggedProject === project.id;
@@ -655,11 +770,129 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
                       {/* Top Row */}
                       <div className="card-top-row">
                         <h4 className="card-client-name">{project.clientName}</h4>
-                        <div 
-                          className="priority-dot"
-                          style={{ backgroundColor: getPriorityColor(project.priority) }}
-                          title={project.priority}
-                        ></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <div 
+                            className="card-done-menu-wrapper"
+                            style={{ position: 'relative' }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenCardMenuId((prev) => (prev === project.id ? null : project.id));
+                              }}
+                              title="Mark done for this stage"
+                              style={{
+                                padding: '0.25rem',
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#64748b',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f1f5f9';
+                                e.currentTarget.style.color = '#475569';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = '#64748b';
+                              }}
+                            >
+                              <FaEllipsisV size={12} />
+                            </button>
+                            {openCardMenuId === project.id && (
+                              <div
+                                className="card-done-dropdown"
+                                style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: '0.25rem',
+                                  background: 'white',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  border: '1px solid #e2e8f0',
+                                  zIndex: 50,
+                                  minWidth: '180px',
+                                  overflow: 'hidden'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {(() => {
+                                  const next = getNextStageForDisplay(columnDisplayStage);
+                                  return next ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleMarkDone(project.id, columnDisplayStage, e)}
+                                      style={{
+                                        width: '100%',
+                                        padding: '0.5rem 0.75rem',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8125rem',
+                                        textAlign: 'left',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        color: '#334155'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#f0fdf4';
+                                        e.currentTarget.style.color = '#15803d';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.color = '#334155';
+                                      }}
+                                    >
+                                      <FaCheck size={12} />
+                                      Done → {next.displayStage}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleMarkDone(project.id, columnDisplayStage, e)}
+                                      style={{
+                                        width: '100%',
+                                        padding: '0.5rem 0.75rem',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8125rem',
+                                        textAlign: 'left',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        color: '#334155'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#f0fdf4';
+                                        e.currentTarget.style.color = '#15803d';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.color = '#334155';
+                                      }}
+                                    >
+                                      <FaCheck size={12} />
+                                      Mark as complete
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                          <div 
+                            className="priority-dot"
+                            style={{ backgroundColor: getPriorityColor(project.priority) }}
+                            title={project.priority}
+                          ></div>
+                        </div>
                       </div>
 
                       {/* Second Row - Badges */}
