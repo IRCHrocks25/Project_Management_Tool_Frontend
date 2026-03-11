@@ -4601,41 +4601,41 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               })()}
             </div>
 
-            {/* Due Date */}
-            {selectedTaskDetail.dueDate && (
+            {/* Due Date - always show */}
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
               <div style={{
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
               }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <FaClock style={{ fontSize: '0.75rem' }} />
-                  Due Date
-                </div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: '#374151'
-                }}>
-                  {new Date(selectedTaskDetail.dueDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </div>
+                <FaClock style={{ fontSize: '0.75rem' }} />
+                Due Date
               </div>
-            )}
+              <div style={{
+                fontSize: '0.875rem',
+                color: selectedTaskDetail.dueDate ? '#374151' : '#9ca3af'
+              }}>
+                {selectedTaskDetail.dueDate
+                  ? new Date(selectedTaskDetail.dueDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'No due date set'}
+              </div>
+            </div>
 
             {/* Description */}
             {selectedTaskDetail.description && (
