@@ -12,10 +12,11 @@ const getAuthHeaders = () => {
 };
 
 export const projectService = {
-  async getAll(includeArchived: boolean = false): Promise<any[]> {
-    const url = includeArchived 
+  async getAll(includeArchived: boolean = false, cacheBust?: number): Promise<any[]> {
+    let url = includeArchived
       ? `${API_URL}/projects?includeArchived=true`
       : `${API_URL}/projects`;
+    if (cacheBust != null) url += (url.includes('?') ? '&' : '?') + `_t=${cacheBust}`;
     const response = await axios.get(url, getAuthHeaders());
     return response.data;
   },

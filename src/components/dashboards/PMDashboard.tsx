@@ -62,6 +62,8 @@ const PMDashboard: React.FC = () => {
   const [lastEmailLogDateFilter, setLastEmailLogDateFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in List view PM dropdown
+  const [reassigningPMFor, setReassigningPMFor] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
 
@@ -81,17 +83,19 @@ const PMDashboard: React.FC = () => {
         setLoading(true);
       }
       
-      // Load projects and tasks first (critical for UI) - stats can load after
-      const [projectsData, allTasksData] = await Promise.all([
+      // Load projects, tasks, and users (users needed for PM dropdown in List view)
+      const [projectsData, allTasksData, usersData] = await Promise.all([
         projectService.getAll(),
         // Load all tasks (no 200-task cap) so per-department project counts
         // and multi-department views include older tasks as well
         taskService.getAll(undefined, undefined, { all: true }),
+        authService.getAllUsers(),
       ]);
       
-      // Set projects and tasks immediately for faster UI rendering
+      // Set projects, tasks, and users immediately for faster UI rendering
       setProjects(projectsData);
       setTasks(allTasksData);
+      setUsers(usersData || []);
       tasksRef.current = allTasksData; // Keep ref in sync
       hasLoadedOnceRef.current = true;
       setLoading(false); // Hide loading spinner (if it was shown)
@@ -696,19 +700,6 @@ const PMDashboard: React.FC = () => {
     
     return pmMap;
   }, [lastEmailLogs, tasks, users, projectActivities]);
-
-  // Get the PM name to display for a project
-  const getProjectPMName = (project: any): string => {
-    // First check if there's a recent client update PM or task PM
-    const lastPM = getLastActivePM.get(project.id);
-    if (lastPM && lastPM.name) {
-      return lastPM.name;
-    }
-    
-    // Only fallback to project's assigned PM if we have no activity data
-    // This ensures we show the PM who actually worked on the project, not just the project creator
-    return project.pm?.name || 'Unassigned';
-  };
 
   const handleCommentInput = (updateId: string, value: string, cursorPosition: number) => {
     setCommentTexts({ ...commentTexts, [updateId]: value });
@@ -2039,11 +2030,58 @@ const PMDashboard: React.FC = () => {
                         <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
                           {daysInStage} {daysInStage === 1 ? 'day' : 'days'}
                         </div>
-                        <div className="list-cell" style={{ width: '150px', flex: '0 0 150px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
-                          <span style={{ fontSize: '0.875rem', color: '#374151' }}>
-                            {getProjectPMName(project)}
-                          </span>
+                        <div
+                          className="list-cell"
+                          style={{ width: '150px', flex: '0 0 150px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FaUser style={{ fontSize: '0.875rem', color: '#64748b', flexShrink: 0 }} />
+                          <select
+                            value={project.pmId || project.pm?.id || ''}
+                            onChange={async (e) => {
+                              const newPmId = e.target.value;
+                              if (!newPmId || newPmId === (project.pmId || project.pm?.id)) return;
+                              setReassigningPMFor(project.id);
+                              try {
+                                await projectService.update(project.id, { pmId: newPmId });
+                                const newPM = users.find((u: any) => u.id === newPmId);
+                                setProjects((prev) =>
+                                  prev.map((p) =>
+                                    p.id === project.id ? { ...p, pmId: newPmId, pm: newPM || p.pm } : p
+                                  )
+                                );
+                              } catch (err: any) {
+                                console.error('Failed to reassign PM:', err);
+                                alert(err.response?.data?.message || err.message || 'Failed to reassign PM');
+                              } finally {
+                                setReassigningPMFor(null);
+                              }
+                            }}
+                            disabled={reassigningPMFor === project.id}
+                            style={{
+                              fontSize: '0.875rem',
+                              color: '#374151',
+                              padding: '0.375rem 0.5rem',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              background: '#fff',
+                              cursor: reassigningPMFor === project.id ? 'wait' : 'pointer',
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            <option value="">Unassigned</option>
+                            {users
+                              .filter((u: any) => u.role === 'Project Manager')
+                              .map((pm: any) => (
+                                <option key={pm.id} value={pm.id}>
+                                  {pm.name}
+                                </option>
+                              ))}
+                          </select>
+                          {reassigningPMFor === project.id && (
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>…</span>
+                          )}
                         </div>
                         <div className="list-cell" style={{ width: '200px', flex: '0 0 200px' }}>
                           {lastEmailLogs[project.id] ? (() => {

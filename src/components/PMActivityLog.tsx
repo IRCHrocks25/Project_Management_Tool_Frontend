@@ -463,11 +463,11 @@ const PMActivityLog: React.FC = () => {
     } catch {}
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (bustCache = false) => {
     try {
       setLoading(true);
       const [pd, td, ud] = await Promise.all([
-        projectService.getAll(),
+        projectService.getAll(false, bustCache ? Date.now() : undefined),
         taskService.getAll(undefined, undefined, { all: true }),
         authService.getAllUsers(),
       ]);
@@ -863,7 +863,7 @@ const PMActivityLog: React.FC = () => {
                       <div className="pm-panel-divider" />
                       <div className="pm-panel-stat">
                         <span className="pm-panel-stat-val">
-                          {new Set(currentActs.map(a => a.projectId)).size}
+                          {projects.filter((p: any) => (p.pmId || p.pm?.id) === currentTabData.info.id).length}
                         </span>
                         <span className="pm-panel-stat-label">Projects</span>
                       </div>
@@ -1082,21 +1082,29 @@ const PMActivityLog: React.FC = () => {
                         projectService.update(id, { pmId: newPMId })
                       );
                       await Promise.all(promises);
-                      // Store the new PM name before reloading
-                      const newPMName = users.find((u: any) => u.id === newPMId)?.name || 'new PM';
-                      
+                      const newPM = users.find((u: any) => u.id === newPMId);
+                      const newPMName = newPM?.name || 'new PM';
+
+                      // Optimistic update: immediately update local projects state so PM tabs reflect the change
+                      setProjects((prev) =>
+                        prev.map((p) =>
+                          projectIds.includes(p.id)
+                            ? { ...p, pmId: newPMId, pm: newPM || p.pm }
+                            : p
+                        )
+                      );
+
                       // Close modal first
                       setShowReassignModal(false);
                       setSelectedProjects(new Set());
                       setNewPMId('');
                       setProjectSearch('');
                       
-                      // Reload data to get updated project assignments
-                      await loadData();
+                      // Reload data to get fresh server state (bust cache)
+                      await loadData(true);
                       
-                      // Reset active tab to force recalculation - this will show the first PM tab
-                      // The new PM should now have activities from the reassigned projects
-                      setActiveTab('');
+                      // Switch to the new PM's tab so user sees the reassigned projects
+                      setActiveTab(newPMId);
                       
                       // Show success message
                       alert(`Successfully reassigned ${projectIds.length} project(s) to ${newPMName}. The PM tabs have been updated.`);
