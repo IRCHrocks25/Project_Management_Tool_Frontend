@@ -4,7 +4,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://projectmanagementtoolb
 
 export interface Notification {
   id: string;
-  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision';
+  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision' | 'mention' | 'task_update';
   title: string;
   message: string;
   projectId?: string;

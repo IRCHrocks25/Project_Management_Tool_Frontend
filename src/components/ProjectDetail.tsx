@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   FaArrowLeft, 
   FaCheckCircle, 
@@ -215,6 +215,7 @@ const ActivityLogKanban: React.FC<{ activities: any[] }> = ({ activities }) => {
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = authService.getUser();
   const isPM = currentUser?.role === 'Project Manager';
   const isTeamLead = !!currentUser?.isTeamLead;
@@ -279,6 +280,7 @@ const ProjectDetail: React.FC = () => {
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any | null>(null);
+  const [taskDetailInitialTab, setTaskDetailInitialTab] = useState<'details' | 'conversation'>('details');
   const [deliverableTeamMembers, setDeliverableTeamMembers] = useState<Record<string, any[]>>({});
   const [showAddDeliverableTeamMemberModal, setShowAddDeliverableTeamMemberModal] = useState(false);
   const [selectedDeliverableForTeam, setSelectedDeliverableForTeam] = useState<string | null>(null);
@@ -293,7 +295,7 @@ const ProjectDetail: React.FC = () => {
   const [editingDeliverableId, setEditingDeliverableId] = useState<string | null>(null);
   const [editingDeliverableName, setEditingDeliverableName] = useState<string>('');
   const [showDeleteDeliverableConfirm, setShowDeleteDeliverableConfirm] = useState<string | null>(null);
-  const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '' });
+  const [newTaskData, setNewTaskData] = useState({ department: '', notes: '', assignedToId: '', dueDate: '' });
   // Attachment state for "Add Task to Deliverable" modal - support multiple links and files
   const [newTaskLinks, setNewTaskLinks] = useState<string[]>(['']);
   const [newTaskFileUrls, setNewTaskFileUrls] = useState<string[]>([]);
@@ -331,6 +333,21 @@ const ProjectDetail: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Open task conversation when navigating from a conversation notification
+  useEffect(() => {
+    const taskId = searchParams.get('task');
+    const tab = searchParams.get('tab');
+    if (!taskId || tab !== 'conversation' || !project || !tasks.length) return;
+
+    const task = tasks.find((t: any) => t.id === taskId);
+    if (task) {
+      setSelectedTaskDetail(task);
+      setTaskDetailInitialTab('conversation');
+      setShowTaskDetailModal(true);
+      setSearchParams({}, { replace: true }); // Clear URL params
+    }
+  }, [project, tasks, searchParams, setSearchParams]);
 
   useEffect(() => {
     // Load all users for team member dropdown
@@ -1629,6 +1646,10 @@ const ProjectDetail: React.FC = () => {
         taskData.assignedToId = newTaskData.assignedToId;
       }
 
+      if (newTaskData.dueDate) {
+        taskData.dueDate = new Date(newTaskData.dueDate);
+      }
+
       // If the user attached links or uploaded files, include them on the task
       const links = newTaskLinks.filter((link) => link.trim() !== '');
       const allAttachmentUrls = [...links, ...newTaskFileUrls];
@@ -1647,7 +1668,7 @@ const ProjectDetail: React.FC = () => {
       await loadProject();
       setShowAddTaskFromDeliverableModal(false);
       setSelectedDeliverableForTask(null);
-      setNewTaskData({ department: '', notes: '', assignedToId: '' });
+      setNewTaskData({ department: '', notes: '', assignedToId: '', dueDate: '' });
       setNewTaskLinks(['']);
       setNewTaskFileUrls([]);
       setMarkTaskCompleteOnCreate(false);
@@ -4085,7 +4106,7 @@ const ProjectDetail: React.FC = () => {
                             <button
                               onClick={() => {
                                 setSelectedDeliverableForTask(selectedDeliverable.id);
-                                setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                                setNewTaskData({ department: '', notes: '', assignedToId: '', dueDate: '' });
                                 setNewTaskLinks(['']);
                                 setNewTaskFileUrls([]);
                                 setShowAddTaskFromDeliverableModal(true);
@@ -6415,9 +6436,11 @@ const ProjectDetail: React.FC = () => {
       <TaskDetailSideModal
         isOpen={showTaskDetailModal}
         task={selectedTaskDetail}
+        initialTab={taskDetailInitialTab}
         onClose={() => {
           setShowTaskDetailModal(false);
           setSelectedTaskDetail(null);
+          setTaskDetailInitialTab('details');
         }}
         allUsers={allUsers}
         getProjectName={(projectId: string) => {
@@ -6431,6 +6454,14 @@ const ProjectDetail: React.FC = () => {
           if (!canAssignOwners) return;
           setEditingTask(task);
           setShowInlineEditTaskModal(true);
+        }}
+        onTaskUpdate={(updatedTask: any) => {
+          setSelectedTaskDetail(updatedTask);
+          setTasks((prev) => {
+            const next = prev.map((t: any) => (t.id === updatedTask.id ? updatedTask : t));
+            tasksRef.current = next;
+            return next;
+          });
         }}
       />
 
@@ -7044,6 +7075,16 @@ const ProjectDetail: React.FC = () => {
                 />
               </div>
               <div className="form-group">
+                <label>Due Date (Optional)</label>
+                <input
+                  type="date"
+                  value={newTaskData.dueDate}
+                  onChange={(e) => setNewTaskData({ ...newTaskData, dueDate: e.target.value })}
+                  className="form-input"
+                  style={{ padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                />
+              </div>
+              <div className="form-group">
                 <label>Attach Links (Optional)</label>
                 {newTaskLinks.map((link, index) => (
                   <div
@@ -7176,7 +7217,7 @@ const ProjectDetail: React.FC = () => {
                 onClick={() => {
                   setShowAddTaskFromDeliverableModal(false);
                   setSelectedDeliverableForTask(null);
-                  setNewTaskData({ department: '', notes: '', assignedToId: '' });
+                  setNewTaskData({ department: '', notes: '', assignedToId: '', dueDate: '' });
                   setNewTaskLinks(['']);
                   setNewTaskFileUrls([]);
                   setMarkTaskCompleteOnCreate(false);

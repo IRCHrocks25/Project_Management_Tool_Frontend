@@ -1,19 +1,29 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService, LoginData } from '../services/auth.service';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState<LoginData>({ email: '', password: '' });
   const [error, setError] = useState<string>('');
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (searchParams.get('session') === 'expired') {
+      setSessionExpired(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    setSessionExpired(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,6 +209,21 @@ const Login: React.FC = () => {
           color: rgba(255,255,255,0.45);
           margin-bottom: 2rem;
           letter-spacing: 0.01em;
+        }
+
+        /* ── SESSION EXPIRED (info) ── */
+        .kp-session-expired {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          background: rgba(251,191,36,0.1);
+          border: 1px solid rgba(251,191,36,0.3);
+          border-radius: 10px;
+          padding: 0.75rem 1rem;
+          font-size: 0.82rem;
+          color: #fcd34d;
+          margin-bottom: 1.25rem;
+          line-height: 1.5;
         }
 
         /* ── ERROR ── */
@@ -422,6 +447,12 @@ const Login: React.FC = () => {
 
             <h1 className="kp-heading">Welcome back</h1>
             <p className="kp-sub">Sign in to continue to your workspace</p>
+
+            {sessionExpired && (
+              <div className="kp-session-expired">
+                Your session has expired. Please log in again.
+              </div>
+            )}
 
             {error && (
               <div className="kp-error">

@@ -91,8 +91,12 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
 
       // Navigate based on notification context
       if (notification.projectId) {
-        // Project-related notifications → go to project detail
-        navigate(`/project/${notification.projectId}`);
+        // Conversation notifications (mention, task_update) → go to project and open task conversation
+        const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
+        const url = isConversation
+          ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
+          : `/project/${notification.projectId}`;
+        navigate(url);
         onClose();
         return;
       }

@@ -1230,7 +1230,9 @@ const PMDashboard: React.FC = () => {
           </div>
           <div 
             className={`stat-card premium-stat-card ${activeFilter === 'tasks' ? 'active' : ''}`}
-            onClick={() => handleStatClick('tasks')}
+            onClick={() => navigate('/tasks-due-today')}
+            style={{ cursor: 'pointer' }}
+            title="View all tasks due today"
           >
             <div className="stat-icon">
               <FaClock />
@@ -1348,16 +1350,30 @@ const PMDashboard: React.FC = () => {
                     </div>
                     <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{activeTasksCount}</div>
                   </div>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    padding: '1.75rem',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(245, 158, 11, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
+                  <div
+                    onClick={() => navigate('/tasks-due-today')}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      padding: '1.75rem',
+                      borderRadius: '16px',
+                      boxShadow: '0 10px 25px rgba(245, 158, 11, 0.2)',
+                      border: 'none',
+                      color: 'white',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 12px 28px rgba(245, 158, 11, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 10px 25px rgba(245, 158, 11, 0.2)';
+                    }}
+                    title="View all tasks due today"
+                  >
                     <div style={{
                       position: 'absolute',
                       top: '-20px',
@@ -1485,7 +1501,11 @@ const PMDashboard: React.FC = () => {
                             key={notification.id}
                             onClick={() => {
                               if (notification.projectId) {
-                                navigate(`/project/${notification.projectId}`);
+                                const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
+                                const url = isConversation
+                                  ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
+                                  : `/project/${notification.projectId}`;
+                                navigate(url);
                               }
                             }}
                             style={{

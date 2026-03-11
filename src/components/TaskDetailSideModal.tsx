@@ -11,6 +11,8 @@ interface TaskDetailSideModalProps {
   allUsers: any[];
   getProjectName: (projectId: string) => string;
   onEditTask?: (task: any) => void;
+  onTaskUpdate?: (updatedTask: any) => void;
+  initialTab?: 'details' | 'conversation';
 }
 
 const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
@@ -19,12 +21,14 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   onClose,
   allUsers,
   getProjectName,
-  onEditTask
+  onEditTask,
+  onTaskUpdate,
+  initialTab = 'details'
 }) => {
   const navigate = useNavigate();
   const [taskHistory, setTaskHistory] = useState<any[]>([]);
   const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'conversation'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'conversation'>(initialTab);
   
   // Conversation state
   const [conversations, setConversations] = useState<any[]>([]);
@@ -34,11 +38,26 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
   const [submittingComments, setSubmittingComments] = useState<Record<string, boolean>>({});
   const [showMentionDropdown, setShowMentionDropdown] = useState<{ questionId?: string; commentId?: string; position: number } | null>(null);
+  const [updatingDueDate, setUpdatingDueDate] = useState(false);
+  const [savedDueDate, setSavedDueDate] = useState<string | null>(null);
 
   const handleInternalClose = useCallback(() => {
     onClose();
     setTaskHistory([]);
+    setSavedDueDate(null);
   }, [onClose]);
+
+  // Reset saved due date when task changes
+  useEffect(() => {
+    setSavedDueDate(null);
+  }, [task?.id]);
+
+  // Apply initialTab when modal opens (e.g. from conversation notification)
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Load deliverable history when modal opens
   useEffect(() => {
@@ -581,47 +600,82 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
             )}
           </div>
 
-          {/* Due Date - always show */}
-          <div
-            style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
-            }}
-          >
-            <div
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <FaClock style={{ fontSize: '0.75rem' }} />
-              Due Date
-            </div>
-            <div
-              style={{
-                fontSize: '0.875rem',
-                color: task.dueDate ? '#374151' : '#9ca3af'
-              }}
-            >
-              {task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })
-                : 'No due date set'}
-            </div>
-          </div>
+          {/* Due Date - show date input when not set (editable inline), otherwise show date */}
+          {(() => {
+            const effectiveDueDate = task.dueDate || savedDueDate;
+            return (
+              <div
+                style={{
+                  marginBottom: '1.5rem',
+                  padding: '1rem',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <FaClock style={{ fontSize: '0.75rem' }} />
+                  Due Date
+                </div>
+                {effectiveDueDate ? (
+                  <div
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#374151'
+                    }}
+                  >
+                    {new Date(effectiveDueDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    disabled={updatingDueDate}
+                    onChange={async (e) => {
+                      const value = e.target.value;
+                      if (!value || !task?.id) return;
+                      try {
+                        setUpdatingDueDate(true);
+                        const updated = await taskService.update(task.id, { dueDate: new Date(value) });
+                        const updatedTask = { ...task, dueDate: updated?.dueDate ?? value };
+                        setSavedDueDate(value);
+                        onTaskUpdate?.(updatedTask);
+                      } catch (err) {
+                        console.error('Failed to update due date:', err);
+                      } finally {
+                        setUpdatingDueDate(false);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                      color: '#374151',
+                      background: 'white'
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })()}
 
           {/* Description */}
           {task.description && (

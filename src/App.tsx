@@ -17,6 +17,7 @@ import DepartmentView from './components/DepartmentView';
 import MyProjectsView from './components/MyProjectsView';
 import DepartmentActivityLog from './components/DepartmentActivityLog';
 import PMActivityLog from './components/PMActivityLog';
+import TasksDueTodayView from './components/TasksDueTodayView';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -137,6 +138,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <PMActivityLog />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/tasks-due-today"
+          element={
+            <PrivateRoute>
+              <TasksDueTodayView />
             </PrivateRoute>
           }
         />
