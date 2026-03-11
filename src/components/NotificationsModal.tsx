@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
-import { authService } from '../services/auth.service';
 import './NotificationsModal.css';
 
 interface NotificationsModalProps {
@@ -17,7 +16,6 @@ interface NotificationsModalProps {
 const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead, onOpenTaskConversation }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = authService.getUser();
   const navigate = useNavigate();
 
   const loadNotifications = useCallback(async () => {
@@ -34,7 +32,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
