@@ -49,7 +49,6 @@ const PMDashboard: React.FC = () => {
   const [comments, setComments] = useState<Record<string, ClientUpdateComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
   const [lastEmailLogs, setLastEmailLogs] = useState<Record<string, { date: string; pmName?: string; notes?: string; pmId?: string }>>({});
-  const [projectActivities, setProjectActivities] = useState<Record<string, any[]>>({});
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
@@ -109,9 +108,8 @@ const PMDashboard: React.FC = () => {
         // Don't block UI if stats fail
       }
       
-      // Load last email logs and activity data in background (non-blocking)
+      // Load last email logs in background (non-blocking)
       loadLastEmailLogs(projectsData);
-      loadProjectActivities(projectsData);
     } catch (error) {
       console.error('Failed to load data:', error);
       setLoading(false);
@@ -527,179 +525,6 @@ const PMDashboard: React.FC = () => {
       console.error('Failed to load email logs:', error);
     }
   };
-
-  // Load project activity logs to track PM interactions comprehensively
-  const loadProjectActivities = async (projects: any[]) => {
-    try {
-      const activitiesMap: Record<string, any[]> = {};
-      
-      // Load activity for each project in parallel (but limit concurrent requests)
-      const batchSize = 10;
-      for (let i = 0; i < projects.length; i += batchSize) {
-        const batch = projects.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (project) => {
-            try {
-              const activities = await projectService.getActivity(project.id);
-              if (activities && Array.isArray(activities)) {
-                activitiesMap[project.id] = activities;
-              }
-            } catch (error) {
-              // Silently fail for individual projects
-              console.error(`Failed to load activity for project ${project.id}:`, error);
-            }
-          })
-        );
-      }
-      
-      setProjectActivities(activitiesMap);
-    } catch (error) {
-      console.error('Failed to load project activities:', error);
-    }
-  };
-
-  // Determine the last PM who interacted with a project
-  // Priority: Most recent activity between: 1) Activity log PM actions, 2) Email log update PM, 3) Task creator/updater (if PM)
-  const getLastActivePM = useMemo(() => {
-    const pmMap = new Map<string, { name: string; id?: string; lastActivity?: Date; activityType?: string }>();
-    
-    // Create a map of user IDs to user objects for quick lookup
-    const userMap = new Map<string, any>();
-    users.forEach((user: any) => {
-      if (user.id) {
-        userMap.set(user.id, user);
-      }
-    });
-    
-    // Priority 1: Check project activity logs (most comprehensive)
-    // Activity logs should contain: task creation, task updates, email logs, etc.
-    for (const [projectId, activities] of Object.entries(projectActivities)) {
-      if (!activities || activities.length === 0) continue;
-      
-      // Find the most recent PM activity
-      for (const activity of activities) {
-        // Check if activity has a user/PM associated with it
-        const activityUserId = activity.userId || activity.user?.id || activity.createdBy || activity.pmId;
-        const activityUser = activityUserId ? userMap.get(activityUserId) : activity.user;
-        
-        // Check if this is a PM
-        if (activityUser && activityUser.role === 'Project Manager') {
-          const activityDate = new Date(activity.createdAt || activity.date || activity.timestamp || 0);
-          const existing = pmMap.get(projectId);
-          
-          if (!existing || activityDate > (existing.lastActivity || new Date(0))) {
-            pmMap.set(projectId, {
-              name: activityUser.name || activity.user?.name,
-              id: activityUser.id || activityUserId,
-              lastActivity: activityDate,
-              activityType: activity.type || activity.action || 'activity'
-            });
-          }
-        }
-      }
-    }
-    
-    // Priority 2: Check client updates (email logs)
-    for (const [projectId, log] of Object.entries(lastEmailLogs)) {
-      if (log.pmName && log.date) {
-        const activityDate = new Date(log.date);
-        const existing = pmMap.get(projectId);
-        if (!existing || activityDate > (existing.lastActivity || new Date(0))) {
-          pmMap.set(projectId, {
-            name: log.pmName,
-            id: log.pmId,
-            lastActivity: activityDate,
-            activityType: 'email_log'
-          });
-        }
-      }
-    }
-    
-    // Check tasks - find most recent task for each project
-    // Priority: 1) Task created by PM (createdById/createdBy), 2) Task assigned to PM
-    // Note: If backend doesn't expose createdBy, we can only check assigned users
-    const projectTaskMap = new Map<string, { task: any; date: Date; pmId?: string; pmName?: string }>();
-    for (const task of tasks) {
-      if (!task.projectId) continue;
-      
-      const taskDate = new Date(task.updatedAt || task.createdAt || 0);
-      const existing = projectTaskMap.get(task.projectId);
-      
-      // Skip if we already have a more recent task for this project
-      if (existing && taskDate <= existing.date) continue;
-      
-      let pmId: string | undefined;
-      let pmName: string | undefined;
-      
-      // Priority 1: Check if task has a createdBy field (most accurate for determining creator)
-      if ((task as any).createdById) {
-        const creator = userMap.get((task as any).createdById);
-        if (creator && creator.role === 'Project Manager') {
-          pmId = creator.id;
-          pmName = creator.name;
-        }
-      }
-      
-      // Priority 2: Check if task has a createdBy user object
-      if (!pmId && (task as any).createdBy) {
-        const creator = (task as any).createdBy;
-        if (creator && (creator.role === 'Project Manager' || creator.id)) {
-          // If it's already a user object with role, use it
-          if (creator.role === 'Project Manager') {
-            pmId = creator.id;
-            pmName = creator.name;
-          } else {
-            // If it's just an ID, look it up
-            const creatorUser = userMap.get(creator.id);
-            if (creatorUser && creatorUser.role === 'Project Manager') {
-              pmId = creatorUser.id;
-              pmName = creatorUser.name;
-            }
-          }
-        }
-      }
-      
-      // Priority 3: Check if task is assigned to a PM (less accurate but better than nothing)
-      if (!pmId) {
-        const assignedUserId = task.assignedToId || task.assignedTo;
-        if (assignedUserId) {
-          const assignedUser = userMap.get(assignedUserId);
-          if (assignedUser && assignedUser.role === 'Project Manager') {
-            pmId = assignedUser.id;
-            pmName = assignedUser.name;
-          }
-        }
-      }
-      
-      // If we found a PM, store this task
-      if (pmId && pmName) {
-        projectTaskMap.set(task.projectId, {
-          task,
-          date: taskDate,
-          pmId,
-          pmName
-        });
-      }
-    }
-    
-    // Merge task PMs into the map, comparing dates
-    // Only use task PMs if we actually found a PM (not just stored the task date)
-    Array.from(projectTaskMap.entries()).forEach(([projectId, { date, pmId, pmName }]) => {
-      // Only process if we found a PM for this task
-      if (!pmId || !pmName) return;
-      
-      const existing = pmMap.get(projectId);
-      if (!existing || date > (existing.lastActivity || new Date(0))) {
-        pmMap.set(projectId, {
-          name: pmName,
-          id: pmId,
-          lastActivity: date
-        });
-      }
-    });
-    
-    return pmMap;
-  }, [lastEmailLogs, tasks, users, projectActivities]);
 
   const handleCommentInput = (updateId: string, value: string, cursorPosition: number) => {
     setCommentTexts({ ...commentTexts, [updateId]: value });
