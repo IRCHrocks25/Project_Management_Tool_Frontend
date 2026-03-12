@@ -905,6 +905,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return projectNameMap.get(projectId) || 'Unknown Project';
   };
 
+  const projectPmNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const project of projects) {
+      const pmName = project.pm?.name
+        || (project.pmId && users.find((u: any) => u.id === project.pmId)?.name)
+        || '';
+      if (pmName) map.set(project.id, pmName);
+    }
+    return map;
+  }, [projects, users]);
+
+  const getProjectPmName = (projectId: string): string => {
+    return projectPmNameMap.get(projectId) || '';
+  };
+
   const userNameMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const userItem of users) {
@@ -2414,12 +2429,23 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                   justifyContent: 'space-between',
                                   marginBottom: '0.25rem'
                                 }}>
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    color: color,
-                                    fontWeight: 500
-                                  }}>
-                                    {getProjectName(task.projectId)}
+                                  <div>
+                                    <div style={{
+                                      fontSize: '0.75rem',
+                                      color: color,
+                                      fontWeight: 500
+                                    }}>
+                                      {getProjectName(task.projectId)}
+                                    </div>
+                                    {getProjectPmName(task.projectId) && (
+                                      <div style={{
+                                        fontSize: '0.6875rem',
+                                        color: '#94a3b8',
+                                        marginTop: '0.125rem'
+                                      }}>
+                                        PM: {getProjectPmName(task.projectId)}
+                                      </div>
+                                    )}
                                   </div>
                                   <button
                                     type="button"
@@ -2992,6 +3018,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                     )}
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Task</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Project</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>PM</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Status</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Due Date</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Assigned To</th>
@@ -3030,6 +3057,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                         </td>
                         <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
                           {getProjectName(task.projectId)}
+                        </td>
+                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>
+                          {getProjectPmName(task.projectId) || '—'}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <span style={{
@@ -4481,6 +4511,23 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               <FaTimes />
             </button>
           </div>
+
+          {/* PM - just before tabs */}
+          {getProjectPmName(selectedTaskDetail.projectId) && (
+            <div style={{
+              padding: '0.5rem 2rem',
+              background: '#f9fafb',
+              borderBottom: '1px solid #e5e7eb',
+              fontSize: '0.875rem',
+              color: '#64748b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem'
+            }}>
+              <FaUser style={{ fontSize: '0.75rem', flexShrink: 0 }} />
+              <span>PM: {getProjectPmName(selectedTaskDetail.projectId)}</span>
+            </div>
+          )}
 
           {/* Tabs */}
           <div style={{

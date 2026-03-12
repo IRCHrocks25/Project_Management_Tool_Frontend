@@ -4571,6 +4571,12 @@ const ProjectDetail: React.FC = () => {
                                     <span className="kanban-meta-label">Owner:</span>
                                     <span className="kanban-meta-value">{ownerName}</span>
                                   </div>
+                                  {project.pm?.name && (
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                      <span className="kanban-meta-label">PM:</span>
+                                      <span className="kanban-meta-value" style={{ marginLeft: '0.25rem' }}>{project.pm.name}</span>
+                                    </div>
+                                  )}
                                   {deliverableMembers.length > 0 && (
                                     <div className="kanban-card-team" style={{ marginTop: '0.5rem' }}>
                                       <span className="kanban-meta-label" style={{ fontSize: '0.75rem', color: '#6b7280' }}>Team:</span>
@@ -5510,6 +5516,12 @@ const ProjectDetail: React.FC = () => {
                                     </span>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
+                                    {project.pm?.name && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                        <FaUser style={{ fontSize: '0.625rem' }} />
+                                        <span>PM: {project.pm.name}</span>
+                                      </div>
+                                    )}
                                     {(() => {
                                       const assignees = task.assignees || [];
                                       const assigneeIds = assignees.length > 0
@@ -6449,6 +6461,12 @@ const ProjectDetail: React.FC = () => {
           // Fallback: look in relatedProjects if present
           const related = (project.relatedProjects || []).find((p: any) => p.id === projectId);
           return related?.clientName || project.clientName || 'Unknown Project';
+        }}
+        getProjectPmName={(projectId: string) => {
+          if (!project) return '';
+          if (project.id === projectId) return project.pm?.name || '';
+          const related = (project.relatedProjects || []).find((p: any) => p.id === projectId);
+          return related?.pm?.name || '';
         }}
         onEditTask={(task: any) => {
           if (!canAssignOwners) return;

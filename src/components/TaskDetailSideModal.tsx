@@ -10,6 +10,7 @@ interface TaskDetailSideModalProps {
   onClose: () => void;
   allUsers: any[];
   getProjectName: (projectId: string) => string;
+  getProjectPmName?: (projectId: string) => string;
   onEditTask?: (task: any) => void;
   onTaskUpdate?: (updatedTask: any) => void;
   initialTab?: 'details' | 'conversation';
@@ -21,6 +22,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   onClose,
   allUsers,
   getProjectName,
+  getProjectPmName,
   onEditTask,
   onTaskUpdate,
   initialTab = 'details'
@@ -416,6 +418,23 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
             <FaTimes />
           </button>
         </div>
+
+        {/* PM - just before tabs */}
+        {getProjectPmName?.(task.projectId) && (
+          <div style={{
+            padding: '0.5rem 2rem',
+            background: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb',
+            fontSize: '0.875rem',
+            color: '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem'
+          }}>
+            <FaUser style={{ fontSize: '0.75rem', flexShrink: 0 }} />
+            <span>PM: {getProjectPmName(task.projectId)}</span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{

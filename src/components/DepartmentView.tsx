@@ -608,6 +608,19 @@ const DepartmentView: React.FC = () => {
     return projectNameMap.get(projectId) || 'Unknown Project';
   };
 
+  const projectPmNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const project of projects) {
+      const pmName = project.pm?.name || (project.pmId && users.find((u: any) => u.id === project.pmId)?.name);
+      if (pmName) map.set(project.id, pmName);
+    }
+    return map;
+  }, [projects, users]);
+
+  const getProjectPmName = (projectId: string): string => {
+    return projectPmNameMap.get(projectId) || '';
+  };
+
   // Get user name - optimized with Map cache
   const userNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -6421,6 +6434,7 @@ const DepartmentView: React.FC = () => {
         onClose={handleCloseTaskDetail}
         allUsers={users}
         getProjectName={getProjectName}
+        getProjectPmName={getProjectPmName}
         onEditTask={handleEditTask}
         onTaskUpdate={(updatedTask: any) => {
           setSelectedTaskDetail(updatedTask);
