@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaComment } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaComment } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -61,6 +61,8 @@ const PMDashboard: React.FC = () => {
   const [lastEmailLogDateFilter, setLastEmailLogDateFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
+  /** For heads: when true, Kanban shows all departments; when false, only their department */
+  const [headViewAllProjects, setHeadViewAllProjects] = useState<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in List view PM dropdown
   const [reassigningPMFor, setReassigningPMFor] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -964,16 +966,51 @@ const PMDashboard: React.FC = () => {
     <div className="dashboard premium">
       <nav className="dashboard-nav premium-nav">
         <div className="nav-container">
-          <h2 className="logo">Katalyst PM</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {user?.role !== 'Project Manager' && !!user?.isTeamLead && (
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#64748b',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f8fafc';
+                  e.currentTarget.style.borderColor = '#667eea';
+                  e.currentTarget.style.color = '#667eea';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                ← My Department
+              </button>
+            )}
+            <h2 className="logo">Katalyst PM</h2>
+          </div>
           <div className="nav-right">
-            <button 
-              onClick={() => setShowCreateModal(true)} 
-              className="btn-primary btn-primary-premium"
-              style={{ marginRight: '1rem' }}
-            >
-              <FaPlus className="btn-icon" />
-              New Project
-            </button>
+            {user?.role === 'Project Manager' && (
+              <button 
+                onClick={() => setShowCreateModal(true)} 
+                className="btn-primary btn-primary-premium"
+                style={{ marginRight: '1rem' }}
+              >
+                <FaPlus className="btn-icon" />
+                New Project
+              </button>
+            )}
             
             {/* Notification Bell - Always Visible */}
             <button
@@ -1048,6 +1085,18 @@ const PMDashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="dropdown-divider"></div>
+                  {user?.role !== 'Project Manager' && !!user?.isTeamLead && (
+                    <button 
+                      onClick={() => {
+                        setShowAvatarDropdown(false);
+                        navigate('/dashboard');
+                      }}
+                      className="dropdown-item"
+                    >
+                      <FaFolderOpen className="dropdown-icon" />
+                      My Department
+                    </button>
+                  )}
                   <button 
                     onClick={() => {
                       setShowAvatarDropdown(false);
@@ -1702,6 +1751,50 @@ const PMDashboard: React.FC = () => {
             </div>
           ) : viewMode === 'kanban' ? (
             <>
+              {user?.role !== 'Project Manager' && !!user?.isTeamLead && (
+                <div style={{
+                  marginBottom: '1rem',
+                  padding: '0.75rem 1rem',
+                  background: headViewAllProjects ? '#eff6ff' : '#f8fafc',
+                  border: `1px solid ${headViewAllProjects ? '#667eea' : '#e2e8f0'}`,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem'
+                }}>
+                  <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                    {headViewAllProjects ? 'Showing all projects across all departments' : 'Showing projects in your department only'}
+                  </span>
+                  <button
+                    onClick={() => setHeadViewAllProjects(!headViewAllProjects)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: headViewAllProjects ? '#e0e7ff' : '#667eea',
+                      color: headViewAllProjects ? '#4338ca' : 'white',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '0.9';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                    }}
+                  >
+                    <FaFolderOpen style={{ fontSize: '0.875rem' }} />
+                    {headViewAllProjects ? 'Show my department only' : 'See all projects'}
+                  </button>
+                </div>
+              )}
               <KanbanBoard 
                 projects={projectsForView} 
                 tasks={tasksForView} 
@@ -1710,7 +1803,8 @@ const PMDashboard: React.FC = () => {
                   if (!loadingRef.current) {
                     loadData();
                   }
-                }} 
+                }}
+                showAllDepartments={user?.role !== 'Project Manager' && !!user?.isTeamLead ? headViewAllProjects : undefined}
               />
               
               {/* Note: Kanban view shows all filtered projects to populate all stage columns */}

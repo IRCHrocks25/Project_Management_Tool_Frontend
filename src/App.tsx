@@ -4,6 +4,7 @@ import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import RoleBasedDashboard from './components/RoleBasedDashboard';
+import PMDashboard from './components/dashboards/PMDashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
@@ -26,6 +27,17 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return authService.isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
 };
 
+/** PM Dashboard route: accessible by Project Managers and department heads (isTeamLead) */
+const PMDashboardRoute: React.FC = () => {
+  const user = authService.getUser();
+  const isPM = user?.role === 'Project Manager';
+  const isHead = !!user?.isTeamLead;
+  if (isPM || isHead) {
+    return <PMDashboard />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -39,6 +51,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <RoleBasedDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/pm-dashboard"
+          element={
+            <PrivateRoute>
+              <PMDashboardRoute />
             </PrivateRoute>
           }
         />

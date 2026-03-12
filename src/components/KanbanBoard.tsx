@@ -11,9 +11,11 @@ interface KanbanBoardProps {
   projects: any[];
   tasks?: any[]; // Optional: all tasks for multi-column view
   onUpdate: () => void;
+  /** When true, show all department columns (for heads viewing PM dashboard) */
+  showAllDepartments?: boolean;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdate }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdate, showAllDepartments = false }) => {
   const navigate = useNavigate();
   const user = authService.getUser();
   
@@ -90,7 +92,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
     }
   };
   
-  const stages = useMemo(() => getStagesForRole(user?.role || 'Project Manager'), [user?.role]);
+  const stages = useMemo(() => {
+    if (showAllDepartments) {
+      return getStagesForRole('Project Manager');
+    }
+    return getStagesForRole(user?.role || 'Project Manager');
+  }, [user?.role, showAllDepartments]);
   
   // Map internal stage names to display stages
   const mapStageToDisplay = (internalStage: string): string => {
