@@ -19,6 +19,7 @@ import {
   FaEye,
   FaFolder,
   FaPaperPlane,
+  FaComments,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
@@ -26,7 +27,9 @@ import { taskService } from '../services/task.service';
 import { notificationService } from '../services/notification.service';
 import { clientUpdatesService } from '../services/client-updates.service';
 import NotificationsModal from './NotificationsModal';
+import LiveChatPanel from './LiveChatPanel';
 import SendForReviewModal from './SendForReviewModal';
+import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
 const MyProjectsView: React.FC = () => {
@@ -37,9 +40,11 @@ const MyProjectsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<any>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -487,6 +492,55 @@ const MyProjectsView: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            onClick={() => setShowLiveChatPanel(true)}
+            style={{
+              position: 'relative',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#64748b',
+              fontSize: '1.25rem',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#667eea';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#64748b';
+            }}
+            title="Live Chat"
+          >
+            <FaComments />
+            {unreadChatCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-0.25rem',
+                  right: '-0.25rem',
+                  minWidth: '1.5rem',
+                  height: '1.5rem',
+                  padding: '0 0.375rem',
+                  borderRadius: '0.75rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                {unreadChatCount > 99 ? '99+' : unreadChatCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setShowNotificationsModal(true)}
             style={{
@@ -1289,6 +1343,14 @@ const MyProjectsView: React.FC = () => {
       </div>
 
       {/* Modals */}
+      <LiveChatPanel
+        isOpen={showLiveChatPanel}
+        onClose={() => {
+          setShowLiveChatPanel(false);
+          refreshUnreadChat();
+        }}
+        accentColor="#667eea"
+      />
       <NotificationsModal
         isOpen={showNotificationsModal}
         onClose={() => {

@@ -23,6 +23,7 @@ import {
   FaSave,
   FaFileAlt,
   FaLink,
+  FaComments,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -31,6 +32,8 @@ import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
 import NotificationsModal from '../NotificationsModal';
 import SendForReviewModal from '../SendForReviewModal';
+import LiveChatPanel from '../LiveChatPanel';
+import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
 // Role configuration mapping
@@ -108,9 +111,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [loading, setLoading] = useState(true);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<any>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- refreshUnreadChat used in LiveChatPanel onClose
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const [filter, setFilter] = useState<'all' | 'my_tasks' | 'todo' | 'in_progress' | 'in_review' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'created'>('due_date');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -1828,6 +1834,49 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button
+              onClick={() => setShowLiveChatPanel(true)}
+              style={{
+                position: 'relative',
+                padding: '0.5rem',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                color: '#6b7280',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f3f4f6';
+                e.currentTarget.style.color = '#111827';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }}
+              title="Live Chat"
+            >
+              <FaComments style={{ fontSize: '1.25rem' }} />
+              {unreadChatCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '0.25rem',
+                  right: '0.25rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.7rem',
+                  fontWeight: 600
+                }}>
+                  {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setShowNotificationsModal(true)}
               style={{
                 position: 'relative',
@@ -3175,6 +3224,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           loadData();
         }}
         onOpenTaskConversation={handleOpenTaskConversationFromNotification}
+      />
+      <LiveChatPanel
+        isOpen={showLiveChatPanel}
+        onClose={() => {
+          setShowLiveChatPanel(false);
+          refreshUnreadChat();
+        }}
+        accentColor={color}
       />
 
       {selectedTaskForReview && (

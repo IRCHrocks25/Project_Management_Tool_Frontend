@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCheckCircle, FaChevronDown, FaBell, FaCog, FaSignOutAlt, FaUsers, FaFolder, FaArrowLeft } from 'react-icons/fa';
+import { FaCheckCircle, FaChevronDown, FaBell, FaCog, FaSignOutAlt, FaUsers, FaFolder, FaArrowLeft, FaComments } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { notificationService } from '../services/notification.service';
 import NotificationsModal from './NotificationsModal';
+import LiveChatPanel from './LiveChatPanel';
+import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
 const CompletedProjects: React.FC = () => {
@@ -14,7 +16,9 @@ const CompletedProjects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
   const [clientTypeFilter, setClientTypeFilter] = useState<string>('All Client Types');
   const [stageFilter, setStageFilter] = useState<string>('All Stages');
@@ -134,6 +138,45 @@ const CompletedProjects: React.FC = () => {
               Back to Dashboard
             </button>
             
+            {/* Live Chat - Message Icon */}
+            <button
+              className="notification-button"
+              onClick={() => setShowLiveChatPanel(true)}
+              style={{
+                position: 'relative',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                marginRight: '1rem'
+              }}
+              title="Live Chat"
+            >
+              <FaComments style={{ fontSize: '1.25rem', color: '#475569' }} />
+              {unreadChatCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '0',
+                    background: '#ef4444',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
             {/* Notification Bell - Always Visible */}
             <button
               className="notification-button"
@@ -359,6 +402,14 @@ const CompletedProjects: React.FC = () => {
         </div>
       </div>
 
+      <LiveChatPanel
+        isOpen={showLiveChatPanel}
+        onClose={() => {
+          setShowLiveChatPanel(false);
+          refreshUnreadChat();
+        }}
+        accentColor="#667eea"
+      />
       <NotificationsModal
         isOpen={showNotificationsModal}
         onClose={() => setShowNotificationsModal(false)}

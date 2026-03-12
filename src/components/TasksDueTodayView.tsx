@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaClock, FaUser, FaFolder, FaChevronRight, FaBell, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaClock, FaUser, FaFolder, FaChevronRight, FaBell, FaCog, FaSignOutAlt, FaComments } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { notificationService } from '../services/notification.service';
 import NotificationsModal from './NotificationsModal';
+import LiveChatPanel from './LiveChatPanel';
+import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
 const TasksDueTodayView: React.FC = () => {
@@ -17,7 +19,9 @@ const TasksDueTodayView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
 
   const loadData = useCallback(async () => {
     try {
@@ -123,6 +127,43 @@ const TasksDueTodayView: React.FC = () => {
             </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button
+              onClick={() => setShowLiveChatPanel(true)}
+              style={{
+                position: 'relative',
+                background: 'transparent',
+                border: 'none',
+                padding: '0.5rem',
+                cursor: 'pointer',
+                color: '#64748b',
+                borderRadius: '8px'
+              }}
+              title="Live Chat"
+            >
+              <FaComments style={{ fontSize: '1.25rem' }} />
+              {unreadChatCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    minWidth: '18px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px'
+                  }}
+                >
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setShowNotificationsModal(true)}
               style={{
@@ -358,6 +399,14 @@ const TasksDueTodayView: React.FC = () => {
         )}
       </main>
 
+      <LiveChatPanel
+        isOpen={showLiveChatPanel}
+        onClose={() => {
+          setShowLiveChatPanel(false);
+          refreshUnreadChat();
+        }}
+        accentColor="#667eea"
+      />
       {showNotificationsModal && (
         <NotificationsModal
           isOpen={showNotificationsModal}

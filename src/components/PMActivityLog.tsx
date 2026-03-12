@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaHistory, FaTimes, FaClock, FaUser, FaBell, FaCog, FaSignOutAlt, FaArrowLeft, FaSearch, FaUsers, FaExchangeAlt, FaCheckSquare, FaSquare } from 'react-icons/fa';
+import { FaHistory, FaTimes, FaClock, FaUser, FaBell, FaCog, FaSignOutAlt, FaArrowLeft, FaSearch, FaUsers, FaExchangeAlt, FaCheckSquare, FaSquare, FaComments } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { notificationService } from '../services/notification.service';
 import { clientUpdatesService } from '../services/client-updates.service';
 import NotificationsModal from './NotificationsModal';
+import LiveChatPanel from './LiveChatPanel';
+import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
 /* ─── Styles (same design language as DepartmentActivityLog) ──────────────── */
@@ -446,6 +448,8 @@ const PMActivityLog: React.FC = () => {
   const [loading,           setLoading]           = useState(true);
   const [showAvatar,        setShowAvatar]        = useState(false);
   const [showNotifs,        setShowNotifs]        = useState(false);
+  const [showLiveChat,      setShowLiveChat]      = useState(false);
+  const [unreadChatCount,   refreshUnreadChat]    = useUnreadChatCount();
   const [unread,            setUnread]            = useState(0);
   const [activeTab,         setActiveTab]         = useState('');
   const [search,            setSearch]            = useState('');
@@ -713,6 +717,16 @@ const PMActivityLog: React.FC = () => {
           </button>
           <span className="pm-nav-title">PM Activity Log</span>
           <div className="pm-nav-right">
+            <button className="pm-icon-btn" onClick={() => setShowLiveChat(true)} title="Live Chat">
+              <FaComments />
+              {unreadChatCount > 0 && (
+                <span className="pm-badge" style={{
+                  background: unreadChatCount >= 10 ? '#ef4444' : unreadChatCount >= 5 ? '#f59e0b' : '#10b981'
+                }}>
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
             <button className="pm-icon-btn" onClick={() => setShowNotifs(true)}>
               <FaBell />
               {unread > 0 && (
@@ -906,6 +920,15 @@ const PMActivityLog: React.FC = () => {
           )}
         </div>
 
+        {/* ── LIVE CHAT ── */}
+        <LiveChatPanel
+          isOpen={showLiveChat}
+          onClose={() => {
+            setShowLiveChat(false);
+            refreshUnreadChat();
+          }}
+          accentColor="#667eea"
+        />
         {/* ── NOTIFS ── */}
         <NotificationsModal
           isOpen={showNotifs}

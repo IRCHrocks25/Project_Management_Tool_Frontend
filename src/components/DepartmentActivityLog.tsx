@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUsers, FaTimes, FaClock, FaUser, FaBell, FaCog, FaSignOutAlt, FaArrowLeft, FaSearch } from 'react-icons/fa';
+import { FaUsers, FaTimes, FaClock, FaUser, FaBell, FaCog, FaSignOutAlt, FaArrowLeft, FaSearch, FaComments } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { notificationService } from '../services/notification.service';
 import NotificationsModal from './NotificationsModal';
+import LiveChatPanel from './LiveChatPanel';
+import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
 const css = `
@@ -347,7 +349,9 @@ const DepartmentActivityLog: React.FC = () => {
   const [activeTab, setActiveTab] = useState('');
   const [showAvatar, setShowAvatar] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showLiveChat, setShowLiveChat] = useState(false);
   const [unread,     setUnread]     = useState(0);
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const skipRef = useRef<number | null>(null);
 
@@ -471,6 +475,16 @@ const DepartmentActivityLog: React.FC = () => {
           </button>
           <span className="dal-nav-title">Activity Log</span>
           <div className="dal-nav-right">
+            <button className="dal-icon-btn" onClick={() => setShowLiveChat(true)} title="Live Chat">
+              <FaComments />
+              {unreadChatCount > 0 && (
+                <span className="dal-badge" style={{
+                  background: unreadChatCount >= 10 ? '#ef4444' : unreadChatCount >= 5 ? '#f59e0b' : '#10b981'
+                }}>
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
             <button className="dal-icon-btn" onClick={() => setShowNotifs(true)}>
               <FaBell />
               {unread > 0 && (
@@ -685,6 +699,15 @@ const DepartmentActivityLog: React.FC = () => {
           </div>
         )}
 
+        {/* ── LIVE CHAT ── */}
+        <LiveChatPanel
+          isOpen={showLiveChat}
+          onClose={() => {
+            setShowLiveChat(false);
+            refreshUnreadChat();
+          }}
+          accentColor="#667eea"
+        />
         {/* ── NOTIFS ── */}
         <NotificationsModal
           isOpen={showNotifs}

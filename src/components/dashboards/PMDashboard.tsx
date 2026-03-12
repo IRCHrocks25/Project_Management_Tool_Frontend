@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaComment } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaComment, FaComments } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -10,6 +10,8 @@ import KanbanBoard from '../KanbanBoard';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
 import ConfirmModal from '../ConfirmModal';
+import LiveChatPanel from '../LiveChatPanel';
+import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
 const ITEMS_PER_PAGE = 10; // Constant for pagination
@@ -26,6 +28,8 @@ const PMDashboard: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
+  const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [projectToArchive, setProjectToArchive] = useState<string | null>(null);
   const [projectsToArchive, setProjectsToArchive] = useState<string[]>([]);
@@ -1012,6 +1016,58 @@ const PMDashboard: React.FC = () => {
               </button>
             )}
             
+            {/* Live Chat - Message Icon */}
+            <button
+              className="notification-button"
+              onClick={() => setShowLiveChatPanel(true)}
+              style={{
+                position: 'relative',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                marginRight: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#64748b',
+                fontSize: '1.25rem',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#667eea';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#64748b';
+              }}
+              title="Live Chat"
+            >
+              <FaComments />
+              {unreadChatCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-0.25rem',
+                    right: '-0.25rem',
+                    minWidth: '1.5rem',
+                    height: '1.5rem',
+                    padding: '0 0.375rem',
+                    borderRadius: '0.75rem',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
             {/* Notification Bell - Always Visible */}
             <button
               className="notification-button"
@@ -2446,6 +2502,14 @@ const PMDashboard: React.FC = () => {
           onBulkSuccess={loadData}
         />
       )}
+      <LiveChatPanel
+        isOpen={showLiveChatPanel}
+        onClose={() => {
+          setShowLiveChatPanel(false);
+          refreshUnreadChat();
+        }}
+        accentColor="#667eea"
+      />
       <NotificationsModal
         isOpen={showNotificationsModal}
         onClose={() => setShowNotificationsModal(false)}
