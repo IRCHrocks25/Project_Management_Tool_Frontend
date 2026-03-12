@@ -26,9 +26,10 @@ const Users: React.FC = () => {
   };
 
   useEffect(() => {
-    // Only allow Project Managers to access this page
+    // Only allow Project Managers and Founder/CEO to access this page
     const currentUser = authService.getUser();
-    if (!currentUser || currentUser?.role !== 'Project Manager') {
+    const allowed = currentUser?.role === 'Project Manager' || currentUser?.role === 'FOUNDER/CEO';
+    if (!currentUser || !allowed) {
       navigate('/dashboard', { replace: true });
       return;
     }
@@ -307,13 +308,26 @@ const Users: React.FC = () => {
                   >
                     Team Lead
                   </th>
+                  <th
+                    style={{
+                      padding: '1rem 1.5rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Head PM
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       style={{
                         padding: '3rem',
                         textAlign: 'center',
@@ -426,6 +440,52 @@ const Users: React.FC = () => {
                         >
                           {userItem.isTeamLead ? 'Team Lead' : 'Make Lead'}
                         </button>
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        {userItem.role === 'Project Manager' ? (
+                          <button
+                            disabled={updatingUserId === userItem.id}
+                            onClick={async () => {
+                              try {
+                                setUpdatingUserId(userItem.id);
+                                const newValue = !userItem.isHeadPM;
+                                const updated = await authService.setHeadPM(
+                                  userItem.id,
+                                  newValue
+                                );
+                                setUsers((prev) =>
+                                  prev.map((u) =>
+                                    u.id === updated.id ? { ...u, ...updated } : u
+                                  )
+                                );
+                              } catch (error: any) {
+                                console.error('Failed to update Head PM status:', error);
+                                alert(
+                                  error?.response?.data?.message ||
+                                    'Failed to update Head PM status. Only Project Managers can be Head PM.'
+                                );
+                              } finally {
+                                setUpdatingUserId(null);
+                              }
+                            }}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              borderRadius: '999px',
+                              border: '1px solid',
+                              borderColor: userItem.isHeadPM ? '#6366f1' : '#e5e7eb',
+                              background: userItem.isHeadPM ? '#eef2ff' : 'white',
+                              color: userItem.isHeadPM ? '#4338ca' : '#6b7280',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: updatingUserId === userItem.id ? 'not-allowed' : 'pointer',
+                              minWidth: '90px',
+                            }}
+                          >
+                            {userItem.isHeadPM ? 'Head PM' : 'Make Head PM'}
+                          </button>
+                        ) : (
+                          <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         <span

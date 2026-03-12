@@ -29,6 +29,7 @@ export interface AuthResponse {
     email: string;
     role: string;
     isTeamLead?: boolean;
+    isHeadPM?: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -132,6 +133,23 @@ export const authService = {
       }
     );
     // If current user was updated, refresh localStorage copy
+    const currentUser = this.getUser();
+    if (currentUser && currentUser.id === userId) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  async setHeadPM(userId: string, isHeadPM: boolean): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/auth/users/${userId}/head-pm`,
+      { isHeadPM },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
     const currentUser = this.getUser();
     if (currentUser && currentUser.id === userId) {
       localStorage.setItem('user', JSON.stringify(response.data));
