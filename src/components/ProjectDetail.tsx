@@ -375,6 +375,36 @@ const ProjectDetail: React.FC = () => {
     }
   }, [project?.deliverables, activeDeliverableTab]);
 
+  // Task/content count per deliverable – highlights tabs that have work
+  const deliverableTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!project?.deliverables) return counts;
+    const deliverableTasks = tasks.filter((t: any) => t.type !== 'Onboarding' && t.type !== 'Intake');
+    for (const d of project.deliverables) {
+      const deliverableType = d.customType || d.type;
+      const isCustom = d.type === 'Other' || !!d.customType;
+      let count = 0;
+      for (const t of deliverableTasks) {
+        const linked = t.deliverableId === d.id;
+        if (isCustom) {
+          if (linked) count++;
+        } else {
+          if (linked) {
+            count++;
+          } else if (!t.deliverableId) {
+            if (t.type === 'Copy' && ['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other', 'Home Page'].includes(deliverableType)) count++;
+            else if (t.type === 'Design' && ['Logo', 'Social Banners', 'Home Page', 'Brand Book'].includes(deliverableType)) count++;
+            else if (t.type === 'Dev' && deliverableType === 'Home Page') count++;
+          }
+        }
+      }
+      // Deliverable has direct file submission (shows in Kanban even without tasks)
+      if (d.fileUrl) count++;
+      if (count > 0) counts[d.id] = count;
+    }
+    return counts;
+  }, [project?.deliverables, tasks]);
+
   // Check for updates whenever tasks or deliverable history changes
   // Use a stable key to prevent unnecessary re-runs
   const tasksKey = useMemo(() => {
@@ -456,32 +486,33 @@ const ProjectDetail: React.FC = () => {
 
     const checkForUpdates = async () => {
       try {
-        const historyMap: Record<string, any[]> = {};
-        
-        // Get all unique file URLs from tasks (use ref to get latest)
         const currentTasks = tasksRef.current;
         const allFileUrls = new Set<string>();
         currentTasks.forEach((task: any) => {
-          if (task.fileUrl) {
-            allFileUrls.add(task.fileUrl);
-          }
+          if (task.fileUrl) allFileUrls.add(task.fileUrl);
         });
-        
         const fileUrlsArray = Array.from(allFileUrls);
-        
-        // Load history for each deliverable
+
+        const promises: Array<{ key: string; promise: Promise<any[]> }> = [];
         for (const deliverable of project.deliverables) {
-          const deliverableHist = await deliverableService.getHistory(deliverable.id).catch(() => []);
-          historyMap[deliverable.id] = deliverableHist || [];
-          
+          promises.push({
+            key: deliverable.id,
+            promise: deliverableService.getHistory(deliverable.id).catch(() => []),
+          });
           for (const fileUrl of fileUrlsArray) {
-            const fileHist = await deliverableService.getHistory(deliverable.id, fileUrl).catch(() => []);
-            const key = `${deliverable.id}:${fileUrl}`;
-            historyMap[key] = fileHist || [];
+            promises.push({
+              key: `${deliverable.id}:${fileUrl}`,
+              promise: deliverableService.getHistory(deliverable.id, fileUrl).catch(() => []),
+            });
           }
         }
-        
-        // Update history and check for new updates
+
+        const results = await Promise.all(promises.map((p) => p.promise));
+        const historyMap: Record<string, any[]> = {};
+        promises.forEach((p, i) => {
+          historyMap[p.key] = results[i] || [];
+        });
+
         setDeliverableHistory(historyMap);
         if (project) {
           checkForNewDeliverableUpdates(historyMap, project, currentTasks, id);
@@ -491,10 +522,7 @@ const ProjectDetail: React.FC = () => {
       }
     };
 
-    // Check immediately
-    checkForUpdates();
-    
-    // Then check every 30 seconds (reduced frequency to improve performance)
+    // Check every 30 seconds (initial load handled by loadDeliverableHistoryInBackground)
     const interval = setInterval(checkForUpdates, 30000);
     
     return () => clearInterval(interval);
@@ -725,39 +753,9 @@ const ProjectDetail: React.FC = () => {
         assignedToId: t.assignedToId
       })));
       
-      // Load history for all deliverables and their files
+      // Defer deliverable history loading – show UI immediately, load history in background
       if (projectData?.deliverables) {
-        const historyMap: Record<string, any[]> = {};
-        
-        // Get all unique file URLs from tasks
-        const allFileUrls = new Set<string>();
-        tasksData.forEach((task: any) => {
-          if (task.fileUrl) {
-            allFileUrls.add(task.fileUrl);
-          }
-        });
-        
-        // Convert Set to Array for iteration
-        const fileUrlsArray = Array.from(allFileUrls);
-        
-        // Load history for each deliverable and each file
-        for (const deliverable of projectData.deliverables) {
-          // Load general deliverable history
-          const deliverableHist = await deliverableService.getHistory(deliverable.id).catch(() => []);
-          historyMap[deliverable.id] = deliverableHist || [];
-          
-          // Load history for each file URL associated with this deliverable
-          for (const fileUrl of fileUrlsArray) {
-            const fileHist = await deliverableService.getHistory(deliverable.id, fileUrl).catch(() => []);
-            const key = `${deliverable.id}:${fileUrl}`;
-            historyMap[key] = fileHist || [];
-          }
-        }
-        
-        setDeliverableHistory(historyMap);
-        
-        // Check for new updates (pass project data to check deliverable status changes)
-        checkForNewDeliverableUpdates(historyMap, projectData, tasksToUse, id!);
+        loadDeliverableHistoryInBackground(projectData, tasksToUse);
       }
     } catch (error: any) {
       console.error('Failed to load project:', error);
@@ -771,6 +769,44 @@ const ProjectDetail: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load deliverable history in background (parallelized) – does not block initial render
+  const loadDeliverableHistoryInBackground = async (projectData: any, tasksData: any[]) => {
+    if (!projectData?.deliverables?.length || !id) return;
+    try {
+      const allFileUrls = new Set<string>();
+      (tasksData || []).forEach((task: any) => {
+        if (task?.fileUrl) allFileUrls.add(task.fileUrl);
+      });
+      const fileUrlsArray = Array.from(allFileUrls);
+
+      // Build all promises in parallel (deliverable history + per-file history)
+      const promises: Array<{ key: string; promise: Promise<any[]> }> = [];
+      for (const deliverable of projectData.deliverables) {
+        promises.push({
+          key: deliverable.id,
+          promise: deliverableService.getHistory(deliverable.id).catch(() => []),
+        });
+        for (const fileUrl of fileUrlsArray) {
+          promises.push({
+            key: `${deliverable.id}:${fileUrl}`,
+            promise: deliverableService.getHistory(deliverable.id, fileUrl).catch(() => []),
+          });
+        }
+      }
+
+      const results = await Promise.all(promises.map((p) => p.promise));
+      const historyMap: Record<string, any[]> = {};
+      promises.forEach((p, i) => {
+        historyMap[p.key] = results[i] || [];
+      });
+
+      setDeliverableHistory(historyMap);
+      checkForNewDeliverableUpdates(historyMap, projectData, tasksData, id);
+    } catch (err) {
+      console.error('Failed to load deliverable history:', err);
     }
   };
 
@@ -1887,19 +1923,39 @@ const ProjectDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="project-detail">
-        <div className="loading-skeleton">
-          <div className="skeleton-header"></div>
-          <div className="skeleton-content"></div>
+      <div className="project-detail premium-project-detail">
+        <div className="project-detail-skeleton">
+          <div className="skeleton-summary-bar">
+            <div className="skeleton-back"></div>
+            <div className="skeleton-title"></div>
+            <div className="skeleton-badges">
+              <span className="skeleton-badge"></span>
+              <span className="skeleton-badge"></span>
+              <span className="skeleton-badge"></span>
+            </div>
+            <div className="skeleton-stats">
+              <div className="skeleton-stat"></div>
+              <div className="skeleton-stat"></div>
+              <div className="skeleton-stat"></div>
+            </div>
+          </div>
+          <div className="skeleton-tabs">
+            <span className="skeleton-tab"></span>
+            <span className="skeleton-tab"></span>
+            <span className="skeleton-tab"></span>
+            <span className="skeleton-tab"></span>
+            <span className="skeleton-tab"></span>
+          </div>
+          <div className="skeleton-content-grid">
+            <div className="skeleton-card"></div>
+            <div className="skeleton-card"></div>
+            <div className="skeleton-card skeleton-card-wide"></div>
+          </div>
+          <div className="skeleton-loading-text">
+            <span className="skeleton-pulse-dot"></span>
+            Loading project...
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="project-detail-container" style={{ padding: '3rem', textAlign: 'center' }}>
-        <div className="loading-spinner">Loading project...</div>
       </div>
     );
   }
@@ -3370,15 +3426,16 @@ const ProjectDetail: React.FC = () => {
                         ) : (
                           <>
                             <button
-                              className={`deliverable-sub-tab ${activeDeliverableTab === deliverable.id ? 'active' : ''}`}
-                              onClick={() => {
-                                setActiveDeliverableTab(deliverable.id);
-                                if (!activeDeliverableTab) {
-                                  setActiveDeliverableTab(deliverable.id);
-                                }
-                              }}
+                              className={`deliverable-sub-tab ${activeDeliverableTab === deliverable.id ? 'active' : ''} ${deliverableTaskCounts[deliverable.id] ? 'has-tasks' : ''}`}
+                              onClick={() => setActiveDeliverableTab(deliverable.id)}
+                              title={deliverableTaskCounts[deliverable.id] ? `${deliverableTaskCounts[deliverable.id]} task${deliverableTaskCounts[deliverable.id] === 1 ? '' : 's'}` : undefined}
                             >
                               {getDeliverableDisplayName(deliverable)}
+                              {deliverableTaskCounts[deliverable.id] != null && (
+                                <span className="deliverable-tab-badge">
+                                  {deliverableTaskCounts[deliverable.id]}
+                                </span>
+                              )}
                             </button>
                             {isCustomDeliverable && canAssignOwners && (
                               <div style={{

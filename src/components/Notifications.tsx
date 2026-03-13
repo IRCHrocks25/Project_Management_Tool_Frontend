@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaBell, FaCheckCircle, FaCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { notificationService, Notification } from '../services/notification.service';
 import './Notifications.css';
@@ -11,11 +11,7 @@ const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const data = await notificationService.getAll();
@@ -36,7 +32,11 @@ const Notifications: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

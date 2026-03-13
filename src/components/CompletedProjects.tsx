@@ -6,6 +6,7 @@ import { projectService } from '../services/project.service';
 import { notificationService } from '../services/notification.service';
 import NotificationsModal from './NotificationsModal';
 import LiveChatPanel from './LiveChatPanel';
+import UserAvatar from './UserAvatar';
 import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
@@ -220,13 +221,13 @@ const CompletedProjects: React.FC = () => {
                 className="avatar-button"
                 onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
               >
-                <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                 <FaChevronDown className="dropdown-chevron" />
               </button>
               {showAvatarDropdown && (
                 <div className="avatar-dropdown">
                   <div className="dropdown-header">
-                    <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                    <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                     <div>
                       <div className="dropdown-name">{user?.name}</div>
                       <div className="dropdown-email">{user?.email}</div>

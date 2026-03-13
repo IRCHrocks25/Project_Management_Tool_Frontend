@@ -961,6 +961,47 @@
   font-weight: 600;
 }
 
+/* Deliverable tab with tasks – badge + dot */
+.deliverable-sub-tab.has-tasks {
+  font-weight: 500;
+}
+
+.deliverable-sub-tab.has-tasks::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #667eea;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.deliverable-sub-tab.active.has-tasks::before {
+  background: #667eea;
+}
+
+.deliverable-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 0.5rem;
+  background: #667eea;
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 9px;
+  line-height: 1;
+}
+
+.deliverable-sub-tab.active .deliverable-tab-badge {
+  background: #e0e7ff;
+  color: #667eea;
+}
+
 .add-deliverable-btn {
   display: flex;
   align-items: center;
@@ -1819,7 +1860,158 @@
   color: #6b7280;
 }
 
-/* Loading & Error States */
+/* Loading & Error States - Project Detail Skeleton */
+.project-detail-skeleton {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  min-height: 100vh;
+  background: #fafbfc;
+}
+
+.skeleton-summary-bar {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-back {
+  width: 140px;
+  height: 24px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-title {
+  width: 280px;
+  max-width: 60%;
+  height: 36px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.1s;
+}
+
+.skeleton-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.skeleton-badge {
+  width: 80px;
+  height: 32px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  display: inline-block;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+.skeleton-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.skeleton-stat {
+  width: 100px;
+  height: 40px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+
+.skeleton-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.skeleton-tab {
+  width: 110px;
+  height: 40px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  flex-shrink: 0;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+.skeleton-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.skeleton-card {
+  height: 220px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 16px;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+.skeleton-card-wide {
+  grid-column: 1 / -1;
+  height: 180px;
+  animation-delay: 0.6s;
+}
+
+.skeleton-loading-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  font-size: 0.9375rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.skeleton-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: skeletonPulseDot 1s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes skeletonPulseDot {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Legacy loading (kept for other components) */
 .loading-skeleton {
   padding: 2rem;
 }

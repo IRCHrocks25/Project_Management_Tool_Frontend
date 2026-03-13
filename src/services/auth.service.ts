@@ -226,6 +226,39 @@ export const authService = {
     }
   },
 
+  async updateProfile(data: {
+    name?: string;
+    email?: string;
+    avatarUrl?: string;
+    birthday?: string;
+    bio?: string;
+  }): Promise<any> {
+    const response = await axios.patch(`${API_URL}/auth/profile`, data, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const response = await axios.post(
+      `${API_URL}/auth/change-password`,
+      { currentPassword, newPassword },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  },
+
   async resetPasswordWithOtp(email: string, password: string): Promise<{ message: string }> {
     console.log('[FRONTEND] Calling resetPasswordWithOtp with email:', email);
     console.log('[FRONTEND] Full endpoint:', `${API_URL}/auth/reset-password-otp`);

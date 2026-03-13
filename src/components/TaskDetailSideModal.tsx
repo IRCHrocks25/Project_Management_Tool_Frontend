@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaUser, FaClock, FaStickyNote, FaLink, FaFileAlt, FaHistory, FaCheckCircle, FaExclamationCircle, FaSpinner } from 'react-icons/fa';
 import { deliverableService } from '../services/deliverable.service';
 import { taskService } from '../services/task.service';
+import UserAvatar from './UserAvatar';
 
 interface TaskDetailSideModalProps {
   isOpen: boolean;
@@ -584,37 +585,29 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
               <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Unassigned</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {assigneeIds.map((id) => (
-                  <div
-                    key={id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}
-                  >
+                {assigneeIds.map((id) => {
+                  const assigneeUser = allUsers.find((u: any) => u.id === id);
+                  return (
                     <div
+                      key={id}
                       style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        flexShrink: 0
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        color: '#374151'
                       }}
                     >
-                      {getUserName(id).charAt(0).toUpperCase()}
+                      <UserAvatar
+                        name={assigneeUser?.name || getUserName(id)}
+                        avatarUrl={assigneeUser?.avatarUrl}
+                        size={32}
+                        color="#667eea"
+                      />
+                      <span>{getUserName(id)}</span>
                     </div>
-                    <span>{getUserName(id)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1051,21 +1044,12 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                           gap: '0.5rem',
                           marginBottom: '0.5rem'
                         }}>
-                          <div style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            flexShrink: 0
-                          }}>
-                            {question.user?.name?.charAt(0).toUpperCase() || '?'}
-                          </div>
+                          <UserAvatar
+                            name={question.user?.name}
+                            avatarUrl={question.user?.avatarUrl}
+                            size={28}
+                            color="#667eea"
+                          />
                           <div style={{ flex: 1 }}>
                             <div style={{
                               fontSize: '0.875rem',
@@ -1116,21 +1100,12 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                                 gap: '0.5rem',
                                 marginBottom: '0.5rem'
                               }}>
-                                <div style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '50%',
-                                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'white',
-                                  fontWeight: 600,
-                                  fontSize: '0.625rem',
-                                  flexShrink: 0
-                                }}>
-                                  {comment.user?.name?.charAt(0).toUpperCase() || '?'}
-                                </div>
+                                <UserAvatar
+                                  name={comment.user?.name}
+                                  avatarUrl={comment.user?.avatarUrl}
+                                  size={24}
+                                  color="#667eea"
+                                />
                                 <div style={{ flex: 1 }}>
                                   <div style={{
                                     fontSize: '0.8125rem',

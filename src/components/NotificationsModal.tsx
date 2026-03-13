@@ -1,19 +1,292 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
-import './NotificationsModal.css';
 
 interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdate?: () => void; // Callback to refresh unread count in parent
-  onMarkAllAsRead?: () => void; // Callback to immediately reset count to 0
-  /** When provided and user clicks a mention/response notification, open task in slide modal instead of navigating */
+  onUpdate?: () => void;
+  onMarkAllAsRead?: () => void;
   onOpenTaskConversation?: (projectId: string, taskId: string) => void | Promise<void>;
 }
 
-const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, onUpdate, onMarkAllAsRead, onOpenTaskConversation }) => {
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  .nm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 56px 16px 16px;
+    pointer-events: none;
+  }
+
+  .nm-panel {
+    --bg: #ffffff;
+    --surface: #f8f9fb;
+    --border: #e8ecf0;
+    --border-strong: #d0d7de;
+    --text-primary: #0f1923;
+    --text-secondary: #4a5568;
+    --text-muted: #94a3b8;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --unread-bg: #fafbff;
+
+    font-family: 'Instrument Sans', sans-serif;
+    pointer-events: all;
+    width: 380px;
+    max-height: calc(100vh - 80px);
+    background: var(--bg);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: panelIn 0.18s ease;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Header */
+  .nm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .nm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nm-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .nm-unread-badge {
+    padding: 2px 8px;
+    background: var(--accent);
+    color: white;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .nm-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .nm-close:hover { background: #fff1f2; border-color: #fecdd3; color: #dc2626; }
+
+  /* Actions bar */
+  .nm-actions {
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .nm-mark-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: white;
+    color: var(--text-secondary);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .nm-mark-all:hover { border-color: #bbf7d0; background: #f0fdf4; color: #16a34a; }
+
+  /* List */
+  .nm-list {
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .nm-list::-webkit-scrollbar { width: 4px; }
+  .nm-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+  /* Notification item */
+  .nm-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .nm-item:last-child { border-bottom: none; }
+  .nm-item:hover { background: var(--surface); }
+  .nm-item.unread { background: var(--unread-bg); }
+  .nm-item.unread:hover { background: #f0f5ff; }
+
+  /* Unread left stripe */
+  .nm-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+
+  /* Icon */
+  .nm-icon-wrap {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .nm-icon-wrap.task          { background: #f0fdf4; color: #16a34a; }
+  .nm-icon-wrap.task-available{ background: #eff6ff; color: #2563eb; }
+  .nm-icon-wrap.email         { background: #f5f3ff; color: #6d28d9; }
+  .nm-icon-wrap.alert         { background: #fff7ed; color: #d97706; }
+  .nm-icon-wrap.default       { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* Content */
+  .nm-content { flex: 1; min-width: 0; }
+  .nm-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .nm-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .nm-unread-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .nm-message {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin: 0 0 4px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .nm-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Empty / loading */
+  .nm-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 52px 24px;
+    gap: 10px;
+    text-align: center;
+  }
+  .nm-empty-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--text-muted);
+  }
+  .nm-empty h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .nm-empty p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* Loading skeleton */
+  .nm-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .nm-skeleton-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nm-skel {
+    background: linear-gradient(90deg, #f1f4f8 25%, #e8ecf0 50%, #f1f4f8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+`;
+
+const NotificationsModal: React.FC<NotificationsModalProps> = ({
+  isOpen, onClose, onUpdate, onMarkAllAsRead, onOpenTaskConversation,
+}) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -22,10 +295,6 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
     try {
       setLoading(true);
       const data = await notificationService.getAll();
-
-      // Backend already filters by userId in the query, so all returned notifications are for this user
-      // Just use them directly - no additional filtering needed
-      // (Backend query: .where('notification.userId = :userId', { userId }))
       setNotifications(data);
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -37,54 +306,29 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
   useEffect(() => {
     if (isOpen) {
       loadNotifications();
-      // Refresh unread count when modal opens
-      if (onUpdate) {
-        onUpdate();
-      }
+      if (onUpdate) onUpdate();
     }
   }, [isOpen, loadNotifications, onUpdate]);
 
   const handleMarkAllAsRead = async () => {
     try {
-      // Immediately reset count to 0 for instant feedback
-      if (onMarkAllAsRead) {
-        onMarkAllAsRead();
-      }
-      
-      // Wait for the backend request to complete
+      if (onMarkAllAsRead) onMarkAllAsRead();
       await notificationService.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      
-      // Don't refresh immediately - the count is already 0
-      // The periodic refresh (every 30 seconds) will keep it accurate
-      // Only refresh if there's an error to get accurate state
     } catch (error) {
       console.error('Failed to mark all as read:', error);
-      // If error, refresh count to get accurate state
-      if (onUpdate) {
-        setTimeout(() => {
-          onUpdate();
-        }, 500);
-      }
+      if (onUpdate) setTimeout(() => onUpdate!(), 500);
     }
   };
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      // Optimistically mark as read in backend and local state
       if (!notification.isRead) {
         await notificationService.markAsRead(notification.id);
-        setNotifications(prev =>
-          prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
-        );
-        if (onUpdate) {
-          onUpdate();
-        }
+        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+        if (onUpdate) onUpdate();
       }
-
-      // Navigate based on notification context
       if (notification.projectId) {
-        // Conversation notifications (mention, task_update, someone responded) → open task in slide modal if callback provided
         const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
         if (isConversation && onOpenTaskConversation && notification.taskId) {
           await onOpenTaskConversation(notification.projectId, notification.taskId);
@@ -98,8 +342,6 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
         onClose();
         return;
       }
-
-      // Fallback: go to main dashboard if we don't have a projectId
       navigate('/dashboard');
       onClose();
     } catch (error) {
@@ -112,94 +354,101 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    return date.toLocaleDateString();
+    const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getIconMeta = (type: string): { icon: React.ReactNode; cls: string } => {
     switch (type) {
       case 'task':
-      case 'task_completed': return <FaCheckCircle className="notification-icon task" />;
-      case 'task_available': return <FaBell className="notification-icon task-available" />; // New type for unassigned tasks
-      case 'email': return <FaEnvelope className="notification-icon email" />;
+      case 'task_completed':  return { icon: <FaCheckCircle />, cls: 'task' };
+      case 'task_available':  return { icon: <FaBell />,        cls: 'task-available' };
+      case 'email':           return { icon: <FaEnvelope />,    cls: 'email' };
       case 'alert':
       case 'project_stage':
-      case 'revision': return <FaExclamationTriangle className="notification-icon alert" />;
-      default: return <FaBell className="notification-icon" />;
+      case 'revision':        return { icon: <FaExclamationTriangle />, cls: 'alert' };
+      default:                return { icon: <FaBell />,        cls: 'default' };
     }
   };
 
   return (
-    <div className="notifications-modal-overlay" onClick={onClose}>
-      <div className="notifications-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="notifications-modal-header">
-          <div className="header-content">
-            <h2>Notifications</h2>
-            {unreadCount > 0 && (
-              <span className="unread-badge">{unreadCount} unread</span>
-            )}
-          </div>
-          <button className="close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
+    <>
+      <style>{STYLES}</style>
+      <div className="nm-overlay" onClick={onClose}>
+        <div className="nm-panel" onClick={(e) => e.stopPropagation()}>
 
-        <div className="notifications-modal-content">
+          {/* Header */}
+          <div className="nm-header">
+            <div className="nm-header-left">
+              <h2 className="nm-title">Notifications</h2>
+              {unreadCount > 0 && (
+                <span className="nm-unread-badge">{unreadCount}</span>
+              )}
+            </div>
+            <button className="nm-close" onClick={onClose}><FaTimes /></button>
+          </div>
+
+          {/* Mark all read */}
+          {!loading && unreadCount > 0 && (
+            <div className="nm-actions">
+              <button className="nm-mark-all" onClick={handleMarkAllAsRead}>
+                <FaCheck style={{ fontSize: 9 }} /> Mark all as read
+              </button>
+            </div>
+          )}
+
+          {/* Content */}
           {loading ? (
-            <div className="empty-notifications">
-              <FaBell className="empty-icon" />
-              <h3>Loading...</h3>
+            <div className="nm-skeleton">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="nm-skeleton-item">
+                  <div className="nm-skel" style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    <div className="nm-skel" style={{ height: 12, width: '60%' }} />
+                    <div className="nm-skel" style={{ height: 11, width: '90%' }} />
+                    <div className="nm-skel" style={{ height: 10, width: '30%' }} />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="empty-notifications">
-              <FaBell className="empty-icon" />
+            <div className="nm-empty">
+              <div className="nm-empty-icon"><FaBell /></div>
               <h3>All caught up!</h3>
               <p>You have no new notifications</p>
             </div>
           ) : (
-            <>
-              {unreadCount > 0 && (
-                <div className="notifications-actions">
-                  <button onClick={handleMarkAllAsRead} className="mark-all-read-btn">
-                    Mark all as read
-                  </button>
-                </div>
-              )}
-              <div className="notifications-list">
-                {notifications.map((notification) => (
+            <div className="nm-list">
+              {notifications.map((notification) => {
+                const { icon, cls } = getIconMeta(notification.type);
+                return (
                   <div
                     key={notification.id}
-                    className={`notification-item ${notification.isRead ? 'read' : 'unread'}`}
+                    className={`nm-item ${notification.isRead ? 'read' : 'unread'}`}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <div className="notification-icon-wrapper">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="notification-content">
-                      <div className="notification-header-item">
-                        <h4>{notification.title}</h4>
-                        {!notification.isRead && <div className="unread-dot"></div>}
+                    <div className={`nm-icon-wrap ${cls}`}>{icon}</div>
+                    <div className="nm-content">
+                      <div className="nm-item-head">
+                        <h4 className="nm-item-title">{notification.title}</h4>
+                        {!notification.isRead && <div className="nm-unread-dot" />}
                       </div>
-                      <p className="notification-message">{notification.message}</p>
-                      <span className="notification-time">{formatTime(notification.createdAt)}</span>
+                      <p className="nm-message">{notification.message}</p>
+                      <span className="nm-time">{formatTime(notification.createdAt)}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
 export default NotificationsModal;
-

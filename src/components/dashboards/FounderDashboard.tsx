@@ -11,6 +11,7 @@ import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { clientUpdatesService } from '../../services/client-updates.service';
+import UserAvatar from '../UserAvatar';
 import '../Dashboard.css';
 
 const FounderDashboard: React.FC = () => {
@@ -481,18 +482,12 @@ const FounderDashboard: React.FC = () => {
                 cursor: 'pointer'
               }}
             >
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 600
-              }}>
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar
+                name={user?.name}
+                avatarUrl={user?.avatarUrl}
+                size={36}
+                color="#667eea"
+              />
               <span>{user?.name}</span>
               <FaChevronDown style={{ fontSize: '0.75rem' }} />
             </button>

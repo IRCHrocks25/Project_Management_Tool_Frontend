@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaArchive, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaEye, FaEllipsisV, FaHistory, FaComment, FaComments } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaHistory, FaComment, FaComments, FaTasks } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
-import KanbanBoard from '../KanbanBoard';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
 import ConfirmModal from '../ConfirmModal';
 import LiveChatPanel from '../LiveChatPanel';
+import PMTasksTableView from './PMTasksTableView';
+import PMListView from './PMListView';
+import PMKanbanView from './PMKanbanView';
+import PMQuickOverview from './PMQuickOverview';
+import UserAvatar from '../UserAvatar';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
@@ -56,7 +60,7 @@ const PMDashboard: React.FC = () => {
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview'>('overview');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview' | 'tasks'>('overview');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
@@ -69,6 +73,10 @@ const PMDashboard: React.FC = () => {
   const [headViewAllProjects, setHeadViewAllProjects] = useState<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in List view PM dropdown
   const [reassigningPMFor, setReassigningPMFor] = useState<string | null>(null);
+  const [tasksTableSort, setTasksTableSort] = useState<{ column: string; dir: 'asc' | 'desc' }>({ column: 'updated', dir: 'desc' });
+  const [tasksDepartmentFilter, setTasksDepartmentFilter] = useState<string>('All Departments');
+  const [tasksPmFilter, setTasksPmFilter] = useState<string>('All');
+  const [tasksAssigneeFilter, setTasksAssigneeFilter] = useState<string>('All');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
 
@@ -911,6 +919,18 @@ const PMDashboard: React.FC = () => {
     return date.toLocaleDateString();
   };
 
+  const getProjectName = (projectId: string): string => {
+    const p = projects.find((pr: any) => pr.id === projectId);
+    return p?.clientName || 'Unknown Project';
+  };
+
+  const getProjectPmName = (projectId: string): string => {
+    const p = projects.find((pr: any) => pr.id === projectId);
+    const pmId = p?.pmId || (p?.pm as any)?.id;
+    if (!pmId) return '';
+    const u = users.find((us: any) => us.id === pmId);
+    return u?.name || '';
+  };
 
   if (loading) {
     return (
@@ -1128,13 +1148,13 @@ const PMDashboard: React.FC = () => {
                 className="avatar-button"
                 onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
               >
-                <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                 <FaChevronDown className="dropdown-chevron" />
               </button>
               {showAvatarDropdown && (
                 <div className="avatar-dropdown">
                   <div className="dropdown-header">
-                    <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                    <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                     <div>
                       <div className="dropdown-name">{user?.name}</div>
                       <div className="dropdown-email">{user?.email}</div>
@@ -1281,6 +1301,15 @@ const PMDashboard: React.FC = () => {
               >
                 List
               </button>
+              {user?.role === 'Project Manager' && (
+                <button 
+                  className={viewMode === 'tasks' ? 'active' : ''}
+                  onClick={() => setViewMode('tasks')}
+                >
+                  <FaTasks style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+                  Tasks
+                </button>
+              )}
               <button 
                 className={viewMode === 'overview' ? 'active' : ''}
                 onClick={() => {
@@ -1297,7 +1326,7 @@ const PMDashboard: React.FC = () => {
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="Search by project name..."
+                  placeholder={viewMode === 'tasks' ? 'Search tasks or projects...' : 'Search by project name...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1375,178 +1404,13 @@ const PMDashboard: React.FC = () => {
           {viewMode === 'overview' ? (
             <div className="overview-view" style={{ padding: '2rem' }}>
               {/* Key Metrics Section */}
-              <div style={{ marginBottom: '3rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  marginBottom: '1.5rem'
-                }}>
-                  <h2 style={{ 
-                    fontSize: '1.75rem', 
-                    fontWeight: 700, 
-                    color: '#1e293b',
-                    margin: 0,
-                    letterSpacing: '-0.02em'
-                  }}>
-                    Quick Overview
-                  </h2>
-                </div>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-                  gap: '1.25rem'
-                }}>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    padding: '1.75rem',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(102, 126, 234, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-20px',
-                      right: '-20px',
-                      width: '100px',
-                      height: '100px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '50%'
-                    }}></div>
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      color: 'rgba(255, 255, 255, 0.9)', 
-                      marginBottom: '0.75rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <FaFolder style={{ fontSize: '1rem' }} />
-                      Total Projects
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>
-                      {projects.filter((p: any) => !p.isArchived).length}
-                    </div>
-                  </div>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    padding: '1.75rem',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(16, 185, 129, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-20px',
-                      right: '-20px',
-                      width: '100px',
-                      height: '100px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '50%'
-                    }}></div>
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      color: 'rgba(255, 255, 255, 0.9)', 
-                      marginBottom: '0.75rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <FaCheckCircle style={{ fontSize: '1rem' }} />
-                      Active Tasks
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{activeTasksCount}</div>
-                  </div>
-                  <div
-                    onClick={() => navigate('/tasks-due-today')}
-                    style={{
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      padding: '1.75rem',
-                      borderRadius: '16px',
-                      boxShadow: '0 10px 25px rgba(245, 158, 11, 0.2)',
-                      border: 'none',
-                      color: 'white',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 12px 28px rgba(245, 158, 11, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 10px 25px rgba(245, 158, 11, 0.2)';
-                    }}
-                    title="View all tasks due today"
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '-20px',
-                      right: '-20px',
-                      width: '100px',
-                      height: '100px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '50%'
-                    }}></div>
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      color: 'rgba(255, 255, 255, 0.9)', 
-                      marginBottom: '0.75rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <FaClock style={{ fontSize: '1rem' }} />
-                      Tasks Due Today
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{todayTasks}</div>
-                  </div>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-                    padding: '1.75rem',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(236, 72, 153, 0.2)',
-                    border: 'none',
-                    color: 'white',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-20px',
-                      right: '-20px',
-                      width: '100px',
-                      height: '100px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '50%'
-                    }}></div>
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      color: 'rgba(255, 255, 255, 0.9)', 
-                      marginBottom: '0.75rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <FaEnvelope style={{ fontSize: '1rem' }} />
-                      Waiting on Client
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'white', lineHeight: 1 }}>{waitingOnClient}</div>
-                  </div>
-                </div>
-              </div>
+              <PMQuickOverview
+                projects={projects}
+                activeTasksCount={activeTasksCount}
+                todayTasks={todayTasks}
+                waitingOnClient={waitingOnClient}
+                navigate={navigate}
+              />
 
               {/* Recent Activity Section */}
               <div style={{ marginBottom: '3rem' }}>
@@ -1806,689 +1670,66 @@ const PMDashboard: React.FC = () => {
               </div>
             </div>
           ) : viewMode === 'kanban' ? (
-            <>
-              {user?.role !== 'Project Manager' && !!user?.isTeamLead && (
-                <div style={{
-                  marginBottom: '1rem',
-                  padding: '0.75rem 1rem',
-                  background: headViewAllProjects ? '#eff6ff' : '#f8fafc',
-                  border: `1px solid ${headViewAllProjects ? '#667eea' : '#e2e8f0'}`,
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '0.75rem'
-                }}>
-                  <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    {headViewAllProjects ? 'Showing all projects across all departments' : 'Showing projects in your department only'}
-                  </span>
-                  <button
-                    onClick={() => setHeadViewAllProjects(!headViewAllProjects)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: headViewAllProjects ? '#e0e7ff' : '#667eea',
-                      color: headViewAllProjects ? '#4338ca' : 'white',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '0.9';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                    }}
-                  >
-                    <FaFolderOpen style={{ fontSize: '0.875rem' }} />
-                    {headViewAllProjects ? 'Show my department only' : 'See all projects'}
-                  </button>
-                </div>
-              )}
-              <KanbanBoard 
-                projects={projectsForView} 
-                tasks={tasksForView} 
-                onUpdate={() => {
-                  // Debounce onUpdate to prevent rapid-fire reloads
-                  if (!loadingRef.current) {
-                    loadData();
-                  }
-                }}
-                showAllDepartments={user?.role !== 'Project Manager' && !!user?.isTeamLead ? headViewAllProjects : undefined}
-              />
-              
-              {/* Note: Kanban view shows all filtered projects to populate all stage columns */}
-              {/* Pagination removed - Kanban needs all projects to show across all stages */}
-            </>
+            <PMKanbanView
+              user={user}
+              headViewAllProjects={headViewAllProjects}
+              setHeadViewAllProjects={setHeadViewAllProjects}
+              projectsForView={projectsForView}
+              tasksForView={tasksForView}
+              onKanbanUpdate={() => {
+                if (!loadingRef.current) {
+                  loadData();
+                }
+              }}
+            />
+          ) : viewMode === 'tasks' ? (
+            <PMTasksTableView
+              tasks={tasks}
+              filteredProjects={filteredProjects}
+              projects={projects}
+              users={users}
+              searchTerm={searchTerm}
+              setProjects={setProjects}
+              setTasks={setTasks}
+              tasksRef={tasksRef}
+              getProjectName={getProjectName}
+              getProjectPmName={getProjectPmName}
+              tasksTableSort={tasksTableSort}
+              setTasksTableSort={setTasksTableSort}
+              tasksDepartmentFilter={tasksDepartmentFilter}
+              setTasksDepartmentFilter={setTasksDepartmentFilter}
+              tasksPmFilter={tasksPmFilter}
+              setTasksPmFilter={setTasksPmFilter}
+              tasksAssigneeFilter={tasksAssigneeFilter}
+              setTasksAssigneeFilter={setTasksAssigneeFilter}
+            />
           ) : (
-            <div className="projects-list-view">
-              {selectedProjects.size > 0 && (
-                <div style={{
-                  padding: '1rem',
-                  background: '#f1f5f9',
-                  borderBottom: '2px solid #667eea',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '1rem',
-                  borderRadius: '0.5rem'
-                }}>
-                  <span style={{ fontWeight: 600, color: '#475569' }}>
-                    {selectedProjects.size} project{selectedProjects.size === 1 ? '' : 's'} selected
-                  </span>
-                  <button
-                    onClick={handleBulkArchiveClick}
-                    style={{
-                      background: '#64748b',
-                      color: 'white',
-                      border: 'none',
-                      padding: '0.5rem 1.5rem',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 600
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#475569';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#64748b';
-                    }}
-                  >
-                    <FaArchive />
-                    Archive Selected
-                  </button>
-                </div>
-              )}
-              <div className="list-header">
-                <div className="list-header-cell" style={{ width: '50px', flex: '0 0 50px' }}>
-                  <input
-                    type="checkbox"
-                    checked={filteredProjects.length > 0 && selectedProjects.size === filteredProjects.length}
-                    onChange={() => {}}
-                    onClick={handleSelectAll}
-                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                  />
-                </div>
-                <div className="list-header-cell" style={{ flex: '2', minWidth: '200px' }}>Project Name</div>
-                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Client Type</div>
-                <div className="list-header-cell" style={{ width: '100px', flex: '0 0 100px' }}>Priority</div>
-                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Stage</div>
-                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Days in Stage</div>
-                <div className="list-header-cell" style={{ width: '150px', flex: '0 0 150px' }}>Who</div>
-                <div className="list-header-cell" style={{ width: '200px', flex: '0 0 200px', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-                  <div>Last Email Log</div>
-                  <input
-                    type="date"
-                    value={lastEmailLogDateFilter}
-                    onChange={(e) => setLastEmailLogDateFilter(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    placeholder="Filter by date"
-                    style={{
-                      width: '100%',
-                      padding: '0.375rem 0.5rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.75rem',
-                      background: 'white',
-                      color: '#374151',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#e2e8f0';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                  {lastEmailLogDateFilter && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLastEmailLogDateFilter('');
-                      }}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        background: '#fee2e2',
-                        border: '1px solid #fecaca',
-                        borderRadius: '0.25rem',
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#fecaca';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#fee2e2';
-                      }}
-                    >
-                      <FaTimes style={{ fontSize: '0.625rem' }} />
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px', textAlign: 'center' }}>Actions</div>
-              </div>
-              <div className="list-content">
-                {filteredProjects.length === 0 ? (
-                  <div className="empty-list">
-                    <FaFolder style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
-                    <p>No projects found matching your filters.</p>
-                  </div>
-                ) : (
-                  paginatedProjects.map((project: any) => {
-                    const daysInStage = project.updatedAt
-                      ? Math.ceil((Date.now() - new Date(project.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
-                      : 0;
-                    
-                    return (
-                      <div 
-                        key={project.id} 
-                        className="list-row"
-                        onClick={() => navigate(`/project/${project.id}`)}
-                        style={{
-                          backgroundColor: selectedProjects.has(project.id) ? '#f1f5f9' : 'transparent'
-                        }}
-                      >
-                        <div className="list-cell" style={{ width: '50px', flex: '0 0 50px' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedProjects.has(project.id)}
-                            onChange={() => {}}
-                            onClick={(e) => handleToggleSelect(project.id, e)}
-                            style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                          />
-                        </div>
-                        <div className="list-cell" style={{ flex: '2', minWidth: '200px', fontWeight: 600 }}>
-                          {project.clientName}
-                        </div>
-                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
-                          <span className={`client-type-badge ${project.clientType?.toLowerCase()}`}>
-                            {project.clientType}
-                          </span>
-                        </div>
-                        <div className="list-cell" style={{ width: '100px', flex: '0 0 100px' }}>
-                          <span className={`priority-badge priority-${project.priority?.toLowerCase()}`}>
-                            {project.priority}
-                          </span>
-                        </div>
-                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
-                          <span className="stage-badge">{project.stage}</span>
-                        </div>
-                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
-                          {daysInStage} {daysInStage === 1 ? 'day' : 'days'}
-                        </div>
-                        <div
-                          className="list-cell"
-                          style={{ width: '150px', flex: '0 0 150px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <FaUser style={{ fontSize: '0.875rem', color: '#64748b', flexShrink: 0 }} />
-                          <select
-                            value={project.pmId || project.pm?.id || ''}
-                            onChange={async (e) => {
-                              const newPmId = e.target.value;
-                              if (!newPmId || newPmId === (project.pmId || project.pm?.id)) return;
-                              setReassigningPMFor(project.id);
-                              try {
-                                await projectService.update(project.id, { pmId: newPmId });
-                                const newPM = users.find((u: any) => u.id === newPmId);
-                                setProjects((prev) =>
-                                  prev.map((p) =>
-                                    p.id === project.id ? { ...p, pmId: newPmId, pm: newPM || p.pm } : p
-                                  )
-                                );
-                              } catch (err: any) {
-                                console.error('Failed to reassign PM:', err);
-                                alert(err.response?.data?.message || err.message || 'Failed to reassign PM');
-                              } finally {
-                                setReassigningPMFor(null);
-                              }
-                            }}
-                            disabled={reassigningPMFor === project.id}
-                            style={{
-                              fontSize: '0.875rem',
-                              color: '#374151',
-                              padding: '0.375rem 0.5rem',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '6px',
-                              background: '#fff',
-                              cursor: reassigningPMFor === project.id ? 'wait' : 'pointer',
-                              flex: 1,
-                              minWidth: 0,
-                            }}
-                          >
-                            <option value="">Unassigned</option>
-                            {users
-                              .filter((u: any) => u.role === 'Project Manager')
-                              .map((pm: any) => (
-                                <option key={pm.id} value={pm.id}>
-                                  {pm.name}
-                                </option>
-                              ))}
-                          </select>
-                          {reassigningPMFor === project.id && (
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>…</span>
-                          )}
-                        </div>
-                        <div className="list-cell" style={{ width: '200px', flex: '0 0 200px' }}>
-                          {lastEmailLogs[project.id] ? (() => {
-                            const lastLog = lastEmailLogs[project.id];
-                            const logDate = new Date(lastLog.date);
-                            const daysSinceLog = Math.floor((Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24));
-                            const isOverdue = daysSinceLog >= 7;
-                            const keyword = getEmailLogKeyword(lastLog.notes);
-                            
-                            return (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <div style={{ 
-                                  fontSize: '0.875rem', 
-                                  color: isOverdue ? '#dc2626' : '#374151',
-                                  fontWeight: isOverdue ? 600 : 400,
-                                }}>
-                                  {logDate.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  })}
-                                </div>
-                                <div style={{ 
-                                  fontSize: '0.75rem', 
-                                  color: isOverdue ? '#dc2626' : '#64748b',
-                                }}>
-                                  {logDate.toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </div>
-                                {keyword && (
-                                  <div style={{ 
-                                    fontSize: '0.75rem', 
-                                    color: '#667eea',
-                                    fontWeight: 500,
-                                    marginTop: '0.25rem',
-                                    fontStyle: 'italic',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    maxWidth: '100%'
-                                  }}>
-                                    "{keyword}"
-                                  </div>
-                                )}
-                                {isOverdue && (
-                                  <div style={{ 
-                                    fontSize: '0.75rem', 
-                                    color: '#dc2626',
-                                    fontWeight: 500,
-                                    marginTop: '0.25rem',
-                                  }}>
-                                    {daysSinceLog} days ago
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })() : (
-                            <span style={{ fontSize: '0.875rem', color: '#9ca3af', fontStyle: 'italic' }}>
-                              No logs
-                            </span>
-                          )}
-                        </div>
-                        <div className="list-cell" style={{ width: '120px', flex: '0 0 120px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          <div style={{ position: 'relative', display: 'inline-block' }} data-action-menu>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActionMenuOpen(actionMenuOpen === project.id ? null : project.id);
-                              }}
-                              style={{
-                                background: 'transparent',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '0.375rem',
-                                padding: '0.5rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '36px',
-                                height: '36px',
-                                color: '#64748b',
-                                transition: 'all 0.2s',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderColor = '#cbd5e1';
-                                e.currentTarget.style.color = '#475569';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.color = '#64748b';
-                              }}
-                            >
-                              <FaEllipsisV style={{ fontSize: '1rem' }} />
-                            </button>
-                            {actionMenuOpen === project.id && (
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: '100%',
-                                  right: 0,
-                                  marginTop: '0.25rem',
-                                  background: 'white',
-                                  border: '1px solid #e2e8f0',
-                                  borderRadius: '0.5rem',
-                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                  zIndex: 9999,
-                                  minWidth: '180px',
-                                  overflow: 'hidden',
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActionMenuOpen(null);
-                                    navigate(`/project/${project.id}`);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '0.875rem',
-                                    color: '#374151',
-                                    transition: 'background 0.15s',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f8fafc';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <FaEye style={{ fontSize: '0.875rem', color: '#3b82f6' }} />
-                                  View
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActionMenuOpen(null);
-                                    handleLogEmailClick(project, e);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '0.875rem',
-                                    color: '#374151',
-                                    transition: 'background 0.15s',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f8fafc';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <FaEnvelope style={{ fontSize: '0.875rem', color: '#667eea' }} />
-                                  Log Email
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActionMenuOpen(null);
-                                    handleCompleteClick(project.id, e);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '0.875rem',
-                                    color: '#374151',
-                                    transition: 'background 0.15s',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f8fafc';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <FaCheckCircle style={{ fontSize: '0.875rem', color: '#10b981' }} />
-                                  Mark Complete
-                                </button>
-                                <div style={{ height: '1px', background: '#e2e8f0', margin: '0.25rem 0' }} />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActionMenuOpen(null);
-                                    handleArchiveClick(project.id, e);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '0.875rem',
-                                    color: '#374151',
-                                    transition: 'background 0.15s',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f8fafc';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <FaArchive style={{ fontSize: '0.875rem', color: '#64748b' }} />
-                                  Archive
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              
-              {/* Pagination Controls */}
-              {filteredProjects.length > ITEMS_PER_PAGE && !showAll && (
-                <div style={{
-                  padding: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderTop: '1px solid #e2e8f0',
-                  background: '#f8fafc'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.375rem',
-                        background: currentPage === 1 ? '#f1f5f9' : 'white',
-                        color: currentPage === 1 ? '#94a3b8' : '#475569',
-                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (currentPage !== 1) {
-                          e.currentTarget.style.background = '#f8fafc';
-                          e.currentTarget.style.borderColor = '#cbd5e1';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (currentPage !== 1) {
-                          e.currentTarget.style.background = 'white';
-                          e.currentTarget.style.borderColor = '#e2e8f0';
-                        }
-                      }}
-                    >
-                      Previous
-                    </button>
-                    
-                    <span style={{ 
-                      color: '#64748b', 
-                      fontSize: '0.875rem',
-                      minWidth: '120px',
-                      textAlign: 'center'
-                    }}>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.375rem',
-                        background: currentPage === totalPages ? '#f1f5f9' : 'white',
-                        color: currentPage === totalPages ? '#94a3b8' : '#475569',
-                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (currentPage !== totalPages) {
-                          e.currentTarget.style.background = '#f8fafc';
-                          e.currentTarget.style.borderColor = '#cbd5e1';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (currentPage !== totalPages) {
-                          e.currentTarget.style.background = 'white';
-                          e.currentTarget.style.borderColor = '#e2e8f0';
-                        }
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                      Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredProjects.length)} of {filteredProjects.length} projects
-                    </span>
-                    <button
-                      onClick={() => setShowAll(true)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '1px solid #667eea',
-                        borderRadius: '0.375rem',
-                        background: 'white',
-                        color: '#667eea',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#667eea';
-                        e.currentTarget.style.color = 'white';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.color = '#667eea';
-                      }}
-                    >
-                      See All
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Show All Active - Show "Show Less" button */}
-              {showAll && filteredProjects.length > ITEMS_PER_PAGE && (
-                <div style={{
-                  padding: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderTop: '1px solid #e2e8f0',
-                  background: '#f8fafc'
-                }}>
-                  <span style={{ color: '#64748b', fontSize: '0.875rem', marginRight: '1rem' }}>
-                    Showing all {filteredProjects.length} projects
-                  </span>
-                  <button
-                    onClick={() => {
-                      setShowAll(false);
-                      setCurrentPage(1);
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      border: '1px solid #667eea',
-                      borderRadius: '0.375rem',
-                      background: 'white',
-                      color: '#667eea',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#667eea';
-                      e.currentTarget.style.color = 'white';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.color = '#667eea';
-                    }}
-                  >
-                    Show Less
-                  </button>
-                </div>
-              )}
-            </div>
+            <PMListView
+              paginatedProjects={paginatedProjects}
+              filteredProjects={filteredProjects}
+              selectedProjects={selectedProjects}
+              lastEmailLogDateFilter={lastEmailLogDateFilter}
+              setLastEmailLogDateFilter={setLastEmailLogDateFilter}
+              lastEmailLogs={lastEmailLogs}
+              users={users}
+              setProjects={setProjects}
+              reassigningPMFor={reassigningPMFor}
+              setReassigningPMFor={setReassigningPMFor}
+              actionMenuOpen={actionMenuOpen}
+              setActionMenuOpen={setActionMenuOpen}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              showAll={showAll}
+              setShowAll={setShowAll}
+              getEmailLogKeyword={getEmailLogKeyword}
+              onSelectAll={handleSelectAll}
+              onToggleSelect={handleToggleSelect}
+              onBulkArchive={handleBulkArchiveClick}
+              onLogEmail={handleLogEmailClick}
+              onComplete={handleCompleteClick}
+              onArchive={handleArchiveClick}
+            />
           )}
         </div>
       </div>

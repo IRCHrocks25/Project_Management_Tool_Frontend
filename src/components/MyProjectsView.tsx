@@ -29,6 +29,7 @@ import { clientUpdatesService } from '../services/client-updates.service';
 import NotificationsModal from './NotificationsModal';
 import LiveChatPanel from './LiveChatPanel';
 import SendForReviewModal from './SendForReviewModal';
+import UserAvatar from './UserAvatar';
 import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
@@ -109,12 +110,18 @@ const MyProjectsView: React.FC = () => {
     }
   };
 
-  const handleReviewSubmit = async (driveLink: string, deliverableType: string, deliverableId?: string) => {
-    if (!selectedTaskForReview) return;
+  const handleReviewSubmit = async (driveLinks: string[], deliverableType: string, deliverableId?: string) => {
+    if (!selectedTaskForReview || driveLinks.length === 0) return;
     
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, driveLink, deliverableType, deliverableId);
+      const primaryLink = driveLinks[0];
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, primaryLink, deliverableType, deliverableId);
+      if (driveLinks.length > 1) {
+        const extraLinksBlock = `\n\n--- Additional Links ---\n${driveLinks.slice(1).map((l) => `- ${l.trim()}`).join('\n')}`;
+        const currentDesc = selectedTaskForReview.description || '';
+        await taskService.update(selectedTaskForReview.id, { description: currentDesc + extraLinksBlock });
+      }
       await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);
@@ -598,13 +605,13 @@ const MyProjectsView: React.FC = () => {
               className="avatar-button"
               onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
             >
-              <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+              <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
               <FaChevronDown className="dropdown-chevron" />
             </button>
             {showAvatarDropdown && (
               <div className="avatar-dropdown">
                 <div className="dropdown-header">
-                  <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                  <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                   <div>
                     <div className="dropdown-name">{user?.name}</div>
                     <div className="dropdown-email">{user?.email}</div>

@@ -4,6 +4,7 @@ import { FaArrowLeft, FaSpinner, FaComment, FaFolder, FaHeart, FaReply, FaShare 
 import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
+import UserAvatar from './UserAvatar';
 
 /* ─── Threads-style colour tokens ─────────────────────────── */
 const T = {
@@ -164,6 +165,12 @@ const GlobalStyles = () => (
       flex-shrink: 0;
       letter-spacing: 0;
       cursor: pointer;
+      overflow: hidden;
+    }
+    .fc-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .fc-avatar.small {
       width: 32px;
@@ -384,25 +391,35 @@ const timeAgo = (dateStr: string) => {
 
 const Avatar = ({
   name,
+  avatarUrl,
   small,
   onClick,
 }: {
   name: string;
+  avatarUrl?: string | null;
   small?: boolean;
   onClick?: () => void;
-}) => (
-  <div
-    className={`fc-avatar${small ? ' small' : ''}`}
-    onClick={onClick}
-    title={name}
-  >
-    {name?.charAt(0).toUpperCase() || '?'}
-  </div>
-);
+}) => {
+  const wrap = onClick ? (ch: React.ReactNode) => (
+    <div onClick={onClick} style={{ cursor: 'pointer', display: 'inline-block' }} title={name}>
+      {ch}
+    </div>
+  ) : (ch: React.ReactNode) => <>{ch}</>;
+  return wrap(
+    <UserAvatar
+      name={name}
+      avatarUrl={avatarUrl}
+      size={small ? 32 : 40}
+      color="#667eea"
+      className={`fc-avatar${small ? ' small' : ''}`}
+    />
+  );
+};
 
 /* ─── Main component ───────────────────────────────────────── */
 const ForumConversations: React.FC = () => {
   const navigate = useNavigate();
+  const currentUser = authService.getUser();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -586,7 +603,7 @@ const ForumConversations: React.FC = () => {
                   <div className="fc-thread-row">
                     {/* Avatar col */}
                     <div className="fc-avatar-col">
-                      <Avatar name={conv.user?.name} onClick={() => handleOpenTask(conv)} />
+                      <Avatar name={conv.user?.name} avatarUrl={conv.user?.avatarUrl} onClick={() => handleOpenTask(conv)} />
                       {(hasReplies || true) && <div className="fc-thread-line" />}
                     </div>
 
@@ -636,7 +653,7 @@ const ForumConversations: React.FC = () => {
                       {conv.comments.map((c: any, i: number) => (
                         <div key={c.id} className="fc-reply-row">
                           <div className="fc-avatar-col">
-                            <Avatar name={c.user?.name} small />
+                            <Avatar name={c.user?.name} avatarUrl={c.user?.avatarUrl} small />
                             {i < conv.comments.length - 1 && <div className="fc-thread-line" />}
                           </div>
                           <div className="fc-reply-content">
@@ -659,10 +676,13 @@ const ForumConversations: React.FC = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="fc-avatar-col" style={{ paddingTop: 2 }}>
-                      {/* current user placeholder */}
-                      <div className="fc-avatar small" style={{ background: '#e5e7eb', color: '#6b6b6b' }}>
-                        U
-                      </div>
+                      <UserAvatar
+                        name={currentUser?.name}
+                        avatarUrl={currentUser?.avatarUrl}
+                        size={32}
+                        color="#9ca3af"
+                        className="fc-avatar small"
+                      />
                     </div>
                     <div className="fc-reply-input-col">
                       <textarea

@@ -33,6 +33,8 @@ import { deliverableService } from '../../services/deliverable.service';
 import NotificationsModal from '../NotificationsModal';
 import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
+import UserAvatar from '../UserAvatar';
+import UserGreeting from '../UserGreeting';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
@@ -574,12 +576,18 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     }
   };
 
-  const handleReviewSubmit = async (driveLink: string, deliverableType: string, deliverableId?: string) => {
-    if (!selectedTaskForReview) return;
+  const handleReviewSubmit = async (driveLinks: string[], deliverableType: string, deliverableId?: string) => {
+    if (!selectedTaskForReview || driveLinks.length === 0) return;
     
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, driveLink, deliverableType, deliverableId);
+      const primaryLink = driveLinks[0];
+      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, primaryLink, deliverableType, deliverableId);
+      if (driveLinks.length > 1) {
+        const extraLinksBlock = `\n\n--- Additional Links ---\n${driveLinks.slice(1).map((l) => `- ${l.trim()}`).join('\n')}`;
+        const currentDesc = selectedTaskForReview.description || '';
+        await taskService.update(selectedTaskForReview.id, { description: currentDesc + extraLinksBlock });
+      }
       await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);
@@ -1509,15 +1517,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             margin: '0 0 0.5rem 0',
             letterSpacing: '-0.02em'
           }}>
-            Your Department
-          </h2>
-          <p style={{
-            fontSize: '0.875rem',
-            color: 'rgba(255, 255, 255, 0.6)',
-            margin: 0
-          }}>
             {departmentName}
-          </p>
+          </h2>
+          
         </div>
 
         {/* Department List - Only show current role */}
@@ -1822,14 +1824,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flex: 1 }}>
-            <h1 style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              color: '#111827',
-              margin: 0
-            }}>
-              {departmentName}
-            </h1>
+            <UserGreeting userName={user?.name} accentColor={color} compact />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1940,20 +1935,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: '0.875rem'
-                }}>
-                  {user?.name?.charAt(0).toUpperCase()}
-                </div>
+                <UserAvatar
+                  name={user?.name}
+                  avatarUrl={user?.avatarUrl}
+                  size={36}
+                  color={color}
+                />
                 <span style={{ color: '#111827', fontWeight: 500, fontSize: '0.875rem' }}>
                   {user?.name}
                 </span>
@@ -2278,12 +2265,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
+              gridAutoRows: 'minmax(400px, 1fr)',
               gap: '1.5rem',
               paddingBottom: '1rem',
               paddingTop: '0.5rem',
               width: '100%',
-              minHeight: '400px',
-              gridAutoFlow: 'row'
+              minHeight: '500px',
+              gridAutoFlow: 'row',
+              alignItems: 'stretch'
             }}>
               {[
                 { id: 'not_started', title: 'Not yet started', color: '#6b7280' },
@@ -2350,7 +2339,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                       display: 'flex',
                       flexDirection: 'column',
                       transition: 'all 0.2s',
-                      height: 'fit-content',
+                      minHeight: '400px',
                       maxHeight: 'calc(100vh - 300px)',
                       position: 'relative'
                     }}

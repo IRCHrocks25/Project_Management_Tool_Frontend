@@ -4,6 +4,7 @@ import { FaArchive, FaCheckCircle, FaSpinner, FaFolderOpen, FaUser, FaChevronDow
 import { projectService } from '../services/project.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
+import UserAvatar from './UserAvatar';
 import './Dashboard.css';
 
 const Clients: React.FC = () => {
@@ -486,13 +487,13 @@ const Clients: React.FC = () => {
                 className="avatar-button"
                 onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
               >
-                <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                 <FaChevronDown className="dropdown-chevron" />
               </button>
               {showAvatarDropdown && (
                 <div className="avatar-dropdown">
                   <div className="dropdown-header">
-                    <div className="avatar premium-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
+                    <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} className="avatar premium-avatar" />
                     <div>
                       <div className="dropdown-name">{user?.name}</div>
                       <div className="dropdown-email">{user?.email}</div>
