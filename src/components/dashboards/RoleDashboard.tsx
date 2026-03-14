@@ -24,6 +24,7 @@ import {
   FaFileAlt,
   FaLink,
   FaComments,
+  FaTicketAlt,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -31,6 +32,8 @@ import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
 import NotificationsModal from '../NotificationsModal';
+import SubmitTicketModal from '../SubmitTicketModal';
+import TicketsModal from '../TicketsModal';
 import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
 import UserAvatar from '../UserAvatar';
@@ -252,6 +255,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [statusChangeNotes, setStatusChangeNotes] = useState('');
   const [statusChangeLinks, setStatusChangeLinks] = useState<string[]>(['']);
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
+  const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
+  const [showTicketsModal, setShowTicketsModal] = useState(false);
 
   // Department menu items
   const departmentMenuItems = [
@@ -1778,6 +1783,38 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             <FaStickyNote style={{ fontSize: '0.875rem' }} />
             Forum
           </button>
+          {isAIDeveloper && (
+            <button
+              onClick={() => setShowTicketsModal(true)}
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: `1px solid ${color}`,
+                borderRadius: '10px',
+                background: `${color}20`,
+                color: 'rgba(255, 255, 255, 0.95)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${color}40`;
+                e.currentTarget.style.borderColor = color;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = `${color}20`;
+                e.currentTarget.style.borderColor = color;
+              }}
+            >
+              <FaTicketAlt style={{ fontSize: '0.875rem' }} />
+              Tickets
+            </button>
+          )}
           {isTeamLead && (
             <button
               onClick={() => navigate('/pm-dashboard')}
@@ -1995,6 +2032,35 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                     >
                       <FaUser style={{ fontSize: '0.875rem' }} />
                       Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAvatarDropdown(false);
+                        setShowSubmitTicketModal(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#374151',
+                        fontSize: '0.875rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FaTicketAlt style={{ fontSize: '0.875rem' }} />
+                      Submit Ticket
                     </button>
                     <button
                       onClick={() => navigate('/settings')}
@@ -3213,6 +3279,16 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           loadData();
         }}
         onOpenTaskConversation={handleOpenTaskConversationFromNotification}
+      />
+      <SubmitTicketModal
+        isOpen={showSubmitTicketModal}
+        onClose={() => setShowSubmitTicketModal(false)}
+        accentColor={color}
+      />
+      <TicketsModal
+        isOpen={showTicketsModal}
+        onClose={() => setShowTicketsModal(false)}
+        accentColor={color}
       />
       <LiveChatPanel
         isOpen={showLiveChatPanel}

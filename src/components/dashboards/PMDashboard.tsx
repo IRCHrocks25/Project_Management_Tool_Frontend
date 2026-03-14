@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaHistory, FaComment, FaComments, FaTasks } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaHistory, FaComment, FaComments, FaTasks, FaTicketAlt } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -8,6 +8,7 @@ import { notificationService } from '../../services/notification.service';
 import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
+import SubmitTicketModal from '../SubmitTicketModal';
 import ConfirmModal from '../ConfirmModal';
 import LiveChatPanel from '../LiveChatPanel';
 import PMTasksTableView from './PMTasksTableView';
@@ -74,6 +75,7 @@ const PMDashboard: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in List view PM dropdown
   const [reassigningPMFor, setReassigningPMFor] = useState<string | null>(null);
   const [tasksTableSort, setTasksTableSort] = useState<{ column: string; dir: 'asc' | 'desc' }>({ column: 'updated', dir: 'desc' });
+  const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
   const [tasksDepartmentFilter, setTasksDepartmentFilter] = useState<string>('All Departments');
   const [tasksPmFilter, setTasksPmFilter] = useState<string>('All');
   const [tasksAssigneeFilter, setTasksAssigneeFilter] = useState<string>('All');
@@ -1216,6 +1218,16 @@ const PMDashboard: React.FC = () => {
                   <button 
                     onClick={() => {
                       setShowAvatarDropdown(false);
+                      setShowSubmitTicketModal(true);
+                    }}
+                    className="dropdown-item"
+                  >
+                    <FaTicketAlt className="dropdown-icon" />
+                    Submit Ticket
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowAvatarDropdown(false);
                       navigate('/settings');
                     }}
                     className="dropdown-item"
@@ -1749,6 +1761,11 @@ const PMDashboard: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
+        accentColor="#667eea"
+      />
+      <SubmitTicketModal
+        isOpen={showSubmitTicketModal}
+        onClose={() => setShowSubmitTicketModal(false)}
         accentColor="#667eea"
       />
       <NotificationsModal

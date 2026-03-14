@@ -844,7 +844,7 @@ export default function KatalystLanding() {
               <span className="fsep">·</span>
               <a href="#bug">Report a bug</a>
               <span className="fsep">·</span>
-              <a href="#">Privacy</a>
+              <button type="button" className="footer-link-btn" style={{background:'none',border:'none',padding:0,font: 'inherit', color: 'inherit', cursor: 'pointer', textDecoration: 'underline'}}>Privacy</button>
             </div>
             <div className="fcopy">© 2025 Katalyst · Internal Platform</div>
           </div>
