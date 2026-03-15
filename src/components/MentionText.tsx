@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 /** Renders text with @Name[[USER_ID:uuid]] as clickable timeline links and URLs as clickable external links. */
 const MENTION_REGEX = /@([^[\]]+)\[\[USER_ID:([^\]]+)\]\]/g;
 // Match http/https URLs; trim trailing punctuation from the capture for cleaner links
-const URL_REGEX = /https?:\/\/[^\s<>\)\]]+/g;
+// Exclude whitespace, <, >, ), ]. Put ] first so it's literal (no escape); ) unescaped for eslint
+const URL_REGEX = /https?:\/\/[^\]\s<>)]+/g;
 
 type Token = { index: number; end: number; type: 'mention'; name: string; userId: string } | { index: number; end: number; type: 'url'; url: string };
 
