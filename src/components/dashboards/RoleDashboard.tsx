@@ -38,6 +38,7 @@ import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
 import UserAvatar from '../UserAvatar';
 import UserGreeting from '../UserGreeting';
+import MentionText from '../MentionText';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
@@ -324,13 +325,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     try {
       setLoading(true);
 
-      const [allTasksData, allProjectsData] = await Promise.all([
-        taskService.getAll(undefined, undefined, { all: true }),
+      // Load only this department's tasks by taskType (backend filter); defensive client filter below
+      const [tasksFromApi, allProjectsData] = await Promise.all([
+        taskService.getAll(undefined, undefined, { all: true, taskType: config.taskType }),
         projectService.getAll()
       ]);
-
-      // Filter tasks by type
-      const roleTasks = allTasksData.filter((t: any) => t.type === config.taskType);
+      // Defensive: only show tasks that match this department (in case backend filter is ignored or param lost)
+      const roleTasks = tasksFromApi.filter((t: any) => t.type === config.taskType);
 
       // Projects that have tasks of this type
       const projectIdsWithRoleTasks = new Set<string>(
@@ -754,20 +755,30 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     }
   };
 
+  /** Collect user IDs of everyone in a question thread (author + commenters) so we can auto-notify them. */
+  const getThreadParticipantIds = (questionId: string): string[] => {
+    const question = conversations.find((q: any) => q.id === questionId);
+    if (!question) return [];
+    const ids = new Set<string>();
+    const authorId = question.userId || question.user?.id;
+    if (authorId) ids.add(authorId);
+    (question.comments || []).forEach((c: any) => {
+      const id = c.userId || c.user?.id;
+      if (id) ids.add(id);
+    });
+    if (user?.id) ids.delete(user.id); // don't include current user
+    return Array.from(ids);
+  };
+
   const handleCreateComment = async (questionId: string) => {
     const commentText = newCommentTexts[questionId];
     if (!commentText?.trim()) return;
     
     try {
       setSubmittingComments({ ...submittingComments, [questionId]: true });
-      const mentionedUserIds = extractMentions(commentText);
-      console.log('Extracted mentions from comment:', mentionedUserIds, 'from text:', commentText);
-      if (mentionedUserIds.length > 0) {
-        console.log('Mentioned users:', mentionedUserIds.map(id => {
-          const user = users.find((u: any) => u.id === id);
-          return user ? user.name : id;
-        }));
-      }
+      const fromText = extractMentions(commentText);
+      const threadParticipants = getThreadParticipantIds(questionId);
+      const mentionedUserIds = Array.from(new Set([...fromText, ...threadParticipants]));
       await taskService.createComment(questionId, commentText, mentionedUserIds);
       setNewCommentTexts({ ...newCommentTexts, [questionId]: '' });
       if (selectedTaskDetail?.id) {
@@ -1783,6 +1794,36 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             <FaStickyNote style={{ fontSize: '0.875rem' }} />
             Forum
           </button>
+          <button
+            onClick={() => navigate('/timeline')}
+            style={{
+              width: '100%',
+              padding: '0.875rem 1rem',
+              border: `1px solid ${color}`,
+              borderRadius: '10px',
+              background: `${color}20`,
+              color: 'rgba(255, 255, 255, 0.95)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${color}40`;
+              e.currentTarget.style.borderColor = color;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = `${color}20`;
+              e.currentTarget.style.borderColor = color;
+            }}
+          >
+            <FaClock style={{ fontSize: '0.875rem' }} />
+            My Timeline
+          </button>
           {isAIDeveloper && (
             <button
               onClick={() => setShowTicketsModal(true)}
@@ -2032,6 +2073,35 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                     >
                       <FaUser style={{ fontSize: '0.875rem' }} />
                       Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAvatarDropdown(false);
+                        navigate('/timeline');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: '#374151',
+                        fontSize: '0.875rem',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <FaClock style={{ fontSize: '0.875rem' }} />
+                      My Timeline
                     </button>
                     <button
                       onClick={() => {
@@ -5078,7 +5148,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                             lineHeight: '1.5',
                             marginLeft: '2.25rem'
                           }}>
-                            {renderTextWithMentions(question.text)}
+                            <MentionText text={question.text || ''} />
                           </div>
                         </div>
 
@@ -5143,7 +5213,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                   lineHeight: '1.5',
                                   marginLeft: '1.75rem'
                                 }}>
-                                  {renderTextWithMentions(comment.text)}
+                                  <MentionText text={comment.text || ''} />
                                 </div>
                               </div>
                             ))}
@@ -5212,9 +5282,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                     onClick={() => {
                                       const commentText = newCommentTexts[question.id] || '';
                                       const beforeCursor = commentText.substring(0, showMentionDropdown.position - 1);
-                                      const afterCursor = commentText.substring(showMentionDropdown.position);
-                                      // Insert mention with user ID: @Name[[USER_ID:uuid]]
-                                      const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] ` + afterCursor.replace(/^@[^\s@]*/, '');
+                                      // Replace everything after @ with the mention only (no leftover typed text)
+                                      const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] `;
                                       setNewCommentTexts({ ...newCommentTexts, [question.id]: newText });
                                       setShowMentionDropdown(null);
                                     }}
@@ -5329,9 +5398,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                             key={u.id}
                             onClick={() => {
                               const beforeCursor = newQuestionText.substring(0, showMentionDropdown.position - 1);
-                              const afterCursor = newQuestionText.substring(showMentionDropdown.position);
-                              // Insert mention with user ID: @Name[[USER_ID:uuid]]
-                              const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] ` + afterCursor.replace(/^@[^\s@]*/, '');
+                              // Replace everything after @ with the mention only (no leftover typed text)
+                              const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] `;
                               setNewQuestionText(newText);
                               setShowMentionDropdown(null);
                             }}

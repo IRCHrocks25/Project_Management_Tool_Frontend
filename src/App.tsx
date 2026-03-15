@@ -20,6 +20,9 @@ import DepartmentActivityLog from './components/DepartmentActivityLog';
 import PMActivityLog from './components/PMActivityLog';
 import TasksDueTodayView from './components/TasksDueTodayView';
 import ForumConversations from './components/ForumConversations';
+import TimelinePage from './components/TimelinePage';
+import DashboardLayout from './components/DashboardLayout';
+import FAQHelpButton from './components/FAQHelpButton';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -70,22 +73,16 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <PrivateRoute>
-              <Settings />
-            </PrivateRoute>
-          }
-        />
+        {/* Routes that use the shared side navigation layout */}
+        <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+          <Route path="timeline" element={<TimelinePage />} />
+          <Route path="timeline/:userId" element={<TimelinePage />} />
+          <Route path="my-projects" element={<MyProjectsView />} />
+          <Route path="forum" element={<ForumConversations />} />
+          <Route path="tasks-due-today" element={<TasksDueTodayView />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
         <Route
           path="/users"
           element={
@@ -139,14 +136,6 @@ const App: React.FC = () => {
           }
         />
         <Route
-          path="/my-projects"
-          element={
-            <PrivateRoute>
-              <MyProjectsView />
-            </PrivateRoute>
-          }
-        />
-        <Route
           path="/department-activity-log"
           element={
             <PrivateRoute>
@@ -162,25 +151,10 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/forum"
-          element={
-            <PrivateRoute>
-              <ForumConversations />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/tasks-due-today"
-          element={
-            <PrivateRoute>
-              <TasksDueTodayView />
-            </PrivateRoute>
-          }
-        />
         {/* Fallback route - redirect to Home Page if route not found */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {authService.isAuthenticated() && <FAQHelpButton />}
     </Router>
   );
 };

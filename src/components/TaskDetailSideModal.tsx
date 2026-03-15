@@ -4,6 +4,7 @@ import { FaTimes, FaUser, FaClock, FaStickyNote, FaLink, FaFileAlt, FaHistory, F
 import { deliverableService } from '../services/deliverable.service';
 import { taskService } from '../services/task.service';
 import UserAvatar from './UserAvatar';
+import MentionText from './MentionText';
 
 interface TaskDetailSideModalProps {
   isOpen: boolean;
@@ -1073,7 +1074,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                           lineHeight: '1.5',
                           marginLeft: '2.25rem'
                         }}>
-                          {renderTextWithMentions(question.text)}
+                          <MentionText text={question.text || ''} />
                         </div>
                       </div>
 
@@ -1129,7 +1130,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                                 lineHeight: '1.5',
                                 marginLeft: '1.75rem'
                               }}>
-                                {renderTextWithMentions(comment.text)}
+                                <MentionText text={comment.text || ''} />
                               </div>
                             </div>
                           ))}

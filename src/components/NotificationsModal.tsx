@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
 
@@ -285,11 +284,10 @@ const STYLES = `
 `;
 
 const NotificationsModal: React.FC<NotificationsModalProps> = ({
-  isOpen, onClose, onUpdate, onMarkAllAsRead, onOpenTaskConversation,
+  isOpen, onClose, onUpdate, onMarkAllAsRead,
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -328,21 +326,17 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
         setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
         if (onUpdate) onUpdate();
       }
+      let path: string;
       if (notification.projectId) {
         const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
-        if (isConversation && onOpenTaskConversation && notification.taskId) {
-          await onOpenTaskConversation(notification.projectId, notification.taskId);
-          onClose();
-          return;
-        }
-        const url = isConversation
+        path = isConversation
           ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
           : `/project/${notification.projectId}`;
-        navigate(url);
-        onClose();
-        return;
+      } else {
+        path = '/dashboard';
       }
-      navigate('/dashboard');
+      const url = window.location.origin + path;
+      window.open(url, '_blank', 'noopener,noreferrer');
       onClose();
     } catch (error) {
       console.error('Failed to handle notification click:', error);

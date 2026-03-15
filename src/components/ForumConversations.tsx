@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSpinner, FaComment, FaFolder, FaHeart, FaReply, FaShare } from 'react-icons/fa';
+import { FaArrowLeft, FaSpinner, FaComment, FaFolder, FaHeart, FaReply, FaShare, FaEllipsisV, FaTrash } from 'react-icons/fa';
 import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import UserAvatar from './UserAvatar';
+import MentionText from './MentionText';
 
 /* ─── Threads-style colour tokens ─────────────────────────── */
 const T = {
@@ -367,9 +368,6 @@ const GlobalStyles = () => (
 );
 
 /* ─── helpers ──────────────────────────────────────────────── */
-const renderMentions = (text: string) =>
-  text ? text.replace(/@([^[\]]+)\[\[USER_ID:[^\]]+\]\]/g, '@$1') : '';
-
 const getDisplayText = (text: string) =>
   text ? text.replace(/@([^[\]]+)\[\[USER_ID:[^\]]+\]\]/g, '@$1') : '';
 
@@ -433,6 +431,8 @@ const ForumConversations: React.FC = () => {
     convId: string;
     position: number;
   } | null>(null);
+  const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -544,6 +544,20 @@ const ForumConversations: React.FC = () => {
     }
   };
 
+  const handleDeleteQuestion = async (conv: any) => {
+    if (!window.confirm('Delete this post and all its replies? This cannot be undone.')) return;
+    setOpenMenuConvId(null);
+    setDeletingConvId(conv.id);
+    try {
+      await taskService.deleteQuestion(conv.id);
+      await loadConversations();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+    } finally {
+      setDeletingConvId(null);
+    }
+  };
+
   return (
     <div className="fc-wrap">
       <GlobalStyles />
@@ -598,7 +612,73 @@ const ForumConversations: React.FC = () => {
               const replyText = replyTexts[conv.id] || '';
 
               return (
-                <div key={conv.id} className="fc-card">
+                <div key={conv.id} className="fc-card" style={{ position: 'relative' }}>
+                  {/* 3-dots menu at top-right */}
+                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                    <button
+                      type="button"
+                      className="fc-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuConvId((id) => (id === conv.id ? null : conv.id));
+                      }}
+                      disabled={!!deletingConvId}
+                      style={{ padding: '6px 8px', background: 'transparent', border: 'none', cursor: deletingConvId ? 'not-allowed' : 'pointer', color: T.textTertiary, borderRadius: 8 }}
+                      title="More options"
+                    >
+                      <FaEllipsisV style={{ fontSize: '1rem' }} />
+                    </button>
+                    {openMenuConvId === conv.id && (
+                      <>
+                        <div
+                          style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                          onClick={() => setOpenMenuConvId(null)}
+                          aria-hidden
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            marginTop: 4,
+                            background: T.surface,
+                            border: `1px solid ${T.border}`,
+                            borderRadius: 10,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                            minWidth: 140,
+                            zIndex: 100,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteQuestion(conv);
+                            }}
+                            disabled={deletingConvId === conv.id}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '10px 14px',
+                              border: 'none',
+                              background: 'none',
+                              cursor: deletingConvId === conv.id ? 'not-allowed' : 'pointer',
+                              fontFamily: 'inherit',
+                              fontSize: '0.875rem',
+                              color: T.danger,
+                              textAlign: 'left',
+                            }}
+                          >
+                            <FaTrash style={{ fontSize: '0.8rem' }} />
+                            {deletingConvId === conv.id ? 'Deleting…' : 'Delete post'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   {/* Main post row */}
                   <div className="fc-thread-row">
                     {/* Avatar col */}
@@ -628,7 +708,7 @@ const ForumConversations: React.FC = () => {
 
                       {/* Body text */}
                       <div className="fc-text" onClick={() => handleOpenTask(conv)}>
-                        {renderMentions(conv.text)}
+                        <MentionText text={conv.text || ''} />
                       </div>
 
                       {/* Action bar */}
@@ -663,7 +743,7 @@ const ForumConversations: React.FC = () => {
                               </span>
                               <span className="fc-time">{timeAgo(c.createdAt)}</span>
                             </div>
-                            <div className="fc-reply-text">{renderMentions(c.text)}</div>
+                            <div className="fc-reply-text"><MentionText text={c.text || ''} /></div>
                           </div>
                         </div>
                       ))}

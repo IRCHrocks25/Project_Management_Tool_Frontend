@@ -15,13 +15,14 @@ export const taskService = {
   async getAll(
     projectId?: string,
     assignedToId?: string,
-    options?: { all?: boolean; limit?: number }
+    options?: { all?: boolean; limit?: number; taskType?: string }
   ): Promise<any[]> {
     const params = new URLSearchParams();
     if (projectId) params.append('projectId', projectId);
     if (assignedToId) params.append('assignedToId', assignedToId);
     if (options?.all) params.append('all', 'true');
     if (options?.limit !== undefined) params.append('limit', String(options.limit));
+    if (options?.taskType) params.append('taskType', options.taskType);
 
     const queryString = params.toString();
     const url = queryString ? `${API_URL}/tasks?${queryString}` : `${API_URL}/tasks`;
@@ -133,6 +134,13 @@ export const taskService = {
       getAuthHeaders()
     );
     return response.data;
+  },
+
+  async deleteQuestion(questionId: string): Promise<void> {
+    await axios.delete(
+      `${API_URL}/tasks/questions/${questionId}`,
+      getAuthHeaders()
+    );
   },
 };
 

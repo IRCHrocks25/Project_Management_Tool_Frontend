@@ -636,9 +636,11 @@ interface LiveChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   accentColor?: string;
+  /** When set, open the panel directly to a chat with this user (e.g. from their timeline "Message" button). */
+  initialUserId?: string | null;
 }
 
-const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentColor = '#2563eb' }) => {
+const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentColor = '#2563eb', initialUserId }) => {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -725,6 +727,24 @@ const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentCo
 
   useEffect(() => { if (isOpen) { loadRooms(); chatService.connectSocket(); } }, [isOpen, loadRooms]);
   useEffect(() => { if (isOpen && showNewChat) loadUsers(); }, [isOpen, showNewChat, loadUsers]);
+
+  // When opened with initialUserId (e.g. from timeline "Message"), open that chat
+  useEffect(() => {
+    if (!isOpen || !initialUserId || initialUserId === currentUser?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const room = await chatService.getOrCreateRoom(initialUserId);
+        if (cancelled) return;
+        setRooms((prev) => (prev.some((r) => r.id === room.id) ? prev : [room, ...prev]));
+        setSelectedRoom(room);
+        setShowNewChat(false);
+      } catch (err) {
+        console.error('Failed to open chat with user:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, initialUserId, currentUser?.id]);
   useEffect(() => { if (isOpen && showTaskPicker) loadTasksAndProjects(); }, [isOpen, showTaskPicker, loadTasksAndProjects]);
 
   useEffect(() => {
