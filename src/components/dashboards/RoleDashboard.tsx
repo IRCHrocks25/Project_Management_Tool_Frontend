@@ -21,7 +21,6 @@ import {
   FaSearch,
   FaEdit,
   FaSave,
-  FaFileAlt,
   FaLink,
   FaComments,
   FaTicketAlt,
@@ -38,7 +37,6 @@ import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
 import UserAvatar from '../UserAvatar';
 import UserGreeting from '../UserGreeting';
-import MentionText from '../MentionText';
 import TaskDetailSideModal from '../TaskDetailSideModal';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
@@ -1114,67 +1112,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       targetTaskId: targetTaskMatch[1],
       targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
     };
-  };
-
-  // Convert URLs in text to clickable links
-  const renderDescriptionWithLinks = (text: string) => {
-    if (!text) return null;
-    
-    // URL regex pattern - matches http://, https://, and www. URLs
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-    const parts: (string | JSX.Element)[] = [];
-    let lastIndex = 0;
-    let match;
-    let key = 0;
-
-    while ((match = urlRegex.exec(text)) !== null) {
-      // Add text before the URL
-      if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
-      }
-
-      // Add the URL as a clickable link
-      let url = match[0];
-      // Add https:// if it starts with www.
-      if (url.startsWith('www.')) {
-        url = 'https://' + url;
-      }
-      
-      parts.push(
-        <a
-          key={key++}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: '#2563eb',
-            textDecoration: 'none',
-            wordBreak: 'break-all',
-            borderBottom: '1px solid transparent',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.textDecoration = 'underline';
-            e.currentTarget.style.borderBottomColor = '#2563eb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.textDecoration = 'none';
-            e.currentTarget.style.borderBottomColor = 'transparent';
-          }}
-        >
-          {match[0]}
-        </a>
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
-    }
-
-    return parts.length > 0 ? <>{parts}</> : text;
   };
 
   // Map column ID to backend status and column marker

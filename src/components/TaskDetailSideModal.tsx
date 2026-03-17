@@ -641,7 +641,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
       }
     };
     loadHistory();
-  }, [isOpen, displayTask?.id, displayTask?.deliverableId]);
+  }, [isOpen, displayTask, displayTask?.id, displayTask?.deliverableId]);
 
   useEffect(() => {
     const loadConversations = async () => {
@@ -680,7 +680,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   const getDisplayText = (text: string): string => renderTextWithMentions(text);
 
   const updateTextWithMentions = (currentText: string, newDisplayText: string): string => {
-    const mentionRegex = /@([^\[]+)\[\[USER_ID:([^\]]+)\]\]/g;
+    const mentionRegex = /@([^[]+)\[\[USER_ID:([^\]]+)\]\]/g;
     const existingMentions = new Map<string, string>();
     let match;
     const regex = new RegExp(mentionRegex);
