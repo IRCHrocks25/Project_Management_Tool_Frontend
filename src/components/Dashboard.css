@@ -26,6 +26,45 @@
   background: #94a3b8;
 }
 
+/* Role Dashboard sidebar – custom dark scrollbar (matches sidebar theme) */
+.role-dashboard-sidebar,
+.role-dashboard-sidebar-projects {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) rgba(15, 23, 42, 0.8);
+}
+
+.role-dashboard-sidebar::-webkit-scrollbar,
+.role-dashboard-sidebar-projects::-webkit-scrollbar {
+  width: 8px;
+}
+
+.role-dashboard-sidebar::-webkit-scrollbar-track,
+.role-dashboard-sidebar-projects::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.role-dashboard-sidebar::-webkit-scrollbar-thumb,
+.role-dashboard-sidebar-projects::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.role-dashboard-sidebar::-webkit-scrollbar-thumb:hover,
+.role-dashboard-sidebar-projects::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+  background-clip: padding-box;
+}
+
+.role-dashboard-sidebar::-webkit-scrollbar-thumb:active,
+.role-dashboard-sidebar-projects::-webkit-scrollbar-thumb:active {
+  background: rgba(139, 92, 246, 0.5);
+  background-clip: padding-box;
+}
+
 .department-kanban-column {
   position: relative;
 }

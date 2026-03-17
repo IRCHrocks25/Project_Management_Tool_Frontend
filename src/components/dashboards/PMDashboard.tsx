@@ -16,6 +16,7 @@ import PMListView from './PMListView';
 import PMKanbanView from './PMKanbanView';
 import PMQuickOverview from './PMQuickOverview';
 import UserAvatar from '../UserAvatar';
+import AppSidebar from '../AppSidebar';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
@@ -216,6 +217,19 @@ const PMDashboard: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only run once on mount
+
+  // Real-time notifications (like live chat): update count and list without refresh
+  useEffect(() => {
+    notificationService.connectSocket();
+    const unsub = notificationService.onNewNotification(() => {
+      loadUnreadCount();
+      loadNotifications();
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe once on mount
+  }, []);
 
   // Refresh data when window regains focus (user comes back to tab)
   // Use a debounce to prevent multiple rapid calls
@@ -936,13 +950,17 @@ const PMDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="dashboard" style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <AppSidebar />
+        <div className="dashboard" style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}>
         <div style={{
           textAlign: 'center',
           color: 'white'
@@ -984,12 +1002,15 @@ const PMDashboard: React.FC = () => {
             Fetching your projects and tasks
           </p>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard premium">
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <AppSidebar />
+      <div className="dashboard premium" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <nav className="dashboard-nav premium-nav">
         <div className="nav-container">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -2374,7 +2395,7 @@ const PMDashboard: React.FC = () => {
   </>
 )}
 
-
+      </div>
     </div>
   );
 };

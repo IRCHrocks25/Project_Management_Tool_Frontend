@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSpinner, FaComment, FaFolder, FaHeart, FaReply, FaShare, FaEllipsisV, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaSpinner, FaComment, FaFolder, FaHeart, FaReply, FaShare, FaEllipsisV, FaTrash, FaPlus, FaPaperPlane, FaCheck } from 'react-icons/fa';
 import { taskService } from '../services/task.service';
+import { projectService } from '../services/project.service';
 import { authService } from '../services/auth.service';
+import { clientUpdatesService } from '../services/client-updates.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import UserAvatar from './UserAvatar';
 import MentionText from './MentionText';
@@ -236,6 +238,23 @@ const GlobalStyles = () => (
       cursor: pointer;
     }
     .fc-text:hover { opacity: 0.85; }
+    .fc-image-previews {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .fc-attachment-img {
+      max-width: 280px;
+      max-height: 280px;
+      width: auto;
+      height: auto;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid ${T.border};
+      cursor: pointer;
+    }
+    .fc-attachment-img:hover { opacity: 0.9; }
 
     /* ── action bar ── */
     .fc-actions {
@@ -387,6 +406,50 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(diff / 86400)}d`;
 };
 
+/** Split post content: strip "🖼️ Image: URL" lines into imageUrls, return rest for MentionText. */
+function splitConversationContent(text: string): { textWithoutImageLines: string; imageUrls: string[] } {
+  if (!text || !text.trim()) return { textWithoutImageLines: text || '', imageUrls: [] };
+  const sep = '\n---\n';
+  const idx = text.indexOf(sep);
+  let before = text;
+  let after = '';
+  if (idx !== -1) {
+    before = text.substring(0, idx).trimEnd();
+    after = text.substring(idx + sep.length);
+  }
+  const imageUrls: string[] = [];
+  const otherLines: string[] = [];
+  // Match "🖼️ Image: url" or "Image: url" (any leading emoji/spaces)
+  const imageLineRegex = /Image:\s*(https?:\/\/\S+)/;
+  after.split(/\r?\n/).forEach((line) => {
+    const m = line.match(imageLineRegex);
+    if (m) {
+      const url = (m[1] || '').replace(/[.,;:!?)]+$/, '').trim();
+      if (url) imageUrls.push(url);
+    } else if (line.trim()) otherLines.push(line);
+  });
+  const textWithoutImageLines =
+    otherLines.length > 0 ? (before ? before + sep + otherLines.join('\n') : otherLines.join('\n')) : before;
+  return { textWithoutImageLines, imageUrls };
+}
+
+const ACK_STORAGE_KEY = 'conversation_acknowledged';
+const getAcknowledgedSet = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(ACK_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+};
+const setAcknowledged = (questionId: string, acknowledged: boolean) => {
+  const set = getAcknowledgedSet();
+  if (acknowledged) set.add(questionId);
+  else set.delete(questionId);
+  localStorage.setItem(ACK_STORAGE_KEY, JSON.stringify(Array.from(set)));
+};
+
 const Avatar = ({
   name,
   avatarUrl,
@@ -433,6 +496,20 @@ const ForumConversations: React.FC = () => {
   } | null>(null);
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
   const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
+  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(getAcknowledgedSet);
+  const [showNewPostModal, setShowNewPostModal] = useState(false);
+  const [newPostProjectId, setNewPostProjectId] = useState('');
+  const [newPostTaskId, setNewPostTaskId] = useState('');
+  const [newPostText, setNewPostText] = useState('');
+  const [newPostAttachProjectLink, setNewPostAttachProjectLink] = useState(true);
+  const [newPostImageUrls, setNewPostImageUrls] = useState<string[]>([]);
+  const [newPostLinks, setNewPostLinks] = useState<{ url: string; label: string }[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [tasksForNewPost, setTasksForNewPost] = useState<any[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [submittingNewPost, setSubmittingNewPost] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -465,6 +542,112 @@ const ForumConversations: React.FC = () => {
     authService.getAllUsers().then((u) => setAllUsers(u || [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!showNewPostModal) return;
+    setLoadingProjects(true);
+    projectService
+      .getAll()
+      .then((p) => {
+        const list = Array.isArray(p) ? p : (p && (p as any).data ? (p as any).data : []);
+        setProjects(list || []);
+      })
+      .catch(() => setProjects([]))
+      .finally(() => setLoadingProjects(false));
+  }, [showNewPostModal]);
+
+  useEffect(() => {
+    if (!newPostProjectId) {
+      setTasksForNewPost([]);
+      setNewPostTaskId('');
+      setLoadingTasks(false);
+      return;
+    }
+    setLoadingTasks(true);
+    setNewPostTaskId('');
+    taskService
+      .getAll(newPostProjectId, undefined, { all: true })
+      .then((t) => {
+        const list = Array.isArray(t) ? t : (t && (t as any).data ? (t as any).data : []);
+        setTasksForNewPost(list || []);
+      })
+      .catch(() => setTasksForNewPost([]))
+      .finally(() => setLoadingTasks(false));
+  }, [newPostProjectId]);
+
+  const handleAcknowledge = (convId: string) => {
+    const next = new Set(acknowledgedIds);
+    if (next.has(convId)) {
+      next.delete(convId);
+      setAcknowledged(convId, false);
+    } else {
+      next.add(convId);
+      setAcknowledged(convId, true);
+    }
+    setAcknowledgedIds(next);
+  };
+
+  const buildNewPostText = useCallback(() => {
+    let text = newPostText.trim();
+    const parts: string[] = [];
+    if (newPostAttachProjectLink && newPostProjectId) {
+      const proj = projects.find((p: any) => p.id === newPostProjectId);
+      const projectName = proj?.name || proj?.clientName || 'Project';
+      const projectUrl = `${window.location.origin}/project/${newPostProjectId}`;
+      parts.push(`📁 Project: [${projectName}](${projectUrl})`);
+    }
+    newPostImageUrls.forEach((url) => {
+      if (url.trim()) parts.push(`🖼️ Image: ${url.trim()}`);
+    });
+    newPostLinks.forEach(({ url, label }) => {
+      if (url.trim()) parts.push(`🔗 ${label.trim() || 'Link'}: ${url.trim()}`);
+    });
+    if (parts.length > 0) text += '\n\n---\n' + parts.join('\n');
+    return text;
+  }, [newPostText, newPostAttachProjectLink, newPostProjectId, projects, newPostImageUrls, newPostLinks]);
+
+  const handleSubmitNewPost = async () => {
+    if (!newPostTaskId?.trim()) {
+      alert('Please select a task to attach the post to.');
+      return;
+    }
+    const text = buildNewPostText();
+    if (!text.trim()) {
+      alert('Please enter some text for your post.');
+      return;
+    }
+    setSubmittingNewPost(true);
+    try {
+      await taskService.createQuestion(newPostTaskId, text, extractMentions(text));
+      setShowNewPostModal(false);
+      setShowMentionDropdown(null);
+      setNewPostProjectId('');
+      setNewPostTaskId('');
+      setNewPostText('');
+      setNewPostImageUrls([]);
+      setNewPostLinks([]);
+      await loadConversations();
+    } catch (err: any) {
+      alert(`Failed to create post: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+    } finally {
+      setSubmittingNewPost(false);
+    }
+  };
+
+  const handleNewPostImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const url = await clientUpdatesService.uploadImage(file);
+      setNewPostImageUrls((prev) => [...prev, url]);
+    } catch {
+      alert('Failed to upload image.');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
   const projectNameMap = React.useMemo(() => {
     const m: Record<string, string> = {};
     conversations.forEach((c) => { if (c.projectId && c.projectName) m[c.projectId] = c.projectName; });
@@ -496,6 +679,8 @@ const ForumConversations: React.FC = () => {
     }
     return result;
   };
+
+  const NEW_POST_MENTION_KEY = 'newpost';
 
   const handleMentionInput = (text: string, convId: string) => {
     const idx = text.lastIndexOf('@');
@@ -567,7 +752,7 @@ const ForumConversations: React.FC = () => {
         <div className="fc-nav-inner">
           <div className="fc-nav-logo">
             <FaComment style={{ color: T.accent }} />
-            Forum
+            Conversation
           </div>
           <button className="fc-back-btn" onClick={() => navigate('/dashboard')}>
             <FaArrowLeft style={{ fontSize: '0.8rem' }} />
@@ -578,9 +763,33 @@ const ForumConversations: React.FC = () => {
 
       <div className="fc-body">
         {/* Header */}
-        <div className="fc-header">
-          <h1>Conversations</h1>
-          <p>All task discussions, in one place.</p>
+        <div className="fc-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1>Conversations</h1>
+            <p>All task discussions, in one place.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNewPostModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: T.accent,
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'opacity 0.15s',
+            }}
+          >
+            <FaPlus style={{ fontSize: '0.875rem' }} />
+            Add post
+          </button>
         </div>
 
         {/* Search */}
@@ -706,13 +915,49 @@ const ForumConversations: React.FC = () => {
                         <span className="fc-time">{timeAgo(conv.createdAt)}</span>
                       </div>
 
-                      {/* Body text */}
+                      {/* Body text + image previews */}
                       <div className="fc-text" onClick={() => handleOpenTask(conv)}>
-                        <MentionText text={conv.text || ''} />
+                        {(() => {
+                          const { textWithoutImageLines, imageUrls } = splitConversationContent(conv.text || '');
+                          return (
+                            <>
+                              <MentionText text={textWithoutImageLines} />
+                              {imageUrls.length > 0 && (
+                                <div className="fc-image-previews" onClick={(e) => e.stopPropagation()}>
+                                  {imageUrls.map((url) => (
+                                    <a
+                                      key={url}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <img
+                                        src={url}
+                                        alt="Attachment"
+                                        className="fc-attachment-img"
+                                        loading="lazy"
+                                      />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Action bar */}
                       <div className="fc-actions">
+                        <button
+                          type="button"
+                          className="fc-action-btn"
+                          onClick={() => handleAcknowledge(conv.id)}
+                          style={acknowledgedIds.has(conv.id) ? { color: T.accent, fontWeight: 600 } : undefined}
+                          title={acknowledgedIds.has(conv.id) ? 'You acknowledged this' : 'Mark as seen'}
+                        >
+                          <FaCheck />
+                        </button>
                         <button className="fc-action-btn like">
                           <FaHeart />
                         </button>
@@ -743,7 +988,37 @@ const ForumConversations: React.FC = () => {
                               </span>
                               <span className="fc-time">{timeAgo(c.createdAt)}</span>
                             </div>
-                            <div className="fc-reply-text"><MentionText text={c.text || ''} /></div>
+                            <div className="fc-reply-text">
+                              {(() => {
+                                const { textWithoutImageLines, imageUrls } = splitConversationContent(c.text || '');
+                                return (
+                                  <>
+                                    <MentionText text={textWithoutImageLines} />
+                                    {imageUrls.length > 0 && (
+                                      <div className="fc-image-previews" style={{ marginTop: 6 }}>
+                                        {imageUrls.map((url) => (
+                                          <a
+                                            key={url}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <img
+                                              src={url}
+                                              alt="Attachment"
+                                              className="fc-attachment-img"
+                                              style={{ maxWidth: 200, maxHeight: 200 }}
+                                              loading="lazy"
+                                            />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -827,6 +1102,325 @@ const ForumConversations: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* New Post modal */}
+      {showNewPostModal && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+            }}
+            onClick={() => {
+              if (!submittingNewPost) {
+                setShowNewPostModal(false);
+                setShowMentionDropdown(null);
+              }
+            }}
+            aria-hidden
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-post-title"
+            style={{
+              position: 'fixed',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100%',
+              maxWidth: 480,
+              maxHeight: '90vh',
+              overflow: 'auto',
+              background: T.surface,
+              borderRadius: 16,
+              boxShadow: '0 24px 48px rgba(0,0,0,0.18)',
+              zIndex: 1001,
+              padding: 24,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="new-post-title" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, color: T.textPrimary }}>
+              Add post
+            </h2>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: T.textSecondary, marginBottom: 6 }}>
+                Project
+              </label>
+              <select
+                value={newPostProjectId}
+                onChange={(e) => setNewPostProjectId(e.target.value)}
+                disabled={loadingProjects}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 10,
+                  fontFamily: 'inherit',
+                  fontSize: '0.9375rem',
+                  color: T.textPrimary,
+                  background: T.surface,
+                }}
+              >
+                <option value="">
+                  {loadingProjects ? 'Loading projects…' : 'Select project…'}
+                </option>
+                {!loadingProjects && projects.map((p: any) => (
+                  <option key={p.id} value={p.id}>
+                    {p.clientName ?? p.name ?? p.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: T.textSecondary, marginBottom: 6 }}>
+                Task
+              </label>
+              <select
+                value={newPostTaskId}
+                onChange={(e) => setNewPostTaskId(e.target.value)}
+                disabled={!newPostProjectId || loadingTasks}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 10,
+                  fontFamily: 'inherit',
+                  fontSize: '0.9375rem',
+                  color: T.textPrimary,
+                  background: T.surface,
+                }}
+              >
+                <option value="">
+                  {!newPostProjectId
+                    ? 'Select a project first'
+                    : loadingTasks
+                      ? 'Loading tasks…'
+                      : 'Select task…'}
+                </option>
+                {!loadingTasks && tasksForNewPost.map((t: any) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title ?? t.name ?? t.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 14, position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: T.textSecondary, marginBottom: 6 }}>
+                Message <span style={{ fontWeight: 400, color: T.textTertiary }}>(type @ to mention someone)</span>
+              </label>
+              <textarea
+                value={getDisplayText(newPostText)}
+                onChange={(e) => {
+                  const displayVal = e.target.value;
+                  const updated = updateTextWithMentions(newPostText, displayVal);
+                  setNewPostText(updated);
+                  handleMentionInput(updated, NEW_POST_MENTION_KEY);
+                }}
+                placeholder="Write your post… (use @ to mention)"
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 10,
+                  fontFamily: 'inherit',
+                  fontSize: '0.9375rem',
+                  color: T.textPrimary,
+                  resize: 'vertical',
+                  minHeight: 80,
+                }}
+              />
+              {showMentionDropdown?.convId === NEW_POST_MENTION_KEY && showMentionDropdown && (
+                <div className="fc-mention-drop">
+                  {allUsers
+                    .filter((u: any) => {
+                      const pos = showMentionDropdown.position;
+                      const afterAt = newPostText.substring(pos).replace(/\[\[USER_ID:[^\]]+\]\]/g, '').toLowerCase();
+                      return u.name.toLowerCase().includes(afterAt);
+                    })
+                    .slice(0, 5)
+                    .map((u: any) => (
+                      <div
+                        key={u.id}
+                        className="fc-mention-item"
+                        onClick={() => {
+                          const pos = showMentionDropdown.position;
+                          const before = newPostText.substring(0, pos - 1);
+                          const after = newPostText.substring(pos).replace(/^@[^\s@]*/, '');
+                          const newText = `${before}@${u.name}[[USER_ID:${u.id}]] ${after}`;
+                          setNewPostText(newText);
+                          setShowMentionDropdown(null);
+                        }}
+                      >
+                        {u.name}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', color: T.textSecondary }}>
+                <input
+                  type="checkbox"
+                  checked={newPostAttachProjectLink}
+                  onChange={(e) => setNewPostAttachProjectLink(e.target.checked)}
+                  disabled={!newPostProjectId}
+                />
+                Attach project link
+              </label>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: T.textSecondary, marginBottom: 6 }}>
+                Attach image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleNewPostImageUpload}
+                disabled={uploadingImage}
+                style={{ fontSize: '0.875rem' }}
+              />
+              {uploadingImage && <span style={{ marginLeft: 8, fontSize: '0.8125rem', color: T.textTertiary }}>Uploading…</span>}
+              {newPostImageUrls.length > 0 && (
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  {newPostImageUrls.map((url, i) => (
+                    <li key={i} style={{ marginBottom: 4 }}>
+                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: T.accent, fontSize: '0.8125rem' }}>{url.slice(0, 50)}…</a>
+                      <button
+                        type="button"
+                        onClick={() => setNewPostImageUrls((prev) => prev.filter((_, j) => j !== i))}
+                        style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: T.danger, fontSize: '0.75rem' }}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 500, color: T.textSecondary }}>Attach link(s)</span>
+                <button
+                  type="button"
+                  onClick={() => setNewPostLinks((prev) => [...prev, { url: '', label: '' }])}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: T.accent,
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  + Add link
+                </button>
+              </div>
+              {newPostLinks.map((link, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="Label (optional)"
+                    value={link.label}
+                    onChange={(e) => setNewPostLinks((prev) => prev.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))}
+                    style={{
+                      flex: '0 0 100px',
+                      padding: '8px 10px',
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      fontFamily: 'inherit',
+                      fontSize: '0.875rem',
+                    }}
+                  />
+                  <input
+                    type="url"
+                    placeholder="URL"
+                    value={link.url}
+                    onChange={(e) => setNewPostLinks((prev) => prev.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))}
+                    style={{
+                      flex: 1,
+                      padding: '8px 10px',
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      fontFamily: 'inherit',
+                      fontSize: '0.875rem',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewPostLinks((prev) => prev.filter((_, j) => j !== i))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.danger, padding: 4 }}
+                    title="Remove link"
+                  >
+                    <FaTrash style={{ fontSize: '0.75rem' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="fc-back-btn"
+                onClick={() => {
+                  if (!submittingNewPost) {
+                    setShowNewPostModal(false);
+                    setShowMentionDropdown(null);
+                  }
+                }}
+                disabled={submittingNewPost}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitNewPost}
+                disabled={submittingNewPost || !newPostTaskId?.trim() || !newPostText.trim()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 18px',
+                  background: submittingNewPost ? T.textTertiary : T.accent,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                  cursor: submittingNewPost ? 'default' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {submittingNewPost ? (
+                  <>
+                    <FaSpinner className="fc-spin" style={{ fontSize: '0.875rem' }} />
+                    Posting…
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane style={{ fontSize: '0.875rem' }} />
+                    Post
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <TaskDetailSideModal
         isOpen={modalOpen}

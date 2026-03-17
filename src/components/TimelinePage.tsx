@@ -13,11 +13,12 @@ import { projectService } from '../services/project.service';
 import UserAvatar from './UserAvatar';
 import './Dashboard.css';
 
+/* ─── Types ────────────────────────────────────────── */
+
 type TimelineItem =
   | { type: 'task'; date: Date; task: any; projectName: string }
   | { type: 'conversation'; date: Date; question: any };
 
-// Group items by date label (Today / Yesterday / "Mar 14")
 function groupByDate(items: TimelineItem[]): { label: string; items: TimelineItem[] }[] {
   const groups: Map<string, TimelineItem[]> = new Map();
   const now = new Date();
@@ -32,13 +33,105 @@ function groupByDate(items: TimelineItem[]): { label: string; items: TimelineIte
     if (d === todayStr) label = 'Today';
     else if (d === yesterdayStr) label = 'Yesterday';
     else label = item.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label)!.push(item);
   });
 
   return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
 }
+
+/* ─── Design tokens ─────────────────────────────────── */
+const T = {
+  // Surfaces
+  pageBg: '#f6f7f9',
+  surface: '#ffffff',
+  surfaceHover: '#fafbfc',
+  // Borders
+  border: '#eaecf0',
+  borderHover: '#d0d5dd',
+  // Text
+  textPrimary: '#0f172a',
+  textSecondary: '#475569',
+  textTertiary: '#94a3b8',
+  // Accent — indigo
+  accent: '#5b5bd6',
+  accentBg: '#eeeeff',
+  accentText: '#3b3ba0',
+  // Status
+  doneBg: '#ecfdf5',
+  doneText: '#166534',
+  convBg: '#fffbeb',
+  convText: '#92400e',
+  // Spine
+  spine: '#e2e8f0',
+};
+
+/* ─── Inline CSS injected once ──────────────────────── */
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+  .tl-root { font-family: 'DM Sans', sans-serif; }
+
+  .tl-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px;
+    background: ${T.surface};
+    border: 0.75px solid ${T.border};
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
+    margin-bottom: 2px;
+  }
+  .tl-card:hover {
+    border-color: ${T.borderHover};
+    background: ${T.surfaceHover};
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .tl-reply-card {
+    flex: 1; padding: 7px 12px; margin-bottom: 1px;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    background: #fafbfc;
+    cursor: pointer;
+    transition: background 0.13s;
+  }
+  .tl-reply-card:hover { background: ${T.surface}; }
+
+  .tl-btn-msg {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px; font-weight: 600;
+    color: white;
+    background: ${T.accent};
+    border: none; border-radius: 8px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .tl-btn-msg:hover { background: #4a4ab8; transform: translateY(-1px); }
+  .tl-btn-msg:active { transform: translateY(0); }
+
+  .tl-back-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: transparent; border: none;
+    color: ${T.textTertiary}; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    padding: 5px 0;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.14s;
+    letter-spacing: 0.01em;
+  }
+  .tl-back-btn:hover { color: ${T.textPrimary}; }
+
+  @keyframes tl-spin { to { transform: rotate(360deg); } }
+  .tl-spin { animation: tl-spin 1s linear infinite; }
+
+  @keyframes tl-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .tl-fadein { animation: tl-fadein 0.22s ease-out both; }
+`;
+
+/* ─── Page ──────────────────────────────────────────── */
 
 const TimelinePage: React.FC = () => {
   const navigate = useNavigate();
@@ -78,13 +171,11 @@ const TimelinePage: React.FC = () => {
       });
 
       const items: TimelineItem[] = [];
-
       myTasks.forEach((task: any) => {
         const projectName = projectMap.get(task.projectId)?.clientName || 'Unknown Project';
         const date = task.updatedAt ? new Date(task.updatedAt) : new Date(task.createdAt);
         items.push({ type: 'task', date, task, projectName });
       });
-
       myConversations.forEach((q: any) => {
         items.push({ type: 'conversation', date: new Date(q.createdAt), question: q });
       });
@@ -98,264 +189,237 @@ const TimelinePage: React.FC = () => {
     }
   }, [user?.id, targetUserId, viewUserId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   if (!user) return null;
 
   const displayUser = viewUserId && viewedUser ? viewedUser : user;
   const isViewingOther = Boolean(viewUserId && viewUserId !== user.id);
-
-  const formatTime = (d: Date) =>
-    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
+  const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const groups = groupByDate(timeline);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-page, #f8fafc)', fontFamily: "'DM Sans', 'Inter', sans-serif" }}>
+    <div className="tl-root" style={{ minHeight: '100vh', background: T.pageBg }}>
+      <style>{GLOBAL_CSS}</style>
 
-      {/* ── Header ───────────────────────────────────────── */}
+      {/* ── Header ── */}
       <header style={{
-        background: 'white',
-        borderBottom: '0.5px solid #e2e8f0',
-        padding: '0.875rem 2rem',
-        position: 'sticky', top: 0, zIndex: 50,
+        background: T.surface,
+        borderBottom: `0.75px solid ${T.border}`,
+        padding: '0 2rem',
+        height: '52px',
+        display: 'flex',
+        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', maxWidth: '720px', margin: '0 auto' }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              background: 'transparent', border: 'none',
-              color: '#94a3b8', cursor: 'pointer',
-              fontSize: '0.8125rem', fontWeight: 500, padding: '0.4rem 0',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#1e293b'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
-          >
-            <FaArrowLeft style={{ fontSize: '11px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '680px', width: '100%', margin: '0 auto' }}>
+          <button className="tl-back-btn" onClick={() => navigate('/dashboard')}>
+            <FaArrowLeft style={{ fontSize: '10px' }} />
             Back
           </button>
-          <div style={{ width: '1px', height: '18px', background: '#e2e8f0' }} />
-          <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>
-            {isViewingOther ? (viewedUser ? `${viewedUser.name}'s Timeline` : 'Timeline') : 'My Timeline'}
-          </h1>
+
+          <div style={{ width: '1px', height: '16px', background: T.border }} />
+
+          <span style={{ fontSize: '14px', fontWeight: 600, color: T.textPrimary, letterSpacing: '-0.1px' }}>
+            {isViewingOther ? (viewedUser ? `${viewedUser.name}'s timeline` : 'Timeline') : 'My timeline'}
+          </span>
         </div>
       </header>
 
-      {/* ── Main ─────────────────────────────────────────── */}
-      <main style={{ maxWidth: '720px', margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
+      {/* ── Main ── */}
+      <main style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem 2rem 4rem' }}>
 
-        {/* User identity strip */}
+        {/* User strip */}
         {viewUserId && !viewedUser && !loading ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.875rem', padding: '2rem 0' }}>
-            User not found.
-          </div>
+          <p style={{ color: T.textTertiary, fontSize: '14px' }}>User not found.</p>
         ) : (
-        <div style={{
-          marginBottom: '1.75rem',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.75rem',
-            marginBottom: isViewingOther && viewedUser ? '0.5rem' : 0,
-          }}>
-            <UserAvatar name={displayUser.name} avatarUrl={displayUser.avatarUrl} size={36} color="#6366f1" />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#0f172a', lineHeight: 1.3 }}>
-                {displayUser.name}
-                {isViewingOther && <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400, marginLeft: '6px' }}>— viewing their timeline</span>}
+          <div style={{ marginBottom: '2rem' }} className="tl-fadein">
+
+            {/* Avatar + name row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: isViewingOther && viewedUser ? '14px' : 0 }}>
+              <UserAvatar name={displayUser.name} avatarUrl={displayUser.avatarUrl} size={38} color={T.accent} />
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: T.textPrimary, lineHeight: 1.3, letterSpacing: '-0.1px' }}>
+                  {displayUser.name}
+                  {isViewingOther && (
+                    <span style={{ fontSize: '12px', color: T.textTertiary, fontWeight: 400, marginLeft: '7px' }}>
+                      viewing their timeline
+                    </span>
+                  )}
+                </div>
+                {displayUser.role && (
+                  <div style={{ fontSize: '12.5px', color: T.textTertiary, marginTop: '1px' }}>{displayUser.role}</div>
+                )}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{displayUser.role}</div>
             </div>
-          </div>
-          {isViewingOther && viewedUser && (
-            <div style={{
-              marginTop: '1rem',
-              padding: '1rem 1.25rem',
-              background: 'white',
-              borderRadius: '12px',
-              border: '0.5px solid #e2e8f0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-            }}>
-            <div style={{ fontSize: '0.8125rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {viewedUser.email && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaEnvelope style={{ color: '#94a3b8', flexShrink: 0 }} />
-                  <a href={`mailto:${viewedUser.email}`} style={{ color: '#6366f1', textDecoration: 'none' }}>{viewedUser.email}</a>
-                </div>
-              )}
-              {viewedUser.role && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569' }}>
-                  <span style={{ color: '#94a3b8' }}>Role:</span>
-                  <span>{viewedUser.role}</span>
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => { setChatWithUserId(viewedUser.id); setShowChatPanel(true); }}
-              style={{
-                display: 'inline-flex',
+
+            {/* Info card when viewing another user */}
+            {isViewingOther && viewedUser && (
+              <div style={{
+                padding: '14px 16px',
+                background: T.surface,
+                borderRadius: '12px',
+                border: `0.75px solid ${T.border}`,
+                display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: 'white',
-                background: '#6366f1',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                alignSelf: 'flex-start',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#4f46e5'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#6366f1'; }}
-            >
-              <FaCommentDots />
-              Message
-            </button>
+                justifyContent: 'space-between',
+                gap: '16px',
+                flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {viewedUser.email && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px' }}>
+                      <FaEnvelope style={{ color: T.textTertiary, fontSize: '11px' }} />
+                      <a href={`mailto:${viewedUser.email}`} style={{ color: T.accent, textDecoration: 'none', fontWeight: 500 }}>
+                        {viewedUser.email}
+                      </a>
+                    </div>
+                  )}
+                  {viewedUser.role && (
+                    <div style={{ fontSize: '12.5px', color: T.textSecondary }}>
+                      <span style={{ color: T.textTertiary }}>Role · </span>{viewedUser.role}
+                    </div>
+                  )}
+                </div>
+                <button
+                  className="tl-btn-msg"
+                  type="button"
+                  onClick={() => { setChatWithUserId(viewedUser.id); setShowChatPanel(true); }}
+                >
+                  <FaCommentDots style={{ fontSize: '12px' }} />
+                  Message
+                </button>
+              </div>
+            )}
           </div>
-          )}
-        </div>
         )}
 
-        {/* ── States ─ (only when viewing self or a found user) */}
+        {/* ── Feed states ── */}
         {(!viewUserId || viewedUser) && (
-        loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: '#94a3b8', padding: '2rem 0' }}>
-            <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
-            <span style={{ fontSize: '0.875rem' }}>Loading…</span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          </div>
-        ) : timeline.length === 0 ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.875rem', padding: '2rem 0' }}>
-            No activity yet. Assigned tasks and conversations will show up here.
-          </div>
-        ) : (
+          loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: T.textTertiary, paddingTop: '1rem' }}>
+              <FaSpinner className="tl-spin" style={{ fontSize: '14px' }} />
+              <span style={{ fontSize: '13.5px' }}>Loading…</span>
+            </div>
+          ) : timeline.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="tl-fadein">
+              {groups.map((group) => (
+                <section key={group.label}>
 
-          /* ── Thread feed ─ */
-          <div>
-            {groups.map((group) => (
-              <div key={group.label}>
-
-                {/* Date separator */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  margin: '1.5rem 0 0.875rem',
-                }}>
-                  <span style={{
-                    fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.06em',
-                    textTransform: 'uppercase', color: '#94a3b8', whiteSpace: 'nowrap',
+                  {/* Date separator */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    margin: '1.75rem 0 1rem',
                   }}>
-                    {group.label}
-                  </span>
-                  <div style={{ flex: 1, height: '0.5px', background: '#e2e8f0' }} />
-                </div>
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em',
+                      textTransform: 'uppercase', color: T.textTertiary, whiteSpace: 'nowrap',
+                      fontFamily: "'DM Mono', monospace",
+                    }}>
+                      {group.label}
+                    </span>
+                    <div style={{ flex: 1, height: '0.75px', background: T.border }} />
+                  </div>
 
-                {/* Items */}
-                {group.items.map((item, idx) => {
-                  const isLast = idx === group.items.length - 1;
+                  {/* Items */}
+                  {group.items.map((item, idx) => {
+                    const isLast = idx === group.items.length - 1;
 
-                  if (item.type === 'task') {
-                    const { task, projectName, date } = item;
-                    const isDone = task.isCompleted || task.status === 'Completed';
+                    if (item.type === 'task') {
+                      const { task, projectName, date } = item;
+                      const isDone = task.isCompleted || task.status === 'Completed';
+                      return (
+                        <SpineRow
+                          key={`task-${task.id}-${idx}`}
+                          dotVariant={isDone ? 'done' : 'task'}
+                          isLast={isLast}
+                        >
+                          <div className="tl-card" onClick={() => navigate(`/project/${task.projectId}?task=${task.id}`)}>
+                            <TypeIcon variant={isDone ? 'done' : 'task'} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={TS.title}>{task.title}</div>
+                              <div style={TS.meta}>
+                                <span>{projectName}</span>
+                                <MidDot />
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px' }}>{formatTime(date)}</span>
+                                <StatusPill isDone={isDone} label={isDone ? 'Done' : (task.status || 'In progress')} />
+                              </div>
+                            </div>
+                          </div>
+                        </SpineRow>
+                      );
+                    }
+
+                    /* Conversation */
+                    const { question, date } = item;
+                    const isAuthor = question.user?.id === targetUserId;
+                    const replies: any[] = question.comments || [];
+
                     return (
-                      <ThreadRow
-                        key={`task-${task.id}-${idx}`}
-                        dotStyle={isDone ? 'done' : 'task'}
-                        isLast={isLast}
-                        onClick={() => navigate(`/project/${task.projectId}?task=${task.id}`)}
+                      <SpineRow
+                        key={`conv-${question.id}-${idx}`}
+                        dotVariant="conv"
+                        isLast={isLast && replies.length === 0}
                       >
-                        <ThreadCard>
-                          <IconDot type={isDone ? 'done' : 'task'} />
+                        <div className="tl-card" onClick={() => navigate(`/project/${question.projectId}?task=${question.taskId}&tab=conversation`)}>
+                          <TypeIcon variant="conv" />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.title}>{task.title}</div>
-                            <div style={styles.meta}>
-                              <span>{projectName}</span>
-                              <Dot />
-                              <span>{formatTime(date)}</span>
-                              <StatusBadge isDone={isDone} label={isDone ? 'Done' : (task.status || 'In progress')} />
+                            <div style={TS.title}>{question.taskTitle || 'Task conversation'}</div>
+                            <div style={TS.meta}>
+                              <span style={{ fontWeight: 600, color: T.textPrimary }}>{question.user?.name || 'Someone'}</span>
+                              {isAuthor && <YouPill />}
+                              <MidDot />
+                              <span>{question.projectName}</span>
+                              <MidDot />
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px' }}>{formatTime(date)}</span>
                             </div>
+                            {question.text && (
+                              <div style={TS.snippet}>
+                                {question.text.substring(0, 140)}{question.text.length > 140 ? '…' : ''}
+                              </div>
+                            )}
                           </div>
-                        </ThreadCard>
-                      </ThreadRow>
-                    );
-                  }
-
-                  /* ── Conversation ─ */
-                  const { question, date } = item;
-                  const isAuthor = question.user?.id === targetUserId;
-                  const replies: any[] = question.comments || [];
-
-                  return (
-                    <ThreadRow
-                      key={`conv-${question.id}-${idx}`}
-                      dotStyle="conv"
-                      isLast={isLast && replies.length === 0}
-                      onClick={() => navigate(`/project/${question.projectId}?task=${question.taskId}&tab=conversation`)}
-                    >
-                      {/* Root message card */}
-                      <ThreadCard>
-                        <IconDot type="conv" />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.title}>
-                            {question.taskTitle || 'Task conversation'}
-                          </div>
-                          <div style={styles.meta}>
-                            <span style={{ fontWeight: 500, color: '#1e293b' }}>
-                              {question.user?.name || 'Someone'}
-                            </span>
-                            {isAuthor && <YouBadge />}
-                            <Dot />
-                            <span>{question.projectName}</span>
-                            <Dot />
-                            <span>{formatTime(date)}</span>
-                          </div>
-                          {question.text && (
-                            <div style={styles.snippet}>
-                              {question.text.substring(0, 140)}
-                              {question.text.length > 140 ? '…' : ''}
-                            </div>
-                          )}
                         </div>
-                      </ThreadCard>
 
-                      {/* Nested replies */}
-                      {replies.length > 0 && (
-                        <div style={{ marginLeft: '20px' }}>
-                          {replies.map((reply: any, ri: number) => (
-                            <ReplyRow key={reply.id || ri} isLast={ri === replies.length - 1}>
-                              <ReplyCard onClick={() => navigate(`/project/${question.projectId}?task=${question.taskId}&tab=conversation`)}>
-                                <div style={{ ...styles.title, fontSize: '12.5px' }}>
-                                  <span style={{ fontWeight: 500 }}>{reply.user?.name || 'Someone'}</span>
-                                  {reply.user?.id === user.id && <YouBadge />}
-                                  <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: '6px' }}>
-                                    {reply.createdAt ? formatTime(new Date(reply.createdAt)) : ''}
-                                  </span>
-                                </div>
-                                {reply.text && (
-                                  <div style={{ ...styles.snippet, fontSize: '12.5px', marginTop: '2px' }}>
-                                    {reply.text.substring(0, 120)}
-                                    {reply.text.length > 120 ? '…' : ''}
+                        {/* Replies */}
+                        {replies.length > 0 && (
+                          <div style={{ marginLeft: '18px', marginTop: '1px' }}>
+                            {replies.map((reply: any, ri: number) => (
+                              <ReplySpineRow key={reply.id || ri} isLast={ri === replies.length - 1}>
+                                <div
+                                  className="tl-reply-card"
+                                  onClick={() => navigate(`/project/${question.projectId}?task=${question.taskId}&tab=conversation`)}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: T.textPrimary }}>
+                                      {reply.user?.name || 'Someone'}
+                                    </span>
+                                    {reply.user?.id === user.id && <YouPill />}
+                                    <span style={{ fontSize: '11px', color: T.textTertiary, fontFamily: "'DM Mono', monospace" }}>
+                                      {reply.createdAt ? formatTime(new Date(reply.createdAt)) : ''}
+                                    </span>
                                   </div>
-                                )}
-                              </ReplyCard>
-                            </ReplyRow>
-                          ))}
-                        </div>
-                      )}
-                    </ThreadRow>
-                  );
-                })}
-
-              </div>
-            ))}
-          </div>
-        )
+                                  {reply.text && (
+                                    <div style={{ ...TS.snippet, fontSize: '12.5px' }}>
+                                      {reply.text.substring(0, 120)}{reply.text.length > 120 ? '…' : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              </ReplySpineRow>
+                            ))}
+                          </div>
+                        )}
+                      </SpineRow>
+                    );
+                  })}
+                </section>
+              ))}
+            </div>
+          )
         )}
       </main>
 
@@ -363,166 +427,148 @@ const TimelinePage: React.FC = () => {
         isOpen={showChatPanel}
         onClose={() => { setShowChatPanel(false); setChatWithUserId(null); }}
         initialUserId={chatWithUserId}
-        accentColor="#6366f1"
+        accentColor={T.accent}
       />
     </div>
   );
 };
 
-/* ─── Sub-components ───────────────────────────────── */
+/* ─── Sub-components ────────────────────────────────── */
 
-const styles = {
+const TS = {
   title: {
     fontSize: '13.5px',
     fontWeight: 500,
-    color: '#1e293b',
+    color: '#0f172a',
     lineHeight: 1.4,
+    letterSpacing: '-0.05px',
   } as React.CSSProperties,
   meta: {
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    gap: '6px',
-    flexWrap: 'wrap' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    flexWrap: 'wrap',
     fontSize: '12px',
     color: '#94a3b8',
-    marginTop: '2px',
+    marginTop: '3px',
   } as React.CSSProperties,
   snippet: {
     fontSize: '13px',
     color: '#475569',
-    marginTop: '5px',
-    lineHeight: 1.5,
+    marginTop: '6px',
+    lineHeight: 1.55,
   } as React.CSSProperties,
 };
 
-const Dot = () => (
+const MidDot = () => (
   <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#cbd5e1', display: 'inline-block', flexShrink: 0 }} />
 );
 
-const YouBadge = () => (
+const YouPill = () => (
   <span style={{
-    fontSize: '10.5px', fontWeight: 600, padding: '0 5px',
-    borderRadius: '20px', background: '#e0e7ff', color: '#4f46e5',
-    letterSpacing: '0.02em', lineHeight: '18px',
+    fontSize: '10.5px', fontWeight: 700, padding: '0 6px', lineHeight: '17px',
+    borderRadius: '20px', background: T.accentBg, color: T.accentText,
+    letterSpacing: '0.02em',
   }}>
-    You
+    you
   </span>
 );
 
-const StatusBadge = ({ isDone, label }: { isDone: boolean; label: string }) => (
+const StatusPill = ({ isDone, label }: { isDone: boolean; label: string }) => (
   <span style={{
-    fontSize: '10.5px', fontWeight: 600, padding: '0 7px', lineHeight: '18px',
+    fontSize: '10.5px', fontWeight: 700, padding: '0 7px', lineHeight: '17px',
     borderRadius: '20px',
-    background: isDone ? '#dcfce7' : '#e0e7ff',
-    color: isDone ? '#16a34a' : '#4f46e5',
+    background: isDone ? T.doneBg : T.accentBg,
+    color: isDone ? T.doneText : T.accentText,
+    letterSpacing: '0.01em',
   }}>
     {label}
   </span>
 );
 
-const IconDot = ({ type }: { type: 'task' | 'conv' | 'done' }) => {
-  const map = {
-    task: { bg: '#e0e7ff', color: '#4f46e5', symbol: '✦' },
-    conv: { bg: '#fef3c7', color: '#d97706', symbol: '💬' },
-    done: { bg: '#dcfce7', color: '#16a34a', symbol: '✓' },
-  };
-  const s = map[type];
+/* Icon badges for each type */
+const TYPE_ICON_MAP = {
+  task: { bg: '#eeeeff', color: '#5b5bd6', path: 'M4 8h8M4 4h8M4 12h5' }, // lines
+  conv: { bg: '#fffbeb', color: '#b45309', path: 'M2 3h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-4 4V4a1 1 0 0 1 1-1z' },
+  done: { bg: '#ecfdf5', color: '#16a34a', path: 'M2 8l4 4 8-8' },
+};
+
+const TypeIcon = ({ variant }: { variant: 'task' | 'conv' | 'done' }) => {
+  const s = TYPE_ICON_MAP[variant];
   return (
     <div style={{
       width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: s.bg, color: s.color, fontSize: '12px', fontWeight: 700,
+      background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {s.symbol}
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={s.color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d={s.path} />
+      </svg>
     </div>
   );
 };
 
-const ThreadRow = ({
-  children, dotStyle, isLast, onClick,
+/* Spine (vertical thread line) */
+const DOT_COLORS: Record<string, { border: string; bg: string }> = {
+  task: { border: '#5b5bd6', bg: '#eeeeff' },
+  conv: { border: '#b45309', bg: '#fffbeb' },
+  done: { border: '#16a34a', bg: '#ecfdf5' },
+};
+
+const SpineRow = ({
+  children, dotVariant, isLast,
 }: {
   children: React.ReactNode;
-  dotStyle: 'task' | 'conv' | 'done';
+  dotVariant: 'task' | 'conv' | 'done';
   isLast: boolean;
-  onClick: () => void;
 }) => {
-  const dotColors: Record<string, { border: string; bg: string }> = {
-    task: { border: '#6366f1', bg: '#e0e7ff' },
-    conv: { border: '#d97706', bg: '#fef3c7' },
-    done: { border: '#16a34a', bg: '#dcfce7' },
-  };
-  const dc = dotColors[dotStyle];
+  const dc = DOT_COLORS[dotVariant];
   return (
     <div style={{ display: 'flex', gap: 0, marginBottom: '2px' }}>
-      {/* Spine */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', flexShrink: 0 }}>
+      {/* Vertical spine */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '36px', flexShrink: 0 }}>
         <div style={{
-          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-          marginTop: '16px', border: `1.5px solid ${dc.border}`, background: dc.bg, zIndex: 1,
+          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, marginTop: '17px',
+          border: `1.5px solid ${dc.border}`, background: dc.bg, zIndex: 1,
         }} />
-        {!isLast && <div style={{ width: '1px', flex: 1, background: '#e2e8f0', minHeight: '12px', marginTop: '2px' }} />}
+        {!isLast && <div style={{ width: '1px', flex: 1, background: T.spine, minHeight: '10px', marginTop: '3px' }} />}
       </div>
-      {/* Content — clickable only on the card itself */}
-      <div style={{ flex: 1, paddingTop: '8px', paddingBottom: '4px' }} onClick={onClick}>
+      {/* Content */}
+      <div style={{ flex: 1, paddingTop: '8px', paddingBottom: '4px' }}>
         {children}
       </div>
     </div>
   );
 };
 
-const ThreadCard = ({ children }: { children: React.ReactNode }) => {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex', alignItems: 'flex-start', gap: '10px',
-        padding: '10px 14px',
-        border: `0.5px solid ${hovered ? '#cbd5e1' : '#e2e8f0'}`,
-        borderRadius: '12px',
-        background: hovered ? '#f8fafc' : 'white',
-        cursor: 'pointer',
-        transition: 'border-color 0.15s, background 0.15s',
-        marginBottom: '2px',
-      }}
-    >
-      {children}
-    </div>
-  );
-};
-
-const ReplyRow = ({ children, isLast }: { children: React.ReactNode; isLast: boolean }) => (
+const ReplySpineRow = ({ children, isLast }: { children: React.ReactNode; isLast: boolean }) => (
   <div style={{ display: 'flex', gap: 0 }}>
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '24px', flexShrink: 0 }}>
-      <div style={{
-        width: '5px', height: '5px', borderRadius: '50%',
-        background: '#cbd5e1', marginTop: '13px', flexShrink: 0,
-      }} />
-      {!isLast && <div style={{ width: '1px', flex: 1, background: '#e2e8f0' }} />}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '22px', flexShrink: 0 }}>
+      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#cbd5e1', marginTop: '13px', flexShrink: 0 }} />
+      {!isLast && <div style={{ width: '1px', flex: 1, background: T.spine }} />}
     </div>
     {children}
   </div>
 );
 
-const ReplyCard = ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        flex: 1, padding: '7px 12px', marginBottom: '1px',
-        borderLeft: '0.5px solid #e2e8f0',
-        borderRadius: '0 8px 8px 0',
-        background: hovered ? 'white' : '#f8fafc',
-        cursor: 'pointer', transition: 'background 0.15s',
-      }}
-    >
-      {children}
+const EmptyState = () => (
+  <div style={{
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    paddingTop: '4rem', gap: '10px', textAlign: 'center',
+  }}>
+    <div style={{
+      width: '44px', height: '44px', borderRadius: '12px',
+      background: T.accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round">
+        <circle cx="8" cy="8" r="6" />
+        <path d="M8 5v3l2 2" />
+      </svg>
     </div>
-  );
-};
+    <div style={{ fontSize: '14px', fontWeight: 600, color: T.textPrimary }}>No activity yet</div>
+    <div style={{ fontSize: '13px', color: T.textTertiary, maxWidth: '260px', lineHeight: 1.5 }}>
+      Assigned tasks and conversations will appear here as they happen.
+    </div>
+  </div>
+);
 
 export default TimelinePage;

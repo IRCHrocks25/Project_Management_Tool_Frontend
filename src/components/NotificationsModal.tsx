@@ -308,6 +308,19 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
     }
   }, [isOpen, loadNotifications, onUpdate]);
 
+  // Real-time: when modal is open and a new notification arrives, refresh list without closing
+  useEffect(() => {
+    if (!isOpen) return;
+    notificationService.connectSocket();
+    const unsub = notificationService.onNewNotification(() => {
+      loadNotifications();
+      if (onUpdate) onUpdate();
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [isOpen, loadNotifications, onUpdate]);
+
   const handleMarkAllAsRead = async () => {
     try {
       if (onMarkAllAsRead) onMarkAllAsRead();

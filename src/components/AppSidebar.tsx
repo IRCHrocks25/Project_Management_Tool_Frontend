@@ -24,7 +24,7 @@ type NavItem = {
 
 const navSections: { title: string; items: NavItem[] }[] = [
   {
-    title: 'Work',
+    title: 'WORK',
     items: [
       { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
       { path: '/timeline', label: 'My Timeline', icon: <FaClock /> },
@@ -32,19 +32,19 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: 'Tasks',
+    title: 'TASKS',
     items: [
       { path: '/tasks-due-today', label: 'Tasks due today', icon: <FaCalendarDay /> },
     ],
   },
   {
-    title: 'Talk',
+    title: 'TALK',
     items: [
       { path: '/forum', label: 'Forum', icon: <FaStickyNote /> },
     ],
   },
   {
-    title: 'Me',
+    title: 'ME',
     items: [
       { path: '/profile', label: 'Profile', icon: <FaUser /> },
       { path: '/settings', label: 'Settings', icon: <FaCog /> },
@@ -57,12 +57,20 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const user = authService.getUser();
 
+  const getEffectivePath = (item: NavItem): string => {
+    if (item.path === '/dashboard' && user?.role === 'Project Manager') return '/pm-dashboard';
+    return item.path;
+  };
+
   const handleNav = (item: NavItem) => {
-    if (item.path.startsWith('/')) navigate(item.path);
+    const path = getEffectivePath(item);
+    if (path.startsWith('/')) navigate(path);
   };
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') return location.pathname === '/dashboard';
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || location.pathname === '/pm-dashboard';
+    }
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 

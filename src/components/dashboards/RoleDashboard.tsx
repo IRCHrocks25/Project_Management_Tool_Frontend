@@ -39,6 +39,7 @@ import LiveChatPanel from '../LiveChatPanel';
 import UserAvatar from '../UserAvatar';
 import UserGreeting from '../UserGreeting';
 import MentionText from '../MentionText';
+import TaskDetailSideModal from '../TaskDetailSideModal';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
@@ -190,57 +191,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any>(null);
   const [taskDetailTab, setTaskDetailTab] = useState<'details' | 'conversation'>('details');
-  
-  // Conversation state
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(false);
-  const [newQuestionText, setNewQuestionText] = useState('');
-  const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
-  const [submittingQuestion, setSubmittingQuestion] = useState(false);
-  const [submittingComments, setSubmittingComments] = useState<Record<string, boolean>>({});
-  const [showMentionDropdown, setShowMentionDropdown] = useState<{ questionId?: string; commentId?: string; position: number } | null>(null);
-  
-  // Helper to get display text (without USER_ID patterns) for textarea
-  const getDisplayText = (text: string): string => {
-    return renderTextWithMentions(text);
-  };
-  
-  // Helper to update text while preserving USER_ID patterns
-  const updateTextWithMentions = (currentText: string, newDisplayText: string): string => {
-    // Extract all existing mentions with IDs from current text
-    // eslint-disable-next-line no-useless-escape
-    const mentionRegex = /@([^\[]+)\[\[USER_ID:([^\]]+)\]\]/g;
-    const existingMentions = new Map<string, string>(); // Map of name -> userId
-    
-    let match;
-    const regex = new RegExp(mentionRegex);
-    while ((match = regex.exec(currentText)) !== null) {
-      const name = match[1].trim();
-      const userId = match[2];
-      existingMentions.set(name, userId);
-    }
-    
-    // Find mentions in new display text and restore IDs
-    const newMentionRegex = /@([^\s@\n]+(?:\s+[^\s@\n]+)*)/g;
-    let result = newDisplayText;
-    const matches = Array.from(newDisplayText.matchAll(newMentionRegex));
-    
-    // Process from end to start to maintain correct indices
-    for (let i = matches.length - 1; i >= 0; i--) {
-      const match = matches[i];
-      const name = match[1].trim();
-      const userId = existingMentions.get(name);
-      
-      if (userId && match.index !== undefined) {
-        // Replace name-only mention with full mention including ID
-        const start = match.index;
-        const end = start + match[0].length;
-        result = result.substring(0, start) + `@${name}[[USER_ID:${userId}]]` + result.substring(end);
-      }
-    }
-    
-    return result;
-  };
 
   // Drag and drop state
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
@@ -258,6 +208,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
+  const [showTestWebhookModal, setShowTestWebhookModal] = useState(false);
+  const [testWebhookUserId, setTestWebhookUserId] = useState<string>('');
+  const [testWebhookSending, setTestWebhookSending] = useState(false);
+  const [testWebhookResult, setTestWebhookResult] = useState<{ success: boolean; message?: string } | null>(null);
 
   // Department menu items
   const departmentMenuItems = [
@@ -298,6 +252,17 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     }, 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Real-time notifications (like live chat): update unread count without refresh
+  useEffect(() => {
+    notificationService.connectSocket();
+    const unsub = notificationService.onNewNotification(() => {
+      loadUnreadCount();
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -674,9 +639,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     setSelectedTaskDetail(task);
     setTaskDetailTab(tab || 'details');
     setShowTaskDetailModal(true);
-    if (task?.id) {
-      loadConversations(task.id);
-    }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by NotificationsModal onOpenTaskConversation
@@ -689,126 +651,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       navigate(`/project/${projectId}?task=${taskId}&tab=conversation`);
     }
   };
-
-  const loadConversations = async (taskId: string) => {
-    try {
-      setLoadingConversations(true);
-      const data = await taskService.getConversations(taskId);
-      setConversations(data);
-    } catch (error) {
-      console.error('Failed to load conversations:', error);
-      setConversations([]);
-    } finally {
-      setLoadingConversations(false);
-    }
-  };
-
-  const extractMentions = (text: string): string[] => {
-    // Match @name[[USER_ID:uuid]] format - extract the ID directly
-    // eslint-disable-next-line no-useless-escape
-    const mentionRegex = /@[^\[]+\[\[USER_ID:([^\]]+)\]\]/g;
-    const matches = Array.from(text.matchAll(mentionRegex));
-    if (!matches || matches.length === 0) return [];
-    
-    const mentionedUserIds: string[] = [];
-    const foundIds = new Set<string>(); // Prevent duplicates
-    
-    matches.forEach(match => {
-      const userId = match[1]; // Extract the user ID from the pattern
-      if (userId && !foundIds.has(userId)) {
-        foundIds.add(userId);
-        mentionedUserIds.push(userId);
-      }
-    });
-    return mentionedUserIds;
-  };
-
-  // Render text with mentions - show name but hide the ID part
-  const renderTextWithMentions = (text: string) => {
-    if (!text) return text;
-    // Replace @name[[USER_ID:uuid]] with just @name for display
-    // eslint-disable-next-line no-useless-escape
-    return text.replace(/@([^\[]+)\[\[USER_ID:[^\]]+\]\]/g, '@$1');
-  };
-
-  const handleCreateQuestion = async () => {
-    if (!selectedTaskDetail?.id || !newQuestionText.trim()) return;
-    
-    try {
-      setSubmittingQuestion(true);
-      const mentionedUserIds = extractMentions(newQuestionText);
-      console.log('Extracted mentions:', mentionedUserIds, 'from text:', newQuestionText);
-      if (mentionedUserIds.length > 0) {
-        console.log('Mentioned users:', mentionedUserIds.map(id => {
-          const user = users.find((u: any) => u.id === id);
-          return user ? user.name : id;
-        }));
-      }
-      await taskService.createQuestion(selectedTaskDetail.id, newQuestionText, mentionedUserIds);
-      setNewQuestionText('');
-      await loadConversations(selectedTaskDetail.id);
-    } catch (error: any) {
-      console.error('Failed to create question:', error);
-      alert(`Failed to create question: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
-    } finally {
-      setSubmittingQuestion(false);
-    }
-  };
-
-  /** Collect user IDs of everyone in a question thread (author + commenters) so we can auto-notify them. */
-  const getThreadParticipantIds = (questionId: string): string[] => {
-    const question = conversations.find((q: any) => q.id === questionId);
-    if (!question) return [];
-    const ids = new Set<string>();
-    const authorId = question.userId || question.user?.id;
-    if (authorId) ids.add(authorId);
-    (question.comments || []).forEach((c: any) => {
-      const id = c.userId || c.user?.id;
-      if (id) ids.add(id);
-    });
-    if (user?.id) ids.delete(user.id); // don't include current user
-    return Array.from(ids);
-  };
-
-  const handleCreateComment = async (questionId: string) => {
-    const commentText = newCommentTexts[questionId];
-    if (!commentText?.trim()) return;
-    
-    try {
-      setSubmittingComments({ ...submittingComments, [questionId]: true });
-      const fromText = extractMentions(commentText);
-      const threadParticipants = getThreadParticipantIds(questionId);
-      const mentionedUserIds = Array.from(new Set([...fromText, ...threadParticipants]));
-      await taskService.createComment(questionId, commentText, mentionedUserIds);
-      setNewCommentTexts({ ...newCommentTexts, [questionId]: '' });
-      if (selectedTaskDetail?.id) {
-        await loadConversations(selectedTaskDetail.id);
-      }
-    } catch (error: any) {
-      console.error('Failed to create comment:', error);
-      alert(`Failed to create comment: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
-    } finally {
-      setSubmittingComments({ ...submittingComments, [questionId]: false });
-    }
-  };
-
-  const handleMentionInput = (text: string, questionId?: string, commentId?: string) => {
-    const lastAtIndex = text.lastIndexOf('@');
-    if (lastAtIndex !== -1) {
-      const afterAt = text.substring(lastAtIndex + 1);
-      // Check if we're typing a mention (not already completed with USER_ID)
-      // Allow word characters and spaces, but not if it already has [[USER_ID:
-      // eslint-disable-next-line no-useless-escape
-      if (afterAt.match(/^[^\[]*$/) && !afterAt.includes('[[USER_ID:')) {
-        setShowMentionDropdown({ questionId, commentId, position: lastAtIndex + 1 });
-      } else {
-        setShowMentionDropdown(null);
-      }
-    } else {
-      setShowMentionDropdown(null);
-    }
-  };
-
 
   const getFilteredAndSortedTasks = () => {
     let filtered = tasks;
@@ -1507,19 +1349,22 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   return (
     <div className="dashboard premium" style={{ display: 'flex', minHeight: '100vh', padding: 0 }}>
       {/* Sidebar */}
-      <div style={{
-        width: '280px',
-        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        overflowY: 'auto',
-        boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
-        zIndex: 100
-      }}>
+      <div
+        className="role-dashboard-sidebar"
+        style={{
+          width: '280px',
+          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          overflowY: 'auto',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
+          zIndex: 100
+        }}
+      >
         {/* Sidebar Header */}
         <div style={{
           padding: '2rem 1.5rem',
@@ -1606,12 +1451,15 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         </div>
 
         {/* My Projects Section */}
-        <div style={{
-          flex: 1,
-          padding: '1rem 0.75rem',
-          overflowY: 'auto',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
+        <div
+          className="role-dashboard-sidebar-projects"
+          style={{
+            flex: 1,
+            padding: '1rem 0.75rem',
+            overflowY: 'auto',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
           <div style={{
             padding: '0.5rem 0.75rem',
             marginBottom: '0.75rem',
@@ -1991,6 +1839,35 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 </span>
               )}
             </button>
+            {isAIDeveloper && (
+              <button
+                onClick={() => {
+                  setShowTestWebhookModal(true);
+                  setTestWebhookUserId('');
+                  setTestWebhookResult(null);
+                }}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: `1px solid ${color}`,
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  color: color,
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${color}15`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+                title="Send test notification to webhook (n8n)"
+              >
+                Test webhook
+              </button>
+            )}
 
             <div className="avatar-dropdown-container" style={{ position: 'relative' }}>
               <button
@@ -3346,8 +3223,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         onClose={() => {
           setShowNotificationsModal(false);
           loadUnreadCount();
-          loadData();
         }}
+        onUpdate={loadUnreadCount}
         onOpenTaskConversation={handleOpenTaskConversationFromNotification}
       />
       <SubmitTicketModal
@@ -3360,6 +3237,142 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         onClose={() => setShowTicketsModal(false)}
         accentColor={color}
       />
+      {/* Test notification webhook modal (AI Developer only) */}
+      {showTestWebhookModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '2rem'
+          }}
+          onClick={() => {
+            if (!testWebhookSending) {
+              setShowTestWebhookModal(false);
+              setTestWebhookResult(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '440px',
+              boxShadow: '0 24px 80px rgba(0, 0, 0, 0.2)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+                Test notification webhook
+              </h2>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                Sends a test payload to the n8n webhook (Webhook-Token: katalystPM2026). Choose an email to receive the test.
+              </p>
+            </div>
+            <div style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                Send test to
+              </label>
+              <select
+                value={testWebhookUserId}
+                onChange={(e) => setTestWebhookUserId(e.target.value)}
+                disabled={testWebhookSending}
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  border: '1px solid #e5e7eb',
+                  fontSize: '0.9375rem',
+                  background: 'white',
+                  cursor: testWebhookSending ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <option value="">Select a user (email)...</option>
+                {users.filter((u: any) => u.email).map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} – {u.email}
+                  </option>
+                ))}
+              </select>
+              {testWebhookResult && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    background: testWebhookResult.success ? '#ecfdf5' : '#fef2f2',
+                    color: testWebhookResult.success ? '#065f46' : '#b91c1c',
+                    border: `1px solid ${testWebhookResult.success ? '#a7f3d0' : '#fecaca'}`
+                  }}
+                >
+                  {testWebhookResult.success ? '✓ ' : '✗ '}
+                  {testWebhookResult.message || (testWebhookResult.success ? 'Sent.' : 'Failed.')}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!testWebhookSending) {
+                    setShowTestWebhookModal(false);
+                    setTestWebhookResult(null);
+                  }
+                }}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  background: 'white',
+                  color: '#374151',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: testWebhookSending ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!testWebhookUserId || testWebhookSending}
+                onClick={async () => {
+                  const selectedUser = users.find((u: any) => u.id === testWebhookUserId);
+                  if (!selectedUser?.email) return;
+                  setTestWebhookSending(true);
+                  setTestWebhookResult(null);
+                  try {
+                    const result = await notificationService.testWebhook(selectedUser.email, selectedUser.name);
+                    setTestWebhookResult(result);
+                  } catch (err: any) {
+                    setTestWebhookResult({ success: false, message: err?.response?.data?.message || err?.message || 'Request failed' });
+                  } finally {
+                    setTestWebhookSending(false);
+                  }
+                }}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: (!testWebhookUserId || testWebhookSending) ? '#9ca3af' : color,
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: (!testWebhookUserId || testWebhookSending) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {testWebhookSending ? 'Sending...' : 'Send test'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <LiveChatPanel
         isOpen={showLiveChatPanel}
         onClose={() => {
@@ -4618,854 +4631,20 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         </div>
       )}
 
-      {/* Task Detail Side Modal */}
-      {showTaskDetailModal && selectedTaskDetail && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '500px',
-            background: 'white',
-            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
-            zIndex: 1200,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            animation: 'slideInRight 0.3s ease-out'
-          }}
-        >
-          <style>{`
-            @keyframes slideInRight {
-              from {
-                transform: translateX(100%);
-              }
-              to {
-                transform: translateX(0);
-              }
-            }
-          `}</style>
-          
-          {/* Modal Header */}
-          <div style={{
-            padding: '1.5rem 2rem',
-            borderBottom: '1px solid #e5e7eb',
-            background: '#f9fafb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10
-          }}>
-            <div style={{ flex: 1 }}>
-              <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: 700,
-                color: '#111827',
-                margin: '0 0 0.25rem 0'
-              }}>
-                Task Details
-              </h2>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                margin: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
-                {selectedTaskDetail.title}
-              </p>
-            </div>
-            <button
-              onClick={handleCloseTaskDetail}
-              style={{
-                padding: '0.5rem',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                color: '#6b7280',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e5e7eb';
-                e.currentTarget.style.color = '#111827';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }}
-            >
-              <FaTimes />
-            </button>
-          </div>
-
-          {/* PM - just before tabs */}
-          {getProjectPmName(selectedTaskDetail.projectId) && (
-            <div style={{
-              padding: '0.5rem 2rem',
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-              fontSize: '0.875rem',
-              color: '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem'
-            }}>
-              <FaUser style={{ fontSize: '0.75rem', flexShrink: 0 }} />
-              <span>PM: {getProjectPmName(selectedTaskDetail.projectId)}</span>
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div style={{
-            display: 'flex',
-            borderBottom: '1px solid #e5e7eb',
-            background: '#f9fafb',
-            padding: '0 2rem'
-          }}>
-            <button
-              onClick={() => setTaskDetailTab('details')}
-              style={{
-                padding: '0.75rem 1rem',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: taskDetailTab === 'details' ? color : '#6b7280',
-                borderBottom: taskDetailTab === 'details' ? `2px solid ${color}` : '2px solid transparent',
-                transition: 'all 0.2s'
-              }}
-            >
-              Details
-            </button>
-            <button
-              onClick={() => setTaskDetailTab('conversation')}
-              style={{
-                padding: '0.75rem 1rem',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: taskDetailTab === 'conversation' ? color : '#6b7280',
-                borderBottom: taskDetailTab === 'conversation' ? `2px solid ${color}` : '2px solid transparent',
-                transition: 'all 0.2s'
-              }}
-            >
-              Conversation
-            </button>
-          </div>
-
-          {/* Modal Content */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '1.5rem 2rem'
-          }}>
-            {taskDetailTab === 'details' ? (
-              <>
-            {/* Task Status Badge */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <span style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                background: selectedTaskDetail.isCompleted ? '#d1fae5' : 
-                           selectedTaskDetail.status === 'In Review' ? '#fef3c7' : 
-                           selectedTaskDetail.status === 'In Progress' ? '#dbeafe' : '#f3f4f6',
-                color: selectedTaskDetail.isCompleted ? '#065f46' : 
-                       selectedTaskDetail.status === 'In Review' ? '#92400e' : 
-                       selectedTaskDetail.status === 'In Progress' ? '#1e40af' : '#374151',
-                display: 'inline-block'
-              }}>
-                {selectedTaskDetail.isCompleted ? 'Completed' : selectedTaskDetail.status}
-              </span>
-            </div>
-
-            {/* Project Info */}
-            <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem'
-              }}>
-                Project
-              </div>
-              <div style={{
-                fontSize: '1rem',
-                fontWeight: 600,
-                color: '#111827'
-              }}>
-                {getProjectName(selectedTaskDetail.projectId)}
-              </div>
-            </div>
-
-            {/* Assignees */}
-            <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <FaUser style={{ fontSize: '0.75rem' }} />
-                Assigned To
-              </div>
-              {(() => {
-                const assignees = selectedTaskDetail.assignees || [];
-                const assigneeIds = assignees.length > 0 
-                  ? assignees.map((a: any) => a.userId || a.user?.id)
-                  : (selectedTaskDetail.assignedToId ? [selectedTaskDetail.assignedToId] : []);
-                
-                if (assigneeIds.length === 0) {
-                  return (
-                    <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
-                      Unassigned
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {assigneeIds.map((id: string) => (
-                      <div key={id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontSize: '0.875rem',
-                        color: '#374151'
-                      }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                          flexShrink: 0
-                        }}>
-                          {getUserName(id).charAt(0).toUpperCase()}
-                        </div>
-                        <span>{getUserName(id)}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Due Date - always show */}
-            <div style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <FaClock style={{ fontSize: '0.75rem' }} />
-                Due Date
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: selectedTaskDetail.dueDate ? '#374151' : '#9ca3af'
-              }}>
-                {selectedTaskDetail.dueDate
-                  ? new Date(selectedTaskDetail.dueDate).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })
-                  : 'No due date set'}
-              </div>
-            </div>
-
-            {/* Description */}
-            {selectedTaskDetail.description && (
-              <div style={{
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <FaStickyNote style={{ fontSize: '0.75rem' }} />
-                  Description
-                </div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: '#374151',
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: '1.6'
-                }}>
-                  {renderDescriptionWithLinks(selectedTaskDetail.description)}
-                </div>
-              </div>
-            )}
-
-            {/* Files/Links */}
-            {selectedTaskDetail.fileUrl && (
-              <div style={{
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: '#eff6ff',
-                borderRadius: '8px',
-                border: '1px solid #bfdbfe'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: '#1d4ed8',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <FaLink style={{ fontSize: '0.75rem' }} />
-                  Files & Links
-                </div>
-                <a
-                  href={selectedTaskDetail.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    color: '#2563eb',
-                    textDecoration: 'none',
-                    fontSize: '0.875rem',
-                    wordBreak: 'break-all'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.textDecoration = 'underline';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.textDecoration = 'none';
-                  }}
-                >
-                  <FaFileAlt style={{ fontSize: '0.875rem', flexShrink: 0 }} />
-                  <span>{selectedTaskDetail.fileUrl}</span>
-                </a>
-              </div>
-            )}
-
-            {/* Task History now handled inside TaskDetailSideModal */}
-
-            {/* Action Buttons */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              marginTop: '2rem',
-              paddingTop: '1.5rem',
-              borderTop: '1px solid #e5e7eb'
-            }}>
-              <button
-                onClick={() => {
-                  handleCloseTaskDetail();
-                  navigate(`/project/${selectedTaskDetail.projectId}`);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  border: `1px solid ${color}`,
-                  borderRadius: '8px',
-                  background: 'transparent',
-                  color: color,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${color}15`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                View Full Project
-              </button>
-              <button
-                onClick={() => {
-                  handleCloseTaskDetail();
-                  handleEditTask(selectedTaskDetail);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: color,
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.9';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                }}
-              >
-                <FaEdit />
-                Edit Task
-              </button>
-            </div>
-              </>
-            ) : (
-              /* Conversation Tab */
-              <div>
-                {/* Conversations List */}
-                {loadingConversations ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                    <FaSpinner className="spinner" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} />
-                    <div>Loading conversations...</div>
-                  </div>
-                ) : conversations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
-                    No questions yet. Be the first to ask!
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {conversations.map((question: any) => (
-                      <div key={question.id} style={{
-                        padding: '1rem',
-                        background: '#f9fafb',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        {/* Question */}
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            marginBottom: '0.5rem'
-                          }}>
-                            <div style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'white',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                              flexShrink: 0
-                            }}>
-                              {question.user?.name?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: '#111827'
-                              }}>
-                                {question.user?.name || 'Unknown'}
-                              </div>
-                              <div style={{
-                                fontSize: '0.75rem',
-                                color: '#6b7280'
-                              }}>
-                                {new Date(question.createdAt).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{
-                            fontSize: '0.875rem',
-                            color: '#374151',
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: '1.5',
-                            marginLeft: '2.25rem'
-                          }}>
-                            <MentionText text={question.text || ''} />
-                          </div>
-                        </div>
-
-                        {/* Comments */}
-                        {question.comments && question.comments.length > 0 && (
-                          <div style={{
-                            marginLeft: '2.25rem',
-                            paddingLeft: '1rem',
-                            borderLeft: '2px solid #e5e7eb',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.75rem'
-                          }}>
-                            {question.comments.map((comment: any) => (
-                              <div key={comment.id} style={{
-                                padding: '0.75rem',
-                                background: 'white',
-                                borderRadius: '6px',
-                                border: '1px solid #e5e7eb'
-                              }}>
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.5rem',
-                                  marginBottom: '0.5rem'
-                                }}>
-                                  <div style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
-                                    background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    fontWeight: 600,
-                                    fontSize: '0.625rem',
-                                    flexShrink: 0
-                                  }}>
-                                    {comment.user?.name?.charAt(0).toUpperCase() || '?'}
-                                  </div>
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{
-                                      fontSize: '0.8125rem',
-                                      fontWeight: 600,
-                                      color: '#111827'
-                                    }}>
-                                      {comment.user?.name || 'Unknown'}
-                                    </div>
-                                    <div style={{
-                                      fontSize: '0.6875rem',
-                                      color: '#6b7280'
-                                    }}>
-                                      {new Date(comment.createdAt).toLocaleString()}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div style={{
-                                  fontSize: '0.8125rem',
-                                  color: '#374151',
-                                  whiteSpace: 'pre-wrap',
-                                  lineHeight: '1.5',
-                                  marginLeft: '1.75rem'
-                                }}>
-                                  <MentionText text={comment.text || ''} />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Comment Input */}
-                        <div style={{
-                          marginTop: '0.75rem',
-                          marginLeft: '2.25rem',
-                          paddingLeft: '1rem',
-                          borderLeft: '2px solid #e5e7eb'
-                        }}>
-                          <div style={{ position: 'relative' }}>
-                            <textarea
-                              value={getDisplayText(newCommentTexts[question.id] || '')}
-                              onChange={(e) => {
-                                const displayValue = e.target.value;
-                                const currentText = newCommentTexts[question.id] || '';
-                                // Update text while preserving existing USER_ID patterns
-                                const updatedText = updateTextWithMentions(currentText, displayValue);
-                                setNewCommentTexts({ ...newCommentTexts, [question.id]: updatedText });
-                                handleMentionInput(updatedText, question.id);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                                  handleCreateComment(question.id);
-                                }
-                              }}
-                              placeholder="Add a comment... Use @ to mention someone"
-                              rows={2}
-                              style={{
-                                width: '100%',
-                                padding: '0.5rem 0.75rem',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '0.8125rem',
-                                fontFamily: 'inherit',
-                                resize: 'vertical'
-                              }}
-                            />
-                            {showMentionDropdown && showMentionDropdown.questionId === question.id && (
-                              <div style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: 0,
-                                right: 0,
-                                marginBottom: '0.5rem',
-                                background: 'white',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                zIndex: 1000
-                              }}>
-                                {users.filter((u: any) => {
-                                  const commentText = newCommentTexts[question.id] || '';
-                                  const textAfterAt = commentText.substring(showMentionDropdown.position);
-                                  // Remove any existing USER_ID pattern for matching
-                                  const searchTerm = textAfterAt.replace(/\[\[USER_ID:[^\]]+\]\]/g, '').toLowerCase();
-                                  return u.name.toLowerCase().includes(searchTerm);
-                                }).slice(0, 5).map((u: any) => (
-                                  <div
-                                    key={u.id}
-                                    onClick={() => {
-                                      const commentText = newCommentTexts[question.id] || '';
-                                      const beforeCursor = commentText.substring(0, showMentionDropdown.position - 1);
-                                      // Replace everything after @ with the mention only (no leftover typed text)
-                                      const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] `;
-                                      setNewCommentTexts({ ...newCommentTexts, [question.id]: newText });
-                                      setShowMentionDropdown(null);
-                                    }}
-                                    style={{
-                                      padding: '0.5rem 0.75rem',
-                                      cursor: 'pointer',
-                                      fontSize: '0.8125rem',
-                                      borderBottom: '1px solid #f3f4f6'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = '#f9fafb';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = 'white';
-                                    }}
-                                  >
-                                    {u.name}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleCreateComment(question.id)}
-                            disabled={!newCommentTexts[question.id]?.trim() || submittingComments[question.id]}
-                            style={{
-                              marginTop: '0.5rem',
-                              padding: '0.375rem 0.75rem',
-                              border: 'none',
-                              borderRadius: '6px',
-                              background: (!newCommentTexts[question.id]?.trim() || submittingComments[question.id]) ? '#9ca3af' : color,
-                              color: 'white',
-                              cursor: (!newCommentTexts[question.id]?.trim() || submittingComments[question.id]) ? 'not-allowed' : 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: 600
-                            }}
-                          >
-                            {submittingComments[question.id] ? 'Posting...' : 'Post Comment'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* New Question Form - At the bottom */}
-                <div style={{
-                  marginTop: '2rem',
-                  padding: '1rem',
-                  background: '#f9fafb',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Ask a Question
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <textarea
-                      value={getDisplayText(newQuestionText)}
-                      onChange={(e) => {
-                        const displayValue = e.target.value;
-                        // Update text while preserving existing USER_ID patterns
-                        const updatedText = updateTextWithMentions(newQuestionText, displayValue);
-                        setNewQuestionText(updatedText);
-                        handleMentionInput(updatedText);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          handleCreateQuestion();
-                        }
-                      }}
-                      placeholder="Type your question... Use @ to mention someone"
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem',
-                        fontFamily: 'inherit',
-                        resize: 'vertical'
-                      }}
-                    />
-                    {showMentionDropdown && !showMentionDropdown.questionId && !showMentionDropdown.commentId && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '100%',
-                        left: 0,
-                        right: 0,
-                        marginBottom: '0.5rem',
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        zIndex: 1000
-                      }}>
-                      {users.filter((u: any) => {
-                        const textAfterAt = newQuestionText.substring(showMentionDropdown.position);
-                        // Remove any existing USER_ID pattern for matching
-                        const searchTerm = textAfterAt.replace(/\[\[USER_ID:[^\]]+\]\]/g, '').toLowerCase();
-                        return u.name.toLowerCase().includes(searchTerm);
-                      }).slice(0, 5).map((u: any) => (
-                          <div
-                            key={u.id}
-                            onClick={() => {
-                              const beforeCursor = newQuestionText.substring(0, showMentionDropdown.position - 1);
-                              // Replace everything after @ with the mention only (no leftover typed text)
-                              const newText = beforeCursor + `@${u.name}[[USER_ID:${u.id}]] `;
-                              setNewQuestionText(newText);
-                              setShowMentionDropdown(null);
-                            }}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem',
-                              borderBottom: '1px solid #f3f4f6'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f9fafb';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'white';
-                            }}
-                          >
-                            {u.name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleCreateQuestion}
-                    disabled={!newQuestionText.trim() || submittingQuestion}
-                    style={{
-                      marginTop: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      border: 'none',
-                      borderRadius: '6px',
-                      background: (!newQuestionText.trim() || submittingQuestion) ? '#9ca3af' : color,
-                      color: 'white',
-                      cursor: (!newQuestionText.trim() || submittingQuestion) ? 'not-allowed' : 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    {submittingQuestion ? 'Posting...' : 'Post Question'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Backdrop for task detail modal */}
-      {showTaskDetailModal && (
-        <div
-          onClick={handleCloseTaskDetail}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 1199,
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-        >
-          <style>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-          `}</style>
-        </div>
-      )}
+      <TaskDetailSideModal
+        isOpen={!!(showTaskDetailModal && selectedTaskDetail)}
+        task={selectedTaskDetail}
+        onClose={handleCloseTaskDetail}
+        allUsers={users}
+        getProjectName={getProjectName}
+        getProjectPmName={getProjectPmName}
+        onEditTask={handleEditTask}
+        initialTab={taskDetailTab}
+        onTaskUpdate={(updatedTask) => {
+          setSelectedTaskDetail(updatedTask);
+          setTasks((prev) => prev.map((t: any) => t.id === updatedTask?.id ? updatedTask : t));
+        }}
+      />
 
       {/* Status Change Modal (for drag and drop) */}
       {showStatusChangeModal && statusChangeContext && (

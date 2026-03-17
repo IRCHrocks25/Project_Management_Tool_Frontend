@@ -1,6 +1,21 @@
 import axios from 'axios';
+import { io, Socket } from 'socket.io-client';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://projectmanagementtoolbackend-production.up.railway.app';
+
+let notificationSocket: Socket | null = null;
+
+const getNotificationSocket = (): Socket | null => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  if (notificationSocket?.connected) return notificationSocket;
+  notificationSocket = io(`${API_URL}/notifications`, {
+    path: '/socket.io',
+    auth: { token },
+    transports: ['websocket', 'polling'],
+  });
+  return notificationSocket;
+};
 
 export interface Notification {
   id: string;
@@ -47,6 +62,38 @@ class NotificationService {
     await axios.patch(`${API_URL}/notifications/read-all`, {}, {
       headers: this.getAuthHeaders(),
     });
+  }
+
+  /** Trigger a test notification webhook (sends to n8n with Webhook-Token header). For AI dashboard. */
+  async testWebhook(email: string, userName?: string): Promise<{ success: boolean; message?: string }> {
+    const response = await axios.post<{ success: boolean; message?: string }>(
+      `${API_URL}/notifications/test-webhook`,
+      { email: email.trim(), userName: userName?.trim() || undefined },
+      { headers: this.getAuthHeaders() },
+    );
+    return response.data;
+  }
+
+  /** Connect to the notifications WebSocket so new notifications arrive in real time (like live chat). */
+  connectSocket(): Socket | null {
+    return getNotificationSocket();
+  }
+
+  /** Subscribe to new notifications. Returns unsubscribe function. */
+  onNewNotification(callback: (notification: Notification) => void): () => void {
+    const socket = getNotificationSocket();
+    if (socket) {
+      socket.on('new_notification', callback);
+      return () => socket.off('new_notification', callback);
+    }
+    return () => {};
+  }
+
+  disconnectSocket(): void {
+    if (notificationSocket) {
+      notificationSocket.disconnect();
+      notificationSocket = null;
+    }
   }
 }
 

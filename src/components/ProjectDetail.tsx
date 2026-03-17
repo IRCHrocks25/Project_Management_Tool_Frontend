@@ -35,6 +35,7 @@ import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
 import EditTaskModal from './EditTaskModal';
 import TaskDetailSideModal from './TaskDetailSideModal';
+import AppSidebar from './AppSidebar';
 import './ProjectDetail.css';
 
 // Activity Log Kanban Component
@@ -1923,7 +1924,9 @@ const ProjectDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="project-detail premium-project-detail">
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <AppSidebar />
+        <div className="project-detail premium-project-detail" style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
         <div className="project-detail-skeleton">
           <div className="skeleton-summary-bar">
             <div className="skeleton-back"></div>
@@ -1956,12 +1959,16 @@ const ProjectDetail: React.FC = () => {
             Loading project...
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   if (error || !project) {
     return (
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <AppSidebar />
+        <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
       <div className="project-detail-container" style={{ padding: '3rem', textAlign: 'center' }}>
         <div className="error" style={{ color: '#dc2626', fontSize: '1.2rem', marginBottom: '1rem' }}>
           {error || 'Project not found'}
@@ -1977,6 +1984,8 @@ const ProjectDetail: React.FC = () => {
           Back to Dashboard
         </button>
       </div>
+        </div>
+      </div>
     );
   }
 
@@ -1990,7 +1999,9 @@ const ProjectDetail: React.FC = () => {
   const priorityColor = getPriorityColor(project.priority);
 
   return (
-    <div className="project-detail premium-project-detail">
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <AppSidebar />
+      <div className="project-detail premium-project-detail" style={{ flex: 1, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
       {/* Premium Header Bar */}
       <div className="project-summary-bar">
         <div className="summary-bar-content">
@@ -8749,6 +8760,7 @@ const ProjectDetail: React.FC = () => {
           }}
         />
       )}
+      </div>
     </div>
   );
 };
