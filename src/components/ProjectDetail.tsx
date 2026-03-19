@@ -1264,9 +1264,10 @@ const ProjectDetail: React.FC = () => {
       let deliverableType: string | undefined;
       let fileUrl: string | undefined;
 
-      // Update column marker in description to keep department kanban in sync
+      // Update column marker in description to keep Kanban in sync
+      // Use tasks state as fallback when project.tasks is not populated by the API
       if (project) {
-        const task = project.tasks?.find((t: any) => t.id === taskId);
+        const task = (project.tasks && project.tasks.length > 0 ? project.tasks : tasks).find((t: any) => t.id === taskId);
         if (task) {
           fileUrl = task.fileUrl || undefined;
           deliverableId = task.deliverableId || undefined;
@@ -3846,37 +3847,24 @@ const ProjectDetail: React.FC = () => {
                 }
                 
                 // MANUAL STATUS COLUMNS (set via drag and drop - check deliverable status):
-                // These are only shown if deliverable status matches (set manually via drag and drop)
-                // BUT only if NOT in revision (revision takes priority)
-                
-                // Approved/Completed: When deliverable status is 'Approved' (set manually)
-                if (selectedDeliverable.status === 'Approved' && !isPlaceholder) {
-                  return 'approved_completed';
-                }
-                
-                // Client Validation: When deliverable is in Client Review status (set manually)
-                if (selectedDeliverable.status === 'Client Review' && !isPlaceholder) {
-                  return 'client_validation';
-                }
-                
-                // QA Before Sending to Client: When deliverable is Ready for Review (set manually)
-                // Only show if task is NOT in review (if in review, it goes to "For Approval")
-                // AND only if NOT in revision (revision takes priority)
-                // AND only if NOT in Elliot Review (Elliot Review takes priority over QA)
-                if (selectedDeliverable.status === 'Ready for Review' && !isPlaceholder) {
-                  // Double-check it's not in Elliot Review (in case history wasn't loaded yet)
-                  const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
-                  const fileHistory = deliverableHistory[fileHistoryKey] || [];
-                  const isInElliotReview = fileHistory[0]?.notes?.includes('Moved to Elliot Review');
-                  if (isInElliotReview) {
-                    return 'elliot_review';
+                // These only apply to standalone deliverable files (no related task).
+                // Task-linked cards use the task's own status/column markers instead.
+                if (!relatedTask && !isPlaceholder) {
+                  if (selectedDeliverable.status === 'Approved') {
+                    return 'approved_completed';
                   }
-                  
-                  if (relatedTask && relatedTask.status === 'In Review') {
-                    // Task is in review, so it goes to "For Approval" instead
-                    return 'for_approval';
+                  if (selectedDeliverable.status === 'Client Review') {
+                    return 'client_validation';
                   }
-                  return 'qa_before_client';
+                  if (selectedDeliverable.status === 'Ready for Review') {
+                    const fileHistoryKey = `${selectedDeliverable.id}:${link.url}`;
+                    const fileHistory = deliverableHistory[fileHistoryKey] || [];
+                    const isInElliotReview = fileHistory[0]?.notes?.includes('Moved to Elliot Review');
+                    if (isInElliotReview) {
+                      return 'elliot_review';
+                    }
+                    return 'qa_before_client';
+                  }
                 }
                 
                 // Elliot Review: Check history for revision requests (set manually)
@@ -3939,10 +3927,6 @@ const ProjectDetail: React.FC = () => {
 
               // Drag and drop handlers for deliverables Kanban
               const handleFileDragStart = (e: React.DragEvent, link: any) => {
-                if (link.url.startsWith('task-')) {
-                  e.preventDefault();
-                  return; // Don't allow dragging placeholder tasks
-                }
                 setDraggedFile({
                   deliverableId: selectedDeliverable.id,
                   fileUrl: link.url,
@@ -3980,11 +3964,8 @@ const ProjectDetail: React.FC = () => {
                 e.preventDefault();
                 if (!draggedFile) return;
 
-                const fileUrl = draggedFile.fileUrl;
-                if (fileUrl.startsWith('task-')) return; // Can't move placeholder tasks
-
-                // If this is a task (has taskId), allow dragging to any column including automatic ones
-                // and update the task status accordingly
+                // If this is a task (has taskId), allow dragging to any column
+                // Placeholder tasks (url: "task-xxx") and tasks with files both support status updates
                 if (draggedFile.taskId) {
                   try {
                     // For review columns, open a modal to capture notes/links
@@ -4030,6 +4011,14 @@ const ProjectDetail: React.FC = () => {
                     setDraggedFile(null);
                     return;
                   }
+                }
+
+                const fileUrl = draggedFile.fileUrl;
+                // Non-task files: only allow dropping on manual action columns
+                if (fileUrl.startsWith('task-')) {
+                  setDragOverColumn(null);
+                  setDraggedFile(null);
+                  return; // Placeholder links without taskId (shouldn't happen)
                 }
 
                 // Only allow dropping on manual action columns for deliverables (non-task files)
@@ -4311,7 +4300,7 @@ const ProjectDetail: React.FC = () => {
                               <div 
                                 key={idx} 
                                 className={`kanban-card ${isInRevision ? 'revision-card' : ''}`}
-                                draggable={!link.url.startsWith('task-')}
+                                draggable
                                 onDragStart={(e) => handleFileDragStart(e, link)}
                                 onDragEnd={handleFileDragEnd}
                                 onClick={() => {
