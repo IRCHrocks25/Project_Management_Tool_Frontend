@@ -3827,6 +3827,15 @@ const ProjectDetail: React.FC = () => {
                   
                   // If file has revision request OR deliverable is in revision status
                   if (hasRevisionRequest || isDeliverableInRevision) {
+                    // Respect explicit task column marker first so UI column always matches selected status.
+                    // Without this, revision/history fallback can incorrectly force cards into For Approval.
+                    if (relatedTask) {
+                      const desc: string = relatedTask.description || '';
+                      if (desc.includes('--- Column: Revision ---')) {
+                        return 'revision';
+                      }
+                    }
+
                     // Check if task was resubmitted (status is 'In Review')
                     if (relatedTask && relatedTask.status === 'In Review') {
                       // Resubmitted - goes back to "For Approval"
