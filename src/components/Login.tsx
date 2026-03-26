@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService, LoginData } from '../services/auth.service';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState<LoginData>({ email: '', password: '' });
   const [error, setError] = useState<string>('');
@@ -34,7 +35,11 @@ const Login: React.FC = () => {
     localStorage.removeItem('user');
     try {
       await authService.login(formData);
-      navigate('/dashboard');
+      const returnTo =
+        ((location.state as { from?: string } | null)?.from && typeof (location.state as { from?: string }).from === 'string'
+          ? (location.state as { from?: string }).from
+          : '') || '/dashboard';
+      navigate(returnTo, { replace: true });
     } catch (err: any) {
       if (err.response?.status === 431) {
         localStorage.clear();

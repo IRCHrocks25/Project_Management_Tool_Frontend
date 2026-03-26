@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -29,7 +29,16 @@ import { authService } from './services/auth.service';
 import './App.css';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return authService.isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
+  const location = useLocation();
+  return authService.isAuthenticated() ? (
+    <>{children}</>
+  ) : (
+    <Navigate
+      to="/login"
+      replace
+      state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+    />
+  );
 };
 
 /** PM Dashboard route: accessible by Project Managers and department heads (isTeamLead) */
