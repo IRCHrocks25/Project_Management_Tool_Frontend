@@ -335,16 +335,16 @@ const ProjectDetail: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Open task conversation when navigating from a conversation notification
+  // Open task side modal when navigating with task query params
   useEffect(() => {
     const taskId = searchParams.get('task');
     const tab = searchParams.get('tab');
-    if (!taskId || tab !== 'conversation' || !project || !tasks.length) return;
+    if (!taskId || !project || !tasks.length) return;
 
     const task = tasks.find((t: any) => t.id === taskId);
     if (task) {
       setSelectedTaskDetail(task);
-      setTaskDetailInitialTab('conversation');
+      setTaskDetailInitialTab(tab === 'conversation' ? 'conversation' : 'details');
       setShowTaskDetailModal(true);
       setSearchParams({}, { replace: true }); // Clear URL params
     }
@@ -1821,6 +1821,21 @@ const ProjectDetail: React.FC = () => {
       toast.classList.remove('show');
       setTimeout(() => document.body.removeChild(toast), 300);
     }, 2000);
+  };
+
+  const copyTaskLink = async (task: any) => {
+    if (!task?.id || !task?.projectId) {
+      showToast('Unable to copy task link');
+      return;
+    }
+    const taskUrl = `${window.location.origin}/project/${task.projectId}?task=${task.id}&tab=details`;
+    try {
+      await navigator.clipboard.writeText(taskUrl);
+      showToast('Task link copied ✓');
+    } catch (error) {
+      console.error('Failed to copy task link:', error);
+      showToast('Failed to copy task link');
+    }
   };
 
   // Collect all files/links with detailed information
@@ -4768,6 +4783,33 @@ const ProjectDetail: React.FC = () => {
                                         <FaEdit style={{ fontSize: '0.7rem' }} />
                                         Edit Task
                                       </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const relatedTaskForLink = tasks.find((t: any) => t.id === link.taskId);
+                                          if (!relatedTaskForLink) return;
+                                          copyTaskLink(relatedTaskForLink);
+                                        }}
+                                        style={{
+                                          width: '100%',
+                                          padding: '0.35rem 0.5rem',
+                                          borderRadius: '6px',
+                                          border: '1px solid #e5e7eb',
+                                          background: '#ffffff',
+                                          color: '#374151',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '0.375rem',
+                                          marginTop: '0.375rem'
+                                        }}
+                                      >
+                                        <FaCopy style={{ fontSize: '0.7rem' }} />
+                                        Copy Task Link
+                                      </button>
                                     </div>
                                   )}
 
@@ -5633,6 +5675,36 @@ const ProjectDetail: React.FC = () => {
                                   </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => copyTaskLink(task)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '6px',
+                                      padding: '0.375rem 0.625rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: '#6b7280',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      transition: 'all 0.2s',
+                                      gap: '0.25rem',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#f3f4f6';
+                                      e.currentTarget.style.borderColor = '#d1d5db';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'transparent';
+                                      e.currentTarget.style.borderColor = '#e5e7eb';
+                                    }}
+                                    title="Copy task link"
+                                  >
+                                    <FaCopy style={{ fontSize: '0.625rem' }} />
+                                    Link
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setTaskToAssign(task);

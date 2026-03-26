@@ -644,6 +644,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     setShowTaskDetailModal(true);
   };
 
+  const copyTaskLink = async (task: any) => {
+    if (!task?.id || !task?.projectId) {
+      alert('Unable to copy task link.');
+      return;
+    }
+    const taskUrl = `${window.location.origin}/project/${task.projectId}?task=${task.id}&tab=details`;
+    try {
+      await navigator.clipboard.writeText(taskUrl);
+      alert('Task link copied!');
+    } catch (error) {
+      console.error('Failed to copy task link:', error);
+      alert('Failed to copy task link.');
+    }
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by NotificationsModal onOpenTaskConversation
   const handleOpenTaskConversationFromNotification = async (projectId: string, taskId: string) => {
     try {
@@ -2538,6 +2553,46 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                                   >
                                     <FaEdit style={{ fontSize: '1rem', pointerEvents: 'none' }} />
                                   </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      copyTaskLink(task);
+                                    }}
+                                    onMouseDown={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                    }}
+                                    style={{
+                                      background: 'transparent',
+                                      border: '1px solid #d1d5db',
+                                      color: '#4b5563',
+                                      cursor: 'pointer',
+                                      padding: '0.5rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '6px',
+                                      transition: 'all 0.2s',
+                                      zIndex: 100,
+                                      position: 'relative',
+                                      outline: 'none',
+                                      minWidth: '36px',
+                                      minHeight: '36px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = '#f3f4f6';
+                                      e.currentTarget.style.borderColor = '#9ca3af';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = 'transparent';
+                                      e.currentTarget.style.borderColor = '#d1d5db';
+                                    }}
+                                    title="Copy task link"
+                                  >
+                                    <FaLink style={{ fontSize: '0.95rem', pointerEvents: 'none' }} />
+                                  </button>
                                 </div>
                                 <div style={{
                                   display: 'flex',
@@ -3141,6 +3196,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                               }}
                             >
                               View
+                            </button>
+                            <button
+                              onClick={() => copyTaskLink(task)}
+                              style={{
+                                padding: '0.375rem 0.75rem',
+                                border: 'none',
+                                borderRadius: '6px',
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              Copy Link
                             </button>
                             <button
                               onClick={() => handleEditTask(task)}
