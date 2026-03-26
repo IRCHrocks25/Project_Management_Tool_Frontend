@@ -39,6 +39,7 @@ import UserAvatar from '../UserAvatar';
 import UserGreeting from '../UserGreeting';
 import TaskDetailSideModal from '../TaskDetailSideModal';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
+import DepartmentPriorityProjects from '../DepartmentPriorityProjects';
 import '../Dashboard.css';
 
 // Role configuration mapping
@@ -92,7 +93,7 @@ const ROLE_CONFIG: Record<string, {
     color: '#3b82f6',
   },
   'SEO/GEO': {
-    taskType: 'SEO',
+    taskType: 'SEO/GEO',
     stages: [],
     departmentName: 'SEO/GEO Team',
     icon: FaSearch,
@@ -211,6 +212,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const [testWebhookSending, setTestWebhookSending] = useState(false);
   const [testWebhookResult, setTestWebhookResult] = useState<{ success: boolean; message?: string } | null>(null);
 
+  // (Department priority state is now managed by <DepartmentPriorityProjects />)
+
   // Department menu items
   const departmentMenuItems = [
     { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
@@ -225,6 +228,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const getTaskTypeForDepartment = (departmentId: string): string => {
     return ROLE_CONFIG[departmentId]?.taskType || '';
   };
+
+  const canEditTeamOverride = Boolean(user?.isTeamLead && user?.role === role);
 
   // Load users once
   useEffect(() => {
@@ -1136,6 +1141,43 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       default:
         return { status: 'Todo', isCompleted: false };
     }
+  };
+
+  // Quick move helper used by priority panel column selector.
+  const handleQuickMoveTaskToColumn = async (taskId: string, columnId: string) => {
+    const task = tasks.find((t: any) => t.id === taskId);
+    if (!task) return;
+
+    const { status, columnMarker, isCompleted } = mapColumnToStatus(columnId);
+
+    if (columnMarker) {
+      const currentDesc = task.description || '';
+      const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+      if (!cleanedDesc.includes(columnMarker)) {
+        try {
+          await taskService.update(task.id, {
+            description: cleanedDesc + columnMarker
+          });
+        } catch (descError) {
+          console.warn('Failed to update description with column marker:', descError);
+        }
+      }
+    } else {
+      const currentDesc = task.description || '';
+      if (currentDesc.includes('--- Column:')) {
+        try {
+          const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
+          await taskService.update(task.id, {
+            description: cleanedDesc
+          });
+        } catch (descError) {
+          console.warn('Failed to clear column marker:', descError);
+        }
+      }
+    }
+
+    await taskService.updateStatus(taskId, status, isCompleted);
+    await loadData();
   };
 
   // Handle status change from drag and drop modal
@@ -2211,6 +2253,20 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
           overflowY: 'auto',
           background: '#f9fafb'
         }}>
+          <DepartmentPriorityProjects
+            taskType={config.taskType}
+            departmentName={config.departmentName}
+            color={color}
+            tasks={tasks}
+            projects={projects}
+            canEditTeamOverride={canEditTeamOverride}
+            onOpenTaskDetail={handleOpenTaskDetail}
+            onEditTask={handleEditTask}
+            onUpdateTaskColumn={async (taskId, columnId) => {
+              await handleQuickMoveTaskToColumn(taskId, columnId);
+            }}
+          />
+
           {viewMode === 'kanban' ? (
             <div style={{
               display: 'grid',

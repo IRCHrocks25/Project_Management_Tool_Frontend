@@ -19,6 +19,8 @@ import MyProjectsView from './components/MyProjectsView';
 import DepartmentActivityLog from './components/DepartmentActivityLog';
 import PMActivityLog from './components/PMActivityLog';
 import TasksDueTodayView from './components/TasksDueTodayView';
+import DailyFocusAndEodView from './components/DailyFocusAndEodView';
+import DepartmentPrioritiesPmView from './components/DepartmentPrioritiesPmView';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
@@ -37,6 +39,24 @@ const PMDashboardRoute: React.FC = () => {
   const isHead = !!user?.isTeamLead;
   if (isPM || isHead) {
     return <PMDashboard />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
+/** Daily focus & EOD: Project Managers only */
+const DailyFocusRoute: React.FC = () => {
+  const user = authService.getUser();
+  if (user?.role === 'Project Manager') {
+    return <DailyFocusAndEodView />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
+/** Canonical department client priorities — PM or Head PM */
+const DepartmentPrioritiesRoute: React.FC = () => {
+  const user = authService.getUser();
+  if (user?.role === 'Project Manager' || user?.isHeadPM) {
+    return <DepartmentPrioritiesPmView />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -80,6 +100,8 @@ const App: React.FC = () => {
           <Route path="my-projects" element={<MyProjectsView />} />
           <Route path="forum" element={<ForumConversations />} />
           <Route path="tasks-due-today" element={<TasksDueTodayView />} />
+          <Route path="daily-focus" element={<DailyFocusRoute />} />
+          <Route path="department-priorities" element={<DepartmentPrioritiesRoute />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>

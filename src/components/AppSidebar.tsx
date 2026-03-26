@@ -8,6 +8,8 @@ import {
   FaUser,
   FaCog,
   FaStickyNote,
+  FaBullseye,
+  FaFlag,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
@@ -20,6 +22,8 @@ type NavItem = {
   label: string;
   icon: React.ReactNode;
   roles?: string[]; // if set, only show for these roles
+  /** When true, Head PM (isHeadPM) may see this item even if roles is PM-only */
+  alsoHeadPM?: boolean;
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -35,6 +39,19 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'TASKS',
     items: [
       { path: '/tasks-due-today', label: 'Tasks due today', icon: <FaCalendarDay /> },
+      {
+        path: '/daily-focus',
+        label: 'Daily focus & EOD',
+        icon: <FaBullseye />,
+        roles: ['Project Manager'],
+      },
+      {
+        path: '/department-priorities',
+        label: 'Department priorities',
+        icon: <FaFlag />,
+        roles: ['Project Manager'],
+        alsoHeadPM: true,
+      },
     ],
   },
   {
@@ -77,7 +94,11 @@ const AppSidebar: React.FC = () => {
   const visibleSections = navSections.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
-      if (item.roles && item.roles.length > 0 && user?.role && !item.roles.includes(user.role)) return false;
+      if (item.roles && item.roles.length > 0) {
+        const roleOk = user?.role && item.roles.includes(user.role);
+        const headOk = item.alsoHeadPM && user?.isHeadPM;
+        if (!roleOk && !headOk) return false;
+      }
       return true;
     }),
   })).filter((s) => s.items.length > 0);
