@@ -87,9 +87,14 @@ const DepartmentPrioritiesPmView: React.FC = () => {
   }, [allTasks]);
 
   const handleSavePmPins = async () => {
-    const orderedIds = tasksForModal
+    const orderedVisibleIds = tasksForModal
       .filter((t: any) => selectedIds.includes(t.id))
       .map((t: any) => t.id);
+    const visibleIdSet = new Set(tasksForModal.map((t: any) => t.id));
+    // Preserve already-selected IDs that may be temporarily missing from the modal list
+    // (prevents existing priorities from being dropped when adding a new one).
+    const selectedHiddenIds = selectedIds.filter((id) => !visibleIdSet.has(id));
+    const orderedIds = [...orderedVisibleIds, ...selectedHiddenIds];
     try {
       setSaving(true);
       const next = await departmentProjectFocusService.savePmPins(focusDate, activeDept, orderedIds);
