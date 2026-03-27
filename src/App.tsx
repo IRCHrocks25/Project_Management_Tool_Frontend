@@ -25,6 +25,7 @@ import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
 import FAQHelpButton from './components/FAQHelpButton';
+import MBTIAssessment from './components/MBTIAssessment';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -113,6 +114,7 @@ const App: React.FC = () => {
           <Route path="department-priorities" element={<DepartmentPrioritiesRoute />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="mbti-assessment" element={<MBTIAssessment />} />
         </Route>
         <Route
           path="/users"

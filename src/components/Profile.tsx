@@ -9,6 +9,7 @@ import {
   FaCamera,
   FaBirthdayCake,
   FaLock,
+  FaLink,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService } from '../services/client-updates.service';
@@ -112,6 +113,10 @@ const Profile: React.FC = () => {
     } finally {
       setPasswordLoading(false);
     }
+  };
+
+  const handleOpenMbtiTest = () => {
+    navigate('/mbti-assessment');
   };
 
   const displayUser = { ...user, ...formData, avatarUrl: formData.avatarUrl || user?.avatarUrl };
@@ -312,6 +317,16 @@ const Profile: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+
+          <div className="profile-password-section">
+            <button
+              type="button"
+              className="profile-password-toggle"
+              onClick={handleOpenMbtiTest}
+            >
+              <FaLink /> Take MBTI Test
+            </button>
           </div>
         </div>
       </div>
