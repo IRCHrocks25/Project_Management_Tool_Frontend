@@ -49,8 +49,28 @@ function ymdLocal(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Aligns with department kanban / EOD: For approval = work submitted (counts as done). */
+function isTaskForApprovalColumn(task: any): boolean {
+  if (!task || task.status !== 'In Review') return false;
+  const d = task.description || '';
+  if (d.includes('--- Column: Revision ---')) return false;
+  if (d.includes('--- Column: Elliot Review ---')) return false;
+  if (d.includes('--- Column: QA Review ---')) return false;
+  if (d.includes('--- Column: Client Review ---')) return false;
+  return true;
+}
+
+/** Task is finished for daily-focus pinning (same as excluded from EOD "still to do" when for approval). */
+function isTaskEffectivelyDoneForFocus(t: any): boolean {
+  if (t.status === 'Completed' || t.isCompleted) return true;
+  if (t.project?.isArchived) return true;
+  if (isTaskForApprovalColumn(t)) return true;
+  return false;
+}
+
 function isTaskSelectable(t: any): boolean {
-  return t.status !== 'Completed' && !t.isCompleted;
+  if (t.isArchived || t.project?.isArchived) return false;
+  return !isTaskEffectivelyDoneForFocus(t);
 }
 
 function escapeCsv(v: string | number | undefined | null): string {
@@ -60,13 +80,26 @@ function escapeCsv(v: string | number | undefined | null): string {
   return s;
 }
 
+/** Matches EOD report rules: in "completed today" set, or server `doneForEod` (for approval / formal done). Avoids `??` with `false` hiding the completed-today fallback. */
+function isPlannedRowDoneForEod(
+  p: { taskId: string; doneForEod?: boolean },
+  completedTaskIds: Set<string>,
+): boolean {
+  if (completedTaskIds.has(p.taskId)) return true;
+  const anyP = p as { doneForEod?: boolean; done_for_eod?: boolean };
+  const raw = anyP.doneForEod ?? anyP.done_for_eod;
+  return raw === true || (typeof raw === 'string' && raw === 'true');
+}
+
 function buildEodCsv(report: EndOfDayReport): string {
   const lines: string[] = [];
   lines.push(['section','department','project','task_title','assignee','planned_rank','completed','completed_at','latest_progress_note','latest_progress_by','latest_progress_at'].join(','));
   const completedById = new Map(report.completed.map((c) => [c.taskId, c]));
+  const completedIds = new Set(report.completed.map((c) => c.taskId));
   report.planned.forEach((p) => {
     const c = completedById.get(p.taskId);
-    lines.push(['planned', escapeCsv(p.departmentKey), escapeCsv(p.projectName), escapeCsv(p.taskTitle), escapeCsv(p.assigneeName), p.rank ?? '', c ? 'yes' : 'no', escapeCsv(c?.completedAt || ''), '', '', ''].join(','));
+    const done = isPlannedRowDoneForEod(p, completedIds);
+    lines.push(['planned', escapeCsv(p.departmentKey), escapeCsv(p.projectName), escapeCsv(p.taskTitle), escapeCsv(p.assigneeName), p.rank ?? '', done ? 'yes' : 'no', escapeCsv(c?.completedAt || ''), '', '', ''].join(','));
   });
   report.completed.forEach((c) => {
     lines.push(['completed_today', escapeCsv(c.departmentKey), escapeCsv(c.projectName), escapeCsv(c.taskTitle), escapeCsv(c.assigneeName), '', 'yes', escapeCsv(c.completedAt), '', '', ''].join(','));
@@ -614,8 +647,18 @@ const DailyFocusAndEodView: React.FC = () => {
   const optionsForRank = useCallback((rank: number) => {
     const row = slots[activeDept];
     const takenElsewhere = new Set(row.map((id, i) => (i !== rank && id ? id : null)).filter(Boolean) as string[]);
-    return tasksForDept.filter((t) => !takenElsewhere.has(t.id) || t.id === row[rank]);
-  }, [tasksForDept, activeDept, slots]);
+    let list = tasksForDept.filter((t) => !takenElsewhere.has(t.id) || t.id === row[rank]);
+    const currentId = row[rank];
+    // Pinned tasks must always appear as an option; otherwise the select value has no <option>
+    // and the UI shows "— Select task —" even though slots count them as filled (e.g. For approval / completed).
+    if (currentId) {
+      const pinned = allTasks.find((t: any) => t.id === currentId && !t.isArchived);
+      if (pinned && !list.some((t) => t.id === currentId)) {
+        list = [...list, pinned];
+      }
+    }
+    return list;
+  }, [tasksForDept, activeDept, slots, allTasks]);
 
   const setSlot = (rank: number, taskId: string) => {
     setSlots((prev) => { const copy = { ...prev }; const row = [...copy[activeDept]]; row[rank] = taskId; copy[activeDept] = row; return copy; });
@@ -755,19 +798,25 @@ const DailyFocusAndEodView: React.FC = () => {
     return Array.from(new Set(matches));
   };
 
+  const eodCompletedTaskIds = useMemo(() => {
+    if (!eodReport) return new Set<string>();
+    return new Set(eodReport.completed.map((c) => c.taskId));
+  }, [eodReport]);
+
   const departmentAnalytics = useMemo(() => {
     if (!eodReport) return [];
     const completedByDept = new Map<string, number>();
     const plannedByDept = new Map<string, number>();
     const completedPlannedByDept = new Map<string, number>();
-    const completedIds = new Set(eodReport.completed.map((c) => c.taskId));
+    const completedIds = eodCompletedTaskIds;
 
     eodReport.completed.forEach((c) => {
       completedByDept.set(c.departmentKey, (completedByDept.get(c.departmentKey) || 0) + 1);
     });
     eodReport.planned.forEach((p) => {
       plannedByDept.set(p.departmentKey, (plannedByDept.get(p.departmentKey) || 0) + 1);
-      if (completedIds.has(p.taskId)) {
+      const plannedDone = isPlannedRowDoneForEod(p, completedIds);
+      if (plannedDone) {
         completedPlannedByDept.set(
           p.departmentKey,
           (completedPlannedByDept.get(p.departmentKey) || 0) + 1,
@@ -801,7 +850,7 @@ const DailyFocusAndEodView: React.FC = () => {
       return a.deptKey.localeCompare(b.deptKey);
     });
     return rows;
-  }, [eodReport]);
+  }, [eodReport, eodCompletedTaskIds]);
 
   const totalCompletedForAnalytics = useMemo(
     () => departmentAnalytics.reduce((sum, row) => sum + row.completed, 0),
@@ -941,8 +990,14 @@ const DailyFocusAndEodView: React.FC = () => {
                             {optionsForRank(rank).map((t) => (
                               <option key={t.id} value={t.id}>
                                 {t.title}{t.project?.clientName ? ` · ${t.project.clientName}` : ''}
+                                {t.type !== activeDept ? ` (${t.type})` : ''}
                               </option>
                             ))}
+                            {slotTaskId && !slotTask && (
+                              <option value={slotTaskId}>
+                                ⚠ Task missing (reload tasks or clear slot)
+                              </option>
+                            )}
                           </select>
                           {slotTask && (
                             <>
@@ -1057,7 +1112,7 @@ const DailyFocusAndEodView: React.FC = () => {
               <div ref={eodPrintableRef}>
                 <div className="dfe-eod-meta">
                   🕐 Day boundaries in timezone: <strong style={{ color: '#334155' }}>{eodReport.timezone}</strong>
-                  &nbsp;·&nbsp; Tasks completed = marked done within that local calendar day.
+                  &nbsp;·&nbsp; Planned <strong>Done</strong> = marked Completed within that day, or <strong>For approval</strong> (work submitted; archived projects excluded).
                 </div>
 
                 {/* Analytics */}
@@ -1184,7 +1239,7 @@ const DailyFocusAndEodView: React.FC = () => {
                         </thead>
                         <tbody>
                           {eodReport.planned.map((p) => {
-                            const done = eodReport.completed.some((c) => c.taskId === p.taskId);
+                            const done = isPlannedRowDoneForEod(p, eodCompletedTaskIds);
                             const color = getDeptColor(p.departmentKey);
                             return (
                               <tr key={p.id}>

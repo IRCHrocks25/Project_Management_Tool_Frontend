@@ -41,7 +41,8 @@ export interface EodCompletedRow {
 export interface EndOfDayReport {
   date: string;
   timezone: string;
-  planned: Array<DailyFocusRow & { planned: boolean }>;
+  /** True when the pinned task counts as done for EOD: completed today or For approval (work submitted); archived projects excluded server-side. */
+  planned: Array<DailyFocusRow & { planned: boolean; doneForEod?: boolean }>;
   completed: EodCompletedRow[];
   notDone: Array<
     DailyFocusRow & {

@@ -62,6 +62,18 @@ function getTaskColumnId(task: any): string {
   return 'not_started';
 }
 
+/** For approval = work submitted (done); revision / not yet started = not ready for Completed. */
+function canSetCompletedFromColumn(currentColumnId: string): boolean {
+  return currentColumnId !== 'revision' && currentColumnId !== 'not_started';
+}
+
+function statusChipLabel(columnId: string): string {
+  if (columnId === 'for_approval') {
+    return 'For approval · work done';
+  }
+  return COLUMN_LABEL_BY_ID[columnId] || 'Not yet started';
+}
+
 /* ─── props ─── */
 
 interface DepartmentPriorityProjectsProps {
@@ -266,7 +278,7 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
       || (preferredTask?.taskId ? tasks.find((t:any) => t.id === preferredTask.taskId) : null)
       || actionTasks[0] || null;
     const colId = statusTask ? getTaskColumnId(statusTask) : 'not_started';
-    const colLabel = COLUMN_LABEL_BY_ID[colId] || 'Not yet started';
+    const colLabel = statusChipLabel(colId);
     const ss = STATUS_STYLE[colId] || STATUS_STYLE.not_started;
     const hasNote = !!existingProgressNoteByTaskId[statusTask?.id];
 
@@ -308,15 +320,34 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
               value={colId}
               disabled={updatingPriorityStatusTaskId === statusTask.id}
               onChange={async e => {
+                const next = e.target.value;
+                if (next === 'approved_completed' && !canSetCompletedFromColumn(colId)) {
+                  alert(
+                    colId === 'revision'
+                      ? 'This task is in revision — finish the revision before marking Completed.'
+                      : 'This task has not started yet — complete the work and move it to For approval before marking Completed.'
+                  );
+                  return;
+                }
                 try {
                   setUpdatingPriorityStatusTaskId(statusTask.id);
-                  await onUpdateTaskColumn(statusTask.id, e.target.value);
+                  await onUpdateTaskColumn(statusTask.id, next);
                   await loadDepartmentFocus();
                 } catch(err:any) { alert(err?.response?.data?.message || 'Failed to update task column.'); }
                 finally { setUpdatingPriorityStatusTaskId(null); }
               }}
             >
-              {COLUMN_OPTIONS.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+              {COLUMN_OPTIONS.map(opt => (
+                <option
+                  key={opt.id}
+                  value={opt.id}
+                  disabled={
+                    opt.id === 'approved_completed' && !canSetCompletedFromColumn(colId)
+                  }
+                >
+                  {opt.label}
+                </option>
+              ))}
             </select>
           )}
 

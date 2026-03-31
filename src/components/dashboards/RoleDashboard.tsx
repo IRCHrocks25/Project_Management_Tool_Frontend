@@ -101,6 +101,20 @@ const ROLE_CONFIG: Record<string, {
   },
 };
 
+type KanbanColumnSortOrder = 'newest' | 'oldest';
+
+function sortKanbanTasksByCreatedAt(tasks: any[], order: KanbanColumnSortOrder): any[] {
+  const getTime = (t: any) => {
+    const raw = t.createdAt || t.updatedAt;
+    return raw ? new Date(raw).getTime() : 0;
+  };
+  return [...tasks].sort((a, b) => {
+    const ta = getTime(a);
+    const tb = getTime(b);
+    return order === 'oldest' ? ta - tb : tb - ta;
+  });
+}
+
 interface RoleDashboardProps {
   role: string;
 }
@@ -194,6 +208,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   // Drag and drop state
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  /** Per Kanban column: sort by task createdAt (newest first = default, or oldest first). */
+  const [kanbanColumnSort, setKanbanColumnSort] = useState<Record<string, KanbanColumnSortOrder>>({});
 
   // Status change modal state (for drag and drop)
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
@@ -2306,6 +2322,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 { id: 'client_validation', title: 'Client Validation', color: '#f97316' }
               ].map((column) => {
                 const statusTasks = groupedTasks[column.id] || [];
+                const sortOrder = kanbanColumnSort[column.id] ?? 'newest';
+                const sortedStatusTasks = sortKanbanTasksByCreatedAt(statusTasks, sortOrder);
 
                 return (
                   <div 
@@ -2379,9 +2397,51 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                       }}>
                         {column.title}
                       </h3>
-                      <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                        {statusTasks.length} task(s)
-                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap',
+                        marginTop: '0.35rem',
+                      }}>
+                        <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                          {statusTasks.length} task(s)
+                        </span>
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                          fontWeight: 500,
+                          margin: 0,
+                          cursor: 'pointer',
+                        }}>
+                          <span style={{ whiteSpace: 'nowrap' }}>Sort</span>
+                          <select
+                            value={sortOrder}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const v = e.target.value as KanbanColumnSortOrder;
+                              setKanbanColumnSort((prev) => ({ ...prev, [column.id]: v }));
+                            }}
+                            style={{
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              fontSize: '0.75rem',
+                              color: '#334155',
+                              background: 'white',
+                              cursor: 'pointer',
+                              maxWidth: '140px',
+                            }}
+                          >
+                            <option value="newest">Newest → oldest</option>
+                            <option value="oldest">Oldest → newest</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
                     <div style={{
                       padding: '0.75rem',
@@ -2390,7 +2450,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                       minHeight: '200px',
                       maxHeight: 'calc(100vh - 400px)'
                     }}>
-                      {statusTasks.map((task: any) => {
+                      {sortedStatusTasks.map((task: any) => {
                         const project = projects.find((p: any) => p.id === task.projectId);
                         const taskInRevision = project ? isTaskInRevision(task, project) : false;
                         const taskNotes = project ? getTaskNotes(task, project) : [];
@@ -3077,7 +3137,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                           </div>
                         );
                       })}
-                      {statusTasks.length === 0 && (
+                      {sortedStatusTasks.length === 0 && (
                         <div style={{
                           padding: '2rem',
                           textAlign: 'center',

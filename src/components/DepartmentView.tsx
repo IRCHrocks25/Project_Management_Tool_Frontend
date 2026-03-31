@@ -10,6 +10,20 @@ import { clientUpdatesService, ClientUpdateComment } from '../services/client-up
 import TaskDetailSideModal from './TaskDetailSideModal';
 import './Dashboard.css';
 
+type KanbanColumnSortOrder = 'newest' | 'oldest';
+
+function sortKanbanTasksByCreatedAt(tasks: any[], order: KanbanColumnSortOrder): any[] {
+  const getTime = (t: any) => {
+    const raw = t.createdAt || t.updatedAt;
+    return raw ? new Date(raw).getTime() : 0;
+  };
+  return [...tasks].sort((a, b) => {
+    const ta = getTime(a);
+    const tb = getTime(b);
+    return order === 'oldest' ? ta - tb : tb - ta;
+  });
+}
+
 const DepartmentView: React.FC = () => {
   const { department } = useParams<{ department: string }>();
   const navigate = useNavigate();
@@ -26,6 +40,7 @@ const DepartmentView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [kanbanColumnSort, setKanbanColumnSort] = useState<Record<string, KanbanColumnSortOrder>>({});
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     projectId: '',
@@ -2386,6 +2401,8 @@ const DepartmentView: React.FC = () => {
                 { id: 'client_validation', title: 'Client Validation' }
               ]).map((column) => {
                 const columnTasks = tasksByStatus[column.id] || [];
+                const sortOrder = kanbanColumnSort[column.id] ?? 'newest';
+                const sortedColumnTasks = sortKanbanTasksByCreatedAt(columnTasks, sortOrder);
                 const isDragOver = dragOverColumn === column.id;
                 
                 return (
@@ -2659,9 +2676,51 @@ const DepartmentView: React.FC = () => {
                       }}>
                         {column.title}
                       </h3>
-                      <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                        {columnTasks.length} task(s)
-                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap',
+                        marginTop: '0.35rem',
+                      }}>
+                        <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                          {columnTasks.length} task(s)
+                        </span>
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                          fontWeight: 500,
+                          margin: 0,
+                          cursor: 'pointer',
+                        }}>
+                          <span style={{ whiteSpace: 'nowrap' }}>Sort</span>
+                          <select
+                            value={sortOrder}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const v = e.target.value as KanbanColumnSortOrder;
+                              setKanbanColumnSort((prev) => ({ ...prev, [column.id]: v }));
+                            }}
+                            style={{
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              fontSize: '0.75rem',
+                              color: '#334155',
+                              background: 'white',
+                              cursor: 'pointer',
+                              maxWidth: '140px',
+                            }}
+                          >
+                            <option value="newest">Newest → oldest</option>
+                            <option value="oldest">Oldest → newest</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
                     <div style={{
                       padding: '0.75rem',
@@ -2673,7 +2732,7 @@ const DepartmentView: React.FC = () => {
                       minWidth: 0,
                       width: '100%'
                     }} className="department-kanban-column-content">
-                      {columnTasks.map((task: any) => {
+                      {sortedColumnTasks.map((task: any) => {
                         const projectName = getProjectName(task.projectId);
                         return (
                           <div
