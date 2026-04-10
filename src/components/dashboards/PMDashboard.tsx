@@ -1387,6 +1387,7 @@ const PMDashboard: React.FC = () => {
                 <option>Private</option>
                 <option>Premium</option>
                 <option>Powered-Up</option>
+                <option>Rapid Prospect</option>
               </select>
             </div>
           </div>

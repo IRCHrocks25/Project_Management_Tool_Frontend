@@ -153,6 +153,11 @@ export const clientUpdatesService = {
     return response.data;
   },
 
+  async getLatestRapidProspectFormToken(): Promise<{ publicToken: string | null }> {
+    const response = await publicAxios.get('/client-updates/forms/rapid-prospect/latest');
+    return response.data;
+  },
+
   async submitForm(formId: string, responses: SubmissionResponse[], clientName?: string, clientEmail?: string): Promise<FormSubmission> {
     const response = await publicAxios.post(
       `/client-updates/forms/submit`,

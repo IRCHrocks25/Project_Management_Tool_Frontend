@@ -5,6 +5,7 @@ import { authService, SignupData } from '../services/auth.service';
 const ROLES = [
   'FOUNDER/CEO',
   'Project Manager',
+  'Rapid Prospect',
   'Copy Writing',
   'Designer',
   'Developer',

@@ -2,6 +2,7 @@ import React from 'react';
 import { authService } from '../services/auth.service';
 import FounderDashboard from './dashboards/FounderDashboard';
 import PMDashboard from './dashboards/PMDashboard';
+import RapidProspectDashboard from './dashboards/RapidProspectDashboard';
 import RoleDashboard from './dashboards/RoleDashboard';
 
 const RoleBasedDashboard: React.FC = () => {
@@ -18,6 +19,8 @@ const RoleBasedDashboard: React.FC = () => {
       return <FounderDashboard />;
     case 'Project Manager':
       return <PMDashboard />;
+    case 'Rapid Prospect':
+      return <RapidProspectDashboard />;
     case 'Copy Writing':
     case 'Designer':
     case 'Developer':

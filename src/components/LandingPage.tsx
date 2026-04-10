@@ -510,6 +510,7 @@ export default function KatalystLanding() {
               ))}
             </ul>
             <div className="nav-right">
+              <a href="/rapid-prospect-onboarding" className="btn btn-ghost">Onboarding</a>
               <a href="/signup" className="btn btn-ghost">Sign Up</a>
               <a href="/login"  className="btn btn-blue">Log In</a>
             </div>

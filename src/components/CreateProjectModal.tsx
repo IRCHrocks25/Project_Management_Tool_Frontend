@@ -556,7 +556,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         const normalizeClientType = (input: string): string | null => {
           if (!input?.trim()) return null;
           const l = input.trim().toLowerCase();
-          const map: Record<string, string> = { 'icon': 'ICON', 'star': 'STAR', 'katalyst': 'Katalyst', 'private': 'Private', 'premium': 'Premium', 'powered-up': 'Powered-Up', 'powered up': 'Powered-Up', 'poweredup': 'Powered-Up' };
+          const map: Record<string, string> = { 'icon': 'ICON', 'star': 'STAR', 'katalyst': 'Katalyst', 'private': 'Private', 'premium': 'Premium', 'powered-up': 'Powered-Up', 'powered up': 'Powered-Up', 'poweredup': 'Powered-Up', 'rapid prospect': 'Rapid Prospect', 'rapid-prospect': 'Rapid Prospect', 'rapidprospect': 'Rapid Prospect' };
           if (map[l]) return map[l];
           return clientTypes.map(ct => ct.value).find(type => {
             const tl = type.toLowerCase();

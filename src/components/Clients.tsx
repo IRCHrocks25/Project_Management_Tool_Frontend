@@ -116,6 +116,7 @@ const Clients: React.FC = () => {
       'Private': { bg: '#e5e7eb', color: '#374151' },
       'Premium': { bg: '#ede9fe', color: '#6b21a8' },
       'Powered-Up': { bg: '#f3e8ff', color: '#7c3aed' },
+      'Rapid Prospect': { bg: '#ecfeff', color: '#155e75' },
     };
     return colors[clientType] || { bg: '#e5e7eb', color: '#374151' };
   };

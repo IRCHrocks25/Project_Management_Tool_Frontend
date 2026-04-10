@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaSpinner, FaImage, FaPaperPlane } from 'react-icons/fa';
 import { clientUpdatesService, FormBlock, SubmissionResponse } from '../services/client-updates.service';
@@ -15,6 +15,7 @@ const ClientUpdateFormView: React.FC = () => {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
 
   const loadForm = useCallback(async () => {
     if (!publicToken) return;
@@ -49,6 +50,10 @@ const ClientUpdateFormView: React.FC = () => {
       loadForm();
     }
   }, [publicToken, loadForm]);
+
+  useEffect(() => {
+    setCurrentSectionIndex(0);
+  }, [publicToken, form?.id]);
 
   const handleResponseChange = (blockId: string, value: string) => {
     setResponses(prev => ({
@@ -179,6 +184,46 @@ const ClientUpdateFormView: React.FC = () => {
     }
   };
 
+  const sectionedView = useMemo(() => {
+    const blocks: FormBlock[] = form?.blocks || [];
+    type Section = { title: string; blocks: FormBlock[] };
+    const sections: Section[] = [];
+    let current: Section = { title: 'Form', blocks: [] };
+    let foundSectionHeading = false;
+
+    for (const block of blocks) {
+      const headingText = (block.content || '').trim();
+      const isSectionHeading = block.type === 'heading' && /^SECTION\s+\d+/i.test(headingText);
+
+      if (isSectionHeading) {
+        foundSectionHeading = true;
+        if (current.blocks.length > 0) {
+          sections.push(current);
+        }
+        current = { title: headingText, blocks: [block] };
+        continue;
+      }
+      current.blocks.push(block);
+    }
+
+    if (current.blocks.length > 0) {
+      sections.push(current);
+    }
+
+    const isSectionedForm = foundSectionHeading;
+    return {
+      isSectionedForm,
+      sections: isSectionedForm ? sections : [{ title: 'Form', blocks }],
+    };
+  }, [form?.blocks]);
+
+  const { isSectionedForm, sections } = sectionedView;
+  const safeSectionIndex = Math.min(currentSectionIndex, Math.max(0, sections.length - 1));
+  const activeSection = sections[safeSectionIndex];
+  const displayedBlocks = activeSection?.blocks || [];
+  const isLastSection = safeSectionIndex === sections.length - 1;
+  const progressPercent = sections.length > 0 ? ((safeSectionIndex + 1) / sections.length) * 100 : 0;
+
   if (loading) {
     return (
       <div style={{ 
@@ -270,8 +315,20 @@ const ClientUpdateFormView: React.FC = () => {
           Please fill out the form below to provide your feedback.
         </p>
 
+        {isSectionedForm && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#5f6368', fontSize: '0.8rem' }}>
+              <span>{activeSection?.title || `Section ${safeSectionIndex + 1}`}</span>
+              <span>Section {safeSectionIndex + 1} of {sections.length}</span>
+            </div>
+            <div style={{ width: '100%', height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
+              <div style={{ width: `${progressPercent}%`, height: '100%', background: '#673ab7', transition: 'width 0.25s ease' }} />
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          {form.blocks.map((block: FormBlock) => (
+          {displayedBlocks.map((block: FormBlock) => (
             <div key={block.id} style={{ 
               paddingBottom: '1.5rem',
               borderBottom: '1px solid #dadce0'
@@ -471,120 +528,107 @@ const ClientUpdateFormView: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ 
-          marginTop: '3rem', 
-          paddingTop: '2rem',
-          borderTop: '1px solid #dadce0'
-        }}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontWeight: 400, 
-              marginBottom: '0.5rem',
-              color: '#202124',
-              fontSize: '0.875rem'
-            }}>
-              Your Name (Optional):
-            </label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Enter your name"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #dadce0',
-                borderRadius: '4px',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
-                color: '#202124',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#673ab7';
-                e.target.style.outline = 'none';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#dadce0';
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: '2rem' }}>
-            <label style={{ 
-              display: 'block', 
-              fontWeight: 400, 
-              marginBottom: '0.5rem',
-              color: '#202124',
-              fontSize: '0.875rem'
-            }}>
-              Your Email (Optional):
-            </label>
-            <input
-              type="email"
-              value={clientEmail}
-              onChange={(e) => setClientEmail(e.target.value)}
-              placeholder="Enter your email"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #dadce0',
-                borderRadius: '4px',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
-                color: '#202124',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#673ab7';
-                e.target.style.outline = 'none';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#dadce0';
-              }}
-            />
-          </div>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{
-              width: '100%',
-              background: '#673ab7',
-              color: 'white',
-              border: 'none',
-              padding: '0.875rem 1.5rem',
-              borderRadius: '4px',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              opacity: submitting ? 0.6 : 1,
-              transition: 'background 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!submitting) {
-                e.currentTarget.style.background = '#5e35b1';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!submitting) {
-                e.currentTarget.style.background = '#673ab7';
-              }
-            }}
-          >
-            {submitting ? (
-              <>
-                <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <FaPaperPlane />
-                Submit Response
-              </>
-            )}
-          </button>
+        <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #dadce0' }}>
+          {isSectionedForm && (
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: isLastSection ? '1.5rem' : 0 }}>
+              <button
+                type="button"
+                disabled={safeSectionIndex === 0}
+                onClick={() => setCurrentSectionIndex((prev) => Math.max(prev - 1, 0))}
+                style={{
+                  background: '#f3f4f6',
+                  color: '#202124',
+                  border: '1px solid #d1d5db',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '4px',
+                  fontSize: '0.875rem',
+                  cursor: safeSectionIndex === 0 ? 'not-allowed' : 'pointer',
+                  opacity: safeSectionIndex === 0 ? 0.6 : 1,
+                }}
+              >
+                Previous Section
+              </button>
+              {!isLastSection && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentSectionIndex((prev) => Math.min(prev + 1, sections.length - 1))}
+                  style={{
+                    background: '#673ab7',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Next Section
+                </button>
+              )}
+            </div>
+          )}
+
+          {(!isSectionedForm || isLastSection) && (
+            <>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontWeight: 400, marginBottom: '0.5rem', color: '#202124', fontSize: '0.875rem' }}>
+                  Your Name (Optional):
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Enter your name"
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '0.875rem', fontFamily: 'inherit', color: '#202124' }}
+                />
+              </div>
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', fontWeight: 400, marginBottom: '0.5rem', color: '#202124', fontSize: '0.875rem' }}>
+                  Your Email (Optional):
+                </label>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '0.875rem', fontFamily: 'inherit', color: '#202124' }}
+                />
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                style={{
+                  width: '100%',
+                  background: '#673ab7',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.875rem 1.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  opacity: submitting ? 0.6 : 1,
+                }}
+              >
+                {submitting ? (
+                  <>
+                    <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane />
+                    Submit Response
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

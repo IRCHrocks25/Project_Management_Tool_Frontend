@@ -73,6 +73,7 @@ const Users: React.FC = () => {
   const getRoleColor = (role: string) => {
     const roleColors: { [key: string]: string } = {
       'Project Manager': '#667eea',
+      'Rapid Prospect': '#0e7490',
       'Designer': '#8b5cf6',
       'Copy Writing': '#3b82f6',
       'Developer': '#10b981',

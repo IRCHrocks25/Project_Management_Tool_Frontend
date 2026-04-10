@@ -52,6 +52,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
         roles: ['Project Manager'],
         alsoHeadPM: true,
       },
+      {
+        path: '/rapid-prospect',
+        label: 'Rapid Prospect',
+        icon: <FaBullseye />,
+        roles: ['Project Manager', 'FOUNDER/CEO', 'Rapid Prospect'],
+        alsoHeadPM: true,
+      },
     ],
   },
   {

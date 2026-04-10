@@ -80,6 +80,11 @@ export const projectService = {
     return response.data;
   },
 
+  async getRapidProspects(): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/projects/rapid-prospect`, getAuthHeaders());
+    return response.data;
+  },
+
   async generateOnboardingTasks(id: string): Promise<any> {
     const response = await axios.post(`${API_URL}/projects/${id}/generate-onboarding-tasks`, {}, getAuthHeaders());
     return response.data;
@@ -106,6 +111,25 @@ export const projectService = {
 
   async update(id: string, data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[]; pmId?: string }): Promise<any> {
     const response = await axios.patch(`${API_URL}/projects/${id}`, data, getAuthHeaders());
+    return response.data;
+  },
+
+  async updateOnboardingPhase(
+    id: string,
+    data: {
+      phase?: string;
+      status?: string;
+      milestoneKey?: string;
+      notes?: string;
+      ownerUserId?: string;
+      markCurrentMilestoneComplete?: boolean;
+      advanceToNextPhase?: boolean;
+      onboardingManagerId?: string;
+      automationSpecialistId?: string;
+      qaSpecialistId?: string;
+    },
+  ): Promise<any> {
+    const response = await axios.patch(`${API_URL}/projects/${id}/onboarding-phase`, data, getAuthHeaders());
     return response.data;
   },
 };

@@ -13,6 +13,7 @@ import Clients from './components/Clients';
 import CompletedProjects from './components/CompletedProjects';
 import ResetPassword from './components/ResetPassword';
 import ClientUpdateFormView from './components/ClientUpdateFormView';
+import RapidProspectOnboardingEntry from './components/RapidProspectOnboardingEntry';
 import FormBuilder from './components/FormBuilder';
 import DepartmentView from './components/DepartmentView';
 import MyProjectsView from './components/MyProjectsView';
@@ -21,6 +22,7 @@ import PMActivityLog from './components/PMActivityLog';
 import TasksDueTodayView from './components/TasksDueTodayView';
 import DailyFocusAndEodView from './components/DailyFocusAndEodView';
 import DepartmentPrioritiesPmView from './components/DepartmentPrioritiesPmView';
+import RapidProspectDashboard from './components/dashboards/RapidProspectDashboard';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
@@ -71,6 +73,15 @@ const DepartmentPrioritiesRoute: React.FC = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+/** Rapid Prospect dashboard — PM, Head PM, Founder, or Rapid Prospect team */
+const RapidProspectRoute: React.FC = () => {
+  const user = authService.getUser();
+  if (user?.role === 'Project Manager' || user?.isHeadPM || user?.role === 'FOUNDER/CEO' || user?.role === 'Rapid Prospect') {
+    return <RapidProspectDashboard />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -79,6 +90,7 @@ const App: React.FC = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/rapid-prospect-onboarding" element={<RapidProspectOnboardingEntry />} />
         <Route
           path="/dashboard"
           element={
@@ -112,6 +124,7 @@ const App: React.FC = () => {
           <Route path="tasks-due-today" element={<TasksDueTodayView />} />
           <Route path="daily-focus" element={<DailyFocusRoute />} />
           <Route path="department-priorities" element={<DepartmentPrioritiesRoute />} />
+          <Route path="rapid-prospect" element={<RapidProspectRoute />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="mbti-assessment" element={<MBTIAssessment />} />
