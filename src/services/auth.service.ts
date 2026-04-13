@@ -157,6 +157,50 @@ export const authService = {
     return response.data;
   },
 
+  async updateUserRole(userId: string, role: string): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/auth/users/${userId}/role`,
+      { role },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    const currentUser = this.getUser();
+    if (currentUser && currentUser.id === userId) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  async setUserAccess(userId: string, isActive: boolean): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/auth/users/${userId}/access`,
+      { isActive },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async adminResetUserPassword(userId: string, newPassword: string): Promise<{ message: string }> {
+    const response = await axios.post(
+      `${API_URL}/auth/users/${userId}/reset-password`,
+      { newPassword },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  },
+
   async forgotPassword(email: string): Promise<{ 
     message: string; 
     resetLink?: string;

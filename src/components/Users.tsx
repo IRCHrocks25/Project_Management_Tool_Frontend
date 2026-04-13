@@ -4,14 +4,30 @@ import { FaUsers, FaArrowLeft, FaEnvelope, FaUser, FaCalendarAlt } from 'react-i
 import { authService } from '../services/auth.service';
 import '../components/Dashboard.css';
 
+const DEPARTMENT_OPTIONS = [
+  'Project Manager',
+  'Rapid Prospect',
+  'Copy Writing',
+  'Designer',
+  'Developer',
+  'AI Developer',
+  'Social Media',
+  'CRM',
+  'SEO/GEO',
+];
+
 const Users: React.FC = () => {
   const navigate = useNavigate();
+  const currentUser = authService.getUser();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('All Roles');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<string, string>>({});
+  const [passwordDraftByUserId, setPasswordDraftByUserId] = useState<Record<string, string>>({});
+  const canManageUsers = currentUser?.isHeadPM || currentUser?.role === 'FOUNDER/CEO';
 
   const loadUsers = async () => {
     try {
@@ -37,6 +53,16 @@ const Users: React.FC = () => {
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setRoleDraftByUserId((prev) => {
+      const next = { ...prev };
+      users.forEach((u) => {
+        if (!next[u.id]) next[u.id] = u.role;
+      });
+      return next;
+    });
+  }, [users]);
 
   // Don't render until we've checked authorization
   if (isAuthorized === null) {
@@ -68,21 +94,6 @@ const Users: React.FC = () => {
     }
 
     return filtered;
-  };
-
-  const getRoleColor = (role: string) => {
-    const roleColors: { [key: string]: string } = {
-      'Project Manager': '#667eea',
-      'Rapid Prospect': '#0e7490',
-      'Designer': '#8b5cf6',
-      'Copy Writing': '#3b82f6',
-      'Developer': '#10b981',
-      'AI Developer': '#f59e0b',
-      'Social Media': '#ec4899',
-      'CRM': '#06b6d4',
-      'SEO/GEO': '#6366f1',
-    };
-    return roleColors[role] || '#6b7280';
   };
 
   const filteredUsers = getFilteredUsers();
@@ -171,6 +182,8 @@ const Users: React.FC = () => {
           <div style={{ flex: 1, minWidth: '250px' }}>
             <input
               type="text"
+              name="users-search"
+              autoComplete="off"
               placeholder="Search by name, email, or role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -281,32 +294,6 @@ const Users: React.FC = () => {
                       letterSpacing: '0.05em',
                     }}
                   >
-                    Role
-                  </th>
-                  <th
-                    style={{
-                      padding: '1rem 1.5rem',
-                      textAlign: 'left',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      color: '#374151',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    Joined
-                  </th>
-                  <th
-                    style={{
-                      padding: '1rem 1.5rem',
-                      textAlign: 'left',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      color: '#374151',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
                     Team Lead
                   </th>
                   <th
@@ -322,13 +309,65 @@ const Users: React.FC = () => {
                   >
                     Head PM
                   </th>
+                  <th
+                    style={{
+                      padding: '1rem 1.5rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Department
+                  </th>
+                  <th
+                    style={{
+                      padding: '1rem 1.5rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Access
+                  </th>
+                  <th
+                    style={{
+                      padding: '1rem 1.5rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Password Reset
+                  </th>
+                  <th
+                    style={{
+                      padding: '1rem 1.5rem',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Joined
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={8}
                       style={{
                         padding: '3rem',
                         textAlign: 'center',
@@ -340,117 +379,80 @@ const Users: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((userItem, index) => (
-                    <tr
-                      key={userItem.id}
-                      style={{
-                        borderBottom: index < filteredUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        transition: 'background 0.2s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
-                    >
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 600,
-                              fontSize: '1rem',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {userItem.name?.charAt(0).toUpperCase() || 'U'}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9375rem' }}>
-                              {userItem.name}
-                            </div>
+                  filteredUsers.map((userItem, index) => {
+                    const isActive = userItem.isActive !== false;
+                    return (
+                      <tr
+                        key={userItem.id}
+                        style={{
+                          borderBottom: index < filteredUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          transition: 'background 0.2s',
+                          opacity: isActive ? 1 : 0.65,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                      >
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <div
                               style={{
-                                fontSize: '0.75rem',
-                                color: '#94a3b8',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.25rem',
-                                marginTop: '0.125rem',
+                                justifyContent: 'center',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                flexShrink: 0,
                               }}
                             >
-                              <FaUser style={{ fontSize: '0.625rem' }} />
-                              ID: {userItem.id.substring(0, 8)}...
+                              {userItem.name?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9375rem' }}>
+                                {userItem.name}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: '#94a3b8',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  marginTop: '0.125rem',
+                                }}
+                              >
+                                <FaUser style={{ fontSize: '0.625rem' }} />
+                                ID: {userItem.id.substring(0, 8)}...
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            color: '#374151',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <FaEnvelope style={{ color: '#9ca3af', fontSize: '0.875rem' }} />
-                          {userItem.email}
-                        </div>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <button
-                          disabled={updatingUserId === userItem.id}
-                          onClick={async () => {
-                            try {
-                              setUpdatingUserId(userItem.id);
-                              const newValue = !userItem.isTeamLead;
-                              const updated = await authService.setTeamLead(
-                                userItem.id,
-                                newValue
-                              );
-                              setUsers((prev) =>
-                                prev.map((u) =>
-                                  u.id === updated.id ? { ...u, ...updated } : u
-                                )
-                              );
-                            } catch (error) {
-                              console.error('Failed to update team lead status:', error);
-                              alert('Failed to update team lead status. Please try again.');
-                            } finally {
-                              setUpdatingUserId(null);
-                            }
-                          }}
-                          style={{
-                            padding: '0.375rem 0.75rem',
-                            borderRadius: '999px',
-                            border: '1px solid',
-                            borderColor: userItem.isTeamLead ? '#10b981' : '#e5e7eb',
-                            background: userItem.isTeamLead ? '#ecfdf3' : 'white',
-                            color: userItem.isTeamLead ? '#047857' : '#6b7280',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            cursor: updatingUserId === userItem.id ? 'not-allowed' : 'pointer',
-                            minWidth: '90px',
-                          }}
-                        >
-                          {userItem.isTeamLead ? 'Team Lead' : 'Make Lead'}
-                        </button>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        {userItem.role === 'Project Manager' ? (
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              color: '#374151',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <FaEnvelope style={{ color: '#9ca3af', fontSize: '0.875rem' }} />
+                            {userItem.email}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
                           <button
-                            disabled={updatingUserId === userItem.id}
+                            disabled={updatingUserId === userItem.id || !canManageUsers}
                             onClick={async () => {
                               try {
                                 setUpdatingUserId(userItem.id);
-                                const newValue = !userItem.isHeadPM;
-                                const updated = await authService.setHeadPM(
+                                const newValue = !userItem.isTeamLead;
+                                const updated = await authService.setTeamLead(
                                   userItem.id,
                                   newValue
                                 );
@@ -459,12 +461,9 @@ const Users: React.FC = () => {
                                     u.id === updated.id ? { ...u, ...updated } : u
                                   )
                                 );
-                              } catch (error: any) {
-                                console.error('Failed to update Head PM status:', error);
-                                alert(
-                                  error?.response?.data?.message ||
-                                    'Failed to update Head PM status. Only Project Managers can be Head PM.'
-                                );
+                              } catch (error) {
+                                console.error('Failed to update team lead status:', error);
+                                alert('Failed to update team lead status. Please try again.');
                               } finally {
                                 setUpdatingUserId(null);
                               }
@@ -473,56 +472,229 @@ const Users: React.FC = () => {
                               padding: '0.375rem 0.75rem',
                               borderRadius: '999px',
                               border: '1px solid',
-                              borderColor: userItem.isHeadPM ? '#6366f1' : '#e5e7eb',
-                              background: userItem.isHeadPM ? '#eef2ff' : 'white',
-                              color: userItem.isHeadPM ? '#4338ca' : '#6b7280',
+                              borderColor: userItem.isTeamLead ? '#10b981' : '#e5e7eb',
+                              background: userItem.isTeamLead ? '#ecfdf3' : 'white',
+                              color: userItem.isTeamLead ? '#047857' : '#6b7280',
                               fontSize: '0.75rem',
                               fontWeight: 600,
-                              cursor: updatingUserId === userItem.id ? 'not-allowed' : 'pointer',
+                              cursor: updatingUserId === userItem.id || !canManageUsers ? 'not-allowed' : 'pointer',
                               minWidth: '90px',
                             }}
                           >
-                            {userItem.isHeadPM ? 'Head PM' : 'Make Head PM'}
+                            {userItem.isTeamLead ? 'Team Lead' : 'Make Lead'}
                           </button>
-                        ) : (
-                          <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <span
-                          style={{
-                            padding: '0.375rem 0.75rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                            background: `${getRoleColor(userItem.role)}20`,
-                            color: getRoleColor(userItem.role),
-                            display: 'inline-block',
-                          }}
-                        >
-                          {userItem.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            color: '#6b7280',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <FaCalendarAlt style={{ color: '#9ca3af', fontSize: '0.875rem' }} />
-                          {new Date(userItem.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          {userItem.role === 'Project Manager' ? (
+                            <button
+                              disabled={updatingUserId === userItem.id || !canManageUsers}
+                              onClick={async () => {
+                                try {
+                                  setUpdatingUserId(userItem.id);
+                                  const newValue = !userItem.isHeadPM;
+                                  const updated = await authService.setHeadPM(
+                                    userItem.id,
+                                    newValue
+                                  );
+                                  setUsers((prev) =>
+                                    prev.map((u) =>
+                                      u.id === updated.id ? { ...u, ...updated } : u
+                                    )
+                                  );
+                                } catch (error: any) {
+                                  console.error('Failed to update Head PM status:', error);
+                                  alert(
+                                    error?.response?.data?.message ||
+                                      'Failed to update Head PM status. Only Project Managers can be Head PM.'
+                                  );
+                                } finally {
+                                  setUpdatingUserId(null);
+                                }
+                              }}
+                              style={{
+                                padding: '0.375rem 0.75rem',
+                                borderRadius: '999px',
+                                border: '1px solid',
+                                borderColor: userItem.isHeadPM ? '#6366f1' : '#e5e7eb',
+                                background: userItem.isHeadPM ? '#eef2ff' : 'white',
+                                color: userItem.isHeadPM ? '#4338ca' : '#6b7280',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: updatingUserId === userItem.id || !canManageUsers ? 'not-allowed' : 'pointer',
+                                minWidth: '90px',
+                              }}
+                            >
+                              {userItem.isHeadPM ? 'Head PM' : 'Make Head PM'}
+                            </button>
+                          ) : (
+                            <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <select
+                              value={roleDraftByUserId[userItem.id] || userItem.role}
+                              onChange={(e) =>
+                                setRoleDraftByUserId((prev) => ({ ...prev, [userItem.id]: e.target.value }))
+                              }
+                              disabled={!canManageUsers || updatingUserId === userItem.id}
+                              style={{
+                                padding: '0.38rem 0.45rem',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 8,
+                                fontSize: '0.76rem',
+                                background: 'white',
+                              }}
+                            >
+                              {DEPARTMENT_OPTIONS.map((roleOption) => (
+                                <option key={roleOption} value={roleOption}>
+                                  {roleOption}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              disabled={
+                                !canManageUsers ||
+                                updatingUserId === userItem.id ||
+                                (roleDraftByUserId[userItem.id] || userItem.role) === userItem.role
+                              }
+                              onClick={async () => {
+                                try {
+                                  setUpdatingUserId(userItem.id);
+                                  const updated = await authService.updateUserRole(
+                                    userItem.id,
+                                    roleDraftByUserId[userItem.id] || userItem.role
+                                  );
+                                  setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+                                } catch (error: any) {
+                                  console.error('Failed to update user role:', error);
+                                  alert(error?.response?.data?.message || 'Failed to update department.');
+                                } finally {
+                                  setUpdatingUserId(null);
+                                }
+                              }}
+                              style={{
+                                padding: '0.35rem 0.5rem',
+                                border: '1px solid #0284c7',
+                                borderRadius: 8,
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                color: '#0369a1',
+                                background: '#e0f2fe',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <button
+                            disabled={!canManageUsers || updatingUserId === userItem.id}
+                            onClick={async () => {
+                              try {
+                                setUpdatingUserId(userItem.id);
+                                const updated = await authService.setUserAccess(userItem.id, !isActive);
+                                setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+                              } catch (error: any) {
+                                console.error('Failed to update user access:', error);
+                                alert(error?.response?.data?.message || 'Failed to update user access.');
+                              } finally {
+                                setUpdatingUserId(null);
+                              }
+                            }}
+                            style={{
+                              padding: '0.38rem 0.6rem',
+                              borderRadius: '999px',
+                              border: '1px solid',
+                              borderColor: isActive ? '#ef4444' : '#10b981',
+                              background: isActive ? '#fef2f2' : '#ecfdf3',
+                              color: isActive ? '#b91c1c' : '#047857',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: !canManageUsers || updatingUserId === userItem.id ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {isActive ? 'Revoke Access' : 'Restore Access'}
+                          </button>
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <input
+                              type="password"
+                              placeholder="New password"
+                              value={passwordDraftByUserId[userItem.id] || ''}
+                              onChange={(e) =>
+                                setPasswordDraftByUserId((prev) => ({ ...prev, [userItem.id]: e.target.value }))
+                              }
+                              disabled={!canManageUsers || updatingUserId === userItem.id}
+                              style={{
+                                width: 130,
+                                padding: '0.38rem 0.45rem',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 8,
+                                fontSize: '0.74rem',
+                              }}
+                            />
+                            <button
+                              disabled={
+                                !canManageUsers ||
+                                updatingUserId === userItem.id ||
+                                !passwordDraftByUserId[userItem.id] ||
+                                passwordDraftByUserId[userItem.id].length < 6
+                              }
+                              onClick={async () => {
+                                try {
+                                  setUpdatingUserId(userItem.id);
+                                  await authService.adminResetUserPassword(
+                                    userItem.id,
+                                    passwordDraftByUserId[userItem.id]
+                                  );
+                                  setPasswordDraftByUserId((prev) => ({ ...prev, [userItem.id]: '' }));
+                                  alert('Password reset successfully.');
+                                } catch (error: any) {
+                                  console.error('Failed to reset password:', error);
+                                  alert(error?.response?.data?.message || 'Failed to reset password.');
+                                } finally {
+                                  setUpdatingUserId(null);
+                                }
+                              }}
+                              style={{
+                                padding: '0.35rem 0.5rem',
+                                border: '1px solid #7c3aed',
+                                borderRadius: 8,
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                color: '#6d28d9',
+                                background: '#f3e8ff',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              color: '#6b7280',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <FaCalendarAlt style={{ color: '#9ca3af', fontSize: '0.875rem' }} />
+                            {new Date(userItem.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

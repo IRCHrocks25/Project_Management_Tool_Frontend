@@ -313,6 +313,11 @@ const RapidProspectDashboard: React.FC = () => {
     return found?.name || 'Unassigned';
   };
 
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/');
+  };
+
   const generateClientFacingOnboardingForm = async (projectId: string) => {
     try {
       setGeneratingFormFor(projectId);
@@ -497,6 +502,25 @@ const RapidProspectDashboard: React.FC = () => {
               </span>
             </button>
           ))}
+        </div>
+
+        <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(148,163,184,0.22)' }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              border: '1px solid rgba(248,113,113,0.45)',
+              background: 'rgba(248,113,113,0.12)',
+              borderRadius: 10,
+              color: '#fecaca',
+              fontWeight: 700,
+              padding: '0.5rem 0.65rem',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+            }}
+          >
+            Logout
+          </button>
         </div>
       </aside>
 
