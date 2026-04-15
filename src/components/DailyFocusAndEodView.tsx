@@ -42,6 +42,30 @@ const DEPT_KEYS: { key: string; label: string; color: string }[] = [
   { key: 'General',      label: 'General',      color: '#64748b' },
 ];
 
+const DEPT_TO_TASK_TYPE: Record<string, string> = {
+  Copy: 'Copy',
+  Design: 'Design',
+  Dev: 'Dev',
+  AI: 'AI',
+  'Social Media': 'Social Media',
+  CRM: 'CRM',
+  'SEO/GEO': 'SEO/GEO',
+  Onboarding: 'Onboarding',
+  General: 'General',
+};
+
+const DEPT_TO_USER_ROLES: Record<string, string[]> = {
+  Copy: ['Copy Writing'],
+  Design: ['Designer'],
+  Dev: ['Developer'],
+  AI: ['AI Developer'],
+  'Social Media': ['Social Media'],
+  CRM: ['CRM'],
+  'SEO/GEO': ['SEO/GEO'],
+  Onboarding: ['Project Manager', 'FOUNDER/CEO', 'Rapid Prospect'],
+  General: [],
+};
+
 function ymdLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -533,6 +557,15 @@ const DailyFocusAndEodView: React.FC = () => {
   const [showProgressDetailModal, setShowProgressDetailModal] = useState(false);
   const [selectedNotDoneRow, setSelectedNotDoneRow] = useState<any | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [createTaskData, setCreateTaskData] = useState({
+    projectId: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    assignedToId: '',
+  });
   const eodPrintableRef = useRef<HTMLDivElement | null>(null);
 
   const loadTasks = useCallback(async () => {
@@ -861,6 +894,83 @@ const DailyFocusAndEodView: React.FC = () => {
   const filledCountForDept = (key: string) => slots[key]?.filter(Boolean).length ?? 0;
 
   const deptInfo = DEPT_KEYS.find((d) => d.key === activeDept);
+  const activeDeptTaskType = DEPT_TO_TASK_TYPE[activeDept] || 'General';
+
+  const connectedProjectsForActiveDept = useMemo(() => {
+    const byProjectId = new Map<string, { id: string; clientName: string }>();
+    allTasks.forEach((t: any) => {
+      if (t.type !== activeDeptTaskType) return;
+      if (!t.projectId || t.isArchived || t.project?.isArchived) return;
+      if (!byProjectId.has(t.projectId)) {
+        byProjectId.set(t.projectId, {
+          id: t.projectId,
+          clientName: t.project?.clientName || getProjectName(t.projectId),
+        });
+      }
+    });
+    return Array.from(byProjectId.values()).sort((a, b) => a.clientName.localeCompare(b.clientName));
+  }, [allTasks, activeDeptTaskType, getProjectName]);
+
+  const assignableUsersForActiveDept = useMemo(() => {
+    const allowedRoles = DEPT_TO_USER_ROLES[activeDept] || [];
+    if (allowedRoles.length === 0) return users;
+    return users.filter((u: any) => allowedRoles.includes(u.role));
+  }, [users, activeDept]);
+
+  const openCreateTaskModal = () => {
+    setCreateTaskData({
+      projectId: connectedProjectsForActiveDept[0]?.id || '',
+      title: '',
+      description: '',
+      dueDate: '',
+      assignedToId: '',
+    });
+    setShowCreateTaskModal(true);
+  };
+
+  const handleCreateTask = async () => {
+    if (!createTaskData.projectId || !createTaskData.title.trim()) {
+      alert('Please select a connected project and enter a task title.');
+      return;
+    }
+    try {
+      setIsCreatingTask(true);
+      const payload: any = {
+        projectId: createTaskData.projectId,
+        title: createTaskData.title.trim(),
+        description: createTaskData.description.trim(),
+        type: activeDeptTaskType,
+        status: 'Todo',
+        isCompleted: false,
+      };
+      if (createTaskData.dueDate) {
+        payload.dueDate = new Date(createTaskData.dueDate);
+      }
+      if (createTaskData.assignedToId) {
+        payload.assignedToId = createTaskData.assignedToId;
+      }
+
+      const createdTask = await taskService.create(payload);
+      setAllTasks((prev) => [createdTask, ...prev]);
+
+      // Auto-place the new task into the first empty slot for this department.
+      setSlots((prev) => {
+        const next = { ...prev };
+        const deptSlots = [...(next[activeDept] || [])];
+        const firstEmpty = deptSlots.findIndex((x) => !x);
+        if (firstEmpty >= 0) deptSlots[firstEmpty] = createdTask.id;
+        next[activeDept] = deptSlots;
+        return next;
+      });
+
+      setShowCreateTaskModal(false);
+      setMessage(`Task created in ${deptInfo?.label || activeDept} and linked to the selected project.`);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to create task');
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
 
   return (
     <div className="dfe-root" style={{ minHeight: '100vh', background: '#f8fafc' }}>
@@ -964,9 +1074,21 @@ const DailyFocusAndEodView: React.FC = () => {
                   <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: deptInfo?.color }} />
                   {deptInfo?.label} priorities
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
-                  {slots[activeDept].filter(Boolean).length} / {slots[activeDept].length} filled
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
+                    {slots[activeDept].filter(Boolean).length} / {slots[activeDept].length} filled
+                  </span>
+                  <button
+                    type="button"
+                    className="dfe-btn dfe-btn-ghost"
+                    onClick={openCreateTaskModal}
+                    disabled={connectedProjectsForActiveDept.length === 0}
+                    title={connectedProjectsForActiveDept.length === 0 ? 'No projects connected to this department yet' : 'Create task in this department'}
+                    style={{ padding: '6px 10px' }}
+                  >
+                    <FaPlus style={{ fontSize: '0.65rem' }} /> Create task
+                  </button>
+                </div>
               </div>
               <div className="dfe-panel-body">
                 {loadingTasks ? (
@@ -1026,6 +1148,16 @@ const DailyFocusAndEodView: React.FC = () => {
                       <div className="dfe-empty-dept">
                         <FaCircle style={{ fontSize: '0.5rem', opacity: 0.3, display: 'block', margin: '0 auto 6px' }} />
                         No open tasks for this department.
+                        <div style={{ marginTop: 10 }}>
+                          <button
+                            type="button"
+                            className="dfe-btn dfe-btn-ghost"
+                            onClick={openCreateTaskModal}
+                            disabled={connectedProjectsForActiveDept.length === 0}
+                          >
+                            <FaPlus style={{ fontSize: '0.65rem' }} /> Create first task
+                          </button>
+                        </div>
                       </div>
                     )}
                     <div className="dfe-slot-actions">
@@ -1386,6 +1518,97 @@ const DailyFocusAndEodView: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* ── Edit Task Modal ── */}
+      {showCreateTaskModal && (
+        <div className="dfe-modal-overlay" onClick={() => setShowCreateTaskModal(false)}>
+          <div className="dfe-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dfe-modal-header">
+              <div className="dfe-modal-title">Create {deptInfo?.label || activeDept} Task</div>
+              <button type="button" className="dfe-modal-close" onClick={() => setShowCreateTaskModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="dfe-modal-body">
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Department will be set to <strong>{activeDeptTaskType}</strong>. Only projects already connected to this department are shown.
+              </div>
+              <div>
+                <label className="dfe-field-label">Project *</label>
+                <select
+                  className="dfe-field-select"
+                  value={createTaskData.projectId}
+                  onChange={(e) => setCreateTaskData((prev) => ({ ...prev, projectId: e.target.value }))}
+                >
+                  <option value="">Select connected project...</option>
+                  {connectedProjectsForActiveDept.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.clientName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="dfe-field-label">Task Title *</label>
+                <input
+                  type="text"
+                  className="dfe-field-input"
+                  value={createTaskData.title}
+                  onChange={(e) => setCreateTaskData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter task title"
+                />
+              </div>
+              <div>
+                <label className="dfe-field-label">Description</label>
+                <textarea
+                  className="dfe-field-textarea"
+                  value={createTaskData.description}
+                  onChange={(e) => setCreateTaskData((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                  placeholder="Optional task description"
+                />
+              </div>
+              <div>
+                <label className="dfe-field-label">Due Date</label>
+                <input
+                  type="date"
+                  className="dfe-field-input"
+                  value={createTaskData.dueDate}
+                  onChange={(e) => setCreateTaskData((prev) => ({ ...prev, dueDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="dfe-field-label">Assign To (Optional)</label>
+                <select
+                  className="dfe-field-select"
+                  value={createTaskData.assignedToId}
+                  onChange={(e) => setCreateTaskData((prev) => ({ ...prev, assignedToId: e.target.value }))}
+                >
+                  <option value="">Unassigned</option>
+                  {assignableUsersForActiveDept.map((u: any) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="dfe-modal-footer">
+              <button type="button" className="dfe-btn dfe-btn-ghost" onClick={() => setShowCreateTaskModal(false)} disabled={isCreatingTask}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="dfe-btn dfe-btn-primary"
+                onClick={handleCreateTask}
+                disabled={isCreatingTask || !createTaskData.projectId || !createTaskData.title.trim()}
+              >
+                {isCreatingTask ? <><FaSpinner className="dfe-spinner" /> Creating…</> : <><FaPlus /> Create Task</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Edit Task Modal ── */}
       {showProgressDetailModal && selectedNotDoneRow && (
