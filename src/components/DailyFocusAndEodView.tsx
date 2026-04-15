@@ -54,6 +54,18 @@ const DEPT_TO_TASK_TYPE: Record<string, string> = {
   General: 'General',
 };
 
+const DEPT_TASK_TYPE_ALIASES: Record<string, string[]> = {
+  Copy: ['Copy', 'Copy Writing'],
+  Design: ['Design', 'Designer'],
+  Dev: ['Dev', 'Developer', 'Development'],
+  AI: ['AI', 'AI Developer', 'AI Team'],
+  'Social Media': ['Social Media', 'Social Media Team'],
+  CRM: ['CRM'],
+  'SEO/GEO': ['SEO/GEO', 'SEO/GEO Team'],
+  Onboarding: ['Onboarding', 'Intake'],
+  General: ['General'],
+};
+
 const DEPT_TO_USER_ROLES: Record<string, string[]> = {
   Copy: ['Copy Writing'],
   Design: ['Designer'],
@@ -248,6 +260,10 @@ const css = `
     animation: slideIn 0.2s ease;
   }
   @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes rowReveal {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
   .dfe-toast-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
   .dfe-toast-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
 
@@ -523,6 +539,12 @@ function getDeptColor(key: string) {
   return DEPT_KEYS.find((d) => d.key === key)?.color || '#64748b';
 }
 
+function taskMatchesActiveDept(taskType: string | undefined, activeDept: string): boolean {
+  if (!taskType) return false;
+  const aliases = DEPT_TASK_TYPE_ALIASES[activeDept] || [DEPT_TO_TASK_TYPE[activeDept] || activeDept];
+  return aliases.includes(taskType);
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const DailyFocusAndEodView: React.FC = () => {
@@ -559,6 +581,9 @@ const DailyFocusAndEodView: React.FC = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isDebouncing, setIsDebouncing] = useState(false);
   const [createTaskData, setCreateTaskData] = useState({
     projectId: '',
     title: '',
@@ -624,6 +649,16 @@ const DailyFocusAndEodView: React.FC = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    if (projectSearchTerm === debouncedSearch) return;
+    setIsDebouncing(true);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(projectSearchTerm);
+      setIsDebouncing(false);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [projectSearchTerm, debouncedSearch]);
+
   const projectNameMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const t of allTasks) {
@@ -672,9 +707,18 @@ const DailyFocusAndEodView: React.FC = () => {
     }
   };
 
+  const activeDeptTaskType = DEPT_TO_TASK_TYPE[activeDept] || 'General';
+  const projectSearchTermLower = debouncedSearch.trim().toLowerCase();
+
   const tasksForDept = useMemo(() =>
-    allTasks.filter((t) => t.type === activeDept && isTaskSelectable(t) && !t.isArchived),
-    [allTasks, activeDept]
+    allTasks.filter((t) => {
+      if (!taskMatchesActiveDept(t.type, activeDept)) return false;
+      if (!isTaskSelectable(t) || t.isArchived) return false;
+      if (!projectSearchTermLower) return true;
+      const projectName = t.project?.clientName || getProjectName(t.projectId);
+      return projectName.toLowerCase().includes(projectSearchTermLower);
+    }),
+    [allTasks, activeDept, projectSearchTermLower, getProjectName]
   );
 
   const optionsForRank = useCallback((rank: number) => {
@@ -894,12 +938,11 @@ const DailyFocusAndEodView: React.FC = () => {
   const filledCountForDept = (key: string) => slots[key]?.filter(Boolean).length ?? 0;
 
   const deptInfo = DEPT_KEYS.find((d) => d.key === activeDept);
-  const activeDeptTaskType = DEPT_TO_TASK_TYPE[activeDept] || 'General';
 
   const connectedProjectsForActiveDept = useMemo(() => {
     const byProjectId = new Map<string, { id: string; clientName: string }>();
     allTasks.forEach((t: any) => {
-      if (t.type !== activeDeptTaskType) return;
+      if (!taskMatchesActiveDept(t.type, activeDept)) return;
       if (!t.projectId || t.isArchived || t.project?.isArchived) return;
       if (!byProjectId.has(t.projectId)) {
         byProjectId.set(t.projectId, {
@@ -909,7 +952,31 @@ const DailyFocusAndEodView: React.FC = () => {
       }
     });
     return Array.from(byProjectId.values()).sort((a, b) => a.clientName.localeCompare(b.clientName));
-  }, [allTasks, activeDeptTaskType, getProjectName]);
+  }, [allTasks, activeDept, getProjectName]);
+
+  const allProjectOptions = useMemo(() => {
+    const byProjectId = new Map<string, { id: string; clientName: string }>();
+    allTasks.forEach((t: any) => {
+      if (!t.projectId || t.isArchived || t.project?.isArchived) return;
+      if (!byProjectId.has(t.projectId)) {
+        byProjectId.set(t.projectId, {
+          id: t.projectId,
+          clientName: t.project?.clientName || getProjectName(t.projectId),
+        });
+      }
+    });
+    return Array.from(byProjectId.values()).sort((a, b) => a.clientName.localeCompare(b.clientName));
+  }, [allTasks, getProjectName]);
+
+  const modalProjectOptions = useMemo(() => {
+    const recommendedIds = new Set(connectedProjectsForActiveDept.map((p) => p.id));
+    return allProjectOptions
+      .map((p) => ({ ...p, isRecommended: recommendedIds.has(p.id) }))
+      .sort((a, b) => {
+        if (a.isRecommended !== b.isRecommended) return a.isRecommended ? -1 : 1;
+        return a.clientName.localeCompare(b.clientName);
+      });
+  }, [allProjectOptions, connectedProjectsForActiveDept]);
 
   const assignableUsersForActiveDept = useMemo(() => {
     const allowedRoles = DEPT_TO_USER_ROLES[activeDept] || [];
@@ -919,7 +986,7 @@ const DailyFocusAndEodView: React.FC = () => {
 
   const openCreateTaskModal = () => {
     setCreateTaskData({
-      projectId: connectedProjectsForActiveDept[0]?.id || '',
+      projectId: connectedProjectsForActiveDept[0]?.id || allProjectOptions[0]?.id || '',
       title: '',
       description: '',
       dueDate: '',
@@ -1044,6 +1111,76 @@ const DailyFocusAndEodView: React.FC = () => {
               Set priorities for the team huddle — starts with <strong>{MIN_SLOTS_PER_DEPT} slots</strong> per department, up to <strong>{maxSlotsPerDept}</strong>. Tasks must match the department type. Click <strong>Task</strong> to open the details panel, or the pencil icon to edit inline.
             </div>
 
+            <div className="dfe-toolbar" style={{ marginTop: '-0.35rem' }}>
+              <div style={{ position: 'relative', minWidth: 280, maxWidth: 420, flex: 1 }}>
+                <input
+                  type="text"
+                  className="dfe-field-input"
+                  placeholder="Search project name to filter tasks…"
+                  value={projectSearchTerm}
+                  onChange={(e) => setProjectSearchTerm(e.target.value)}
+                  style={{ paddingRight: 36 }}
+                />
+                {isDebouncing && (
+                  <span style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    color: '#6366f1', fontSize: '0.75rem', display: 'flex', alignItems: 'center',
+                  }}>
+                    <FaSpinner className="dfe-spinner" />
+                  </span>
+                )}
+              </div>
+              {debouncedSearch && !isDebouncing && (
+                <span style={{
+                  fontSize: '0.78rem', fontWeight: 700, color: '#6366f1',
+                  background: '#eef2ff', border: '1px solid #c7d2fe',
+                  borderRadius: 99, padding: '3px 10px',
+                  animation: 'slideIn 0.18s ease',
+                }}>
+                  {tasksForDept.length} task{tasksForDept.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              <button
+                type="button"
+                className="dfe-btn dfe-btn-ghost"
+                onClick={() => { setProjectSearchTerm(''); setDebouncedSearch(''); }}
+                disabled={!projectSearchTerm}
+              >
+                Clear
+              </button>
+            </div>
+
+            {connectedProjectsForActiveDept.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: '-0.45rem', marginBottom: '0.9rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Quick project filter:</span>
+                {connectedProjectsForActiveDept.slice(0, 6).map((p) => (
+                  <button
+                    key={`quick-project-${p.id}`}
+                    type="button"
+                    className="dfe-btn dfe-btn-ghost"
+                    onClick={() => { setProjectSearchTerm(p.clientName); setDebouncedSearch(p.clientName); }}
+                    style={{ padding: '4px 9px', fontSize: '0.73rem' }}
+                  >
+                    {p.clientName}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {projectSearchTermLower && !isDebouncing && tasksForDept.length === 0 && (
+              <div className="dfe-hint" style={{ background: '#fff7ed', borderColor: '#fed7aa', color: '#9a3412' }}>
+                No tasks found for "<strong>{debouncedSearch}</strong>" in <strong>{deptInfo?.label || activeDept}</strong>.
+                <button
+                  type="button"
+                  className="dfe-btn dfe-btn-ghost"
+                  onClick={openCreateTaskModal}
+                  style={{ marginLeft: 10, padding: '4px 10px', borderColor: '#fdba74', color: '#9a3412', background: '#fff' }}
+                >
+                  <FaPlus style={{ fontSize: '0.65rem' }} /> Create task for this project
+                </button>
+              </div>
+            )}
+
             {/* Dept tabs */}
             <div className="dfe-dept-bar">
               {DEPT_KEYS.map((d) => {
@@ -1082,8 +1219,7 @@ const DailyFocusAndEodView: React.FC = () => {
                     type="button"
                     className="dfe-btn dfe-btn-ghost"
                     onClick={openCreateTaskModal}
-                    disabled={connectedProjectsForActiveDept.length === 0}
-                    title={connectedProjectsForActiveDept.length === 0 ? 'No projects connected to this department yet' : 'Create task in this department'}
+                    title="Create task in this department"
                     style={{ padding: '6px 10px' }}
                   >
                     <FaPlus style={{ fontSize: '0.65rem' }} /> Create task
@@ -1100,19 +1236,35 @@ const DailyFocusAndEodView: React.FC = () => {
                     {slots[activeDept].map((_, rank) => {
                       const slotTaskId = slots[activeDept][rank];
                       const slotTask = slotTaskId ? allTasks.find((x: any) => x.id === slotTaskId) : null;
+                      const rowOptions = optionsForRank(rank);
+                      const isVisible = !projectSearchTermLower || rowOptions.length > 0 || !!slotTaskId;
                       return (
-                        <div key={rank} className="dfe-priority-row">
+                        <div
+                          key={`${debouncedSearch}-${activeDept}-${rank}`}
+                          className="dfe-priority-row"
+                          style={{
+                            animation: 'rowReveal 0.22s ease both',
+                            animationDelay: `${rank * 38}ms`,
+                            opacity: isVisible ? 1 : 0.35,
+                            transition: 'opacity 0.2s ease',
+                          }}
+                        >
                           <span className="dfe-priority-num">#{rank + 1}</span>
                           <select
                             className={`dfe-priority-select${slotTaskId ? ' filled' : ''}`}
                             value={slotTaskId}
                             onChange={(e) => setSlot(rank, e.target.value)}
+                            disabled={!!projectSearchTermLower && rowOptions.length === 0 && !slotTaskId}
                           >
-                            <option value="">— Select task —</option>
-                            {optionsForRank(rank).map((t) => (
+                            <option value="">
+                              {projectSearchTermLower && rowOptions.length === 0 && !slotTaskId
+                                ? '— No tasks for this project filter —'
+                                : '— Select task —'}
+                            </option>
+                            {rowOptions.map((t) => (
                               <option key={t.id} value={t.id}>
                                 {t.title}{t.project?.clientName ? ` · ${t.project.clientName}` : ''}
-                                {t.type !== activeDept ? ` (${t.type})` : ''}
+                                {!taskMatchesActiveDept(t.type, activeDept) ? ` (${t.type})` : ''}
                               </option>
                             ))}
                             {slotTaskId && !slotTask && (
@@ -1153,7 +1305,6 @@ const DailyFocusAndEodView: React.FC = () => {
                             type="button"
                             className="dfe-btn dfe-btn-ghost"
                             onClick={openCreateTaskModal}
-                            disabled={connectedProjectsForActiveDept.length === 0}
                           >
                             <FaPlus style={{ fontSize: '0.65rem' }} /> Create first task
                           </button>
@@ -1531,7 +1682,7 @@ const DailyFocusAndEodView: React.FC = () => {
             </div>
             <div className="dfe-modal-body">
               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                Department will be set to <strong>{activeDeptTaskType}</strong>. Only projects already connected to this department are shown.
+                Department will be set to <strong>{activeDeptTaskType}</strong>. Connected projects appear first for convenience, but you can pick any active project.
               </div>
               <div>
                 <label className="dfe-field-label">Project *</label>
@@ -1540,10 +1691,10 @@ const DailyFocusAndEodView: React.FC = () => {
                   value={createTaskData.projectId}
                   onChange={(e) => setCreateTaskData((prev) => ({ ...prev, projectId: e.target.value }))}
                 >
-                  <option value="">Select connected project...</option>
-                  {connectedProjectsForActiveDept.map((p: any) => (
+                  <option value="">Select project...</option>
+                  {modalProjectOptions.map((p: any) => (
                     <option key={p.id} value={p.id}>
-                      {p.clientName}
+                      {p.isRecommended ? `★ ${p.clientName}` : p.clientName}
                     </option>
                   ))}
                 </select>
