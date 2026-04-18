@@ -116,6 +116,15 @@ function sortKanbanTasksByCreatedAt(tasks: any[], order: KanbanColumnSortOrder):
   });
 }
 
+type TaskDueAlert = {
+  taskId: string;
+  projectId: string;
+  taskTitle: string;
+  projectName: string;
+  daysLeft: number;
+  dueDate: Date;
+};
+
 interface RoleDashboardProps {
   role: string;
   pmPreviewMode?: boolean;
@@ -863,6 +872,38 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const taskModalProjectOptions = canCreateTasksForAllProjects && taskProjectScope === 'all'
     ? sortedAllProjects
     : sortedDepartmentProjects;
+
+  const taskDueAlerts = useMemo<TaskDueAlert[]>(() => {
+    if (!tasks.length) return [];
+
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const alerts: TaskDueAlert[] = [];
+    const projectNameMap = new Map<string, string>();
+    for (const p of projects) {
+      projectNameMap.set(p.id, p.clientName || 'Unknown Project');
+    }
+
+    for (const task of tasks) {
+      if (task?.isCompleted || task?.status === 'Completed' || task?.isArchived || !task?.dueDate) continue;
+      const dueDate = new Date(task.dueDate);
+      if (Number.isNaN(dueDate.getTime())) continue;
+
+      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
+      if (daysLeft >= 1 && daysLeft <= 5) {
+        alerts.push({
+          taskId: task.id,
+          projectId: task.projectId,
+          taskTitle: task.title || 'Untitled Task',
+          projectName: projectNameMap.get(task.projectId) || 'Unknown Project',
+          daysLeft,
+          dueDate,
+        });
+      }
+    }
+
+    return alerts.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+  }, [tasks, projects]);
 
   // Load deliverables when project is selected
   useEffect(() => {
@@ -2339,6 +2380,57 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             )}
           </div>
         </div>
+
+        {taskDueAlerts.length > 0 && (
+          <div style={{
+            margin: '0.85rem 2rem 0',
+            padding: '0.85rem 1rem',
+            borderRadius: '12px',
+            border: '1px solid #fecaca',
+            background: 'linear-gradient(135deg, #fff1f2 0%, #ffedd5 100%)',
+            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.16)',
+            animation: 'projectDuePulse 1.8s ease-in-out infinite',
+          }}>
+            <style>{`
+              @keyframes projectDuePulse {
+                0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.16); }
+                50% { box-shadow: 0 14px 28px rgba(239, 68, 68, 0.3); }
+              }
+            `}</style>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>
+                TASK DUE ALARM - {taskDueAlerts.length} task{taskDueAlerts.length === 1 ? '' : 's'} due in 5 days or less
+              </div>
+            </div>
+            <div style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+              {taskDueAlerts.slice(0, 8).map((item) => (
+                <button
+                  key={item.taskId}
+                  type="button"
+                  onClick={() => navigate(`/project/${item.projectId}?task=${item.taskId}&tab=details`)}
+                  style={{
+                    border: '1px solid #fca5a5',
+                    borderRadius: '999px',
+                    background: item.daysLeft <= 2 ? '#ef4444' : '#f97316',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '0.32rem 0.66rem',
+                    cursor: 'pointer',
+                  }}
+                  title={`Due ${item.dueDate.toLocaleDateString()}`}
+                >
+                  {item.projectName} - {item.taskTitle} ({item.daysLeft}d)
+                </button>
+              ))}
+              {taskDueAlerts.length > 8 && (
+                <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700, padding: '0.34rem 0.2rem' }}>
+                  +{taskDueAlerts.length - 8} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Task Content Area */}
         <div style={{
