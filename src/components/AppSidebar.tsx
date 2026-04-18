@@ -62,6 +62,18 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'DEPARTMENTS',
+    items: [
+      { path: '/department-view/copy-writing', label: 'Copy Writing Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/designer', label: 'Design Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/developer', label: 'Development Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/ai-developer', label: 'AI Dev Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/social-media', label: 'Social Media Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/crm', label: 'CRM Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/seo-geo', label: 'SEO/GEO Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+    ],
+  },
+  {
     title: 'TALK',
     items: [
       { path: '/forum', label: 'Forum', icon: <FaStickyNote /> },

@@ -30,6 +30,7 @@ import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
+import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
 import SubmitTicketModal from '../SubmitTicketModal';
 import TicketsModal from '../TicketsModal';
@@ -117,15 +118,17 @@ function sortKanbanTasksByCreatedAt(tasks: any[], order: KanbanColumnSortOrder):
 
 interface RoleDashboardProps {
   role: string;
+  pmPreviewMode?: boolean;
 }
 
-const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
+const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = false }) => {
   const navigate = useNavigate();
   const user = authService.getUser();
   const config = ROLE_CONFIG[role];
   
   // All hooks must be called before any conditional returns
   const [projects, setProjects] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +148,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   const skipRefreshUntilRef = useRef<number | null>(null);
   const [deliverableHistory] = useState<Record<string, any[]>>({});
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [taskProjectScope, setTaskProjectScope] = useState<'department' | 'all'>('department');
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     projectId: '',
     title: '',
@@ -245,7 +250,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return ROLE_CONFIG[departmentId]?.taskType || '';
   };
 
-  const canEditTeamOverride = Boolean(user?.isTeamLead && user?.role === role);
+  const isPmDepartmentPreview = Boolean(pmPreviewMode && user?.role === 'Project Manager');
+  const hasBoardManagementAccess = Boolean(
+    (user?.isTeamLead && user?.role === role) ||
+    user?.isHeadPM ||
+    user?.role === 'FOUNDER/CEO' ||
+    isPmDepartmentPreview
+  );
+  const canEditTeamOverride = hasBoardManagementAccess;
 
   // Load users once
   useEffect(() => {
@@ -343,6 +355,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
       );
 
       setProjects(combinedProjects);
+      setAllProjects(allProjectsData);
       setTasks(visibleRoleTasks);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -838,6 +851,19 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
     return userNameMap.get(userId) || 'Unassigned';
   };
 
+  const canCreateTasksForAllProjects = hasBoardManagementAccess;
+  const sortedDepartmentProjects = useMemo(
+    () => [...projects].sort((a: any, b: any) => (a?.clientName || '').localeCompare(b?.clientName || '')),
+    [projects]
+  );
+  const sortedAllProjects = useMemo(
+    () => [...allProjects].sort((a: any, b: any) => (a?.clientName || '').localeCompare(b?.clientName || '')),
+    [allProjects]
+  );
+  const taskModalProjectOptions = canCreateTasksForAllProjects && taskProjectScope === 'all'
+    ? sortedAllProjects
+    : sortedDepartmentProjects;
+
   // Load deliverables when project is selected
   useEffect(() => {
     const loadDeliverables = async () => {
@@ -1022,6 +1048,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
         deliverableId: '',
         assignedToId: ''
       });
+      setTaskProjectScope('department');
       setShowCustomDeliverableInput(false);
       setCustomDeliverableName('');
       alert('Task created successfully!');
@@ -1350,7 +1377,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
   });
   const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
   const isAIDeveloper = config.taskType === 'AI';
-  const isTeamLead = !!user?.isTeamLead;
+  const isTeamLead = hasBoardManagementAccess;
+  const canCreateProjects = Boolean(user?.isHeadPM || isTeamLead || user?.role === 'FOUNDER/CEO');
 
   // Continue with the rest of the component JSX...
   // Due to size limits, I'll create a simplified version that includes the key parts
@@ -2192,7 +2220,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             </div>
 
             <button
-              onClick={() => setShowAddTaskModal(true)}
+              onClick={() => {
+                setTaskProjectScope('department');
+                setShowAddTaskModal(true);
+              }}
               style={{
                 padding: '0.625rem 1.25rem',
                 border: 'none',
@@ -2219,6 +2250,38 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
               <FaPlus />
               Add Task
             </button>
+
+            {canCreateProjects && (
+              <button
+                onClick={() => setShowCreateProjectModal(true)}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  border: `1px solid ${color}`,
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: color,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${color}15`;
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+                title="Create project (head access)"
+              >
+                <FaPlus />
+                Create Project
+              </button>
+            )}
 
             {isTeamLead && viewMode === 'list' && (
               <button
@@ -4081,6 +4144,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                     deliverableId: '',
                     assignedToId: ''
                   });
+                  setTaskProjectScope('department');
                   setShowCustomDeliverableInput(false);
                   setCustomDeliverableName('');
                 }}
@@ -4116,6 +4180,42 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                 <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Project *
                 </label>
+                {canCreateTasksForAllProjects && (
+                  <div style={{ display: 'inline-flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.2rem', borderRadius: '8px', marginBottom: '0.6rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTaskProjectScope('department')}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        border: 'none',
+                        borderRadius: '6px',
+                        background: taskProjectScope === 'department' ? color : 'transparent',
+                        color: taskProjectScope === 'department' ? 'white' : '#4b5563',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Department Projects
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTaskProjectScope('all')}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        border: 'none',
+                        borderRadius: '6px',
+                        background: taskProjectScope === 'all' ? color : 'transparent',
+                        color: taskProjectScope === 'all' ? 'white' : '#4b5563',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      All Projects
+                    </button>
+                  </div>
+                )}
                 <select
                   value={newTaskData.projectId}
                   onChange={(e) => setNewTaskData({ ...newTaskData, projectId: e.target.value })}
@@ -4130,10 +4230,17 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                   }}
                 >
                   <option value="">Select a project</option>
-                  {projects.map((p: any) => (
+                  {taskModalProjectOptions.map((p: any) => (
                     <option key={p.id} value={p.id}>{p.clientName}</option>
                   ))}
                 </select>
+                {canCreateTasksForAllProjects && (
+                  <div style={{ marginTop: '0.45rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                    {taskProjectScope === 'all'
+                      ? 'Showing all projects so you can seed this department with new tasks.'
+                      : 'Showing projects currently connected to this department.'}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -4237,6 +4344,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
                     deliverableId: '',
                     assignedToId: ''
                   });
+                  setTaskProjectScope('department');
                   setShowCustomDeliverableInput(false);
                   setCustomDeliverableName('');
                 }}
@@ -4285,6 +4393,20 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {showCreateProjectModal && (
+        <CreateProjectModal
+          onClose={() => setShowCreateProjectModal(false)}
+          onSuccess={() => {
+            setShowCreateProjectModal(false);
+            loadData();
+          }}
+          onBulkSuccess={() => {
+            setShowCreateProjectModal(false);
+            loadData();
+          }}
+        />
       )}
 
       {/* Edit Task Modal - Similar structure to Add Task Modal */}

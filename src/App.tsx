@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -23,6 +23,7 @@ import TasksDueTodayView from './components/TasksDueTodayView';
 import DailyFocusAndEodView from './components/DailyFocusAndEodView';
 import DepartmentPrioritiesPmView from './components/DepartmentPrioritiesPmView';
 import RapidProspectDashboard from './components/dashboards/RapidProspectDashboard';
+import RoleDashboard from './components/dashboards/RoleDashboard';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
@@ -82,6 +83,30 @@ const RapidProspectRoute: React.FC = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const DEPARTMENT_ROLE_BY_SLUG: Record<string, string> = {
+  'copy-writing': 'Copy Writing',
+  'designer': 'Designer',
+  'developer': 'Developer',
+  'ai-developer': 'AI Developer',
+  'social-media': 'Social Media',
+  'crm': 'CRM',
+  'seo-geo': 'SEO/GEO',
+};
+
+/** Department board quick view for PM/Head PM/Founder */
+const DepartmentBoardRoute: React.FC = () => {
+  const user = authService.getUser();
+  const { roleSlug } = useParams<{ roleSlug: string }>();
+  const mappedRole = roleSlug ? DEPARTMENT_ROLE_BY_SLUG[roleSlug] : undefined;
+  const canAccess = user?.role === 'Project Manager' || user?.isHeadPM || user?.role === 'FOUNDER/CEO';
+
+  if (!canAccess || !mappedRole) {
+    return <Navigate to="/pm-dashboard" replace />;
+  }
+
+  return <RoleDashboard role={mappedRole} pmPreviewMode={user?.role === 'Project Manager'} />;
+};
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -104,6 +129,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <PMDashboardRoute />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/department-view/:roleSlug"
+          element={
+            <PrivateRoute>
+              <DepartmentBoardRoute />
             </PrivateRoute>
           }
         />
