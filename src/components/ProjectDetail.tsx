@@ -33,6 +33,7 @@ import { taskService } from '../services/task.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
+import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
 import EditTaskModal from './EditTaskModal';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import AppSidebar from './AppSidebar';
@@ -219,6 +220,7 @@ const ProjectDetail: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentUser = authService.getUser();
   const isPM = currentUser?.role === 'Project Manager';
+  const canViewMonthlyReminders = isPM || !!currentUser?.isHeadPM;
   const isTeamLead = !!currentUser?.isTeamLead;
   const canAssignOwners = isPM || isTeamLead;
   const [project, setProject] = useState<any>(null);
@@ -326,6 +328,8 @@ const ProjectDetail: React.FC = () => {
   const [showFilesLinksModal, setShowFilesLinksModal] = useState(false);
   const [filesLinksSearchQuery, setFilesLinksSearchQuery] = useState('');
   const [filesLinksFilter, setFilesLinksFilter] = useState<'all' | 'task' | 'email'>('all');
+  const [projectMonthlyReminders, setProjectMonthlyReminders] = useState<MonthlyReminder[]>([]);
+  const [loadingProjectMonthlyReminders, setLoadingProjectMonthlyReminders] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -334,6 +338,28 @@ const ProjectDetail: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProjectMonthlyReminders = async () => {
+      if (!id || !canViewMonthlyReminders) return;
+      try {
+        setLoadingProjectMonthlyReminders(true);
+        const reminders = await monthlyRemindersService.getByProject(id);
+        if (mounted) {
+          setProjectMonthlyReminders(Array.isArray(reminders) ? reminders : []);
+        }
+      } catch (error) {
+        console.error('Failed to load project monthly reminders:', error);
+      } finally {
+        if (mounted) setLoadingProjectMonthlyReminders(false);
+      }
+    };
+    loadProjectMonthlyReminders();
+    return () => {
+      mounted = false;
+    };
+  }, [id, canViewMonthlyReminders]);
 
   // Open task side modal when navigating with task query params
   useEffect(() => {
@@ -2144,6 +2170,82 @@ const ProjectDetail: React.FC = () => {
         <div className="next-action-banner">
           <FaExclamationTriangle className="action-icon" />
           <span>Next Action: {nextAction}</span>
+        </div>
+      )}
+
+      {canViewMonthlyReminders && (
+        <div style={{
+          maxWidth: '1600px',
+          margin: '0.85rem auto 0',
+          padding: '0 2rem',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            border: '1px solid #bfdbfe',
+            borderRadius: 14,
+            padding: '0.85rem 1rem',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.08)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#1e3a8a', fontWeight: 800 }}>
+                <FaStickyNote />
+                Monthly Remembering
+              </div>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#1d4ed8',
+                background: '#dbeafe',
+                borderRadius: 999,
+                border: '1px solid #93c5fd',
+                padding: '0.18rem 0.52rem',
+              }}>
+                {projectMonthlyReminders.length} linked note{projectMonthlyReminders.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {loadingProjectMonthlyReminders && (
+              <div style={{ marginTop: '0.45rem', fontSize: '0.82rem', color: '#1d4ed8' }}>
+                Loading monthly reminders...
+              </div>
+            )}
+            {!loadingProjectMonthlyReminders && projectMonthlyReminders.length === 0 && (
+              <div style={{ marginTop: '0.45rem', fontSize: '0.82rem', color: '#475569' }}>
+                No monthly reminders linked to this client yet.
+              </div>
+            )}
+            {!loadingProjectMonthlyReminders && projectMonthlyReminders.length > 0 && (
+              <div style={{ marginTop: '0.55rem', display: 'grid', gap: '0.4rem' }}>
+                {projectMonthlyReminders.map((item) => (
+                  <div key={item.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: '#ffffff',
+                    border: '1px solid #dbeafe',
+                    borderRadius: 10,
+                    padding: '0.45rem 0.55rem',
+                  }}>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      borderRadius: 999,
+                      background: '#2563eb',
+                      color: '#fff',
+                      fontWeight: 700,
+                      padding: '0.14rem 0.42rem',
+                      flexShrink: 0,
+                    }}>
+                      Day {item.reminderDay}
+                    </span>
+                    <span style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                      {item.note}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

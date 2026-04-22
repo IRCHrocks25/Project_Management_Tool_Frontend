@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaClock, FaUser, FaFolder, FaChevronRight, FaBell, FaCog, FaSignOutAlt, FaComments } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
 import { notificationService } from '../services/notification.service';
+import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
 import NotificationsModal from './NotificationsModal';
 import LiveChatPanel from './LiveChatPanel';
+import CreateProjectModal from './CreateProjectModal';
+import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './dashboards/PMAlertsPanel';
 import { useUnreadChatCount } from '../hooks/useUnreadChatCount';
 import './Dashboard.css';
 
@@ -20,8 +23,21 @@ const TasksDueTodayView: React.FC = () => {
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showLiveChatPanel, setShowLiveChatPanel] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
+  const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
+  const [alertsTab, setAlertsTab] = useState<'due' | 'monthly'>('due');
+  const [monthlyReminders, setMonthlyReminders] = useState<MonthlyReminder[]>([]);
+  const [loadingMonthlyReminders, setLoadingMonthlyReminders] = useState(false);
+  const [savingMonthlyReminder, setSavingMonthlyReminder] = useState(false);
+  const [editingMonthlyReminderId, setEditingMonthlyReminderId] = useState<string | null>(null);
+  const [monthlyReminderForm, setMonthlyReminderForm] = useState<PMMonthlyReminderForm>({
+    projectId: '',
+    manualClientName: '',
+    reminderDay: 24,
+    note: '',
+  });
 
   const loadData = useCallback(async () => {
     try {
@@ -54,6 +70,134 @@ const TasksDueTodayView: React.FC = () => {
     loadData();
     loadUnreadCount();
   }, [loadData]);
+
+  const taskDueAlerts = useMemo<PMTaskDueAlert[]>(() => {
+    if (!tasks.length) return [];
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const alerts: PMTaskDueAlert[] = [];
+    const projectNameMap = new Map<string, string>();
+    for (const p of projects) {
+      projectNameMap.set(p.id, p.clientName || 'Unknown Project');
+    }
+
+    for (const task of tasks) {
+      if (task?.isCompleted || task?.status === 'Completed' || task?.isArchived || !task?.dueDate) continue;
+      const dueDate = new Date(task.dueDate);
+      if (Number.isNaN(dueDate.getTime())) continue;
+      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
+      if (daysLeft >= 1 && daysLeft <= 5) {
+        alerts.push({
+          taskId: task.id,
+          projectId: task.projectId,
+          taskTitle: task.title || 'Untitled Task',
+          projectName: projectNameMap.get(task.projectId) || 'Unknown Project',
+          daysLeft,
+          dueDate,
+        });
+      }
+    }
+
+    return alerts.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+  }, [tasks, projects]);
+
+  const canManageMonthlyReminders = user?.role === 'Project Manager' || !!user?.isHeadPM;
+
+  const projectOptionsForMonthlyReminders = useMemo(() => {
+    return [...projects]
+      .filter((p: any) => !p?.isArchived)
+      .sort((a: any, b: any) => (a.clientName || '').localeCompare(b.clientName || ''));
+  }, [projects]);
+
+  const loadMonthlyReminders = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    try {
+      setLoadingMonthlyReminders(true);
+      const data = await monthlyRemindersService.getAll();
+      setMonthlyReminders(data || []);
+    } catch (error) {
+      console.error('Failed to load monthly reminders:', error);
+    } finally {
+      setLoadingMonthlyReminders(false);
+    }
+  }, [canManageMonthlyReminders]);
+
+  useEffect(() => {
+    loadMonthlyReminders();
+  }, [loadMonthlyReminders]);
+
+  const resetMonthlyReminderForm = useCallback(() => {
+    setEditingMonthlyReminderId(null);
+    setMonthlyReminderForm({
+      projectId: '',
+      manualClientName: '',
+      reminderDay: 24,
+      note: '',
+    });
+  }, []);
+
+  const handleSaveMonthlyReminder = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    const payload = {
+      projectId: monthlyReminderForm.projectId || null,
+      clientName: monthlyReminderForm.projectId ? undefined : monthlyReminderForm.manualClientName.trim(),
+      reminderDay: Number(monthlyReminderForm.reminderDay),
+      note: monthlyReminderForm.note.trim(),
+    };
+
+    if (!payload.note) {
+      alert('Please add a reminder note.');
+      return;
+    }
+    if (!payload.projectId && !payload.clientName) {
+      alert('Please select a project or enter a client name manually.');
+      return;
+    }
+    if (!Number.isFinite(payload.reminderDay) || payload.reminderDay < 1 || payload.reminderDay > 31) {
+      alert('Reminder day must be between 1 and 31.');
+      return;
+    }
+
+    try {
+      setSavingMonthlyReminder(true);
+      if (editingMonthlyReminderId) {
+        await monthlyRemindersService.update(editingMonthlyReminderId, payload);
+      } else {
+        await monthlyRemindersService.create(payload);
+      }
+      await loadMonthlyReminders();
+      resetMonthlyReminderForm();
+    } catch (error) {
+      console.error('Failed to save monthly reminder:', error);
+      alert('Failed to save monthly reminder. Please try again.');
+    } finally {
+      setSavingMonthlyReminder(false);
+    }
+  }, [canManageMonthlyReminders, monthlyReminderForm, editingMonthlyReminderId, loadMonthlyReminders, resetMonthlyReminderForm]);
+
+  const handleEditMonthlyReminder = useCallback((item: MonthlyReminder) => {
+    setEditingMonthlyReminderId(item.id);
+    setAlertsTab('monthly');
+    setMonthlyReminderForm({
+      projectId: item.projectId || '',
+      manualClientName: item.projectId ? '' : item.clientName,
+      reminderDay: item.reminderDay,
+      note: item.note,
+    });
+  }, []);
+
+  const handleDeleteMonthlyReminder = useCallback(async (id: string) => {
+    if (!canManageMonthlyReminders) return;
+    if (!window.confirm('Delete this monthly reminder?')) return;
+    try {
+      await monthlyRemindersService.remove(id);
+      await loadMonthlyReminders();
+      if (editingMonthlyReminderId === id) resetMonthlyReminderForm();
+    } catch (error) {
+      console.error('Failed to delete monthly reminder:', error);
+      alert('Failed to delete monthly reminder.');
+    }
+  }, [canManageMonthlyReminders, loadMonthlyReminders, editingMonthlyReminderId, resetMonthlyReminderForm]);
 
   const today = new Date();
   const todayString = today.toDateString();
@@ -89,6 +233,12 @@ const TasksDueTodayView: React.FC = () => {
   const handleSignOut = () => {
     authService.logout();
     navigate('/login');
+  };
+
+  const handleProjectCreated = async () => {
+    setShowCreateModal(false);
+    await loadData();
+    await loadMonthlyReminders();
   };
 
   return (
@@ -262,6 +412,29 @@ const TasksDueTodayView: React.FC = () => {
 
       {/* Main content */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+        <PMAlertsPanel
+          taskDueAlerts={taskDueAlerts}
+          canManageMonthlyReminders={canManageMonthlyReminders}
+          alertsTab={alertsTab}
+          setAlertsTab={setAlertsTab}
+          showAllTaskDueAlerts={showAllTaskDueAlerts}
+          setShowAllTaskDueAlerts={setShowAllTaskDueAlerts}
+          monthlyReminders={monthlyReminders}
+          monthlyReminderForm={monthlyReminderForm}
+          setMonthlyReminderForm={setMonthlyReminderForm}
+          projectOptionsForMonthlyReminders={projectOptionsForMonthlyReminders}
+          savingMonthlyReminder={savingMonthlyReminder}
+          editingMonthlyReminderId={editingMonthlyReminderId}
+          resetMonthlyReminderForm={resetMonthlyReminderForm}
+          handleSaveMonthlyReminder={handleSaveMonthlyReminder}
+          loadingMonthlyReminders={loadingMonthlyReminders}
+          handleEditMonthlyReminder={handleEditMonthlyReminder}
+          handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
+          openTask={(projectId, taskId) => navigate(`/project/${projectId}?task=${taskId}&tab=details`)}
+          openProject={(projectId) => navigate(`/project/${projectId}`)}
+          onCreateProjectClick={() => setShowCreateModal(true)}
+        />
+
         {loading ? (
           <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
             Loading tasks...
@@ -412,6 +585,13 @@ const TasksDueTodayView: React.FC = () => {
           isOpen={showNotificationsModal}
           onClose={() => setShowNotificationsModal(false)}
           onMarkAllAsRead={loadUnreadCount}
+        />
+      )}
+      {showCreateModal && (
+        <CreateProjectModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleProjectCreated}
+          onBulkSuccess={loadData}
         />
       )}
     </div>

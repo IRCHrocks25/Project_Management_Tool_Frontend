@@ -21,7 +21,11 @@ import {
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { taskService } from '../services/task.service';
+import { projectService } from '../services/project.service';
+import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
+import CreateProjectModal from './CreateProjectModal';
+import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './dashboards/PMAlertsPanel';
 import {
   dailyFocusService,
   DailyFocusRow,
@@ -580,7 +584,21 @@ const DailyFocusAndEodView: React.FC = () => {
   const [selectedNotDoneRow, setSelectedNotDoneRow] = useState<any | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [resumeCreateTaskAfterProjectModal, setResumeCreateTaskAfterProjectModal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
+  const [alertsTab, setAlertsTab] = useState<'due' | 'monthly'>('due');
+  const [monthlyReminders, setMonthlyReminders] = useState<MonthlyReminder[]>([]);
+  const [loadingMonthlyReminders, setLoadingMonthlyReminders] = useState(false);
+  const [savingMonthlyReminder, setSavingMonthlyReminder] = useState(false);
+  const [editingMonthlyReminderId, setEditingMonthlyReminderId] = useState<string | null>(null);
+  const [monthlyReminderForm, setMonthlyReminderForm] = useState<PMMonthlyReminderForm>({
+    projectId: '',
+    manualClientName: '',
+    reminderDay: 24,
+    note: '',
+  });
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isDebouncing, setIsDebouncing] = useState(false);
@@ -591,6 +609,7 @@ const DailyFocusAndEodView: React.FC = () => {
     dueDate: '',
     assignedToId: '',
   });
+  const [allProjects, setAllProjects] = useState<any[]>([]);
   const eodPrintableRef = useRef<HTMLDivElement | null>(null);
 
   const loadTasks = useCallback(async () => {
@@ -602,6 +621,15 @@ const DailyFocusAndEodView: React.FC = () => {
       setError(e?.response?.data?.message || 'Failed to load tasks');
     } finally {
       setLoadingTasks(false);
+    }
+  }, []);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const data = await projectService.getAll();
+      setAllProjects((data || []).filter((p: any) => !p?.isArchived));
+    } catch (e) {
+      console.error('Failed to load projects:', e);
     }
   }, []);
 
@@ -631,6 +659,7 @@ const DailyFocusAndEodView: React.FC = () => {
   }, [focusDate, applyFocusRows]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => { loadProjects(); }, [loadProjects]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -673,6 +702,36 @@ const DailyFocusAndEodView: React.FC = () => {
     const hit = allTasks.find((x: any) => x.projectId === projectId && x.project?.pm?.name);
     return hit?.project?.pm?.name || '';
   }, [allTasks]);
+
+  const canManageMonthlyReminders = user?.role === 'Project Manager' || !!user?.isHeadPM;
+
+  const taskDueAlerts = useMemo<PMTaskDueAlert[]>(() => {
+    if (!allTasks.length) return [];
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const alerts: PMTaskDueAlert[] = [];
+
+    for (const task of allTasks) {
+      if (task?.isCompleted || task?.status === 'Completed' || task?.isArchived || !task?.dueDate) continue;
+      if (!taskMatchesActiveDept(task?.type, activeDept)) continue;
+      const dueDate = new Date(task.dueDate);
+      if (Number.isNaN(dueDate.getTime())) continue;
+
+      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
+      if (daysLeft >= 1 && daysLeft <= 5) {
+        alerts.push({
+          taskId: task.id,
+          projectId: task.projectId,
+          taskTitle: task.title || 'Untitled Task',
+          projectName: task.project?.clientName || getProjectName(task.projectId),
+          daysLeft,
+          dueDate,
+        });
+      }
+    }
+
+    return alerts.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+  }, [allTasks, activeDept, getProjectName]);
 
   const handleCloseTaskDetail = useCallback(() => { setShowTaskDetailModal(false); setSelectedTaskDetail(null); }, []);
   const handleOpenTaskDetail = useCallback((task: any, tab?: 'details' | 'conversation') => {
@@ -956,6 +1015,13 @@ const DailyFocusAndEodView: React.FC = () => {
 
   const allProjectOptions = useMemo(() => {
     const byProjectId = new Map<string, { id: string; clientName: string }>();
+    allProjects.forEach((p: any) => {
+      if (!p?.id || p?.isArchived) return;
+      byProjectId.set(p.id, {
+        id: p.id,
+        clientName: p.clientName || 'Unknown Project',
+      });
+    });
     allTasks.forEach((t: any) => {
       if (!t.projectId || t.isArchived || t.project?.isArchived) return;
       if (!byProjectId.has(t.projectId)) {
@@ -966,7 +1032,103 @@ const DailyFocusAndEodView: React.FC = () => {
       }
     });
     return Array.from(byProjectId.values()).sort((a, b) => a.clientName.localeCompare(b.clientName));
-  }, [allTasks, getProjectName]);
+  }, [allTasks, allProjects, getProjectName]);
+
+  const projectOptionsForMonthlyReminders = useMemo(() => {
+    return [...allProjects]
+      .filter((p: any) => !p?.isArchived)
+      .sort((a: any, b: any) => (a.clientName || '').localeCompare(b.clientName || ''));
+  }, [allProjects]);
+
+  const loadMonthlyReminders = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    try {
+      setLoadingMonthlyReminders(true);
+      const data = await monthlyRemindersService.getAll();
+      setMonthlyReminders(data || []);
+    } catch (e) {
+      console.error('Failed to load monthly reminders:', e);
+    } finally {
+      setLoadingMonthlyReminders(false);
+    }
+  }, [canManageMonthlyReminders]);
+
+  useEffect(() => {
+    loadMonthlyReminders();
+  }, [loadMonthlyReminders]);
+
+  const resetMonthlyReminderForm = useCallback(() => {
+    setEditingMonthlyReminderId(null);
+    setMonthlyReminderForm({
+      projectId: '',
+      manualClientName: '',
+      reminderDay: 24,
+      note: '',
+    });
+  }, []);
+
+  const handleSaveMonthlyReminder = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    const payload = {
+      projectId: monthlyReminderForm.projectId || null,
+      clientName: monthlyReminderForm.projectId ? undefined : monthlyReminderForm.manualClientName.trim(),
+      reminderDay: Number(monthlyReminderForm.reminderDay),
+      note: monthlyReminderForm.note.trim(),
+    };
+
+    if (!payload.note) {
+      alert('Please add a reminder note.');
+      return;
+    }
+    if (!payload.projectId && !payload.clientName) {
+      alert('Please select a project or enter a client name manually.');
+      return;
+    }
+    if (!Number.isFinite(payload.reminderDay) || payload.reminderDay < 1 || payload.reminderDay > 31) {
+      alert('Reminder day must be between 1 and 31.');
+      return;
+    }
+
+    try {
+      setSavingMonthlyReminder(true);
+      if (editingMonthlyReminderId) {
+        await monthlyRemindersService.update(editingMonthlyReminderId, payload);
+      } else {
+        await monthlyRemindersService.create(payload);
+      }
+      await loadMonthlyReminders();
+      resetMonthlyReminderForm();
+    } catch (e) {
+      console.error('Failed to save monthly reminder:', e);
+      alert('Failed to save monthly reminder. Please try again.');
+    } finally {
+      setSavingMonthlyReminder(false);
+    }
+  }, [canManageMonthlyReminders, monthlyReminderForm, editingMonthlyReminderId, loadMonthlyReminders, resetMonthlyReminderForm]);
+
+  const handleEditMonthlyReminder = useCallback((item: MonthlyReminder) => {
+    setEditingMonthlyReminderId(item.id);
+    setAlertsTab('monthly');
+    setMonthlyReminderForm({
+      projectId: item.projectId || '',
+      manualClientName: item.projectId ? '' : item.clientName,
+      reminderDay: item.reminderDay,
+      note: item.note,
+    });
+  }, []);
+
+  const handleDeleteMonthlyReminder = useCallback(async (id: string) => {
+    if (!canManageMonthlyReminders) return;
+    if (!window.confirm('Delete this monthly reminder?')) return;
+    try {
+      await monthlyRemindersService.remove(id);
+      await loadMonthlyReminders();
+      if (editingMonthlyReminderId === id) resetMonthlyReminderForm();
+    } catch (e) {
+      console.error('Failed to delete monthly reminder:', e);
+      alert('Failed to delete monthly reminder.');
+    }
+  }, [canManageMonthlyReminders, loadMonthlyReminders, editingMonthlyReminderId, resetMonthlyReminderForm]);
 
   const modalProjectOptions = useMemo(() => {
     const recommendedIds = new Set(connectedProjectsForActiveDept.map((p) => p.id));
@@ -1039,6 +1201,33 @@ const DailyFocusAndEodView: React.FC = () => {
     }
   };
 
+  const handleProjectCreatedFromTaskModal = useCallback(async () => {
+    setShowCreateProjectModal(false);
+    await loadProjects();
+    await loadTasks();
+    await loadMonthlyReminders();
+    if (resumeCreateTaskAfterProjectModal) {
+      setShowCreateTaskModal(true);
+      setResumeCreateTaskAfterProjectModal(false);
+    }
+    setCreateTaskData((prev) => ({
+      ...prev,
+      projectId: prev.projectId || '',
+    }));
+    setMessage('Project created. You can now attach the task to it.');
+  }, [loadProjects, loadTasks, loadMonthlyReminders, resumeCreateTaskAfterProjectModal]);
+
+  const handleOpenCreateProjectFromTaskModal = useCallback(() => {
+    setResumeCreateTaskAfterProjectModal(true);
+    setShowCreateTaskModal(false);
+    setShowCreateProjectModal(true);
+  }, []);
+
+  const handleOpenCreateProjectFromAlerts = useCallback(() => {
+    setResumeCreateTaskAfterProjectModal(false);
+    setShowCreateProjectModal(true);
+  }, []);
+
   return (
     <div className="dfe-root" style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <style>{css}</style>
@@ -1093,6 +1282,36 @@ const DailyFocusAndEodView: React.FC = () => {
         {/* ════════════ FOCUS TAB ════════════ */}
         {tab === 'focus' && (
           <div>
+            <PMAlertsPanel
+              taskDueAlerts={taskDueAlerts}
+              canManageMonthlyReminders={canManageMonthlyReminders}
+              alertsTab={alertsTab}
+              setAlertsTab={setAlertsTab}
+              showAllTaskDueAlerts={showAllTaskDueAlerts}
+              setShowAllTaskDueAlerts={setShowAllTaskDueAlerts}
+              monthlyReminders={monthlyReminders}
+              monthlyReminderForm={monthlyReminderForm}
+              setMonthlyReminderForm={setMonthlyReminderForm}
+              projectOptionsForMonthlyReminders={projectOptionsForMonthlyReminders}
+              savingMonthlyReminder={savingMonthlyReminder}
+              editingMonthlyReminderId={editingMonthlyReminderId}
+              resetMonthlyReminderForm={resetMonthlyReminderForm}
+              handleSaveMonthlyReminder={handleSaveMonthlyReminder}
+              loadingMonthlyReminders={loadingMonthlyReminders}
+              handleEditMonthlyReminder={handleEditMonthlyReminder}
+              handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
+              openTask={(projectId, taskId) => {
+                const task = allTasks.find((t: any) => t.id === taskId && t.projectId === projectId);
+                if (task) {
+                  handleOpenTaskDetail(task);
+                  return;
+                }
+                navigate(`/project/${projectId}?task=${taskId}&tab=details`);
+              }}
+              openProject={(projectId) => navigate(`/project/${projectId}`)}
+              onCreateProjectClick={handleOpenCreateProjectFromAlerts}
+            />
+
             {/* Toolbar */}
             <div className="dfe-toolbar">
               <div className="dfe-date-group">
@@ -1685,7 +1904,17 @@ const DailyFocusAndEodView: React.FC = () => {
                 Department will be set to <strong>{activeDeptTaskType}</strong>. Connected projects appear first for convenience, but you can pick any active project.
               </div>
               <div>
-                <label className="dfe-field-label">Project *</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                  <label className="dfe-field-label" style={{ marginBottom: 0 }}>Project *</label>
+                  <button
+                    type="button"
+                    className="dfe-btn dfe-btn-ghost"
+                    onClick={handleOpenCreateProjectFromTaskModal}
+                    style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+                  >
+                    <FaPlus style={{ fontSize: '0.62rem' }} /> Create new project
+                  </button>
+                </div>
                 <select
                   className="dfe-field-select"
                   value={createTaskData.projectId}
@@ -1698,6 +1927,11 @@ const DailyFocusAndEodView: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {modalProjectOptions.length === 0 && (
+                  <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#64748b' }}>
+                    No projects found yet. Create a new project first.
+                  </div>
+                )}
               </div>
               <div>
                 <label className="dfe-field-label">Task Title *</label>
@@ -1875,6 +2109,28 @@ const DailyFocusAndEodView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showCreateProjectModal && (
+        <CreateProjectModal
+          onClose={() => {
+            setShowCreateProjectModal(false);
+            if (resumeCreateTaskAfterProjectModal) {
+              setShowCreateTaskModal(true);
+              setResumeCreateTaskAfterProjectModal(false);
+            }
+          }}
+          onSuccess={handleProjectCreatedFromTaskModal}
+          onBulkSuccess={async () => {
+            await loadProjects();
+            await loadTasks();
+            await loadMonthlyReminders();
+            if (resumeCreateTaskAfterProjectModal) {
+              setShowCreateTaskModal(true);
+              setResumeCreateTaskAfterProjectModal(false);
+            }
+          }}
+        />
       )}
 
       <TaskDetailSideModal

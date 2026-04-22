@@ -237,6 +237,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
+  const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
   const [showTestWebhookModal, setShowTestWebhookModal] = useState(false);
   const [testWebhookUserId, setTestWebhookUserId] = useState<string>('');
   const [testWebhookSending, setTestWebhookSending] = useState(false);
@@ -2384,49 +2385,125 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         {taskDueAlerts.length > 0 && (
           <div style={{
             margin: '0.85rem 2rem 0',
-            padding: '0.85rem 1rem',
-            borderRadius: '12px',
-            border: '1px solid #fecaca',
-            background: 'linear-gradient(135deg, #fff1f2 0%, #ffedd5 100%)',
-            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.16)',
-            animation: 'projectDuePulse 1.8s ease-in-out infinite',
+            padding: '1rem 1.1rem',
+            borderRadius: '14px',
+            border: '1px solid #fca5a5',
+            background: 'linear-gradient(135deg, #fff1f2 0%, #fffbeb 100%)',
+            boxShadow: '0 10px 28px rgba(239, 68, 68, 0.18)',
+            animation: 'taskDuePulse 1.8s ease-in-out infinite',
+            position: 'relative',
+            overflow: 'hidden',
           }}>
             <style>{`
-              @keyframes projectDuePulse {
-                0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.16); }
-                50% { box-shadow: 0 14px 28px rgba(239, 68, 68, 0.3); }
+              @keyframes taskDuePulse {
+                0%, 100% { box-shadow: 0 10px 28px rgba(239, 68, 68, 0.18); }
+                50% { box-shadow: 0 16px 34px rgba(239, 68, 68, 0.3); }
               }
             `}</style>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #ef4444 0%, #f97316 100%)',
+            }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>
-                TASK DUE ALARM - {taskDueAlerts.length} task{taskDueAlerts.length === 1 ? '' : 's'} due in 5 days or less
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '1rem' }}>🚨</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#991b1b' }}>
+                  Task Due Alarm
+                </div>
               </div>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#9a3412',
+                background: '#ffedd5',
+                border: '1px solid #fdba74',
+                borderRadius: '999px',
+                padding: '0.2rem 0.6rem',
+              }}>
+                {taskDueAlerts.length} due soon
+              </span>
             </div>
-            <div style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-              {taskDueAlerts.slice(0, 8).map((item) => (
+            <div style={{ fontSize: '0.78rem', color: '#7f1d1d', marginTop: '0.3rem', marginBottom: '0.6rem', fontWeight: 600 }}>
+              1-2 days = Critical · 3-5 days = High
+            </div>
+            <div style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {(showAllTaskDueAlerts ? taskDueAlerts : taskDueAlerts.slice(0, 8)).map((item) => (
                 <button
                   key={item.taskId}
                   type="button"
                   onClick={() => navigate(`/project/${item.projectId}?task=${item.taskId}&tab=details`)}
                   style={{
-                    border: '1px solid #fca5a5',
-                    borderRadius: '999px',
-                    background: item.daysLeft <= 2 ? '#ef4444' : '#f97316',
-                    color: 'white',
+                    border: item.daysLeft <= 2 ? '1px solid #ef4444' : '1px solid #f97316',
+                    borderRadius: '10px',
+                    background: item.daysLeft <= 2 ? '#fef2f2' : '#fff7ed',
+                    color: item.daysLeft <= 2 ? '#b91c1c' : '#c2410c',
                     fontSize: '0.75rem',
                     fontWeight: 700,
-                    padding: '0.32rem 0.66rem',
+                    padding: '0.4rem 0.65rem',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    maxWidth: '360px',
+                    textAlign: 'left',
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
                   }}
                   title={`Due ${item.dueDate.toLocaleDateString()}`}
                 >
-                  {item.projectName} - {item.taskTitle} ({item.daysLeft}d)
+                  <span style={{
+                    fontSize: '0.65rem',
+                    borderRadius: '999px',
+                    padding: '0.15rem 0.45rem',
+                    background: item.daysLeft <= 2 ? '#ef4444' : '#f97316',
+                    color: 'white',
+                    flexShrink: 0,
+                  }}>
+                    {item.daysLeft}d
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.projectName} · {item.taskTitle}
+                  </span>
                 </button>
               ))}
-              {taskDueAlerts.length > 8 && (
-                <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700, padding: '0.34rem 0.2rem' }}>
+              {taskDueAlerts.length > 8 && !showAllTaskDueAlerts && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTaskDueAlerts(true)}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#9a3412',
+                    fontWeight: 700,
+                    padding: '0.34rem 0.6rem',
+                    borderRadius: '999px',
+                    border: '1px solid #fdba74',
+                    background: '#fff7ed',
+                    cursor: 'pointer',
+                  }}
+                >
                   +{taskDueAlerts.length - 8} more
-                </span>
+                </button>
+              )}
+              {taskDueAlerts.length > 8 && showAllTaskDueAlerts && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTaskDueAlerts(false)}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#9a3412',
+                    fontWeight: 700,
+                    padding: '0.34rem 0.6rem',
+                    borderRadius: '999px',
+                    border: '1px solid #fdba74',
+                    background: '#fff7ed',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Show less
+                </button>
               )}
             </div>
           </div>

@@ -6,6 +6,7 @@ import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
 import { notificationService } from '../../services/notification.service';
 import { clientUpdatesService, ClientUpdateComment } from '../../services/client-updates.service';
+import { MonthlyReminder, monthlyRemindersService } from '../../services/monthlyReminders.service';
 import CreateProjectModal from '../CreateProjectModal';
 import NotificationsModal from '../NotificationsModal';
 import SubmitTicketModal from '../SubmitTicketModal';
@@ -15,21 +16,13 @@ import PMTasksTableView from './PMTasksTableView';
 import PMListView from './PMListView';
 import PMKanbanView from './PMKanbanView';
 import PMQuickOverview from './PMQuickOverview';
+import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './PMAlertsPanel';
 import UserAvatar from '../UserAvatar';
 import AppSidebar from '../AppSidebar';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 
 const ITEMS_PER_PAGE = 10; // Constant for pagination
-
-type TaskDueAlert = {
-  taskId: string;
-  projectId: string;
-  taskTitle: string;
-  projectName: string;
-  daysLeft: number;
-  dueDate: Date;
-};
 
 const PMDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -89,6 +82,18 @@ const PMDashboard: React.FC = () => {
   const [tasksDepartmentFilter, setTasksDepartmentFilter] = useState<string>('All Departments');
   const [tasksPmFilter, setTasksPmFilter] = useState<string>('All');
   const [tasksAssigneeFilter, setTasksAssigneeFilter] = useState<string>('All');
+  const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
+  const [alertsTab, setAlertsTab] = useState<'due' | 'monthly'>('due');
+  const [monthlyReminders, setMonthlyReminders] = useState<MonthlyReminder[]>([]);
+  const [loadingMonthlyReminders, setLoadingMonthlyReminders] = useState(false);
+  const [savingMonthlyReminder, setSavingMonthlyReminder] = useState(false);
+  const [editingMonthlyReminderId, setEditingMonthlyReminderId] = useState<string | null>(null);
+  const [monthlyReminderForm, setMonthlyReminderForm] = useState<PMMonthlyReminderForm>({
+    projectId: '',
+    manualClientName: '',
+    reminderDay: 24,
+    note: '',
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
 
@@ -757,12 +762,12 @@ const PMDashboard: React.FC = () => {
       : `${todayTasks} tasks need attention today`;
   }, [todayTasks]);
 
-  const taskDueAlerts = useMemo<TaskDueAlert[]>(() => {
+  const taskDueAlerts = useMemo<PMTaskDueAlert[]>(() => {
     if (!tasks.length) return [];
 
     const now = new Date();
     const msPerDay = 1000 * 60 * 60 * 24;
-    const alerts: TaskDueAlert[] = [];
+    const alerts: PMTaskDueAlert[] = [];
     const projectNameMap = new Map<string, string>();
     for (const p of projects) {
       projectNameMap.set(p.id, p.clientName || 'Unknown Project');
@@ -788,6 +793,104 @@ const PMDashboard: React.FC = () => {
 
     return alerts.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
   }, [tasks, projects]);
+
+  const canManageMonthlyReminders = user?.role === 'Project Manager' || !!user?.isHeadPM;
+
+  const projectOptionsForMonthlyReminders = useMemo(() => {
+    return [...projects]
+      .filter((p: any) => !p?.isArchived)
+      .sort((a: any, b: any) => (a.clientName || '').localeCompare(b.clientName || ''));
+  }, [projects]);
+
+  const loadMonthlyReminders = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    try {
+      setLoadingMonthlyReminders(true);
+      const data = await monthlyRemindersService.getAll();
+      setMonthlyReminders(data || []);
+    } catch (error) {
+      console.error('Failed to load monthly reminders:', error);
+    } finally {
+      setLoadingMonthlyReminders(false);
+    }
+  }, [canManageMonthlyReminders]);
+
+  useEffect(() => {
+    loadMonthlyReminders();
+  }, [loadMonthlyReminders]);
+
+  const resetMonthlyReminderForm = useCallback(() => {
+    setEditingMonthlyReminderId(null);
+    setMonthlyReminderForm({
+      projectId: '',
+      manualClientName: '',
+      reminderDay: 24,
+      note: '',
+    });
+  }, []);
+
+  const handleSaveMonthlyReminder = useCallback(async () => {
+    if (!canManageMonthlyReminders) return;
+    const payload = {
+      projectId: monthlyReminderForm.projectId || null,
+      clientName: monthlyReminderForm.projectId ? undefined : monthlyReminderForm.manualClientName.trim(),
+      reminderDay: Number(monthlyReminderForm.reminderDay),
+      note: monthlyReminderForm.note.trim(),
+    };
+
+    if (!payload.note) {
+      alert('Please add a reminder note.');
+      return;
+    }
+    if (!payload.projectId && !payload.clientName) {
+      alert('Please select a project or enter a client name manually.');
+      return;
+    }
+    if (!Number.isFinite(payload.reminderDay) || payload.reminderDay < 1 || payload.reminderDay > 31) {
+      alert('Reminder day must be between 1 and 31.');
+      return;
+    }
+
+    try {
+      setSavingMonthlyReminder(true);
+      if (editingMonthlyReminderId) {
+        await monthlyRemindersService.update(editingMonthlyReminderId, payload);
+      } else {
+        await monthlyRemindersService.create(payload);
+      }
+      await loadMonthlyReminders();
+      resetMonthlyReminderForm();
+    } catch (error) {
+      console.error('Failed to save monthly reminder:', error);
+      alert('Failed to save monthly reminder. Please try again.');
+    } finally {
+      setSavingMonthlyReminder(false);
+    }
+  }, [canManageMonthlyReminders, monthlyReminderForm, editingMonthlyReminderId, loadMonthlyReminders, resetMonthlyReminderForm]);
+
+  const handleEditMonthlyReminder = useCallback((item: MonthlyReminder) => {
+    setEditingMonthlyReminderId(item.id);
+    setAlertsTab('monthly');
+    setMonthlyReminderForm({
+      projectId: item.projectId || '',
+      manualClientName: item.projectId ? '' : item.clientName,
+      reminderDay: item.reminderDay,
+      note: item.note,
+    });
+  }, []);
+
+  const handleDeleteMonthlyReminder = useCallback(async (id: string) => {
+    if (!canManageMonthlyReminders) return;
+    if (!window.confirm('Delete this monthly reminder?')) return;
+    try {
+      await monthlyRemindersService.remove(id);
+      await loadMonthlyReminders();
+      if (editingMonthlyReminderId === id) resetMonthlyReminderForm();
+    } catch (error) {
+      console.error('Failed to delete monthly reminder:', error);
+      alert('Failed to delete monthly reminder.');
+    }
+  }, [canManageMonthlyReminders, loadMonthlyReminders, editingMonthlyReminderId, resetMonthlyReminderForm]);
 
   // Memoize filtered projects to prevent expensive filtering/sorting on every render
   const filteredProjects = useMemo(() => {
@@ -1434,54 +1537,28 @@ const PMDashboard: React.FC = () => {
           </div>
         </div>
 
-        {taskDueAlerts.length > 0 && (
-          <div style={{
-            margin: '0 2rem 1rem',
-            padding: '0.85rem 1rem',
-            borderRadius: '12px',
-            border: '1px solid #fecaca',
-            background: 'linear-gradient(135deg, #fff1f2 0%, #ffedd5 100%)',
-            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.16)',
-            animation: 'projectDuePulse 1.8s ease-in-out infinite',
-          }}>
-            <style>{`
-              @keyframes projectDuePulse {
-                0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.16); }
-                50% { box-shadow: 0 14px 28px rgba(239, 68, 68, 0.3); }
-              }
-            `}</style>
-            <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#991b1b', marginBottom: '0.5rem' }}>
-              TASK DUE ALARM - {taskDueAlerts.length} task{taskDueAlerts.length === 1 ? '' : 's'} due in 5 days or less
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-              {taskDueAlerts.slice(0, 10).map((item) => (
-                <button
-                  key={item.taskId}
-                  type="button"
-                  onClick={() => navigate(`/project/${item.projectId}?task=${item.taskId}&tab=details`)}
-                  style={{
-                    border: '1px solid #fca5a5',
-                    borderRadius: '999px',
-                    background: item.daysLeft <= 2 ? '#ef4444' : '#f97316',
-                    color: 'white',
-                    fontSize: '0.76rem',
-                    fontWeight: 700,
-                    padding: '0.32rem 0.68rem',
-                    cursor: 'pointer',
-                  }}
-                  title={`Due ${item.dueDate.toLocaleDateString()}`}
-                >
-                  {item.projectName} - {item.taskTitle} ({item.daysLeft}d)
-                </button>
-              ))}
-              {taskDueAlerts.length > 10 && (
-                <span style={{ fontSize: '0.76rem', color: '#9a3412', fontWeight: 700, padding: '0.34rem 0.2rem' }}>
-                  +{taskDueAlerts.length - 10} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        <PMAlertsPanel
+          taskDueAlerts={taskDueAlerts}
+          canManageMonthlyReminders={canManageMonthlyReminders}
+          alertsTab={alertsTab}
+          setAlertsTab={setAlertsTab}
+          showAllTaskDueAlerts={showAllTaskDueAlerts}
+          setShowAllTaskDueAlerts={setShowAllTaskDueAlerts}
+          monthlyReminders={monthlyReminders}
+          monthlyReminderForm={monthlyReminderForm}
+          setMonthlyReminderForm={setMonthlyReminderForm}
+          projectOptionsForMonthlyReminders={projectOptionsForMonthlyReminders}
+          savingMonthlyReminder={savingMonthlyReminder}
+          editingMonthlyReminderId={editingMonthlyReminderId}
+          resetMonthlyReminderForm={resetMonthlyReminderForm}
+          handleSaveMonthlyReminder={handleSaveMonthlyReminder}
+          loadingMonthlyReminders={loadingMonthlyReminders}
+          handleEditMonthlyReminder={handleEditMonthlyReminder}
+          handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
+          openTask={(projectId, taskId) => navigate(`/project/${projectId}?task=${taskId}&tab=details`)}
+          openProject={(projectId) => navigate(`/project/${projectId}`)}
+          onCreateProjectClick={() => setShowCreateModal(true)}
+        />
 
         <div className="dashboard-stats premium-stats">
           <div 
