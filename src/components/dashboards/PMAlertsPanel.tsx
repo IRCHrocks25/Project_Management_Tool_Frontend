@@ -35,6 +35,7 @@ type PMAlertsPanelProps = {
   handleSaveMonthlyReminder: () => void;
   loadingMonthlyReminders: boolean;
   handleEditMonthlyReminder: (item: MonthlyReminder) => void;
+  handleResolveMonthlyReminder: (id: string) => void;
   handleDeleteMonthlyReminder: (id: string) => void;
   openTask: (projectId: string, taskId: string) => void;
   openProject: (projectId: string) => void;
@@ -78,6 +79,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
   handleSaveMonthlyReminder,
   loadingMonthlyReminders,
   handleEditMonthlyReminder,
+  handleResolveMonthlyReminder,
   handleDeleteMonthlyReminder,
   openTask,
   openProject,
@@ -928,6 +930,23 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         Open
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleResolveMonthlyReminder(item.id)}
+                      style={{
+                        borderRadius: 6,
+                        border: '1px solid #86efac',
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '0.38rem 0.6rem',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Resolve
+                    </button>
                     <button
                       type="button"
                       className="pm-ghost-btn"

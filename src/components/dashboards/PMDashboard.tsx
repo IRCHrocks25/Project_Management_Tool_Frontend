@@ -860,9 +860,10 @@ const PMDashboard: React.FC = () => {
       }
       await loadMonthlyReminders();
       resetMonthlyReminderForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save monthly reminder:', error);
-      alert('Failed to save monthly reminder. Please try again.');
+      const serverMessage = error?.response?.data?.message;
+      alert(typeof serverMessage === 'string' ? serverMessage : 'Failed to save monthly reminder. Please try again.');
     } finally {
       setSavingMonthlyReminder(false);
     }
@@ -1554,6 +1555,7 @@ const PMDashboard: React.FC = () => {
           handleSaveMonthlyReminder={handleSaveMonthlyReminder}
           loadingMonthlyReminders={loadingMonthlyReminders}
           handleEditMonthlyReminder={handleEditMonthlyReminder}
+          handleResolveMonthlyReminder={handleDeleteMonthlyReminder}
           handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
           openTask={(projectId, taskId) => navigate(`/project/${projectId}?task=${taskId}&tab=details`)}
           openProject={(projectId) => navigate(`/project/${projectId}`)}

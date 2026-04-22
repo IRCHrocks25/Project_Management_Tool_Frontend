@@ -1098,9 +1098,10 @@ const DailyFocusAndEodView: React.FC = () => {
       }
       await loadMonthlyReminders();
       resetMonthlyReminderForm();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to save monthly reminder:', e);
-      alert('Failed to save monthly reminder. Please try again.');
+      const serverMessage = e?.response?.data?.message;
+      alert(typeof serverMessage === 'string' ? serverMessage : 'Failed to save monthly reminder. Please try again.');
     } finally {
       setSavingMonthlyReminder(false);
     }
@@ -1299,6 +1300,7 @@ const DailyFocusAndEodView: React.FC = () => {
               handleSaveMonthlyReminder={handleSaveMonthlyReminder}
               loadingMonthlyReminders={loadingMonthlyReminders}
               handleEditMonthlyReminder={handleEditMonthlyReminder}
+              handleResolveMonthlyReminder={handleDeleteMonthlyReminder}
               handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
               openTask={(projectId, taskId) => {
                 const task = allTasks.find((t: any) => t.id === taskId && t.projectId === projectId);
