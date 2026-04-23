@@ -136,24 +136,42 @@ const MyProjectsView: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      const isProjectManager = user?.role === 'Project Manager';
 
-      // Get only tasks assigned to the current user (optimized - uses backend filter)
-      const myTasks = await taskService.getAll(undefined, user?.id);
-      
-      // Get unique project IDs from user's tasks
-      const projectIds = Array.from(new Set(myTasks.map((t: any) => t.projectId)));
-      
-      // Load only the projects that the user has tasks in (fetch in parallel)
-      const projectPromises = projectIds.map((id: string) => projectService.getOne(id));
-      const myProjects = await Promise.all(projectPromises);
+      if (isProjectManager) {
+        // PM view should include all projects owned by this PM (not only projects with assigned tasks).
+        const [allProjects, allTasks] = await Promise.all([
+          projectService.getAll(),
+          taskService.getAll(undefined, undefined, { all: true }),
+        ]);
 
-      setProjects(myProjects);
-      setTasks(myTasks);
-      
-      // Load last email logs for projects (non-blocking - don't await)
-      loadLastEmailLogs(myProjects).catch(err => {
-        console.error('Failed to load email logs:', err);
-      });
+        const myProjects = (allProjects || []).filter((p: any) => {
+          const pmId = p.pmId || p.pm?.id;
+          return pmId === user?.id && !p?.isArchived;
+        });
+        const myProjectIds = new Set(myProjects.map((p: any) => p.id));
+        const tasksForMyProjects = (allTasks || []).filter((t: any) => myProjectIds.has(t.projectId));
+
+        setProjects(myProjects);
+        setTasks(tasksForMyProjects);
+
+        loadLastEmailLogs(myProjects).catch((err) => {
+          console.error('Failed to load email logs:', err);
+        });
+      } else {
+        // Non-PM fallback: keep existing "assigned to me" behavior.
+        const myTasks = await taskService.getAll(undefined, user?.id);
+        const projectIds = Array.from(new Set(myTasks.map((t: any) => t.projectId)));
+        const projectPromises = projectIds.map((id: string) => projectService.getOne(id));
+        const myProjects = await Promise.all(projectPromises);
+
+        setProjects(myProjects);
+        setTasks(myTasks);
+
+        loadLastEmailLogs(myProjects).catch((err) => {
+          console.error('Failed to load email logs:', err);
+        });
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {

@@ -677,7 +677,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 marginBottom: '0.7rem',
               }}
             >
-              {editingMonthlyReminderId ? 'Edit Reminder' : 'Add New Reminder'}
+              {editingMonthlyReminderId ? 'Edit Comment / Note' : 'Add Comment / Note / Reminder'}
             </div>
 
             <div
@@ -797,7 +797,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     textTransform: 'uppercase',
                   }}
                 >
-                  {monthlyReminderForm.projectId ? 'Note' : 'Client & Note'}
+                  {monthlyReminderForm.projectId ? 'Comments / Notes / Reminder' : 'Client & Comments'}
                 </label>
                 {!monthlyReminderForm.projectId && (
                   <input
@@ -824,7 +824,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   />
                 )}
                 <textarea
-                  placeholder="e.g. Monthly report — 10 articles + GA report"
+                  placeholder="Type your comment, note, or reminder (e.g. Monthly report — 10 articles + GA report)"
                   value={monthlyReminderForm.note}
                   onChange={(e) =>
                     setMonthlyReminderForm((prev) => ({ ...prev, note: e.target.value }))

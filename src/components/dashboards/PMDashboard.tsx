@@ -14,6 +14,7 @@ import ConfirmModal from '../ConfirmModal';
 import LiveChatPanel from '../LiveChatPanel';
 import PMTasksTableView from './PMTasksTableView';
 import PMListView from './PMListView';
+import PMProjectsRegistryView from './PMProjectsRegistryView';
 import PMKanbanView from './PMKanbanView';
 import PMQuickOverview from './PMQuickOverview';
 import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './PMAlertsPanel';
@@ -64,7 +65,7 @@ const PMDashboard: React.FC = () => {
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview' | 'tasks'>('overview');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview' | 'tasks' | 'pm_list'>('overview');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
@@ -1516,6 +1517,14 @@ const PMDashboard: React.FC = () => {
                   Tasks
                 </button>
               )}
+              {user?.role === 'Project Manager' && (
+                <button
+                  className={viewMode === 'pm_list' ? 'active' : ''}
+                  onClick={() => setViewMode('pm_list')}
+                >
+                  PM List
+                </button>
+              )}
               <button 
                 className={viewMode === 'overview' ? 'active' : ''}
                 onClick={() => {
@@ -1933,6 +1942,13 @@ const PMDashboard: React.FC = () => {
               setTasksPmFilter={setTasksPmFilter}
               tasksAssigneeFilter={tasksAssigneeFilter}
               setTasksAssigneeFilter={setTasksAssigneeFilter}
+            />
+          ) : viewMode === 'pm_list' ? (
+            <PMProjectsRegistryView
+              projects={filteredProjects}
+              users={users}
+              setProjects={setProjects}
+              globalSearchTerm={searchTerm}
             />
           ) : (
             <PMListView

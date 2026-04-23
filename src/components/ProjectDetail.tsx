@@ -34,6 +34,7 @@ import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
 import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
+import { ProjectRegistryMeta, projectRegistryMetaService } from '../services/projectRegistryMeta.service';
 import EditTaskModal from './EditTaskModal';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import AppSidebar from './AppSidebar';
@@ -332,6 +333,7 @@ const ProjectDetail: React.FC = () => {
   const [loadingProjectMonthlyReminders, setLoadingProjectMonthlyReminders] = useState(false);
   const [savingProjectMonthlyReminder, setSavingProjectMonthlyReminder] = useState(false);
   const [showProjectReminderForm, setShowProjectReminderForm] = useState(false);
+  const [projectRegistryMeta, setProjectRegistryMeta] = useState<ProjectRegistryMeta | null>(null);
   const [projectReminderForm, setProjectReminderForm] = useState({
     reminderDay: String(Math.min(31, Math.max(1, new Date().getDate()))),
     note: '',
@@ -366,6 +368,11 @@ const ProjectDetail: React.FC = () => {
       mounted = false;
     };
   }, [id, canViewMonthlyReminders]);
+
+  useEffect(() => {
+    if (!id) return;
+    setProjectRegistryMeta(projectRegistryMetaService.get(id));
+  }, [id]);
 
   const handleCreateProjectMonthlyReminder = async () => {
     if (!id) return;
@@ -2228,6 +2235,44 @@ const ProjectDetail: React.FC = () => {
         <div className="next-action-banner">
           <FaExclamationTriangle className="action-icon" />
           <span>Next Action: {nextAction}</span>
+        </div>
+      )}
+
+      {(projectRegistryMeta?.comments || projectRegistryMeta?.pmPriority) && (
+        <div style={{
+          maxWidth: '1600px',
+          margin: '0.6rem auto 0',
+          padding: '0 2rem',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '0.85rem 1rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.45rem' }}>
+              <FaStickyNote style={{ color: '#1d4ed8' }} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a' }}>PM List Notes</span>
+              {projectRegistryMeta?.pmPriority && (
+                <span style={{
+                  marginLeft: 6,
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  borderRadius: 999,
+                  padding: '0.12rem 0.45rem',
+                  background: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#fee2e2' : '#e2e8f0',
+                  color: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#b91c1c' : '#334155',
+                }}>
+                  {projectRegistryMeta.pmPriority}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+              {projectRegistryMeta?.comments || '—'}
+            </div>
+          </div>
         </div>
       )}
 
