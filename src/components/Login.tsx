@@ -14,10 +14,26 @@ const Login: React.FC = () => {
   const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
+  const getSafeRedirectPath = (): string => {
+    const stateFrom = (location.state as { from?: string } | null)?.from;
+    const queryRedirect = searchParams.get('redirect') || '';
+    let storedRedirect = '';
+    try {
+      storedRedirect = sessionStorage.getItem('postLoginRedirect') || '';
+    } catch {
+      storedRedirect = '';
+    }
+
+    const candidate = [stateFrom, queryRedirect, storedRedirect].find((value) => typeof value === 'string' && !!value) || '/dashboard';
+    return candidate.startsWith('/') ? candidate : '/dashboard';
+  };
+
   useEffect(() => {
     if (searchParams.get('session') === 'expired') {
       setSessionExpired(true);
-      setSearchParams({}, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete('session');
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -35,10 +51,12 @@ const Login: React.FC = () => {
     localStorage.removeItem('user');
     try {
       await authService.login(formData);
-      const returnTo =
-        ((location.state as { from?: string } | null)?.from && typeof (location.state as { from?: string }).from === 'string'
-          ? (location.state as { from?: string }).from
-          : '') || '/dashboard';
+      const returnTo = getSafeRedirectPath();
+      try {
+        sessionStorage.removeItem('postLoginRedirect');
+      } catch {
+        // Ignore storage failures.
+      }
       navigate(returnTo, { replace: true });
     } catch (err: any) {
       if (err.response?.status === 431) {

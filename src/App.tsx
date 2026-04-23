@@ -34,13 +34,23 @@ import './App.css';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const fromPath = `${location.pathname}${location.search}${location.hash}`;
+
+  if (!authService.isAuthenticated()) {
+    try {
+      sessionStorage.setItem('postLoginRedirect', fromPath);
+    } catch {
+      // Ignore storage failures; query/state fallback still works.
+    }
+  }
+
   return authService.isAuthenticated() ? (
     <>{children}</>
   ) : (
     <Navigate
-      to="/login"
+      to={`/login?redirect=${encodeURIComponent(fromPath)}`}
       replace
-      state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      state={{ from: fromPath }}
     />
   );
 };
