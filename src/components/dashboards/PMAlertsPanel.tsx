@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { FaCalendarAlt, FaExclamationTriangle, FaBell, FaClock } from 'react-icons/fa';
 import { MonthlyReminder } from '../../services/monthlyReminders.service';
 
@@ -7,6 +7,8 @@ export type PMTaskDueAlert = {
   projectId: string;
   taskTitle: string;
   projectName: string;
+  department?: string;
+  currentColumn?: string;
   daysLeft: number;
   dueDate: Date;
 };
@@ -85,6 +87,34 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
   openProject,
   onCreateProjectClick,
 }) => {
+  const [dueSort, setDueSort] = useState<
+    'days_closest' | 'most_overdue' | 'days_farthest' | 'project_az' | 'department_az'
+  >('days_closest');
+
+  const sortedTaskDueAlerts = useMemo(() => {
+    const copy = [...taskDueAlerts];
+    switch (dueSort) {
+      case 'most_overdue':
+        return copy.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+      case 'days_farthest':
+        return copy.sort((a, b) => b.daysLeft - a.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+      case 'project_az':
+        return copy.sort(
+          (a, b) =>
+            a.projectName.localeCompare(b.projectName) || a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle),
+        );
+      case 'department_az':
+        return copy.sort(
+          (a, b) =>
+            (a.department || 'zzzz').localeCompare(b.department || 'zzzz') ||
+            a.daysLeft - b.daysLeft ||
+            a.taskTitle.localeCompare(b.taskTitle),
+        );
+      case 'days_closest':
+      default:
+        return copy.sort((a, b) => Math.abs(a.daysLeft) - Math.abs(b.daysLeft) || a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
+    }
+  }, [taskDueAlerts, dueSort]);
   if (taskDueAlerts.length === 0 && !canManageMonthlyReminders) {
     return null;
   }
@@ -219,8 +249,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               {taskDueAlerts.length > 0
                 ? `${taskDueAlerts.length} task${
                     taskDueAlerts.length === 1 ? '' : 's'
-                  } approaching deadline`
-                : 'No urgent deadlines'}
+                  } due soon or overdue`
+                : 'No due or overdue tasks'}
             </div>
           </div>
         </div>
@@ -375,7 +405,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 fontWeight: 500,
               }}
             >
-              No tasks approaching deadline. You're all caught up.
+              No tasks due soon or overdue. You're all caught up.
             </div>
           ) : (
             <>
@@ -384,7 +414,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1rem',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.65rem 1rem',
                   fontSize: '0.7rem',
                   color: '#64748b',
                   marginBottom: '0.75rem',
@@ -392,28 +424,53 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   letterSpacing: '0.02em',
                 }}
               >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '2px',
+                        background: '#dc2626',
+                      }}
+                    />
+                    OVERDUE / 0–2 DAYS
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '2px',
+                        background: '#ea580c',
+                      }}
+                    />
+                    3–5 DAYS
+                  </span>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#475569' }}>Sort</span>
+                  <select
+                    value={dueSort}
+                    onChange={(e) => setDueSort(e.target.value as typeof dueSort)}
                     style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '2px',
-                      background: '#dc2626',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 6,
+                      padding: '0.2rem 0.45rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: '#334155',
+                      background: '#fff',
+                      fontFamily: 'inherit',
                     }}
-                  />
-                  1–2 DAYS
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '2px',
-                      background: '#ea580c',
-                    }}
-                  />
-                  3–5 DAYS
-                </span>
+                  >
+                    <option value="days_closest">Closest Due Date</option>
+                    <option value="most_overdue">Most Overdue First</option>
+                    <option value="days_farthest">Farthest Due Date</option>
+                    <option value="project_az">Project A-Z</option>
+                    <option value="department_az">Department A-Z</option>
+                  </select>
+                </div>
               </div>
 
               {/* Alert grid */}
@@ -424,7 +481,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   gap: '0.55rem',
                 }}
               >
-                {(showAllTaskDueAlerts ? taskDueAlerts : taskDueAlerts.slice(0, 10)).map(
+                {(showAllTaskDueAlerts ? sortedTaskDueAlerts : sortedTaskDueAlerts.slice(0, 10)).map(
                   (item) => {
                     const sev = getSeverity(item.daysLeft);
                     return (
@@ -518,6 +575,48 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           >
                             {item.projectName}
                           </div>
+                          {(item.department || item.currentColumn) && (
+                            <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                              {item.department && (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    color: '#1e3a8a',
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: '999px',
+                                    padding: '0.08rem 0.38rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
+                                  }}
+                                >
+                                  Dept: {item.department}
+                                </span>
+                              )}
+                              {item.currentColumn && (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    color: '#475569',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '999px',
+                                    padding: '0.08rem 0.38rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
+                                  }}
+                                >
+                                  Column: {item.currentColumn}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </button>
                     );
@@ -526,7 +625,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               </div>
 
               {/* Show more / less */}
-              {taskDueAlerts.length > 10 && (
+              {sortedTaskDueAlerts.length > 10 && (
                 <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
                   <button
                     type="button"
@@ -546,7 +645,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   >
                     {showAllTaskDueAlerts
                       ? 'Show less'
-                      : `Show ${taskDueAlerts.length - 10} more`}
+                      : `Show ${sortedTaskDueAlerts.length - 10} more`}
                   </button>
                 </div>
               )}

@@ -772,6 +772,32 @@ const PMDashboard: React.FC = () => {
     for (const p of projects) {
       projectNameMap.set(p.id, p.clientName || 'Unknown Project');
     }
+    const getDepartmentLabel = (task: any): string => {
+      const type = task?.type || 'General';
+      const map: Record<string, string> = {
+        Copy: 'Copy Writing',
+        Design: 'Design',
+        Dev: 'Development',
+        AI: 'AI Development',
+        'Social Media': 'Social Media',
+        CRM: 'CRM',
+        SEO: 'SEO/GEO',
+        'SEO/GEO': 'SEO/GEO',
+        Onboarding: 'Onboarding',
+      };
+      return map[type] || type;
+    };
+    const getCurrentColumn = (task: any): string => {
+      if (task?.isCompleted || task?.status === 'Completed') return 'Approved/Completed';
+      const desc = task?.description || '';
+      if (desc.includes('--- Column: Revision ---')) return 'Revision';
+      if (desc.includes('--- Column: QA Review ---')) return 'QA Before Sending to Client';
+      if (desc.includes('--- Column: Client Validation ---') || desc.includes('--- Column: Client Review ---')) return 'Client Validation';
+      if (desc.includes('--- Column: For Approval ---')) return 'For Approval';
+      if (task?.status === 'In Review') return 'For Approval';
+      if (task?.status === 'In Progress') return 'Owned/In Progress';
+      return 'Not yet started';
+    };
 
     for (const task of tasks) {
       if (task?.isCompleted || task?.status === 'Completed' || task?.isArchived || !task?.dueDate) continue;
@@ -779,12 +805,14 @@ const PMDashboard: React.FC = () => {
       if (Number.isNaN(dueDate.getTime())) continue;
 
       const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
-      if (daysLeft >= 1 && daysLeft <= 5) {
+      if (daysLeft <= 5) {
         alerts.push({
           taskId: task.id,
           projectId: task.projectId,
           taskTitle: task.title || 'Untitled Task',
           projectName: projectNameMap.get(task.projectId) || 'Unknown Project',
+          department: getDepartmentLabel(task),
+          currentColumn: getCurrentColumn(task),
           daysLeft,
           dueDate,
         });

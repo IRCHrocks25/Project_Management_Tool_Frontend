@@ -194,6 +194,21 @@ const emptySlots = (): Slots => {
   return s;
 };
 
+function pinsSignatureFromRows(rows: DailyFocusRow[]): string {
+  return JSON.stringify(
+    [...rows]
+      .map((r) => ({
+        departmentKey: r.departmentKey,
+        taskId: r.taskId,
+        rank: r.rank,
+      }))
+      .sort((a, b) => {
+        if (a.departmentKey !== b.departmentKey) return a.departmentKey.localeCompare(b.departmentKey);
+        return a.rank - b.rank;
+      }),
+  );
+}
+
 // ─── Inline styles ──────────────────────────────────────────────────────────
 
 const css = `
@@ -610,6 +625,10 @@ const DailyFocusAndEodView: React.FC = () => {
     assignedToId: '',
   });
   const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [savedPinsSignature, setSavedPinsSignature] = useState<string>('[]');
+  const [showUnsavedPinsModal, setShowUnsavedPinsModal] = useState(false);
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<'focus' | 'eod' | null>(null);
+  const [pendingDeptSwitch, setPendingDeptSwitch] = useState<string | null>(null);
   const eodPrintableRef = useRef<HTMLDivElement | null>(null);
 
   const loadTasks = useCallback(async () => {
@@ -651,6 +670,7 @@ const DailyFocusAndEodView: React.FC = () => {
       setLoadingFocus(true); setError(null);
       const rows = await dailyFocusService.getByDate(focusDate);
       applyFocusRows(rows);
+      setSavedPinsSignature(pinsSignatureFromRows(rows));
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Failed to load daily focus');
     } finally {
@@ -710,6 +730,32 @@ const DailyFocusAndEodView: React.FC = () => {
     const now = new Date();
     const msPerDay = 1000 * 60 * 60 * 24;
     const alerts: PMTaskDueAlert[] = [];
+    const getDepartmentLabel = (task: any): string => {
+      const type = task?.type || 'General';
+      const map: Record<string, string> = {
+        Copy: 'Copy Writing',
+        Design: 'Design',
+        Dev: 'Development',
+        AI: 'AI Development',
+        'Social Media': 'Social Media',
+        CRM: 'CRM',
+        SEO: 'SEO/GEO',
+        'SEO/GEO': 'SEO/GEO',
+        Onboarding: 'Onboarding',
+      };
+      return map[type] || type;
+    };
+    const getCurrentColumn = (task: any): string => {
+      if (task?.isCompleted || task?.status === 'Completed') return 'Approved/Completed';
+      const desc = task?.description || '';
+      if (desc.includes('--- Column: Revision ---')) return 'Revision';
+      if (desc.includes('--- Column: QA Review ---')) return 'QA Before Sending to Client';
+      if (desc.includes('--- Column: Client Validation ---') || desc.includes('--- Column: Client Review ---')) return 'Client Validation';
+      if (desc.includes('--- Column: For Approval ---')) return 'For Approval';
+      if (task?.status === 'In Review') return 'For Approval';
+      if (task?.status === 'In Progress') return 'Owned/In Progress';
+      return 'Not yet started';
+    };
 
     for (const task of allTasks) {
       if (task?.isCompleted || task?.status === 'Completed' || task?.isArchived || !task?.dueDate) continue;
@@ -718,12 +764,14 @@ const DailyFocusAndEodView: React.FC = () => {
       if (Number.isNaN(dueDate.getTime())) continue;
 
       const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
-      if (daysLeft >= 1 && daysLeft <= 5) {
+      if (daysLeft <= 5) {
         alerts.push({
           taskId: task.id,
           projectId: task.projectId,
           taskTitle: task.title || 'Untitled Task',
           projectName: task.project?.clientName || getProjectName(task.projectId),
+          department: getDepartmentLabel(task),
+          currentColumn: getCurrentColumn(task),
           daysLeft,
           dueDate,
         });
@@ -812,15 +860,51 @@ const DailyFocusAndEodView: React.FC = () => {
     return items;
   };
 
-  const handleSaveFocus = async () => {
-    if (focusDate < ymdLocal(new Date())) { if (!window.confirm('You are saving pins for a past date. Continue?')) return; }
+  const currentPinsSignature = useMemo(() => {
+    return JSON.stringify(buildItemsFromSlots());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
+
+  const hasUnsavedPins = currentPinsSignature !== savedPinsSignature;
+
+  const handleSaveFocus = async (): Promise<boolean> => {
+    if (focusDate < ymdLocal(new Date())) {
+      if (!window.confirm('You are saving pins for a past date. Continue?')) return false;
+    }
     try {
       setSaving(true); setError(null); setMessage(null);
       const rows = await dailyFocusService.save(focusDate, buildItemsFromSlots());
-      applyFocusRows(rows); setMessage('Daily focus saved.');
+      applyFocusRows(rows);
+      setSavedPinsSignature(pinsSignatureFromRows(rows));
+      setMessage('Daily focus saved.');
+      return true;
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Failed to save daily focus');
+      return false;
     } finally { setSaving(false); }
+  };
+
+  const handleTabSwitchRequest = (nextTab: 'focus' | 'eod') => {
+    if (nextTab === tab) return;
+    if (tab === 'focus' && hasUnsavedPins) {
+      setPendingTabSwitch(nextTab);
+      setPendingDeptSwitch(null);
+      setShowUnsavedPinsModal(true);
+      return;
+    }
+    setTab(nextTab);
+    setMessage(null);
+  };
+
+  const handleDeptSwitchRequest = (nextDept: string) => {
+    if (nextDept === activeDept) return;
+    if (tab === 'focus' && hasUnsavedPins) {
+      setPendingDeptSwitch(nextDept);
+      setPendingTabSwitch(null);
+      setShowUnsavedPinsModal(true);
+      return;
+    }
+    setActiveDept(nextDept);
   };
 
   const loadEod = useCallback(async () => {
@@ -1272,10 +1356,10 @@ const DailyFocusAndEodView: React.FC = () => {
 
         {/* ── Tab switcher ── */}
         <div className="dfe-tabs">
-          <button type="button" className={`dfe-tab${tab === 'focus' ? ' active' : ''}`} onClick={() => { setTab('focus'); setMessage(null); }}>
+          <button type="button" className={`dfe-tab${tab === 'focus' ? ' active' : ''}`} onClick={() => handleTabSwitchRequest('focus')}>
             🎯 Daily Focus
           </button>
-          <button type="button" className={`dfe-tab${tab === 'eod' ? ' active' : ''}`} onClick={() => { setTab('eod'); setMessage(null); }}>
+          <button type="button" className={`dfe-tab${tab === 'eod' ? ' active' : ''}`} onClick={() => handleTabSwitchRequest('eod')}>
             📋 End of Day
           </button>
         </div>
@@ -1412,7 +1496,7 @@ const DailyFocusAndEodView: React.FC = () => {
                     key={d.key}
                     type="button"
                     className={`dfe-dept-tab${isActive ? ' active' : ''}`}
-                    onClick={() => setActiveDept(d.key)}
+                    onClick={() => handleDeptSwitchRequest(d.key)}
                     style={isActive ? { background: d.color, borderColor: d.color } : {}}
                   >
                     <span className="dfe-dept-dot" style={{ background: isActive ? 'rgba(255,255,255,0.5)' : d.color }} />
@@ -2133,6 +2217,77 @@ const DailyFocusAndEodView: React.FC = () => {
             }
           }}
         />
+      )}
+
+      {showUnsavedPinsModal && (
+        <div className="dfe-modal-overlay" onClick={() => { setShowUnsavedPinsModal(false); setPendingTabSwitch(null); setPendingDeptSwitch(null); }}>
+          <div className="dfe-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="dfe-modal-header">
+              <div className="dfe-modal-title">Unsaved priority pins</div>
+              <button
+                type="button"
+                className="dfe-modal-close"
+                onClick={() => { setShowUnsavedPinsModal(false); setPendingTabSwitch(null); setPendingDeptSwitch(null); }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="dfe-modal-body">
+              <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.55 }}>
+                You have unsaved priority pins for this day. Would you like to save them before switching tabs?
+              </div>
+            </div>
+            <div className="dfe-modal-footer" style={{ justifyContent: 'space-between' }}>
+              <button
+                type="button"
+                className="dfe-btn dfe-btn-ghost"
+                onClick={() => { setShowUnsavedPinsModal(false); setPendingTabSwitch(null); setPendingDeptSwitch(null); }}
+              >
+                Stay here
+              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  className="dfe-btn dfe-btn-ghost"
+                  onClick={() => {
+                    const nextTab = pendingTabSwitch;
+                    const nextDept = pendingDeptSwitch;
+                    setShowUnsavedPinsModal(false);
+                    setPendingTabSwitch(null);
+                    setPendingDeptSwitch(null);
+                    if (nextTab) {
+                      setTab(nextTab);
+                      setMessage('Switched tabs without saving pins.');
+                    } else if (nextDept) {
+                      setActiveDept(nextDept);
+                      setMessage('Changed department without saving pins.');
+                    }
+                  }}
+                >
+                  Switch without saving
+                </button>
+                <button
+                  type="button"
+                  className="dfe-btn dfe-btn-primary"
+                  onClick={async () => {
+                    const nextTab = pendingTabSwitch;
+                    const nextDept = pendingDeptSwitch;
+                    const saved = await handleSaveFocus();
+                    if (!saved) return;
+                    setShowUnsavedPinsModal(false);
+                    setPendingTabSwitch(null);
+                    setPendingDeptSwitch(null);
+                    if (nextTab) setTab(nextTab);
+                    if (nextDept) setActiveDept(nextDept);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? <><FaSpinner className="dfe-spinner" /> Saving…</> : <><FaSave /> Save & switch</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <TaskDetailSideModal

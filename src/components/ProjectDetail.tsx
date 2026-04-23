@@ -331,6 +331,7 @@ const ProjectDetail: React.FC = () => {
   const [projectMonthlyReminders, setProjectMonthlyReminders] = useState<MonthlyReminder[]>([]);
   const [loadingProjectMonthlyReminders, setLoadingProjectMonthlyReminders] = useState(false);
   const [savingProjectMonthlyReminder, setSavingProjectMonthlyReminder] = useState(false);
+  const [showProjectReminderForm, setShowProjectReminderForm] = useState(false);
   const [projectReminderForm, setProjectReminderForm] = useState({
     reminderDay: String(Math.min(31, Math.max(1, new Date().getDate()))),
     note: '',
@@ -2087,6 +2088,7 @@ const ProjectDetail: React.FC = () => {
   const intakeStatus = getIntakeStatus();
   const clientTypeStyle = getClientTypeColor(project.clientType);
   const priorityColor = getPriorityColor(project.priority);
+  const shouldShowProjectReminderForm = projectMonthlyReminders.length > 0 || showProjectReminderForm;
   const isPrivateClient = project.clientType === 'Private';
   const deliverablesForDisplay = isPrivateClient
     ? (project.deliverables || []).filter((deliverable: any) => {
@@ -2204,9 +2206,9 @@ const ProjectDetail: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <button className="btn-primary-action">
+              {/* <button className="btn-primary-action">
                 <FaPaperPlane /> Send Update
-              </button>
+              </button> */}
               {(authService.getUser()?.role === 'Project Manager' || authService.getUser()?.role === 'FOUNDER/CEO') && !project?.isArchived && (
                 <button 
                   onClick={handleArchiveProject} 
@@ -2275,65 +2277,108 @@ const ProjectDetail: React.FC = () => {
               </span>
             </div>
 
-            <div style={{
-              marginTop: '0.75rem',
-              background: '#ffffff',
-              border: '1px solid #dbeafe',
-              borderRadius: 12,
-              padding: '0.75rem',
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: '0.55rem', alignItems: 'start' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
-                    Reminder Day
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={projectReminderForm.reminderDay}
-                    onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, reminderDay: e.target.value }))}
-                    className="form-input"
-                    style={{ width: '100%', padding: '0.5rem 0.55rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
-                    Note
-                  </label>
-                  <textarea
-                    value={projectReminderForm.note}
-                    onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, note: e.target.value }))}
-                    rows={2}
-                    placeholder="Ex: Monthly report on day 24 - 10 articles + GA report"
-                    className="form-input"
-                    style={{ width: '100%', minHeight: 66, padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem', resize: 'vertical' }}
-                  />
-                </div>
-                <div style={{ alignSelf: 'end' }}>
-                  <button
-                    type="button"
-                    onClick={handleCreateProjectMonthlyReminder}
-                    disabled={savingProjectMonthlyReminder}
-                    className="btn-primary"
-                    style={{
-                      background: '#2563eb',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '0.5rem 0.72rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      cursor: savingProjectMonthlyReminder ? 'not-allowed' : 'pointer',
-                      opacity: savingProjectMonthlyReminder ? 0.65 : 1,
-                      minWidth: 108,
-                    }}
-                  >
-                    {savingProjectMonthlyReminder ? 'Saving...' : 'Add note'}
-                  </button>
+            {!loadingProjectMonthlyReminders && !shouldShowProjectReminderForm && (
+              <div style={{ marginTop: '0.72rem' }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setShowProjectReminderForm(true)}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.48rem 0.74rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Add note
+                </button>
+              </div>
+            )}
+
+            {shouldShowProjectReminderForm && (
+              <div style={{
+                marginTop: '0.75rem',
+                background: '#ffffff',
+                border: '1px solid #dbeafe',
+                borderRadius: 12,
+                padding: '0.75rem',
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: '0.55rem', alignItems: 'start' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                      Reminder Day
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={projectReminderForm.reminderDay}
+                      onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, reminderDay: e.target.value }))}
+                      className="form-input"
+                      style={{ width: '100%', padding: '0.5rem 0.55rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                      Note
+                    </label>
+                    <textarea
+                      value={projectReminderForm.note}
+                      onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, note: e.target.value }))}
+                      rows={2}
+                      placeholder="Ex: Monthly report on day 24 - 10 articles + GA report"
+                      className="form-input"
+                      style={{ width: '100%', minHeight: 66, padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem', resize: 'vertical' }}
+                    />
+                  </div>
+                  <div style={{ alignSelf: 'end', display: 'flex', gap: 8 }}>
+                    {projectMonthlyReminders.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowProjectReminderForm(false)}
+                        className="btn-primary"
+                        style={{
+                          background: '#e2e8f0',
+                          color: '#334155',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '0.5rem 0.72rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleCreateProjectMonthlyReminder}
+                      disabled={savingProjectMonthlyReminder}
+                      className="btn-primary"
+                      style={{
+                        background: '#2563eb',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '0.5rem 0.72rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: savingProjectMonthlyReminder ? 'not-allowed' : 'pointer',
+                        opacity: savingProjectMonthlyReminder ? 0.65 : 1,
+                        minWidth: 108,
+                      }}
+                    >
+                      {savingProjectMonthlyReminder ? 'Saving...' : 'Add note'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {loadingProjectMonthlyReminders && (
               <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#1d4ed8' }}>
