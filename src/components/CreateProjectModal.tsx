@@ -474,6 +474,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
 
   const allDeliverables = ['Logo', 'Brand Book', 'Home Page', 'Copy of Home Page', 'Speaker Kit', 'Social Banners', 'Other'];
   const [selectedDeliverables, setSelectedDeliverables] = useState<string[]>(['Logo', 'Brand Book']);
+  const isPrivateOnlyClient = selectedClientTypes.length === 1 && selectedClientTypes[0] === 'Private';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -510,6 +511,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
   };
 
   const getIncludedDeliverables = () => {
+    if (isPrivateOnlyClient) return [];
     if (formData.package === 'Custom') return selectedDeliverables;
     const d = ['Logo', 'Brand Book'];
     if (selectedClientTypes.includes('ICON')) d.push('Speaker Kit');
@@ -624,7 +626,14 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
     if (selectedClientTypes.length === 0) { setError('Please select at least one client type'); return; }
-    if (formData.package === 'Custom' && selectedDeliverables.length === 0) { setError('Please select at least one deliverable for Custom package'); return; }
+    if (!isPrivateOnlyClient && !formData.targetCloseMonth) {
+      setError('Please select a target close month');
+      return;
+    }
+    if (formData.package === 'Custom' && !isPrivateOnlyClient && selectedDeliverables.length === 0) {
+      setError('Please select at least one deliverable for Custom package');
+      return;
+    }
     setLoading(true);
     try {
       let finalClientTypes = [...selectedClientTypes];
@@ -633,7 +642,16 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
         else finalClientTypes = [...finalClientTypes, 'Katalyst'];
       }
       const secondaryClientTypes = finalClientTypes.length > 1 ? finalClientTypes.slice(1) : undefined;
-      const createdProject = await projectService.create({ ...formData, clientType: finalClientTypes[0], secondaryClientTypes, pmId: user?.id, customDeliverables: formData.package === 'Custom' ? selectedDeliverables : undefined });
+      const createdProject = await projectService.create({
+        ...formData,
+        targetCloseMonth: formData.targetCloseMonth || (isPrivateOnlyClient ? getCurrentMonth() : ''),
+        clientType: finalClientTypes[0],
+        secondaryClientTypes,
+        pmId: user?.id,
+        customDeliverables: formData.package === 'Custom'
+          ? (isPrivateOnlyClient ? [] : selectedDeliverables)
+          : undefined,
+      });
       if (finalClientTypes.includes('Premium') || finalClientTypes.includes('Powered-Up')) {
         try { await taskService.create({ projectId: createdProject.id, title: `Initial Setup - ${formData.clientName}`, description: `Initial setup for ${finalClientTypes.includes('Premium') ? 'Premium' : 'Powered-Up'} client.`, type: 'CRM', status: 'Todo', isCompleted: false }); } catch {}
       }
@@ -755,8 +773,21 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                     <input id="clientName" className="cpm-input" type="text" name="clientName" value={formData.clientName} onChange={handleChange} required placeholder="Enter client name" />
                   </div>
                   <div className="cpm-field">
-                    <label className="cpm-label" htmlFor="targetCloseMonth">Target Close Month</label>
-                    <input id="targetCloseMonth" className="cpm-input" type="month" name="targetCloseMonth" value={formData.targetCloseMonth} onChange={handleChange} required />
+                    <label className="cpm-label" htmlFor="targetCloseMonth">
+                      Target Close Month
+                      {isPrivateOnlyClient && (
+                        <span className="cpm-label-hint">(optional for Private)</span>
+                      )}
+                    </label>
+                    <input
+                      id="targetCloseMonth"
+                      className="cpm-input"
+                      type="month"
+                      name="targetCloseMonth"
+                      value={formData.targetCloseMonth}
+                      onChange={handleChange}
+                      required={!isPrivateOnlyClient}
+                    />
                   </div>
                 </div>
 
@@ -838,7 +869,21 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
                 {/* Deliverables */}
                 <div className="cpm-field">
                   <label className="cpm-label">Included Deliverables</label>
-                  {formData.package === 'Custom' ? (
+                  {isPrivateOnlyClient ? (
+                    <div
+                      className="cpm-selection-info"
+                      style={{ marginTop: 0 }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          No specific deliverables yet
+                        </span>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
+                          Private clients can be created normally now and deliverables can be added later.
+                        </div>
+                      </div>
+                    </div>
+                  ) : formData.package === 'Custom' ? (
                     <>
                       <p className="cpm-deliverable-hint">Select deliverables for this project:</p>
                       <div className="cpm-deliverables-grid">

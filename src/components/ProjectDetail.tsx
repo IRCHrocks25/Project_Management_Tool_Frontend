@@ -330,6 +330,11 @@ const ProjectDetail: React.FC = () => {
   const [filesLinksFilter, setFilesLinksFilter] = useState<'all' | 'task' | 'email'>('all');
   const [projectMonthlyReminders, setProjectMonthlyReminders] = useState<MonthlyReminder[]>([]);
   const [loadingProjectMonthlyReminders, setLoadingProjectMonthlyReminders] = useState(false);
+  const [savingProjectMonthlyReminder, setSavingProjectMonthlyReminder] = useState(false);
+  const [projectReminderForm, setProjectReminderForm] = useState({
+    reminderDay: String(Math.min(31, Math.max(1, new Date().getDate()))),
+    note: '',
+  });
 
   useEffect(() => {
     if (id) {
@@ -360,6 +365,43 @@ const ProjectDetail: React.FC = () => {
       mounted = false;
     };
   }, [id, canViewMonthlyReminders]);
+
+  const handleCreateProjectMonthlyReminder = async () => {
+    if (!id) return;
+    const parsedDay = Number(projectReminderForm.reminderDay);
+    const note = projectReminderForm.note.trim();
+
+    if (!Number.isInteger(parsedDay) || parsedDay < 1 || parsedDay > 31) {
+      showToast('Reminder day must be between 1 and 31');
+      return;
+    }
+    if (!note) {
+      showToast('Please add a note before saving');
+      return;
+    }
+
+    setSavingProjectMonthlyReminder(true);
+    try {
+      await monthlyRemindersService.create({
+        projectId: id,
+        clientName: project?.clientName,
+        reminderDay: parsedDay,
+        note,
+      });
+      const reminders = await monthlyRemindersService.getByProject(id);
+      setProjectMonthlyReminders(Array.isArray(reminders) ? reminders : []);
+      setProjectReminderForm((prev) => ({ ...prev, note: '' }));
+      showToast('Monthly reminder added ✓');
+    } catch (error: any) {
+      const apiMessage = error?.response?.data?.message;
+      const message = Array.isArray(apiMessage)
+        ? apiMessage.join(', ')
+        : apiMessage || 'Failed to add monthly reminder';
+      showToast(message);
+    } finally {
+      setSavingProjectMonthlyReminder(false);
+    }
+  };
 
   // Open task side modal when navigating with task query params
   useEffect(() => {
@@ -1088,10 +1130,16 @@ const ProjectDetail: React.FC = () => {
 
   const getNextAction = () => {
     if (!project) return null;
+    const isPrivateClient = project.clientType === 'Private';
     
     const daysSinceEmail = getDaysSinceEmail();
     const intakeProgress = getIntakeProgress();
     
+    // Private clients may not have onboarding requirements immediately.
+    if (isPrivateClient) {
+      return null;
+    }
+
     if (project.stage === 'Onboarding' && intakeProgress === 0) {
       return 'Waiting on client requirements';
     }
@@ -2039,6 +2087,14 @@ const ProjectDetail: React.FC = () => {
   const intakeStatus = getIntakeStatus();
   const clientTypeStyle = getClientTypeColor(project.clientType);
   const priorityColor = getPriorityColor(project.priority);
+  const isPrivateClient = project.clientType === 'Private';
+  const deliverablesForDisplay = isPrivateClient
+    ? (project.deliverables || []).filter((deliverable: any) => {
+        const isCustomDeliverable = deliverable.type === 'Other' || !!deliverable.customType;
+        if (isCustomDeliverable) return true;
+        return tasks.some((task: any) => task.deliverableId === deliverable.id);
+      })
+    : (project.deliverables || []);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -2182,16 +2238,29 @@ const ProjectDetail: React.FC = () => {
           boxSizing: 'border-box',
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 42%, #ffffff 100%)',
             border: '1px solid #bfdbfe',
-            borderRadius: 14,
-            padding: '0.85rem 1rem',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.08)',
+            borderRadius: 16,
+            padding: '1rem',
+            boxShadow: '0 8px 20px rgba(37, 99, 235, 0.09)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#1e3a8a', fontWeight: 800 }}>
-                <FaStickyNote />
-                Monthly Remembering
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#1e3a8a', fontWeight: 800 }}>
+                <span style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  background: '#dbeafe',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #93c5fd',
+                }}>
+                  <FaStickyNote />
+                </span>
+                <span>
+                  Monthly Reminder
+                </span>
               </div>
               <span style={{
                 fontSize: '0.75rem',
@@ -2205,32 +2274,93 @@ const ProjectDetail: React.FC = () => {
                 {projectMonthlyReminders.length} linked note{projectMonthlyReminders.length !== 1 ? 's' : ''}
               </span>
             </div>
+
+            <div style={{
+              marginTop: '0.75rem',
+              background: '#ffffff',
+              border: '1px solid #dbeafe',
+              borderRadius: 12,
+              padding: '0.75rem',
+            }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: '0.55rem', alignItems: 'start' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                    Reminder Day
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={projectReminderForm.reminderDay}
+                    onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, reminderDay: e.target.value }))}
+                    className="form-input"
+                    style={{ width: '100%', padding: '0.5rem 0.55rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                    Note
+                  </label>
+                  <textarea
+                    value={projectReminderForm.note}
+                    onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, note: e.target.value }))}
+                    rows={2}
+                    placeholder="Ex: Monthly report on day 24 - 10 articles + GA report"
+                    className="form-input"
+                    style={{ width: '100%', minHeight: 66, padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem', resize: 'vertical' }}
+                  />
+                </div>
+                <div style={{ alignSelf: 'end' }}>
+                  <button
+                    type="button"
+                    onClick={handleCreateProjectMonthlyReminder}
+                    disabled={savingProjectMonthlyReminder}
+                    className="btn-primary"
+                    style={{
+                      background: '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '0.5rem 0.72rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: savingProjectMonthlyReminder ? 'not-allowed' : 'pointer',
+                      opacity: savingProjectMonthlyReminder ? 0.65 : 1,
+                      minWidth: 108,
+                    }}
+                  >
+                    {savingProjectMonthlyReminder ? 'Saving...' : 'Add note'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {loadingProjectMonthlyReminders && (
-              <div style={{ marginTop: '0.45rem', fontSize: '0.82rem', color: '#1d4ed8' }}>
+              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#1d4ed8' }}>
                 Loading monthly reminders...
               </div>
             )}
             {!loadingProjectMonthlyReminders && projectMonthlyReminders.length === 0 && (
-              <div style={{ marginTop: '0.45rem', fontSize: '0.82rem', color: '#475569' }}>
+              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#475569' }}>
                 No monthly reminders linked to this client yet.
               </div>
             )}
             {!loadingProjectMonthlyReminders && projectMonthlyReminders.length > 0 && (
-              <div style={{ marginTop: '0.55rem', display: 'grid', gap: '0.4rem' }}>
+              <div style={{ marginTop: '0.7rem', display: 'grid', gap: '0.45rem' }}>
                 {projectMonthlyReminders.map((item) => (
                   <div key={item.id} style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '0.5rem',
                     background: '#ffffff',
-                    border: '1px solid #dbeafe',
+                    border: '1px solid #bfdbfe',
                     borderRadius: 10,
-                    padding: '0.45rem 0.55rem',
+                    padding: '0.52rem 0.62rem',
                   }}>
                     <span style={{
                       fontSize: '0.72rem',
                       borderRadius: 999,
-                      background: '#2563eb',
+                      background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                       color: '#fff',
                       fontWeight: 700,
                       padding: '0.14rem 0.42rem',
@@ -2238,9 +2368,14 @@ const ProjectDetail: React.FC = () => {
                     }}>
                       Day {item.reminderDay}
                     </span>
-                    <span style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
-                      {item.note}
-                    </span>
+                    <div style={{ display: 'grid', gap: '0.2rem' }}>
+                      <span style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                        {item.note}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Updated {new Date(item.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -3459,9 +3594,9 @@ const ProjectDetail: React.FC = () => {
 
             {/* Deliverable Sub-Tabs */}
             <div className="deliverable-sub-tabs-container">
-              {project.deliverables && project.deliverables.length > 0 && (
+              {deliverablesForDisplay.length > 0 && (
                 <div className="deliverable-sub-tabs">
-                  {project.deliverables.map((deliverable: any) => {
+                  {deliverablesForDisplay.map((deliverable: any) => {
                     const isCustomDeliverable = deliverable.type === 'Other' || deliverable.customType;
                     const isEditing = editingDeliverableId === deliverable.id;
                     
@@ -3628,6 +3763,22 @@ const ProjectDetail: React.FC = () => {
                   })}
                 </div>
               )}
+              {isPrivateClient && deliverablesForDisplay.length === 0 && (
+                <div
+                  style={{
+                    padding: '0.75rem 0.9rem',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px dashed #cbd5e1',
+                    color: '#475569',
+                    fontSize: '0.86rem',
+                    lineHeight: 1.45,
+                    marginRight: '0.75rem',
+                  }}
+                >
+                  No deliverables set for this Private client yet. Create a custom deliverable or select an existing one when ready.
+                </div>
+              )}
               <button
                 className="add-deliverable-btn"
                 onClick={() => setShowAddDeliverableModal(true)}
@@ -3638,8 +3789,8 @@ const ProjectDetail: React.FC = () => {
             </div>
 
             {/* Kanban Board for Selected Deliverable */}
-            {activeDeliverableTab && project.deliverables && (() => {
-              const selectedDeliverable = project.deliverables.find((d: any) => d.id === activeDeliverableTab);
+            {activeDeliverableTab && deliverablesForDisplay.length > 0 && (() => {
+              const selectedDeliverable = deliverablesForDisplay.find((d: any) => d.id === activeDeliverableTab);
               if (!selectedDeliverable) return null;
 
               // Get all files/tasks for this deliverable
@@ -8215,7 +8366,9 @@ const ProjectDetail: React.FC = () => {
                       marginBottom: 0,
                       fontStyle: 'italic'
                     }}>
-                      No deliverables available. Create a new one instead.
+                      {project.clientType === 'Private'
+                        ? 'No deliverables set yet for this Private client. You can add them when ready.'
+                        : 'No deliverables available. Create a new one instead.'}
                     </p>
                   )}
                 </div>

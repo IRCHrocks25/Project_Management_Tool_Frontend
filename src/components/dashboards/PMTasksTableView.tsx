@@ -321,7 +321,15 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
 
   const tasksForTable = useMemo(() => {
     const filteredProjectIds = new Set(filteredProjects.map((p: any) => p.id));
-    let list = tasks.filter((t: any) => filteredProjectIds.has(t.projectId));
+    const projectMap = new Map(projects.map((p: any) => [p.id, p]));
+    let list = tasks.filter((t: any) => {
+      if (!filteredProjectIds.has(t.projectId)) return false;
+      const project = projectMap.get(t.projectId);
+      const isPrivateClient = project?.clientType === 'Private' ||
+        (Array.isArray(project?.secondaryClientTypes) && project.secondaryClientTypes.includes('Private'));
+      if (isPrivateClient && t.type === 'Onboarding') return false;
+      return true;
+    });
     if (tasksDepartmentFilter !== 'All Departments')
       list = list.filter((t: any) => (TASK_TYPE_TO_DEPARTMENT[t.type] || t.type) === tasksDepartmentFilter);
     if (tasksPmFilter !== 'All') {
@@ -344,7 +352,6 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
     }
     const { column, dir } = tasksTableSort;
     const mult = dir === 'asc' ? 1 : -1;
-    const projectMap = new Map(projects.map((p: any) => [p.id, p]));
     const pmNameMap = new Map<string, string>();
     const userNameMap = new Map<string, string>();
     for (const p of projects) {
