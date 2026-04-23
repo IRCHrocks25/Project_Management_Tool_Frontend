@@ -769,6 +769,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (desc.includes('--- Column: Revision ---')) return 'revision';
       if (desc.includes('--- Column: Elliot Review ---')) return 'elliot_review';
       if (desc.includes('--- Column: QA Review ---')) return 'qa_before_client';
+      if (desc.includes('--- Column: Client Validation ---')) return 'client_validation';
       if (desc.includes('--- Column: Client Review ---')) return 'client_validation';
       if (desc.includes('--- Column: For Approval ---')) return 'for_approval';
 
@@ -1235,7 +1236,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       case 'qa_before_client':
         return { status: 'In Review', columnMarker: '\n\n--- Column: QA Review ---', isCompleted: false };
       case 'client_validation':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: Client Review ---', isCompleted: false };
+        return { status: 'In Review', columnMarker: '\n\n--- Column: Client Validation ---', isCompleted: false };
       case 'approved_completed':
         return { status: 'Completed', isCompleted: true };
       default:
@@ -1290,40 +1291,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (!task) return;
 
       const { status, columnMarker, isCompleted } = mapColumnToStatus(statusChangeContext.targetColumnId);
-      
-      // Update description with column marker if needed
-      if (columnMarker) {
-        const currentDesc = task.description || '';
-        const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
-        if (!cleanedDesc.includes(columnMarker)) {
-          try {
-            await taskService.update(task.id, {
-              description: cleanedDesc + columnMarker
-            });
-          } catch (descError) {
-            console.warn('Failed to update description with column marker:', descError);
-          }
-        }
-      } else {
-        // Clear column markers when moving to non-review columns
-        const currentDesc = task.description || '';
-        if (currentDesc.includes('--- Column:')) {
-          try {
-            const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
-            await taskService.update(task.id, {
-              description: cleanedDesc
-            });
-          } catch (descError) {
-            console.warn('Failed to clear column marker:', descError);
-          }
-        }
-      }
 
       // Update task status
       await taskService.updateStatus(statusChangeContext.taskId, status, isCompleted);
 
-      // Log status change with notes and links
-      const currentDesc = task.description || '';
+      // Build a single description update so marker + log stay in sync.
+      const baseDesc = (task.description || '').replace(/\n\n--- Column: [^-]+ ---/g, '');
+      const descWithMarker = columnMarker ? `${baseDesc}${columnMarker}` : baseDesc;
       const timestamp = new Date().toLocaleString();
       let logBlock = `\n\n--- Status Change ---\nNew Column: ${statusChangeContext.targetColumnLabel}\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
       
@@ -1336,7 +1310,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         logBlock += `\nAttachments:\n${validLinks.map(link => `- ${link.trim()}`).join('\n')}`;
       }
 
-      const updatedDesc = currentDesc + logBlock;
+      const updatedDesc = descWithMarker + logBlock;
       try {
         await taskService.update(task.id, { description: updatedDesc });
       } catch (descError) {
@@ -2548,7 +2522,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 { id: 'owned_in_progress', title: 'Owned/In Progress', color: '#3b82f6' },
                 { id: 'for_approval', title: 'For Approval', color: '#f59e0b' },
                 { id: 'revision', title: 'Revision', color: '#ef4444' },
-                { id: 'elliot_review', title: 'Elliot Review', color: '#8b5cf6' },
+                // { id: 'elliot_review', title: 'Elliot Review', color: '#8b5cf6' },
                 { id: 'approved_completed', title: 'Approved/Completed', color: '#10b981' },
                 { id: 'qa_before_client', title: 'QA Before Sending to Client', color: '#06b6d4' },
                 { id: 'client_validation', title: 'Client Validation', color: '#f97316' }

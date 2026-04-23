@@ -1327,7 +1327,7 @@ const ProjectDetail: React.FC = () => {
           break;
         case 'client_validation':
           backendStatus = 'In Review';
-          columnLabel = 'Client Review';
+          columnLabel = 'Client Validation';
           break;
         default:
           backendStatus = newStatus;
@@ -4102,6 +4102,15 @@ const ProjectDetail: React.FC = () => {
                       if (desc.includes('--- Column: Revision ---')) {
                         return 'revision';
                       }
+                      if (desc.includes('--- Column: QA Review ---')) {
+                        return 'qa_before_client';
+                      }
+                      if (desc.includes('--- Column: Client Validation ---') || desc.includes('--- Column: Client Review ---')) {
+                        return 'client_validation';
+                      }
+                      if (desc.includes('--- Column: For Approval ---')) {
+                        return 'for_approval';
+                      }
                     }
 
                     // Check if task was resubmitted (status is 'In Review')
@@ -4165,7 +4174,7 @@ const ProjectDetail: React.FC = () => {
                   if (desc.includes('--- Column: QA Review ---')) {
                     return 'qa_before_client';
                   }
-                  if (desc.includes('--- Column: Client Review ---')) {
+                  if (desc.includes('--- Column: Client Validation ---') || desc.includes('--- Column: Client Review ---')) {
                     return 'client_validation';
                   }
                   if (desc.includes('--- Column: For Approval ---')) {
@@ -4195,7 +4204,7 @@ const ProjectDetail: React.FC = () => {
                 { id: 'owned_in_progress', title: 'Owned/In Progress', files: relatedLinks.filter(l => getFileStatus(l) === 'owned_in_progress') },
                 { id: 'for_approval', title: 'For Approval', files: relatedLinks.filter(l => getFileStatus(l) === 'for_approval') },
                 { id: 'revision', title: 'Revision', files: relatedLinks.filter(l => getFileStatus(l) === 'revision') },
-                { id: 'elliot_review', title: 'Elliot Review', files: relatedLinks.filter(l => getFileStatus(l) === 'elliot_review') },
+                // { id: 'elliot_review', title: 'Elliot Review', files: relatedLinks.filter(l => getFileStatus(l) === 'elliot_review') },
                 
                 { id: 'approved_completed', title: 'Approved/Completed', files: relatedLinks.filter(l => getFileStatus(l) === 'approved_completed') },
                 { id: 'qa_before_client', title: 'QA Before Sending to Client', files: relatedLinks.filter(l => getFileStatus(l) === 'qa_before_client') },
@@ -4249,7 +4258,6 @@ const ProjectDetail: React.FC = () => {
                     const modalColumns = [
                       'for_approval',
                       'revision',
-                      'elliot_review',
                       'approved_completed',
                       'qa_before_client',
                       'client_validation',
@@ -4259,7 +4267,6 @@ const ProjectDetail: React.FC = () => {
                       const labelMap: Record<string, string> = {
                         for_approval: 'For Approval',
                         revision: 'Revision',
-                        elliot_review: 'Elliot Review',
                         approved_completed: 'Approved/Completed',
                         qa_before_client: 'QA Before Sending to Client',
                         client_validation: 'Client Validation',
@@ -4300,8 +4307,8 @@ const ProjectDetail: React.FC = () => {
 
                 // Only allow dropping on manual action columns for deliverables (non-task files)
                 // Automatic columns (not_started, owned_in_progress, for_approval) cannot be dragged to
-                // Manual columns: elliot_review, revision, approved_completed, qa_before_client, client_validation
-                const manualColumns = ['elliot_review', 'revision', 'approved_completed', 'qa_before_client', 'client_validation'];
+                // Manual columns: revision, approved_completed, qa_before_client, client_validation
+                const manualColumns = ['revision', 'approved_completed', 'qa_before_client', 'client_validation'];
                 if (!manualColumns.includes(targetColumnId)) {
                   // For automatic columns, don't update status (they're informational/automatic)
                   setDragOverColumn(null);
@@ -5169,7 +5176,7 @@ const ProjectDetail: React.FC = () => {
                                             if (task.description.includes('--- Column: QA Review ---')) {
                                               return 'qa_before_client';
                                             }
-                                            if (task.description.includes('--- Column: Client Review ---')) {
+                                            if (task.description.includes('--- Column: Client Validation ---') || task.description.includes('--- Column: Client Review ---')) {
                                               return 'client_validation';
                                             }
                                             if (task.description.includes('--- Column: For Approval ---')) {
@@ -5211,7 +5218,6 @@ const ProjectDetail: React.FC = () => {
                                           const modalColumns = [
                                             'for_approval',
                                             'revision',
-                                            'elliot_review',
                                             'approved_completed',
                                             'qa_before_client',
                                             'client_validation',
@@ -5221,7 +5227,6 @@ const ProjectDetail: React.FC = () => {
                                             const labelMap: Record<string, string> = {
                                               for_approval: 'For Approval',
                                               revision: 'Revision',
-                                              elliot_review: 'Elliot Review',
                                               approved_completed: 'Approved/Completed',
                                               qa_before_client: 'QA Before Sending to Client',
                                               client_validation: 'Client Validation',
@@ -5266,7 +5271,6 @@ const ProjectDetail: React.FC = () => {
                                         <option value="owned_in_progress">Owned/In Progress</option>
                                         <option value="for_approval">For Approval</option>
                                         <option value="revision">Revision</option>
-                                        <option value="elliot_review">Elliot Review</option>
                                         <option value="approved_completed">Approved/Completed</option>
                                         <option value="qa_before_client">QA Before Sending to Client</option>
                                         <option value="client_validation">Client Validation</option>
