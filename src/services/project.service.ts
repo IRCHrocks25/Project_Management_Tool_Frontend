@@ -111,7 +111,7 @@ export const projectService = {
 
   async update(
     id: string,
-    data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[]; pmId?: string; priority?: string },
+    data: { clientName?: string; clientType?: string; secondaryClientTypes?: string[]; pmId?: string; priority?: string; associatedLink?: string },
   ): Promise<any> {
     const response = await axios.patch(`${API_URL}/projects/${id}`, data, getAuthHeaders());
     return response.data;

@@ -18,6 +18,10 @@ export interface MonthlyReminder {
   clientName: string;
   reminderDay: number;
   note: string;
+  reminderLink?: string | null;
+  currentMonthKey?: string | null; // YYYY-MM
+  currentMonthStatus?: 'pending' | 'done' | 'no';
+  nextMonthStatus?: 'pending' | 'done' | 'no' | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +31,10 @@ type UpsertMonthlyReminderPayload = {
   clientName?: string;
   reminderDay: number;
   note: string;
+  reminderLink?: string | null;
+  currentMonthKey?: string | null;
+  currentMonthStatus?: 'pending' | 'done' | 'no';
+  nextMonthStatus?: 'pending' | 'done' | 'no' | null;
 };
 
 export const monthlyRemindersService = {

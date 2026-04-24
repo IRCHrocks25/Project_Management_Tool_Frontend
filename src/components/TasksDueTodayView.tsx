@@ -37,6 +37,7 @@ const TasksDueTodayView: React.FC = () => {
     manualClientName: '',
     reminderDay: 24,
     note: '',
+    reminderLink: '',
   });
 
   const loadData = useCallback(async () => {
@@ -161,6 +162,7 @@ const TasksDueTodayView: React.FC = () => {
       manualClientName: '',
       reminderDay: 24,
       note: '',
+      reminderLink: '',
     });
   }, []);
 
@@ -171,6 +173,7 @@ const TasksDueTodayView: React.FC = () => {
       clientName: monthlyReminderForm.projectId ? undefined : monthlyReminderForm.manualClientName.trim(),
       reminderDay: Number(monthlyReminderForm.reminderDay),
       note: monthlyReminderForm.note.trim(),
+      reminderLink: monthlyReminderForm.reminderLink.trim() || null,
     };
 
     if (!payload.note) {
@@ -212,8 +215,15 @@ const TasksDueTodayView: React.FC = () => {
       manualClientName: item.projectId ? '' : item.clientName,
       reminderDay: item.reminderDay,
       note: item.note,
+      reminderLink: item.reminderLink || '',
     });
   }, []);
+
+  const handleQuickUpdateMonthlyReminder = useCallback(async (id: string, payload: Partial<MonthlyReminder>) => {
+    if (!canManageMonthlyReminders) return;
+    await monthlyRemindersService.update(id, payload as any);
+    await loadMonthlyReminders();
+  }, [canManageMonthlyReminders, loadMonthlyReminders]);
 
   const handleDeleteMonthlyReminder = useCallback(async (id: string) => {
     if (!canManageMonthlyReminders) return;
@@ -460,6 +470,7 @@ const TasksDueTodayView: React.FC = () => {
           handleEditMonthlyReminder={handleEditMonthlyReminder}
           handleResolveMonthlyReminder={handleDeleteMonthlyReminder}
           handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
+          handleQuickUpdateMonthlyReminder={handleQuickUpdateMonthlyReminder}
           openTask={(projectId, taskId) => navigate(`/project/${projectId}?task=${taskId}&tab=details`)}
           openProject={(projectId) => navigate(`/project/${projectId}`)}
           onCreateProjectClick={() => setShowCreateModal(true)}

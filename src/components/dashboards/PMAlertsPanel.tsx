@@ -18,6 +18,7 @@ export type PMMonthlyReminderForm = {
   manualClientName: string;
   reminderDay: number;
   note: string;
+  reminderLink: string;
 };
 
 type PMAlertsPanelProps = {
@@ -39,6 +40,7 @@ type PMAlertsPanelProps = {
   handleEditMonthlyReminder: (item: MonthlyReminder) => void;
   handleResolveMonthlyReminder: (id: string) => void;
   handleDeleteMonthlyReminder: (id: string) => void;
+  handleQuickUpdateMonthlyReminder: (id: string, payload: Partial<MonthlyReminder>) => Promise<void>;
   openTask: (projectId: string, taskId: string) => void;
   openProject: (projectId: string) => void;
   onCreateProjectClick: () => void;
@@ -83,6 +85,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
   handleEditMonthlyReminder,
   handleResolveMonthlyReminder,
   handleDeleteMonthlyReminder,
+  handleQuickUpdateMonthlyReminder,
   openTask,
   openProject,
   onCreateProjectClick,
@@ -121,6 +124,20 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
 
   const criticalCount = taskDueAlerts.filter((t) => t.daysLeft <= 2).length;
   const highCount = taskDueAlerts.filter((t) => t.daysLeft > 2).length;
+
+  const monthLabel = (monthKey: string) => {
+    const [year, month] = monthKey.split('-').map(Number);
+    if (!year || !month) return monthKey;
+    return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+  };
+  const toMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const nextMonthKey = (monthKey: string) => {
+    const [year, month] = monthKey.split('-').map(Number);
+    const dt = new Date(year, (month || 1) - 1, 1);
+    dt.setMonth(dt.getMonth() + 1);
+    return toMonthKey(dt);
+  };
+  const currentMonthKeyNow = toMonthKey(new Date());
 
   return (
     <div
@@ -683,9 +700,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(220px, 1fr) 110px 2fr auto',
-                gap: '0.6rem',
-                alignItems: 'end',
+                gridTemplateColumns: 'minmax(220px, 1fr) 95px minmax(360px, 2fr) auto',
+                gap: '0.7rem',
+                alignItems: 'start',
               }}
             >
               <div>
@@ -799,6 +816,14 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 >
                   {monthlyReminderForm.projectId ? 'Comments / Notes / Reminder' : 'Client & Comments'}
                 </label>
+                <div
+                  style={{
+                    border: '1px solid #dbe4ef',
+                    borderRadius: 8,
+                    padding: '0.45rem',
+                    background: '#ffffff',
+                  }}
+                >
                 {!monthlyReminderForm.projectId && (
                   <input
                     type="text"
@@ -816,7 +841,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                       border: '1px solid #cbd5e1',
                       padding: '0.5rem 0.6rem',
                       fontSize: '0.82rem',
-                      background: '#fff',
+                      background: '#f8fafc',
                       color: '#0f172a',
                       marginBottom: '0.4rem',
                       fontFamily: 'inherit',
@@ -837,14 +862,47 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem',
                     resize: 'vertical',
-                    background: '#fff',
+                    minHeight: '64px',
+                    background: '#f8fafc',
                     color: '#0f172a',
                     fontFamily: 'inherit',
                   }}
                 />
+                <div
+                  style={{
+                    fontSize: '0.64rem',
+                    fontWeight: 700,
+                    color: '#64748b',
+                    marginTop: '0.45rem',
+                    marginBottom: '0.3rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Reference Link
+                </div>
+                <input
+                  type="text"
+                  placeholder="Optional link (doc/sheet/client brief)"
+                  value={monthlyReminderForm.reminderLink}
+                  onChange={(e) =>
+                    setMonthlyReminderForm((prev) => ({ ...prev, reminderLink: e.target.value }))
+                  }
+                  style={{
+                    width: '100%',
+                    borderRadius: 7,
+                    border: '1px solid #cbd5e1',
+                    padding: '0.5rem 0.6rem',
+                    fontSize: '0.82rem',
+                    background: '#f8fafc',
+                    color: '#0f172a',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-end', height: '100%' }}>
                 <button
                   type="button"
                   onClick={handleSaveMonthlyReminder}
@@ -856,10 +914,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: '0.78rem',
-                    padding: '0.55rem 0.9rem',
+                    padding: '0.62rem 0.95rem',
                     cursor: savingMonthlyReminder ? 'not-allowed' : 'pointer',
                     transition: 'background 0.15s ease',
                     fontFamily: 'inherit',
+                    alignSelf: 'flex-end',
                   }}
                 >
                   {savingMonthlyReminder
@@ -879,9 +938,10 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                       color: '#475569',
                       fontWeight: 700,
                       fontSize: '0.78rem',
-                      padding: '0.55rem 0.8rem',
+                      padding: '0.62rem 0.8rem',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
+                      alignSelf: 'flex-end',
                     }}
                   >
                     Cancel
@@ -926,164 +986,287 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
 
             {!loadingMonthlyReminders &&
               monthlyReminders.map((item) => (
-                <div
-                  key={item.id}
-                  className="pm-alert-item"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.7rem',
-                    padding: '0.6rem 0.75rem',
-                    border: '1px solid #e2e8f0',
-                    borderLeft: '3px solid #2563eb',
-                    background: '#fff',
-                    borderRadius: '8px',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                  }}
-                >
-                  {/* Day block */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '6px',
-                      padding: '0.3rem 0.5rem',
-                      minWidth: '42px',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '0.58rem',
-                        fontWeight: 700,
-                        color: '#1d4ed8',
-                        letterSpacing: '0.06em',
-                      }}
-                    >
-                      DAY
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '1.05rem',
-                        fontWeight: 900,
-                        color: '#2563eb',
-                        lineHeight: 1,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {item.reminderDay}
-                    </span>
-                  </div>
+                (() => {
+                  const baseMonthKey = item.currentMonthKey || currentMonthKeyNow;
+                  const cmStatus = item.currentMonthStatus || 'pending';
+                  const nmStatus = item.nextMonthStatus || null;
+                  const monthRolled = baseMonthKey < currentMonthKeyNow;
+                  const stalePendingLabel = monthRolled && cmStatus !== 'done' ? monthLabel(baseMonthKey) : null;
+                  const effectiveCMKey = monthRolled ? currentMonthKeyNow : baseMonthKey;
+                  const effectiveNMKey = nextMonthKey(effectiveCMKey);
+                  const nmEnabled = (monthRolled ? 'pending' : cmStatus) === 'done';
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: '0.85rem',
-                        fontWeight: 800,
-                        color: '#0f172a',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {item.clientName}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '0.75rem',
-                        color: '#64748b',
-                        marginTop: '2px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {item.note}
-                    </div>
-                  </div>
+                  const setCMStatus = async (status: 'done' | 'no') => {
+                    const payload = monthRolled
+                      ? {
+                          currentMonthKey: currentMonthKeyNow,
+                          currentMonthStatus: status,
+                          nextMonthStatus: null,
+                        }
+                      : { currentMonthStatus: status };
+                    await handleQuickUpdateMonthlyReminder(item.id, payload);
+                  };
 
-                  <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
-                    {item.projectId && (
-                      <button
-                        type="button"
-                        onClick={() => openProject(item.projectId as string)}
+                  const setNMStatus = async (status: 'done' | 'no') => {
+                    if (!nmEnabled) return;
+                    await handleQuickUpdateMonthlyReminder(item.id, { nextMonthStatus: status });
+                  };
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="pm-alert-item"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'auto minmax(220px, 1fr) auto',
+                        alignItems: 'center',
+                        gap: '0.7rem',
+                        padding: '0.6rem 0.75rem',
+                        border: '1px solid #e2e8f0',
+                        borderLeft: '3px solid #2563eb',
+                        background: '#fff',
+                        borderRadius: '8px',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                      }}
+                    >
+                      {/* Day block */}
+                      <div
                         style={{
-                          borderRadius: 6,
-                          border: '1px solid #bfdbfe',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           background: '#eff6ff',
-                          color: '#1d4ed8',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          padding: '0.38rem 0.6rem',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '6px',
+                          padding: '0.3rem 0.5rem',
+                          minWidth: '42px',
+                          flexShrink: 0,
                         }}
                       >
-                        Open
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleResolveMonthlyReminder(item.id)}
-                      style={{
-                        borderRadius: 6,
-                        border: '1px solid #86efac',
-                        background: '#f0fdf4',
-                        color: '#166534',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '0.38rem 0.6rem',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Resolve
-                    </button>
-                    <button
-                      type="button"
-                      className="pm-ghost-btn"
-                      onClick={() => handleEditMonthlyReminder(item)}
-                      style={{
-                        borderRadius: 6,
-                        border: '1px solid #e2e8f0',
-                        background: '#fff',
-                        color: '#475569',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '0.38rem 0.6rem',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s ease',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMonthlyReminder(item.id)}
-                      style={{
-                        borderRadius: 6,
-                        border: '1px solid #fecaca',
-                        background: '#fff',
-                        color: '#b91c1c',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '0.38rem 0.6rem',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+                        <span
+                          style={{
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            color: '#1d4ed8',
+                            letterSpacing: '0.06em',
+                          }}
+                        >
+                          DAY
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '1.05rem',
+                            fontWeight: 900,
+                            color: '#2563eb',
+                            lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {item.reminderDay}
+                        </span>
+                      </div>
+
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            color: '#0f172a',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          {item.clientName}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            color: '#64748b',
+                            marginTop: '2px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {item.note}
+                        </div>
+                        {item.reminderLink && (
+                          <a
+                            href={item.reminderLink.startsWith('http') ? item.reminderLink : `https://${item.reminderLink}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-block',
+                              marginTop: '0.2rem',
+                              fontSize: '0.72rem',
+                              color: '#1d4ed8',
+                              textDecoration: 'underline',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {item.reminderLink}
+                          </a>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'end' }}>
+                        <div style={{ display: 'flex', gap: '0.28rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {stalePendingLabel && (
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                padding: '0.18rem 0.42rem',
+                                borderRadius: 999,
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                color: '#b91c1c',
+                              }}
+                            >
+                              {stalePendingLabel}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#334155' }}>
+                            CM {monthLabel(effectiveCMKey)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCMStatus('done')}
+                            style={{
+                              borderRadius: 6, border: '1px solid #86efac', background: cmStatus === 'done' ? '#22c55e' : '#f0fdf4',
+                              color: cmStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
+                            }}
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCMStatus('no')}
+                            style={{
+                              borderRadius: 6, border: '1px solid #fecaca', background: cmStatus === 'no' ? '#ef4444' : '#fff',
+                              color: cmStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
+                            }}
+                          >
+                            No
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.28rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: nmEnabled ? '#334155' : '#94a3b8' }}>
+                            NM {monthLabel(effectiveNMKey)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setNMStatus('done')}
+                            disabled={!nmEnabled}
+                            style={{
+                              borderRadius: 6, border: '1px solid #86efac', background: nmStatus === 'done' ? '#22c55e' : '#f8fafc',
+                              color: nmStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
+                              cursor: nmEnabled ? 'pointer' : 'not-allowed', opacity: nmEnabled ? 1 : 0.45,
+                            }}
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNMStatus('no')}
+                            disabled={!nmEnabled}
+                            style={{
+                              borderRadius: 6, border: '1px solid #fecaca', background: nmStatus === 'no' ? '#ef4444' : '#fff',
+                              color: nmStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
+                              cursor: nmEnabled ? 'pointer' : 'not-allowed', opacity: nmEnabled ? 1 : 0.45,
+                            }}
+                          >
+                            No
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                          {item.projectId && (
+                            <button
+                              type="button"
+                              onClick={() => openProject(item.projectId as string)}
+                              style={{
+                                borderRadius: 6,
+                                border: '1px solid #bfdbfe',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '0.38rem 0.6rem',
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              Open
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleResolveMonthlyReminder(item.id)}
+                            style={{
+                              borderRadius: 6,
+                              border: '1px solid #86efac',
+                              background: '#f0fdf4',
+                              color: '#166534',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.38rem 0.6rem',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            Resolve
+                          </button>
+                          <button
+                            type="button"
+                            className="pm-ghost-btn"
+                            onClick={() => handleEditMonthlyReminder(item)}
+                            style={{
+                              borderRadius: 6,
+                              border: '1px solid #e2e8f0',
+                              background: '#fff',
+                              color: '#475569',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.38rem 0.6rem',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s ease',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMonthlyReminder(item.id)}
+                            style={{
+                              borderRadius: 6,
+                              border: '1px solid #fecaca',
+                              background: '#fff',
+                              color: '#b91c1c',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.38rem 0.6rem',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
               ))}
           </div>
         </div>

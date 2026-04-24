@@ -488,6 +488,100 @@
   gap: 1.5rem;
 }
 
+/* Professional overview layout */
+.overview-grid-pro {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.overview-grid-pro > .premium-card {
+  padding: 1.5rem;
+}
+
+.overview-card--details {
+  grid-column: span 4;
+}
+
+.overview-card--activity {
+  grid-column: span 8;
+}
+
+.overview-card--revisions {
+  grid-column: span 6;
+}
+
+.overview-card--files {
+  grid-column: span 6;
+}
+
+.overview-card--completed {
+  grid-column: span 8;
+}
+
+.overview-card--closure {
+  grid-column: span 4;
+}
+
+.overview-card--details .detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.overview-card--details .notes-item {
+  grid-column: 1 / -1;
+}
+
+.overview-card--activity .activity-notifications-list {
+  max-height: 420px !important;
+}
+
+.overview-card--revisions .revision-list-premium {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+@media (max-width: 1400px) {
+  .overview-grid-pro {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .overview-card--details,
+  .overview-card--activity,
+  .overview-card--revisions,
+  .overview-card--files,
+  .overview-card--completed,
+  .overview-card--closure {
+    grid-column: span 3;
+  }
+
+  .overview-card--activity,
+  .overview-card--completed {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 1100px) {
+  .overview-grid-pro {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card--details,
+  .overview-card--activity,
+  .overview-card--revisions,
+  .overview-card--files,
+  .overview-card--completed,
+  .overview-card--closure {
+    grid-column: span 1;
+  }
+
+  .overview-card--details .detail-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .premium-card {
   background: white;
   padding: 2rem;

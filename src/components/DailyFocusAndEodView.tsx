@@ -613,6 +613,7 @@ const DailyFocusAndEodView: React.FC = () => {
     manualClientName: '',
     reminderDay: 24,
     note: '',
+    reminderLink: '',
   });
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -1148,6 +1149,7 @@ const DailyFocusAndEodView: React.FC = () => {
       manualClientName: '',
       reminderDay: 24,
       note: '',
+      reminderLink: '',
     });
   }, []);
 
@@ -1158,6 +1160,7 @@ const DailyFocusAndEodView: React.FC = () => {
       clientName: monthlyReminderForm.projectId ? undefined : monthlyReminderForm.manualClientName.trim(),
       reminderDay: Number(monthlyReminderForm.reminderDay),
       note: monthlyReminderForm.note.trim(),
+      reminderLink: monthlyReminderForm.reminderLink.trim() || null,
     };
 
     if (!payload.note) {
@@ -1199,8 +1202,15 @@ const DailyFocusAndEodView: React.FC = () => {
       manualClientName: item.projectId ? '' : item.clientName,
       reminderDay: item.reminderDay,
       note: item.note,
+      reminderLink: item.reminderLink || '',
     });
   }, []);
+
+  const handleQuickUpdateMonthlyReminder = useCallback(async (id: string, payload: Partial<MonthlyReminder>) => {
+    if (!canManageMonthlyReminders) return;
+    await monthlyRemindersService.update(id, payload as any);
+    await loadMonthlyReminders();
+  }, [canManageMonthlyReminders, loadMonthlyReminders]);
 
   const handleDeleteMonthlyReminder = useCallback(async (id: string) => {
     if (!canManageMonthlyReminders) return;
@@ -1386,6 +1396,7 @@ const DailyFocusAndEodView: React.FC = () => {
               handleEditMonthlyReminder={handleEditMonthlyReminder}
               handleResolveMonthlyReminder={handleDeleteMonthlyReminder}
               handleDeleteMonthlyReminder={handleDeleteMonthlyReminder}
+              handleQuickUpdateMonthlyReminder={handleQuickUpdateMonthlyReminder}
               openTask={(projectId, taskId) => {
                 const task = allTasks.find((t: any) => t.id === taskId && t.projectId === projectId);
                 if (task) {
