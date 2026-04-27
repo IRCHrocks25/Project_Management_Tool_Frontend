@@ -5041,7 +5041,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         allUsers={users}
         getProjectName={getProjectName}
         getProjectPmName={getProjectPmName}
-        onEditTask={handleEditTask}
         initialTab={taskDetailTab}
         onTaskUpdate={(updatedTask) => {
           setSelectedTaskDetail(updatedTask);

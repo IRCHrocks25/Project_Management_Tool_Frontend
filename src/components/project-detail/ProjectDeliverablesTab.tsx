@@ -70,8 +70,6 @@ const ProjectDeliverablesTab = (props: any) => {
     handleRemoveDeliverableTeamMember,
     setSelectedDeliverableForTeam,
     setShowAddDeliverableTeamMemberModal,
-    setEditingTask,
-    setShowInlineEditTaskModal,
     copyTaskLink,
     handleApproveFile,
     updatingDeliverable,
@@ -1590,8 +1588,8 @@ const ProjectDeliverablesTab = (props: any) => {
                                           e.stopPropagation();
                                           const relatedTaskForEdit = tasks.find((t: any) => t.id === link.taskId);
                                           if (!relatedTaskForEdit) return;
-                                          setEditingTask(relatedTaskForEdit);
-                                          setShowInlineEditTaskModal(true);
+                                          setSelectedTaskDetail(relatedTaskForEdit);
+                                          setShowTaskDetailModal(true);
                                         }}
                                         style={{
                                           width: '100%',

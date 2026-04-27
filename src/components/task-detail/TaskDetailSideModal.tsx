@@ -17,8 +17,8 @@ interface TaskDetailSideModalProps {
   allUsers: any[];
   getProjectName: (projectId: string) => string;
   getProjectPmName?: (projectId: string) => string;
-  onEditTask?: (task: any) => void;
   onTaskUpdate?: (updatedTask: any) => void;
+  onTaskDeleted?: (taskId: string) => void;
   initialTab?: 'details' | 'conversation';
 }
 
@@ -29,8 +29,8 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   allUsers,
   getProjectName,
   getProjectPmName,
-  onEditTask,
   onTaskUpdate,
+  onTaskDeleted,
   initialTab = 'details',
 }) => {
   const navigate = useNavigate();
@@ -163,6 +163,8 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
 
   if (!isOpen || !task) return null;
 
+  const taskId = displayTask?.id ?? task?.id;
+
   return (
     <div className="tdsm-root tdsm-light-theme">
       <div className="tdsm-backdrop" onClick={handleInternalClose} />
@@ -172,9 +174,20 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
         <TaskHeader
           loadingTask={loadingTask}
           title={displayTask?.title ?? task?.title ?? ''}
+          taskId={taskId}
           projectId={displayTask?.projectId ?? task?.projectId}
           getProjectPmName={getProjectPmName}
           onClose={handleInternalClose}
+          onTitleSaved={(newTitle) => {
+            const updated = { ...(resolvedTask ?? task), title: newTitle };
+            setResolvedTask(updated);
+            onTaskUpdate?.(updated);
+          }}
+          onDeleteTask={onTaskDeleted ? () => {
+            const deletedId = taskId;
+            handleInternalClose();
+            onTaskDeleted(deletedId);
+          } : undefined}
         />
 
         <div className="tdsm-tabs">
@@ -226,14 +239,6 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                 >
                   View Full Project <FaArrowRight style={{ fontSize: '11px' }} />
                 </button>
-                {onEditTask && (
-                  <button
-                    className="tdsm-btn-primary"
-                    onClick={() => { handleInternalClose(); onEditTask(displayTask || task); }}
-                  >
-                    Edit Task
-                  </button>
-                )}
               </div>
             </>
           ) : (

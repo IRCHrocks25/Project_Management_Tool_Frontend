@@ -35,6 +35,40 @@ function initAssignees(task: any): string[] {
   return task.assignedToId ? [task.assignedToId] : [];
 }
 
+// ── Status-marker helpers ─────────────────────────────────────────────────────
+// The description string embeds activity markers of the form:
+//   \n\n--- Status Change ---\nNew Column: ...\nBy: ...\nAt: ...
+// These are parsed by TaskDetailSideModal's parsedStatusChanges memo.
+// The editor must never show or corrupt these blocks.
+
+function splitDescMarkers(desc: string): { prose: string; markerBlocks: string[] } {
+  if (!desc.includes('--- Status Change ---')) return { prose: desc, markerBlocks: [] };
+  const blocks = desc.split(/\n\n--- Status Change ---/);
+  return { prose: blocks[0], markerBlocks: blocks.slice(1) };
+}
+
+function rejoinDescMarkers(prose: string, markerBlocks: string[]): string {
+  if (!markerBlocks.length) return prose;
+  return prose + markerBlocks.map(m => '\n\n--- Status Change ---' + m).join('');
+}
+
+function countStatusMarkers(desc: string): number {
+  if (!desc.includes('--- Status Change ---')) return 0;
+  return desc.split(/\n\n--- Status Change ---/).length - 1;
+}
+
+function showToast(message: string) {
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 interface TaskMetaPanelProps {
   displayTask: any;
   task: any;
@@ -100,6 +134,13 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
   const [editingDeliverable,    setEditingDeliverable]    = useState(false);
   const [showCustomInput,       setShowCustomInput]       = useState(false);
   const [customDeliverableName, setCustomDeliverableName] = useState('');
+
+  // ── Description edit mode ──
+  const [editingDescription,  setEditingDescription]  = useState(false);
+  const [descInput,           setDescInput]           = useState('');
+  const [savedMarkerBlocks,   setSavedMarkerBlocks]   = useState<string[]>([]);
+  const [descError,           setDescError]           = useState<string | null>(null);
+  const [updatingDesc,        setUpdatingDesc]        = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -225,9 +266,51 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     }
   };
 
+  // ── Description ──
+  const startEditDescription = () => {
+    const desc = displayTask?.description ?? task?.description ?? '';
+    const { prose, markerBlocks } = splitDescMarkers(desc);
+    setDescInput(prose);
+    setSavedMarkerBlocks(markerBlocks);
+    setDescError(null);
+    setEditingDescription(true);
+  };
+
+  const handleDescriptionSave = async () => {
+    if (!taskId || updatingDesc) return;
+    const recomposed = rejoinDescMarkers(descInput, savedMarkerBlocks);
+    // Sanity check: marker count must be preserved
+    if (savedMarkerBlocks.length > 0 && countStatusMarkers(recomposed) !== savedMarkerBlocks.length) {
+      showToast("Couldn't save description — please refresh and try again");
+      return;
+    }
+    setDescError(null);
+    setUpdatingDesc(true);
+    try {
+      const updated = await taskService.update(taskId, { description: recomposed });
+      onTaskUpdate?.({ ...(displayTask ?? task), description: updated.description ?? recomposed });
+      setEditingDescription(false);
+    } catch {
+      setDescError('Failed to save description');
+    } finally {
+      setUpdatingDesc(false);
+    }
+  };
+
+  const handleDescKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); handleDescriptionSave(); }
+    if (e.key === 'Escape') { setEditingDescription(false); }
+  };
+
   const currentDeliverable = deliverables.find(d => d.id === localDeliverableId);
   const isOverdue = localDueDate && new Date(localDueDate) < new Date() && localStatus !== 'Completed';
   const statusCls = getStatusCls(localStatus);
+
+  // Strip status markers from the read-only description display
+  const descForDisplay = (() => {
+    const desc = displayTask?.description ?? task?.description ?? '';
+    return splitDescMarkers(desc).prose;
+  })();
 
   return (
     <>
@@ -455,11 +538,57 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
       {/* Description */}
       <div className="tdsm-card">
         <div className="tdsm-card-label"><FaStickyNote /> Description</div>
-        <div style={{ fontSize: '13.5px', color: 'var(--td-text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.65', wordBreak: 'break-word' }}>
-          {displayTask?.description
-            ? renderTextWithLinks(displayTask.description)
-            : <span style={{ color: 'var(--td-text-tertiary)' }}>No description</span>}
-        </div>
+        {editingDescription ? (
+          <div className="tdsm-desc-edit">
+            <textarea
+              className="tdsm-desc-textarea"
+              value={descInput}
+              onChange={e => setDescInput(e.target.value)}
+              onKeyDown={handleDescKeyDown}
+              disabled={updatingDesc}
+              rows={5}
+              placeholder="Add a description…"
+              autoFocus
+            />
+            <div className="tdsm-desc-hint">Ctrl+Enter to save · Esc to cancel</div>
+            <div className="tdsm-desc-actions">
+              <button
+                className="tdsm-post-btn"
+                onClick={handleDescriptionSave}
+                disabled={updatingDesc}
+              >
+                <FaCheck style={{ fontSize: '10px' }} /> Save
+              </button>
+              <button
+                className="tdsm-btn-outline"
+                onClick={() => setEditingDescription(false)}
+                disabled={updatingDesc}
+              >
+                Cancel
+              </button>
+            </div>
+            {descError && <div className="tdsm-field-error">{descError}</div>}
+          </div>
+        ) : (
+          <div
+            className={`tdsm-desc-read${taskId ? ' tdsm-desc-clickable' : ''}`}
+            onClick={taskId ? startEditDescription : undefined}
+            title={taskId ? 'Click to edit description' : undefined}
+            role={taskId ? 'button' : undefined}
+            tabIndex={taskId ? 0 : undefined}
+            onKeyDown={taskId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditDescription(); } } : undefined}
+          >
+            {descForDisplay
+              ? <>
+                  {renderTextWithLinks(descForDisplay)}
+                  <span className="tdsm-inline-edit-icon" style={{ marginLeft: '6px', verticalAlign: 'middle' }}>✎</span>
+                </>
+              : <span style={{ color: 'var(--td-text-tertiary)' }}>
+                  {taskId ? 'No description — click to add' : 'No description'}
+                </span>
+            }
+          </div>
+        )}
       </div>
 
       {showTransfer && (

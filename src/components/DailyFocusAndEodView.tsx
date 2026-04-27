@@ -2308,7 +2308,6 @@ const DailyFocusAndEodView: React.FC = () => {
         allUsers={users}
         getProjectName={getProjectName}
         getProjectPmName={getProjectPmName}
-        onEditTask={handleEditTask}
         initialTab={taskDetailTab}
         onTaskUpdate={(updatedTask) => {
           setSelectedTaskDetail(updatedTask);

@@ -6511,7 +6511,6 @@ const DepartmentView: React.FC = () => {
         allUsers={users}
         getProjectName={getProjectName}
         getProjectPmName={getProjectPmName}
-        onEditTask={handleEditTask}
         onTaskUpdate={(updatedTask: any) => {
           setSelectedTaskDetail(updatedTask);
           setTasks((prev) => prev.map((t: any) => (t.id === updatedTask.id ? updatedTask : t)));

@@ -35,7 +35,6 @@ import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
 import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
 import { ProjectRegistryMeta, projectRegistryMetaService } from '../services/projectRegistryMeta.service';
-import EditTaskModal from './EditTaskModal';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import AppSidebar from './AppSidebar';
 import ProjectOverviewTab from './project-detail/ProjectOverviewTab';
@@ -281,8 +280,6 @@ const ProjectDetail: React.FC = () => {
   const [showAddTeamMemberModal, setShowAddTeamMemberModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [addingTeamMember, setAddingTeamMember] = useState(false);
-  const [showInlineEditTaskModal, setShowInlineEditTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<any | null>(null);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<any | null>(null);
   const [taskDetailInitialTab, setTaskDetailInitialTab] = useState<'details' | 'conversation'>('details');
@@ -3004,8 +3001,6 @@ const ProjectDetail: React.FC = () => {
               handleRemoveDeliverableTeamMember,
               setSelectedDeliverableForTeam,
               setShowAddDeliverableTeamMemberModal,
-              setEditingTask,
-              setShowInlineEditTaskModal,
               copyTaskLink,
               handleApproveFile,
               updatingDeliverable,
@@ -4096,30 +4091,7 @@ const ProjectDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Inline Edit Task Modal for PMs / Leads */}
-      {showInlineEditTaskModal && editingTask && canAssignOwners && (
-        <EditTaskModal
-          isOpen={showInlineEditTaskModal}
-          onClose={() => {
-            setShowInlineEditTaskModal(false);
-            setEditingTask(null);
-          }}
-          task={editingTask}
-          projectId={id!}
-          onUpdate={async () => {
-            await loadProject();
-            setShowInlineEditTaskModal(false);
-            setEditingTask(null);
-          }}
-          onDelete={async () => {
-            await loadProject();
-            setShowInlineEditTaskModal(false);
-            setEditingTask(null);
-          }}
-        />
-      )}
-
-      {/* Reusable Task Detail Side Modal for project tasks */}
+      {/* Task Detail Side Modal for project tasks */}
       <TaskDetailSideModal
         isOpen={showTaskDetailModal}
         task={selectedTaskDetail}
@@ -4143,15 +4115,19 @@ const ProjectDetail: React.FC = () => {
           const related = (project.relatedProjects || []).find((p: any) => p.id === projectId);
           return related?.pm?.name || '';
         }}
-        onEditTask={(task: any) => {
-          if (!canAssignOwners) return;
-          setEditingTask(task);
-          setShowInlineEditTaskModal(true);
-        }}
         onTaskUpdate={(updatedTask: any) => {
           setSelectedTaskDetail(updatedTask);
           setTasks((prev) => {
             const next = prev.map((t: any) => (t.id === updatedTask.id ? updatedTask : t));
+            tasksRef.current = next;
+            return next;
+          });
+        }}
+        onTaskDeleted={(taskId: string) => {
+          setShowTaskDetailModal(false);
+          setSelectedTaskDetail(null);
+          setTasks((prev) => {
+            const next = prev.filter((t: any) => t.id !== taskId);
             tasksRef.current = next;
             return next;
           });
