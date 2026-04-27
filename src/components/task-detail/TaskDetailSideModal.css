@@ -56,6 +56,9 @@
   /* Warning accent (transfer / return flows) */
   --td-accent-warning:          #e67700;
 
+  /* Attachment drop-zone tint (explicit rgba — same pattern as badge tokens above) */
+  --td-accent-drop-tint:        rgba(76, 110, 245, 0.04);
+
   /* Shadows */
   --td-shadow-panel:            0 8px 40px rgba(15, 20, 30, 0.12), 0 2px 8px rgba(15, 20, 30, 0.06);
   --td-shadow-card:             0 1px 3px rgba(15, 20, 30, 0.06);
@@ -1319,4 +1322,165 @@
   font-weight: 600;
   color: var(--td-text-primary);
   text-align: center;
+}
+
+/* ── Chunk 5: Attachments ───────────────────────────────────────────────── */
+
+.tdsm-drop-zone {
+  border: 2px dashed var(--td-border-card);
+  border-radius: var(--td-radius-md);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: center;
+  margin-bottom: 10px;
+  color: var(--td-text-tertiary);
+  font-size: 12.5px;
+  user-select: none;
+}
+.tdsm-drop-zone:hover {
+  border-color: var(--td-accent-primary);
+}
+.tdsm-drop-zone.dragging {
+  border-color: var(--td-accent-primary);
+  background: var(--td-accent-drop-tint);
+}
+
+.tdsm-link-input-row {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+.tdsm-link-text-input {
+  flex: 1;
+  padding: 7px 11px;
+  border: 1px solid var(--td-border-default);
+  border-radius: var(--td-radius-md);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--td-text-primary);
+  background: var(--td-surface-base);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.tdsm-link-text-input:focus {
+  border-color: var(--td-border-focus);
+  box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.12);
+}
+.tdsm-link-text-input::placeholder { color: var(--td-text-tertiary); }
+.tdsm-link-text-input:disabled { opacity: 0.6; }
+
+.tdsm-link-add-btn {
+  padding: 7px 13px;
+  border: 1px solid var(--td-border-default);
+  border-radius: var(--td-radius-md);
+  background: var(--td-surface-raised);
+  color: var(--td-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+}
+.tdsm-link-add-btn:hover:not(:disabled) {
+  border-color: var(--td-accent-primary);
+  color: var(--td-accent-primary);
+}
+.tdsm-link-add-btn:disabled { opacity: 0.5; cursor: default; }
+
+.tdsm-link-error {
+  font-size: 12px;
+  color: var(--td-accent-blocked);
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.tdsm-attachments-empty {
+  text-align: center;
+  font-size: 13px;
+  color: var(--td-text-tertiary);
+  padding: 10px 0 4px;
+}
+
+.tdsm-attachment-list { margin-top: 8px; }
+
+.tdsm-attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: var(--td-radius-md);
+  border: 1px solid var(--td-border-default);
+  margin-bottom: 6px;
+  background: var(--td-surface-raised);
+  transition: border-color 0.15s;
+}
+.tdsm-attachment-row:hover { border-color: var(--td-border-strong); }
+
+.tdsm-attachment-main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+.tdsm-attachment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tdsm-attachment-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--td-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.tdsm-attachment-meta {
+  font-size: 11px;
+  color: var(--td-text-tertiary);
+  font-family: 'DM Mono', monospace;
+}
+.tdsm-attachment-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--td-text-tertiary);
+  padding: 5px;
+  border-radius: var(--td-radius-sm);
+  font-size: 11px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.tdsm-attachment-delete:hover { color: var(--td-accent-blocked); }
+
+.tdsm-badge-new {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--td-badge-progress-bg);
+  color: var(--td-accent-primary);
+  border: 1px solid var(--td-badge-progress-border);
+  flex-shrink: 0;
 }

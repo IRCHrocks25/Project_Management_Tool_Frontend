@@ -38,6 +38,8 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   const [loadingTask, setLoadingTask] = useState(false);
   const [taskHistory, setTaskHistory] = useState<any[]>([]);
   const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
+  const [taskTransfers, setTaskTransfers] = useState<any[]>([]);
+  const [loadingTaskTransfers, setLoadingTaskTransfers] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'conversation'>(initialTab);
   const displayTask = resolvedTask || task;
 
@@ -45,6 +47,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
     onClose();
     setResolvedTask(null);
     setTaskHistory([]);
+    setTaskTransfers([]);
   }, [onClose]);
 
   useEffect(() => { if (isOpen) setActiveTab(initialTab); }, [isOpen, initialTab]);
@@ -85,6 +88,19 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
     };
     loadHistory();
   }, [isOpen, displayTask, displayTask?.id, displayTask?.deliverableId]);
+
+  useEffect(() => {
+    if (!isOpen || !task?.id) {
+      setTaskTransfers([]);
+      return;
+    }
+    setLoadingTaskTransfers(true);
+    taskService
+      .getTransfers(task.id)
+      .then((transfers) => setTaskTransfers(Array.isArray(transfers) ? transfers : []))
+      .catch((err) => { console.error('Failed to load transfer history', err); setTaskTransfers([]); })
+      .finally(() => setLoadingTaskTransfers(false));
+  }, [isOpen, task?.id]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -193,11 +209,13 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                   onTaskUpdate?.(updated);
                 }}
               />
-              <TaskAttachmentsList fileUrl={displayTask?.fileUrl ?? task?.fileUrl} />
+              <TaskAttachmentsList taskId={displayTask?.id ?? task?.id} />
               <TaskActivityHistory
                 parsedStatusChanges={parsedStatusChanges}
                 taskHistory={taskHistory}
                 loadingTaskHistory={loadingTaskHistory}
+                taskTransfers={taskTransfers}
+                loadingTaskTransfers={loadingTaskTransfers}
                 deliverableId={displayTask?.deliverableId}
                 renderTextWithLinks={renderTextWithLinks}
               />

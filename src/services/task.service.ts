@@ -162,5 +162,41 @@ export const taskService = {
     );
     return response.data;
   },
+
+  async getAttachments(taskId: string): Promise<any[]> {
+    const response = await axios.get(
+      `${API_URL}/tasks/${taskId}/attachments`,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async uploadAttachments(taskId: string, files: File[]): Promise<any[]> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${API_URL}/tasks/${taskId}/attachments`,
+      formData,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return response.data;
+  },
+
+  async addLinkAttachment(taskId: string, url: string, label?: string): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/tasks/${taskId}/attachments/link`,
+      { url, label },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async deleteAttachment(taskId: string, attachmentId: string): Promise<void> {
+    await axios.delete(
+      `${API_URL}/tasks/${taskId}/attachments/${attachmentId}`,
+      getAuthHeaders()
+    );
+  },
 };
 

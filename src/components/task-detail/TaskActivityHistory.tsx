@@ -13,6 +13,8 @@ interface TaskActivityHistoryProps {
   parsedStatusChanges: StatusChange[];
   taskHistory: any[];
   loadingTaskHistory: boolean;
+  taskTransfers: any[];
+  loadingTaskTransfers: boolean;
   deliverableId?: string;
   renderTextWithLinks: (text: string) => React.ReactNode;
 }
@@ -21,6 +23,8 @@ const TaskActivityHistory: React.FC<TaskActivityHistoryProps> = ({
   parsedStatusChanges,
   taskHistory,
   loadingTaskHistory,
+  taskTransfers,
+  loadingTaskTransfers,
   deliverableId,
   renderTextWithLinks,
 }) => (
@@ -43,6 +47,45 @@ const TaskActivityHistory: React.FC<TaskActivityHistoryProps> = ({
             {sc.notes && <div className="tdsm-history-notes">{sc.notes}</div>}
           </div>
         ))}
+      </>
+    )}
+
+    {(taskTransfers.length > 0 || loadingTaskTransfers) && (
+      <>
+        <div className="tdsm-section-divider" style={{ marginTop: '16px' }}>Transfer history</div>
+        {loadingTaskTransfers ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', color: 'var(--td-text-tertiary)', gap: '10px', fontSize: '13px' }}>
+            <FaSpinner className="tdsm-spinner" />
+            Loading…
+          </div>
+        ) : (
+          taskTransfers.map((transfer: any) => {
+            const actorName = transfer.transferredBy?.name || transfer.transferredBy?.email || 'Unknown';
+            const kindLabel = transfer.kind === 'return' ? 'returned' : 'forwarded';
+            return (
+              <div key={transfer.id} className="tdsm-history-item">
+                <div className="tdsm-history-header">
+                  <div className="tdsm-history-action">
+                    <FaArrowRight style={{ fontSize: '10px', color: 'var(--td-text-tertiary)' }} />
+                    <span style={{ color: 'var(--td-text-primary)' }}>{actorName}</span>
+                    <span style={{ color: 'var(--td-text-tertiary)' }}> {kindLabel} from </span>
+                    <span style={{ color: 'var(--td-text-secondary)' }}>{transfer.fromDepartment}</span>
+                    <span style={{ color: 'var(--td-text-tertiary)' }}> to </span>
+                    <span style={{ color: 'var(--td-accent-primary)', fontWeight: 600 }}>{transfer.toDepartment}</span>
+                  </div>
+                  {transfer.transferredAt && (
+                    <span className="tdsm-history-time">
+                      {new Date(transfer.transferredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+                {transfer.note && (
+                  <div className="tdsm-history-notes">{transfer.note}</div>
+                )}
+              </div>
+            );
+          })
+        )}
       </>
     )}
 
