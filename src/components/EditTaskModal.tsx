@@ -4,6 +4,7 @@ import { taskService } from '../services/task.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService } from '../services/client-updates.service';
+import { filterUsersByDepartment } from '../utils/roleMapping';
 import './EditTaskModal.css';
 
 interface EditTaskModalProps {
@@ -344,19 +345,18 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 onChange={(e) => setAssignedToId(e.target.value)}
               >
                 <option value="">Unassigned</option>
-                {allUsers
-                  .filter((user: any) => {
-                    if (!department) return true;
-                    if (department === 'Design') return user.role === 'Designer';
-                    if (department === 'Copy Writing') return user.role === 'Copy Writing';
-                    if (department === 'Development') return user.role === 'Developer';
-                    if (department === 'AI Team') return user.role === 'AI Developer';
-                    if (department === 'Social Media Team') return user.role === 'Social Media';
-                    if (department === 'CRM') return user.role === 'CRM';
-                    if (department === 'SEO/GEO Team') return user.role === 'SEO/GEO';
-                    if (department === 'Onboarding') return user.role === 'Project Manager' || user.role === 'FOUNDER/CEO';
-                    return true;
-                  })
+                {/*
+KNOWN ISSUE: filterUsersByDepartment shows all users instead of filtering
+by department in this specific modal. AssigneePicker (in task-detail/) uses
+the same util correctly, so the bug is specific to how this modal calls it
+or to its state. Not worth investigating further — EditTaskModal is being
+replaced by Full Edit mode inside TaskDetailSideModal in Chunk 6, at which
+point this code is removed. Affected users: anyone using "Edit Task" from
+the project board sees all users in the assignee dropdown regardless of
+selected department. Workaround: scroll to find the right user, or use
+inline assignee editing in TaskDetailSideModal which works correctly.
+*/}
+                {filterUsersByDepartment(allUsers, department)
                   .map((user: any) => (
                     <option key={user.id} value={user.id}>
                       {user.name} ({user.role})

@@ -7,6 +7,8 @@ import { taskService } from '../services/task.service';
 import { authService } from '../services/auth.service';
 import { deliverableService } from '../services/deliverable.service';
 import { clientUpdatesService, ClientUpdateComment } from '../services/client-updates.service';
+import { notificationService } from '../services/notification.service';
+import { useFocusRefetch } from '../hooks/useFocusRefetch';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import './Dashboard.css';
 
@@ -227,14 +229,13 @@ const DepartmentView: React.FC = () => {
   }, []); // Only load once on mount
 
   // Optimized data loading - fetch only what's needed
-  useEffect(() => {
-    const loadData = async () => {
-      if (!department) return;
-      
-      try {
-        setLoading(true);
-        const taskType = getTaskTypeForDepartment(department);
-        const internalStages = getInternalStagesForDepartment(department);
+  const loadData = useCallback(async () => {
+    if (!department) return;
+
+    try {
+      setLoading(true);
+      const taskType = getTaskTypeForDepartment(department);
+      const internalStages = getInternalStagesForDepartment(department);
         
         // Step 1: Fetch ALL tasks first (we need to filter by type)
         // This is still needed to find which projects have tasks of this type
@@ -319,10 +320,26 @@ const DepartmentView: React.FC = () => {
       } finally {
         setLoading(false);
       }
-    };
-
-    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [department]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Refetch when tab regains focus after 30 s of inactivity
+  useFocusRefetch(loadData);
+
+  // Real-time task transfer: reload immediately when any transfer event arrives
+  useEffect(() => {
+    notificationService.connectSocket();
+    const unsub = notificationService.onTaskTransferred(() => {
+      loadData();
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [loadData]);
 
   const handleTaskSelect = (taskId: string) => {
     setSelectedTasks((prev) => {

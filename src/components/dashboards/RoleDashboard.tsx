@@ -28,6 +28,7 @@ import {
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
+import { useFocusRefetch } from '../../hooks/useFocusRefetch';
 import { notificationService } from '../../services/notification.service';
 import { deliverableService } from '../../services/deliverable.service';
 import CreateProjectModal from '../CreateProjectModal';
@@ -325,9 +326,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     setSelectedTaskDetail(null);
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!config) return; // Early return if config is invalid
-    
+
     try {
       setLoading(true);
 
@@ -372,7 +373,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Refetch when tab regains focus after 30 s of inactivity
+  useFocusRefetch(loadData);
+
+  // Real-time task transfer: reload immediately when any transfer event arrives
+  useEffect(() => {
+    const unsub = notificationService.onTaskTransferred(() => {
+      loadData();
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [loadData]);
 
   const loadUnreadCount = async () => {
     try {

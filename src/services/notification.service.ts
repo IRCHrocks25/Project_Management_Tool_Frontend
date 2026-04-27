@@ -19,7 +19,7 @@ const getNotificationSocket = (): Socket | null => {
 
 export interface Notification {
   id: string;
-  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision' | 'mention' | 'task_update';
+  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision' | 'mention' | 'task_update' | 'TASK_TRANSFER';
   title: string;
   message: string;
   projectId?: string;
@@ -85,6 +85,23 @@ class NotificationService {
     if (socket) {
       socket.on('new_notification', callback);
       return () => socket.off('new_notification', callback);
+    }
+    return () => {};
+  }
+
+  /** Subscribe to task:transferred broadcast events. Returns unsubscribe function. */
+  onTaskTransferred(callback: (event: {
+    taskId: string;
+    fromDepartment: string;
+    toDepartment: string;
+    kind: 'forward' | 'return';
+    transferredBy: { id: string; name: string };
+    transferredAt: string;
+  }) => void): () => void {
+    const socket = getNotificationSocket();
+    if (socket) {
+      socket.on('task:transferred', callback);
+      return () => socket.off('task:transferred', callback);
     }
     return () => {};
   }

@@ -84,7 +84,7 @@ export const taskService = {
     return response.data;
   },
 
-  async update(id: string, updateData: { title?: string; description?: string; dueDate?: Date; deliverableId?: string }): Promise<any> {
+  async update(id: string, updateData: { title?: string; description?: string; dueDate?: Date | null; deliverableId?: string }): Promise<any> {
     const response = await axios.put(
       `${API_URL}/tasks/${id}`,
       updateData,
@@ -141,6 +141,26 @@ export const taskService = {
       `${API_URL}/tasks/questions/${questionId}`,
       getAuthHeaders()
     );
+  },
+
+  async transferTask(
+    id: string,
+    payload: { toDepartment: string; kind: 'forward' | 'return'; note?: string; toAssigneeIds?: string[] },
+  ): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/tasks/${id}/transfer`,
+      payload,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
+  async getTransfers(id: string): Promise<any[]> {
+    const response = await axios.get(
+      `${API_URL}/tasks/${id}/transfers`,
+      getAuthHeaders()
+    );
+    return response.data;
   },
 };
 
