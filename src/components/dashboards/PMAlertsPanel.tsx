@@ -24,8 +24,8 @@ export type PMMonthlyReminderForm = {
 type PMAlertsPanelProps = {
   taskDueAlerts: PMTaskDueAlert[];
   canManageMonthlyReminders: boolean;
-  alertsTab: 'due' | 'monthly';
-  setAlertsTab: (tab: 'due' | 'monthly') => void;
+  alertsTab: 'due' | 'overdue' | 'monthly';
+  setAlertsTab: (tab: 'due' | 'overdue' | 'monthly') => void;
   showAllTaskDueAlerts: boolean;
   setShowAllTaskDueAlerts: (value: boolean) => void;
   monthlyReminders: MonthlyReminder[];
@@ -118,6 +118,10 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
         return copy.sort((a, b) => Math.abs(a.daysLeft) - Math.abs(b.daysLeft) || a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
     }
   }, [taskDueAlerts, dueSort]);
+  const sortedOverdueTaskDueAlerts = useMemo(
+    () => sortedTaskDueAlerts.filter((item) => item.daysLeft < 0),
+    [sortedTaskDueAlerts],
+  );
   if (taskDueAlerts.length === 0 && !canManageMonthlyReminders) {
     return null;
   }
@@ -365,6 +369,45 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             }}
           >
             {taskDueAlerts.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAlertsTab('overdue')}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: alertsTab === 'overdue' ? '#0f172a' : '#64748b',
+            padding: '0.7rem 0.1rem',
+            marginRight: '1.4rem',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            borderBottom:
+              alertsTab === 'overdue' ? '2px solid #dc2626' : '2px solid transparent',
+            marginBottom: '-1px',
+            transition: 'color 0.15s ease',
+          }}
+        >
+          <FaClock style={{ fontSize: '0.78rem' }} />
+          Overdue
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              background: alertsTab === 'overdue' ? '#dc2626' : '#e2e8f0',
+              color: alertsTab === 'overdue' ? '#fff' : '#475569',
+              borderRadius: '999px',
+              padding: '0.1rem 0.45rem',
+              minWidth: '18px',
+              textAlign: 'center',
+            }}
+          >
+            {sortedOverdueTaskDueAlerts.length}
           </span>
         </button>
 
@@ -663,6 +706,250 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     {showAllTaskDueAlerts
                       ? 'Show less'
                       : `Show ${sortedTaskDueAlerts.length - 10} more`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ================= OVERDUE TAB ================= */}
+      {alertsTab === 'overdue' && (
+        <div style={{ padding: '0.9rem 1.25rem 1.1rem' }}>
+          {sortedOverdueTaskDueAlerts.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '1.5rem 1rem',
+                color: '#64748b',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+              }}
+            >
+              No overdue tasks right now.
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.65rem 1rem',
+                  fontSize: '0.7rem',
+                  color: '#64748b',
+                  marginBottom: '0.75rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '2px',
+                      background: '#dc2626',
+                    }}
+                  />
+                  ALL OVERDUE TASKS
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#475569' }}>Sort</span>
+                  <select
+                    value={dueSort}
+                    onChange={(e) => setDueSort(e.target.value as typeof dueSort)}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 6,
+                      padding: '0.2rem 0.45rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: '#334155',
+                      background: '#fff',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <option value="most_overdue">Most Overdue First</option>
+                    <option value="days_closest">Closest Due Date</option>
+                    <option value="days_farthest">Farthest Due Date</option>
+                    <option value="project_az">Project A-Z</option>
+                    <option value="department_az">Department A-Z</option>
+                  </select>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: '0.55rem',
+                }}
+              >
+                {(showAllTaskDueAlerts
+                  ? sortedOverdueTaskDueAlerts
+                  : sortedOverdueTaskDueAlerts.slice(0, 10)).map((item) => {
+                  const sev = getSeverity(item.daysLeft);
+                  return (
+                    <button
+                      key={item.taskId}
+                      type="button"
+                      className="pm-alert-item"
+                      onClick={() => openTask(item.projectId, item.taskId)}
+                      title={`Due ${item.dueDate.toLocaleDateString()}`}
+                      style={{
+                        border: `1px solid ${sev.accentBorder}`,
+                        borderLeft: `3px solid ${sev.accent}`,
+                        borderRadius: '8px',
+                        background: '#ffffff',
+                        padding: '0.6rem 0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.65rem',
+                        textAlign: 'left',
+                        transition:
+                          'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: sev.accentSoft,
+                          border: `1px solid ${sev.accentBorder}`,
+                          borderRadius: '6px',
+                          padding: '0.3rem 0.5rem',
+                          minWidth: '42px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '1.05rem',
+                            fontWeight: 900,
+                            color: sev.accent,
+                            lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {item.daysLeft}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            color: sev.text,
+                            letterSpacing: '0.06em',
+                            marginTop: '1px',
+                          }}
+                        >
+                          {item.daysLeft === 1 ? 'DAY' : 'DAYS'}
+                        </span>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          {item.taskTitle}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.72rem',
+                            color: '#64748b',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            marginTop: '2px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {item.projectName}
+                        </div>
+                        {(item.department || item.currentColumn) && (
+                          <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                            {item.department && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  color: '#1e3a8a',
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: '999px',
+                                  padding: '0.08rem 0.38rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                Dept: {item.department}
+                              </span>
+                            )}
+                            {item.currentColumn && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  color: '#475569',
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '999px',
+                                  padding: '0.08rem 0.38rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                Column: {item.currentColumn}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {sortedOverdueTaskDueAlerts.length > 10 && (
+                <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className="pm-ghost-btn"
+                    onClick={() => setShowAllTaskDueAlerts(!showAllTaskDueAlerts)}
+                    style={{
+                      fontSize: '0.76rem',
+                      color: '#475569',
+                      fontWeight: 700,
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '6px',
+                      border: '1px solid #e2e8f0',
+                      background: '#fff',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                  >
+                    {showAllTaskDueAlerts
+                      ? 'Show less'
+                      : `Show ${sortedOverdueTaskDueAlerts.length - 10} more`}
                   </button>
                 </div>
               )}

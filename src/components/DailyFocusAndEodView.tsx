@@ -603,7 +603,7 @@ const DailyFocusAndEodView: React.FC = () => {
   const [resumeCreateTaskAfterProjectModal, setResumeCreateTaskAfterProjectModal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
-  const [alertsTab, setAlertsTab] = useState<'due' | 'monthly'>('due');
+  const [alertsTab, setAlertsTab] = useState<'due' | 'overdue' | 'monthly'>('due');
   const [monthlyReminders, setMonthlyReminders] = useState<MonthlyReminder[]>([]);
   const [loadingMonthlyReminders, setLoadingMonthlyReminders] = useState(false);
   const [savingMonthlyReminder, setSavingMonthlyReminder] = useState(false);
