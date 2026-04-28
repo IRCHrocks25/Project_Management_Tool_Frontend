@@ -7,8 +7,11 @@ import {
   FaLink,
   FaClipboard,
   FaEnvelope,
+  FaTrash,
+  FaEdit,
 } from 'react-icons/fa';
 import { projectService } from '../../services/project.service';
+import { authService } from '../../services/auth.service';
 
 interface ProjectOverviewTabProps {
   project: any;
@@ -24,6 +27,67 @@ interface ProjectOverviewTabProps {
   handleCloseProject: () => void;
 }
 
+type ProjectNoteItem = {
+  id: string;
+  content: string;
+  createdAt: string;
+  createdById?: string;
+  createdByName?: string;
+  updatedAt?: string;
+  updatedById?: string;
+  updatedByName?: string;
+};
+
+const parseProjectNotes = (rawNotes: unknown): ProjectNoteItem[] => {
+  if (typeof rawNotes !== 'string' || rawNotes.trim().length === 0) return [];
+
+  const trimmed = rawNotes.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item) => item && typeof item.content === 'string' && item.content.trim().length > 0)
+          .map((item) => ({
+            id: item.id || `note-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            content: String(item.content).trim(),
+            createdAt: item.createdAt || new Date().toISOString(),
+            createdById: item.createdById,
+            createdByName: item.createdByName,
+            updatedAt: item.updatedAt,
+            updatedById: item.updatedById,
+            updatedByName: item.updatedByName,
+          }));
+      }
+    } catch (error) {
+      console.warn('Failed to parse project notes JSON. Falling back to legacy notes.', error);
+    }
+  }
+
+  return [
+    {
+      id: `legacy-${Date.now()}`,
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+      createdByName: 'Unknown',
+    },
+  ];
+};
+
+const serializeProjectNotes = (notes: ProjectNoteItem[]): string =>
+  JSON.stringify(
+    notes.map((note) => ({
+      id: note.id,
+      content: note.content,
+      createdAt: note.createdAt,
+      createdById: note.createdById,
+      createdByName: note.createdByName,
+      updatedAt: note.updatedAt,
+      updatedById: note.updatedById,
+      updatedByName: note.updatedByName,
+    })),
+  );
+
 const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   project,
   daysInStage,
@@ -37,39 +101,106 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   handleTaskComplete,
   handleCloseProject,
 }) => {
-  const [projectNotes, setProjectNotes] = useState(project?.notes || '');
+  const currentUser = authService.getUser();
+  const [projectNotes, setProjectNotes] = useState<ProjectNoteItem[]>([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesStatus, setNotesStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    setProjectNotes(project?.notes || '');
+    setProjectNotes(parseProjectNotes(project?.notes));
+    setNewNoteText('');
+    setEditingNoteId(null);
+    setEditingNoteText('');
   }, [project?.id, project?.notes]);
 
-  const hasNotesChanges = (projectNotes || '').trim() !== (project?.notes || '').trim();
-
-  const handleSaveProjectNotes = async () => {
+  const persistProjectNotes = async (nextNotes: ProjectNoteItem[], successMessage: string) => {
     if (!project?.id || isSavingNotes) return;
 
     try {
       setIsSavingNotes(true);
       setNotesStatus(null);
-      const normalizedNotes = projectNotes.trim();
+      const normalizedNotes = nextNotes.length > 0 ? serializeProjectNotes(nextNotes) : '';
       const updatedProject = await projectService.update(project.id, {
         notes: normalizedNotes,
       });
-      onProjectUpdated?.(updatedProject || { ...project, notes: normalizedNotes });
-      setNotesStatus('Notes saved');
-    } catch (error) {
+      const mergedProject = updatedProject || { ...project, notes: normalizedNotes };
+      onProjectUpdated?.(mergedProject);
+      setProjectNotes(nextNotes);
+      setNotesStatus(successMessage);
+    } catch (error: any) {
       console.error('Failed to save project notes:', error);
-      setNotesStatus('Failed to save notes');
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to save notes';
+      setNotesStatus(Array.isArray(message) ? message.join(', ') : String(message));
     } finally {
       setIsSavingNotes(false);
     }
   };
 
-  const handleResetProjectNotes = () => {
-    setProjectNotes(project?.notes || '');
+  const handleAddNote = async () => {
+    const content = newNoteText.trim();
+    if (!content || isSavingNotes) return;
+    const nextNotes: ProjectNoteItem[] = [
+      {
+        id: `note-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        content,
+        createdAt: new Date().toISOString(),
+        createdById: currentUser?.id,
+        createdByName: currentUser?.name || currentUser?.email || 'Unknown',
+      },
+      ...projectNotes,
+    ];
+    await persistProjectNotes(nextNotes, 'Note added');
+    setNewNoteText('');
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (isSavingNotes) return;
+    const shouldDelete = window.confirm('Delete this note? This action cannot be undone.');
+    if (!shouldDelete) return;
+    const nextNotes = projectNotes.filter((note) => note.id !== noteId);
+    await persistProjectNotes(nextNotes, 'Note deleted');
+    if (editingNoteId === noteId) {
+      setEditingNoteId(null);
+      setEditingNoteText('');
+    }
+  };
+
+  const startEditingNote = (note: ProjectNoteItem) => {
+    setEditingNoteId(note.id);
+    setEditingNoteText(note.content);
     setNotesStatus(null);
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteId(null);
+    setEditingNoteText('');
+    setNotesStatus(null);
+  };
+
+  const saveEditedNote = async () => {
+    if (!editingNoteId || isSavingNotes) return;
+    const updatedContent = editingNoteText.trim();
+    if (!updatedContent) return;
+    const nextNotes = projectNotes.map((note) =>
+      note.id === editingNoteId
+        ? {
+            ...note,
+            content: updatedContent,
+            updatedAt: new Date().toISOString(),
+            updatedById: currentUser?.id,
+            updatedByName: currentUser?.name || currentUser?.email || 'Unknown',
+          }
+        : note,
+    );
+    await persistProjectNotes(nextNotes, 'Note updated');
+    setEditingNoteId(null);
+    setEditingNoteText('');
   };
 
   return (
@@ -140,30 +271,230 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           >
             <h3 className="card-title" style={{ margin: 0 }}>Project Notes</h3>
             <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-              Internal notes
+              Internal notes ({projectNotes.length})
             </span>
           </div>
-          <textarea
-            value={projectNotes}
-            onChange={(e) => {
-              setProjectNotes(e.target.value);
-              if (notesStatus) setNotesStatus(null);
-            }}
-            rows={5}
-            placeholder="Add project-specific notes, decisions, reminders, or context for your team."
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.7rem', background: '#f8fafc' }}>
+            <textarea
+              value={newNoteText}
+              onChange={(e) => {
+                setNewNoteText(e.target.value);
+                if (notesStatus) setNotesStatus(null);
+              }}
+              rows={3}
+              placeholder="Write a new project note..."
+              style={{
+                width: '100%',
+                resize: 'vertical',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                padding: '0.65rem 0.75rem',
+                fontSize: '0.82rem',
+                color: '#0f172a',
+                lineHeight: 1.45,
+                fontFamily: 'inherit',
+                background: '#fff',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.55rem' }}>
+              <button
+                type="button"
+                onClick={handleAddNote}
+                disabled={isSavingNotes || newNoteText.trim().length === 0}
+                style={{
+                  border: 'none',
+                  background: isSavingNotes || newNoteText.trim().length === 0 ? '#94a3b8' : '#2563eb',
+                  color: '#fff',
+                  borderRadius: '6px',
+                  padding: '0.34rem 0.72rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: isSavingNotes || newNoteText.trim().length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingNotes ? 'Saving...' : 'Add Note'}
+              </button>
+            </div>
+          </div>
+
+          <div
             style={{
-              width: '100%',
-              resize: 'vertical',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              padding: '0.7rem 0.8rem',
-              fontSize: '0.84rem',
-              color: '#0f172a',
-              lineHeight: 1.45,
-              fontFamily: 'inherit',
-              background: '#fff',
+              marginTop: '0.7rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.55rem',
+              maxHeight: '320px',
+              overflowY: 'auto',
+              paddingRight: '0.1rem',
             }}
-          />
+          >
+            {projectNotes.length === 0 ? (
+              <div
+                style={{
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '0.78rem',
+                  background: '#fff',
+                }}
+              >
+                No notes yet. Add the first note above.
+              </div>
+            ) : (
+              projectNotes.map((note) => {
+                const isEditing = editingNoteId === note.id;
+                return (
+                  <div
+                    key={note.id}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      background: '#fff',
+                      padding: '0.62rem 0.68rem',
+                    }}
+                  >
+                    {isEditing ? (
+                      <>
+                        <textarea
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          rows={3}
+                          style={{
+                            width: '100%',
+                            resize: 'vertical',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            padding: '0.55rem 0.65rem',
+                            fontSize: '0.8rem',
+                            lineHeight: 1.45,
+                            fontFamily: 'inherit',
+                            color: '#0f172a',
+                          }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.45rem' }}>
+                          <button
+                            type="button"
+                            onClick={cancelEditingNote}
+                            disabled={isSavingNotes}
+                            style={{
+                              border: '1px solid #cbd5e1',
+                              background: '#fff',
+                              color: '#334155',
+                              borderRadius: '6px',
+                              padding: '0.28rem 0.58rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: isSavingNotes ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveEditedNote}
+                            disabled={isSavingNotes || editingNoteText.trim().length === 0}
+                            style={{
+                              border: 'none',
+                              background:
+                                isSavingNotes || editingNoteText.trim().length === 0
+                                  ? '#94a3b8'
+                                  : '#2563eb',
+                              color: '#fff',
+                              borderRadius: '6px',
+                              padding: '0.28rem 0.58rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor:
+                                isSavingNotes || editingNoteText.trim().length === 0
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            whiteSpace: 'pre-wrap',
+                            fontSize: '0.81rem',
+                            color: '#0f172a',
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {note.content}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: '0.45rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                            By {note.createdByName || 'Unknown'} •{' '}
+                            {new Date(note.updatedAt || note.createdAt).toLocaleString()}
+                            {note.updatedByName ? ` • Edited by ${note.updatedByName}` : ''}
+                          </span>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => startEditingNote(note)}
+                              disabled={isSavingNotes}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                background: '#fff',
+                                color: '#334155',
+                                borderRadius: '6px',
+                                padding: '0.24rem 0.5rem',
+                                fontSize: '0.71rem',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                cursor: isSavingNotes ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              <FaEdit style={{ fontSize: '0.65rem' }} />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteNote(note.id)}
+                              disabled={isSavingNotes}
+                              style={{
+                                border: '1px solid #fecaca',
+                                background: '#fff1f2',
+                                color: '#b91c1c',
+                                borderRadius: '6px',
+                                padding: '0.24rem 0.5rem',
+                                fontSize: '0.71rem',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                cursor: isSavingNotes ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              <FaTrash style={{ fontSize: '0.65rem' }} />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
           <div
             style={{
               display: 'flex',
@@ -174,47 +505,15 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               gap: '0.5rem',
             }}
           >
-            <span style={{ fontSize: '0.72rem', color: notesStatus === 'Failed to save notes' ? '#dc2626' : '#64748b' }}>
-              {notesStatus || 'Notes are saved per project and visible in this overview.'}
+            <span
+              style={{
+                fontSize: '0.72rem',
+                color: notesStatus && notesStatus.toLowerCase().includes('fail') ? '#dc2626' : '#64748b',
+              }}
+            >
+              {notesStatus || 'Add, edit, and delete notes. New notes are added to the top.'}
             </span>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-              {hasNotesChanges && (
-                <button
-                  type="button"
-                  onClick={handleResetProjectNotes}
-                  disabled={isSavingNotes}
-                  style={{
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    color: '#334155',
-                    borderRadius: '6px',
-                    padding: '0.34rem 0.65rem',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    cursor: isSavingNotes ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Reset
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleSaveProjectNotes}
-                disabled={isSavingNotes || !hasNotesChanges}
-                style={{
-                  border: 'none',
-                  background: isSavingNotes || !hasNotesChanges ? '#94a3b8' : '#2563eb',
-                  color: '#fff',
-                  borderRadius: '6px',
-                  padding: '0.34rem 0.72rem',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  cursor: isSavingNotes || !hasNotesChanges ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isSavingNotes ? 'Saving...' : 'Save Notes'}
-              </button>
-            </div>
+            <div />
           </div>
         </div>
 
