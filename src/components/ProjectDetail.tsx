@@ -2749,6 +2749,7 @@ const ProjectDetail: React.FC = () => {
             daysInStage={daysInStage}
             deliverableHistory={deliverableHistory}
             tasks={tasks}
+            onProjectUpdated={setProject}
             setActiveTab={setActiveTab}
             setActiveDeliverableTab={setActiveDeliverableTab}
             setShowFilesLinksModal={setShowFilesLinksModal}

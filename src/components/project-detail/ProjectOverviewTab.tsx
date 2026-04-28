@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FaCheckCircle,
   FaCircle,
@@ -8,12 +8,14 @@ import {
   FaClipboard,
   FaEnvelope,
 } from 'react-icons/fa';
+import { projectService } from '../../services/project.service';
 
 interface ProjectOverviewTabProps {
   project: any;
   daysInStage: number;
   deliverableHistory: Record<string, any[]>;
   tasks: any[];
+  onProjectUpdated?: (project: any) => void;
   setActiveTab: (tab: string) => void;
   setActiveDeliverableTab: (deliverableId: string) => void;
   setShowFilesLinksModal: (show: boolean) => void;
@@ -27,6 +29,7 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   daysInStage,
   deliverableHistory,
   tasks,
+  onProjectUpdated,
   setActiveTab,
   setActiveDeliverableTab,
   setShowFilesLinksModal,
@@ -34,36 +37,184 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   handleTaskComplete,
   handleCloseProject,
 }) => {
+  const [projectNotes, setProjectNotes] = useState(project?.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [notesStatus, setNotesStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProjectNotes(project?.notes || '');
+  }, [project?.id, project?.notes]);
+
+  const hasNotesChanges = (projectNotes || '').trim() !== (project?.notes || '').trim();
+
+  const handleSaveProjectNotes = async () => {
+    if (!project?.id || isSavingNotes) return;
+
+    try {
+      setIsSavingNotes(true);
+      setNotesStatus(null);
+      const normalizedNotes = projectNotes.trim();
+      const updatedProject = await projectService.update(project.id, {
+        notes: normalizedNotes,
+      });
+      onProjectUpdated?.(updatedProject || { ...project, notes: normalizedNotes });
+      setNotesStatus('Notes saved');
+    } catch (error) {
+      console.error('Failed to save project notes:', error);
+      setNotesStatus('Failed to save notes');
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleResetProjectNotes = () => {
+    setProjectNotes(project?.notes || '');
+    setNotesStatus(null);
+  };
+
   return (
     <div className="tab-content fade-in">
       <div className="overview-grid premium-grid overview-grid-pro">
         <div className="overview-card premium-card overview-card--details">
-          <h3 className="card-title">Project Details</h3>
-          <div className="detail-list">
-            <div className="detail-item-premium">
-              <span className="detail-label">PM</span>
-              <span className="detail-value">{project.pm?.name || 'Unassigned'}</span>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '0.95rem',
+            }}
+          >
+            <h3 className="card-title" style={{ margin: 0 }}>Project Details</h3>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: '#475569',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '999px',
+                padding: '0.2rem 0.55rem',
+              }}
+            >
+              {project?.stage || 'Active'}
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '0.7rem',
+            }}
+          >
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
+              <div style={{ fontSize: '0.69rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PM</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{project.pm?.name || 'Unassigned'}</div>
             </div>
-            <div className="detail-item-premium">
-              <span className="detail-label">Package</span>
-              <span className="detail-value">{project.package}</span>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
+              <div style={{ fontSize: '0.69rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Package</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{project.package || '-'}</div>
             </div>
-            <div className="detail-item-premium">
-              <span className="detail-label">Target Close</span>
-              <span className="detail-value">
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
+              <div style={{ fontSize: '0.69rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Target Close</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>
                 {new Date(project.targetCloseMonth + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              </span>
-            </div>
-            <div className="detail-item-premium">
-              <span className="detail-label">Days in Stage</span>
-              <span className="detail-value">{daysInStage} {daysInStage === 1 ? 'day' : 'days'}</span>
-            </div>
-            {project.notes && (
-              <div className="detail-item-premium notes-item">
-                <span className="detail-label">Notes</span>
-                <span className="detail-value notes-value">{project.notes}</span>
               </div>
-            )}
+            </div>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
+              <div style={{ fontSize: '0.69rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Days in Stage</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{daysInStage} {daysInStage === 1 ? 'day' : 'days'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="overview-card premium-card overview-card--details">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '0.8rem',
+            }}
+          >
+            <h3 className="card-title" style={{ margin: 0 }}>Project Notes</h3>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+              Internal notes
+            </span>
+          </div>
+          <textarea
+            value={projectNotes}
+            onChange={(e) => {
+              setProjectNotes(e.target.value);
+              if (notesStatus) setNotesStatus(null);
+            }}
+            rows={5}
+            placeholder="Add project-specific notes, decisions, reminders, or context for your team."
+            style={{
+              width: '100%',
+              resize: 'vertical',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              padding: '0.7rem 0.8rem',
+              fontSize: '0.84rem',
+              color: '#0f172a',
+              lineHeight: 1.45,
+              fontFamily: 'inherit',
+              background: '#fff',
+            }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '0.65rem',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '0.72rem', color: notesStatus === 'Failed to save notes' ? '#dc2626' : '#64748b' }}>
+              {notesStatus || 'Notes are saved per project and visible in this overview.'}
+            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+              {hasNotesChanges && (
+                <button
+                  type="button"
+                  onClick={handleResetProjectNotes}
+                  disabled={isSavingNotes}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#334155',
+                    borderRadius: '6px',
+                    padding: '0.34rem 0.65rem',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: isSavingNotes ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSaveProjectNotes}
+                disabled={isSavingNotes || !hasNotesChanges}
+                style={{
+                  border: 'none',
+                  background: isSavingNotes || !hasNotesChanges ? '#94a3b8' : '#2563eb',
+                  color: '#fff',
+                  borderRadius: '6px',
+                  padding: '0.34rem 0.72rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: isSavingNotes || !hasNotesChanges ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingNotes ? 'Saving...' : 'Save Notes'}
+              </button>
+            </div>
           </div>
         </div>
 

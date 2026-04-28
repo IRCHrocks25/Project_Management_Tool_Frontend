@@ -122,12 +122,17 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
     () => sortedTaskDueAlerts.filter((item) => item.daysLeft < 0),
     [sortedTaskDueAlerts],
   );
+  const sortedDueSoonTaskDueAlerts = useMemo(
+    () => sortedTaskDueAlerts.filter((item) => item.daysLeft >= 0 && item.daysLeft <= 5),
+    [sortedTaskDueAlerts],
+  );
   if (taskDueAlerts.length === 0 && !canManageMonthlyReminders) {
     return null;
   }
 
-  const criticalCount = taskDueAlerts.filter((t) => t.daysLeft <= 2).length;
-  const highCount = taskDueAlerts.filter((t) => t.daysLeft > 2).length;
+  const dueSoonCount = sortedDueSoonTaskDueAlerts.length;
+  const overdueCount = sortedOverdueTaskDueAlerts.length;
+  const totalDueAlertCount = dueSoonCount + overdueCount;
 
   const monthLabel = (monthKey: string) => {
     const [year, month] = monthKey.split('-').map(Number);
@@ -216,23 +221,23 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               height: '38px',
               borderRadius: '10px',
               background:
-                criticalCount > 0
+                overdueCount > 0
                   ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
                   : 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              border: criticalCount > 0 ? '1px solid #fecaca' : '1px solid #fed7aa',
+              border: overdueCount > 0 ? '1px solid #fecaca' : '1px solid #fed7aa',
             }}
           >
             <FaExclamationTriangle
               style={{
-                color: criticalCount > 0 ? '#dc2626' : '#ea580c',
+                color: overdueCount > 0 ? '#dc2626' : '#ea580c',
                 fontSize: '1rem',
               }}
             />
-            {criticalCount > 0 && (
+            {overdueCount > 0 && (
               <span
                 style={{
                   position: 'absolute',
@@ -267,19 +272,17 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 fontWeight: 500,
               }}
             >
-              {taskDueAlerts.length > 0
-                ? `${taskDueAlerts.length} task${
-                    taskDueAlerts.length === 1 ? '' : 's'
-                  } due soon or overdue`
-                : 'No due or overdue tasks'}
+              {totalDueAlertCount > 0
+                ? `${dueSoonCount} due (0-5 days) • ${overdueCount} overdue`
+                : 'No due (0-5 days) or overdue tasks'}
             </div>
           </div>
         </div>
 
-        {/* Severity summary chips */}
-        {taskDueAlerts.length > 0 && (
+        {/* Due/Overdue summary chips */}
+        {totalDueAlertCount > 0 && (
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            {criticalCount > 0 && (
+            {overdueCount > 0 && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -296,10 +299,10 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 }}
               >
                 <FaClock style={{ fontSize: '0.65rem' }} />
-                {criticalCount} Critical
+                {overdueCount} Overdue
               </div>
             )}
-            {highCount > 0 && (
+            {dueSoonCount > 0 && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -316,7 +319,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   textTransform: 'uppercase',
                 }}
               >
-                {highCount} High
+                {dueSoonCount} Due (0-5)
               </div>
             )}
           </div>
@@ -368,7 +371,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               textAlign: 'center',
             }}
           >
-            {taskDueAlerts.length}
+            {sortedDueSoonTaskDueAlerts.length}
           </span>
         </button>
 
@@ -455,7 +458,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
       {/* ================= DUE TAB ================= */}
       {alertsTab === 'due' && (
         <div style={{ padding: '0.9rem 1.25rem 1.1rem' }}>
-          {taskDueAlerts.length === 0 ? (
+          {sortedDueSoonTaskDueAlerts.length === 0 ? (
             <div
               style={{
                 textAlign: 'center',
@@ -465,7 +468,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 fontWeight: 500,
               }}
             >
-              No tasks due soon or overdue. You're all caught up.
+              No tasks due in the next 0-5 days. You're all caught up.
             </div>
           ) : (
             <>
@@ -494,7 +497,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         background: '#dc2626',
                       }}
                     />
-                    OVERDUE / 0–2 DAYS
+                    0–2 DAYS
                   </span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span
@@ -541,7 +544,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   gap: '0.55rem',
                 }}
               >
-                {(showAllTaskDueAlerts ? sortedTaskDueAlerts : sortedTaskDueAlerts.slice(0, 10)).map(
+                {(showAllTaskDueAlerts
+                  ? sortedDueSoonTaskDueAlerts
+                  : sortedDueSoonTaskDueAlerts.slice(0, 10)).map(
                   (item) => {
                     const sev = getSeverity(item.daysLeft);
                     return (
@@ -685,7 +690,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               </div>
 
               {/* Show more / less */}
-              {sortedTaskDueAlerts.length > 10 && (
+              {sortedDueSoonTaskDueAlerts.length > 10 && (
                 <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
                   <button
                     type="button"
@@ -705,7 +710,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   >
                     {showAllTaskDueAlerts
                       ? 'Show less'
-                      : `Show ${sortedTaskDueAlerts.length - 10} more`}
+                      : `Show ${sortedDueSoonTaskDueAlerts.length - 10} more`}
                   </button>
                 </div>
               )}
