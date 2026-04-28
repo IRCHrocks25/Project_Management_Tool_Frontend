@@ -171,9 +171,10 @@ export const taskService = {
     return response.data;
   },
 
-  async uploadAttachments(taskId: string, files: File[]): Promise<any[]> {
+  async uploadAttachments(taskId: string, files: File[], note?: string): Promise<any[]> {
     const formData = new FormData();
     files.forEach((f) => formData.append('files', f));
+    if (note?.trim()) formData.append('note', note.trim());
     const token = localStorage.getItem('token');
     const response = await axios.post(
       `${API_URL}/tasks/${taskId}/attachments`,
@@ -183,10 +184,10 @@ export const taskService = {
     return response.data;
   },
 
-  async addLinkAttachment(taskId: string, url: string, label?: string): Promise<any> {
+  async addLinkAttachment(taskId: string, url: string, label?: string, note?: string): Promise<any> {
     const response = await axios.post(
       `${API_URL}/tasks/${taskId}/attachments/link`,
-      { url, label },
+      { url, label, note },
       getAuthHeaders()
     );
     return response.data;
