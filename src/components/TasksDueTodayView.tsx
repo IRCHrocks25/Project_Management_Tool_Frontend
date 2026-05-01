@@ -255,6 +255,14 @@ const TasksDueTodayView: React.FC = () => {
     return p?.clientName || 'Unknown Project';
   };
 
+  const handleOpenTaskConversationFromNotification = (
+    projectId: string,
+    taskId: string,
+    tab: 'details' | 'conversation' = 'details',
+  ) => {
+    navigate(`/project/${projectId}?task=${taskId}&tab=${tab}`);
+  };
+
   const getAssigneeName = (task: any) => {
     const assignees = task.assignees || [];
     if (assignees.length > 0) {
@@ -625,6 +633,7 @@ const TasksDueTodayView: React.FC = () => {
         <NotificationsModal
           isOpen={showNotificationsModal}
           onClose={() => setShowNotificationsModal(false)}
+          onOpenTaskConversation={handleOpenTaskConversationFromNotification}
           onMarkAllAsRead={loadUnreadCount}
         />
       )}

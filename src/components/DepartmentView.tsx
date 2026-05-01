@@ -1644,7 +1644,24 @@ const DepartmentView: React.FC = () => {
         }
       }
 
-      await taskService.updateStatus(taskId, backendStatus, isCompleted);
+      const reviewIntent =
+        backendStatus === 'In Review'
+          ? (newStatus === 'Revision'
+            ? 'revision'
+            : newStatus === 'In Review'
+              ? 'for_approval'
+              : undefined)
+          : undefined;
+
+      await taskService.updateStatus(
+        taskId,
+        backendStatus,
+        isCompleted,
+        undefined,
+        undefined,
+        undefined,
+        reviewIntent,
+      );
 
       const trimmedAttachment = extraAttachment?.trim();
       if (trimmedAttachment) {
@@ -2605,7 +2622,15 @@ const DepartmentView: React.FC = () => {
                                 console.warn('Failed to update description with column marker:', descError);
                               }
                             }
-                            await taskService.updateStatus(task.id, newStatus, false);
+                            await taskService.updateStatus(
+                              task.id,
+                              newStatus,
+                              false,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                            );
                             // Reload tasks
                             const allTasksData = await taskService.getAll(undefined, undefined, { all: true });
                             const taskType = getTaskTypeForDepartment(department || '');
@@ -2663,7 +2688,24 @@ const DepartmentView: React.FC = () => {
                           }
                         }
 
-                        await taskService.updateStatus(task.id, newStatus, column.id === 'approved_completed');
+                        const reviewIntent =
+                          newStatus === 'In Review'
+                            ? (column.id === 'revision'
+                              ? 'revision'
+                              : column.id === 'for_approval'
+                                ? 'for_approval'
+                                : undefined)
+                            : undefined;
+
+                        await taskService.updateStatus(
+                          task.id,
+                          newStatus,
+                          column.id === 'approved_completed',
+                          undefined,
+                          undefined,
+                          undefined,
+                          reviewIntent,
+                        );
 
                         // Log status change & deliverable history (mirror ProjectDetail)
                         await logStatusChangeForTask(task, newStatus, column.id);

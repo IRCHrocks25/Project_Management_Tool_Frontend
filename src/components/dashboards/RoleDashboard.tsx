@@ -714,13 +714,17 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by NotificationsModal onOpenTaskConversation
-  const handleOpenTaskConversationFromNotification = async (projectId: string, taskId: string) => {
+  const handleOpenTaskConversationFromNotification = async (
+    projectId: string,
+    taskId: string,
+    tab: 'details' | 'conversation' = 'conversation',
+  ) => {
     try {
       const task = await taskService.getOne(taskId);
-      handleOpenTaskDetail(task, 'conversation');
+      handleOpenTaskDetail(task, tab);
     } catch (error) {
       console.error('Failed to load task:', error);
-      navigate(`/project/${projectId}?task=${taskId}&tab=conversation`);
+      navigate(`/project/${projectId}?task=${taskId}&tab=${tab}`);
     }
   };
 
@@ -1306,9 +1310,25 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (!task) return;
 
       const { status, columnMarker, isCompleted } = mapColumnToStatus(statusChangeContext.targetColumnId);
+      const reviewIntent =
+        status === 'In Review'
+          ? (statusChangeContext.targetColumnId === 'revision'
+            ? 'revision'
+            : statusChangeContext.targetColumnId === 'for_approval'
+              ? 'for_approval'
+              : undefined)
+          : undefined;
 
       // Update task status
-      await taskService.updateStatus(statusChangeContext.taskId, status, isCompleted);
+      await taskService.updateStatus(
+        statusChangeContext.taskId,
+        status,
+        isCompleted,
+        undefined,
+        undefined,
+        undefined,
+        reviewIntent,
+      );
 
       // Persist each provided link as a real attachment so it appears in task side modal.
       const validLinks = statusChangeLinks.map(link => link.trim()).filter(Boolean);

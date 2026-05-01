@@ -164,6 +164,14 @@ const PMDashboard: React.FC = () => {
     }
   };
 
+  const handleOpenTaskConversationFromNotification = (
+    projectId: string,
+    taskId: string,
+    tab: 'details' | 'conversation' = 'details',
+  ) => {
+    navigate(`/project/${projectId}?task=${taskId}&tab=${tab}`);
+  };
+
   const loadNotifications = useCallback(async () => {
     try {
       const allNotifications = await notificationService.getAll();
@@ -2021,6 +2029,7 @@ const PMDashboard: React.FC = () => {
         isOpen={showNotificationsModal}
         onClose={() => setShowNotificationsModal(false)}
         onUpdate={loadUnreadCount}
+        onOpenTaskConversation={handleOpenTaskConversationFromNotification}
         onMarkAllAsRead={() => {
           setUnreadNotifications(0);
           // Prevent refresh for 5 seconds after marking all as read

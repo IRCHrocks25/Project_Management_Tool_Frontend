@@ -1474,7 +1474,23 @@ const ProjectDetail: React.FC = () => {
       }
 
       const isCompleted = backendStatus === 'Completed';
-      await taskService.updateStatus(taskId, backendStatus, isCompleted, fileUrl, deliverableType, deliverableId);
+      const reviewIntent =
+        backendStatus === 'In Review'
+          ? (newStatus === 'revision'
+            ? 'revision'
+            : newStatus === 'for_approval'
+              ? 'for_approval'
+              : undefined)
+          : undefined;
+      await taskService.updateStatus(
+        taskId,
+        backendStatus,
+        isCompleted,
+        fileUrl,
+        deliverableType,
+        deliverableId,
+        reviewIntent,
+      );
 
       const trimmedAttachment = extraAttachment?.trim();
       if (trimmedAttachment) {

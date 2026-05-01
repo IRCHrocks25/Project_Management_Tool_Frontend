@@ -257,6 +257,14 @@ const MyProjectsView: React.FC = () => {
     return project?.clientName || 'Unknown Project';
   };
 
+  const handleOpenTaskConversationFromNotification = (
+    projectId: string,
+    taskId: string,
+    tab: 'details' | 'conversation' = 'details',
+  ) => {
+    navigate(`/project/${projectId}?task=${taskId}&tab=${tab}`);
+  };
+
   const loadLastEmailLogs = async (projectsList: any[]) => {
     try {
       const newUpdatesMap: Record<string, number> = {};
@@ -1382,6 +1390,7 @@ const MyProjectsView: React.FC = () => {
           setShowNotificationsModal(false);
         }}
         onUpdate={loadUnreadCount}
+        onOpenTaskConversation={handleOpenTaskConversationFromNotification}
         onMarkAllAsRead={() => {
           setUnreadNotifications(0);
           skipRefreshUntilRef.current = Date.now() + 5000;

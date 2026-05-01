@@ -26,6 +26,9 @@ export interface Notification {
   taskId?: string;
   userId?: string; // User ID this notification is for (if backend doesn't filter)
   assignedToId?: string; // For task notifications - the user assigned to the task
+  task?: {
+    type?: string;
+  };
   isRead: boolean;
   createdAt: string;
 }
