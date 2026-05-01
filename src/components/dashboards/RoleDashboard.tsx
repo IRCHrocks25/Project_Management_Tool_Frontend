@@ -1310,6 +1310,23 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       // Update task status
       await taskService.updateStatus(statusChangeContext.taskId, status, isCompleted);
 
+      // Persist each provided link as a real attachment so it appears in task side modal.
+      const validLinks = statusChangeLinks.map(link => link.trim()).filter(Boolean);
+      if (validLinks.length > 0) {
+        await Promise.all(
+          validLinks.map((link) =>
+            taskService.addLinkAttachment(
+              statusChangeContext.taskId,
+              link,
+              undefined,
+              statusChangeNotes.trim() || undefined
+            )
+          )
+        ).catch((attachmentError) => {
+          console.warn('Failed to add one or more status-change attachment links:', attachmentError);
+        });
+      }
+
       // Build a single description update so marker + log stay in sync.
       const baseDesc = (task.description || '').replace(/\n\n--- Column: [^-]+ ---/g, '');
       const descWithMarker = columnMarker ? `${baseDesc}${columnMarker}` : baseDesc;
@@ -1320,7 +1337,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         logBlock += `\nNotes: ${statusChangeNotes.trim()}`;
       }
       
-      const validLinks = statusChangeLinks.filter(link => link.trim());
       if (validLinks.length > 0) {
         logBlock += `\nAttachments:\n${validLinks.map(link => `- ${link.trim()}`).join('\n')}`;
       }

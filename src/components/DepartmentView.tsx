@@ -1646,6 +1646,20 @@ const DepartmentView: React.FC = () => {
 
       await taskService.updateStatus(taskId, backendStatus, isCompleted);
 
+      const trimmedAttachment = extraAttachment?.trim();
+      if (trimmedAttachment) {
+        try {
+          await taskService.addLinkAttachment(
+            taskId,
+            trimmedAttachment,
+            undefined,
+            extraNotes?.trim() || undefined
+          );
+        } catch (attachmentError) {
+          console.warn('Failed to add status-change attachment link:', attachmentError);
+        }
+      }
+
       // Log description + deliverable history similar to ProjectDetail
       if (task) {
         // Map plain enum to a pseudo column id for logging

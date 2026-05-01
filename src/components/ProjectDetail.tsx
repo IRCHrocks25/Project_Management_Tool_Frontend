@@ -1475,6 +1475,21 @@ const ProjectDetail: React.FC = () => {
 
       const isCompleted = backendStatus === 'Completed';
       await taskService.updateStatus(taskId, backendStatus, isCompleted, fileUrl, deliverableType, deliverableId);
+
+      const trimmedAttachment = extraAttachment?.trim();
+      if (trimmedAttachment) {
+        try {
+          await taskService.addLinkAttachment(
+            taskId,
+            trimmedAttachment,
+            undefined,
+            extraNotes?.trim() || undefined
+          );
+        } catch (attachmentError) {
+          console.warn('Failed to add status-change attachment link:', attachmentError);
+        }
+      }
+
       await loadProject();
       showToast(`Task status updated ✓`);
     } catch (error) {
