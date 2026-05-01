@@ -30,6 +30,7 @@ export interface AuthResponse {
     role: string;
     isTeamLead?: boolean;
     isHeadPM?: boolean;
+    emailNotificationsEnabled?: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -276,6 +277,7 @@ export const authService = {
     avatarUrl?: string;
     birthday?: string;
     bio?: string;
+    emailNotificationsEnabled?: boolean;
   }): Promise<any> {
     const response = await axios.patch(`${API_URL}/auth/profile`, data, {
       headers: {

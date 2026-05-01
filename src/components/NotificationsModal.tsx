@@ -479,25 +479,25 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const getDepartmentFromTaskType = (taskType?: string): string | null => {
+  const getDepartmentFromTaskType = useCallback((taskType?: string): string | null => {
     if (!taskType) return null;
     const normalized = taskType.toLowerCase();
     return TASK_TYPE_TO_DEPARTMENT[normalized] || null;
-  };
+  }, []);
 
-  const inferDepartmentFromText = (title: string, message: string): string | null => {
+  const inferDepartmentFromText = useCallback((title: string, message: string): string | null => {
     const combined = `${title} ${message}`.toLowerCase();
     const matches = Object.entries(TASK_TYPE_TO_DEPARTMENT).find(([token]) => combined.includes(token));
     return matches?.[1] || null;
-  };
+  }, []);
 
-  const getNotificationDepartment = (notification: Notification): string => {
+  const getNotificationDepartment = useCallback((notification: Notification): string => {
     const taskType = notification.task?.type;
     const byTask = getDepartmentFromTaskType(taskType);
     if (byTask) return byTask;
     const byText = inferDepartmentFromText(notification.title, notification.message);
     return byText || 'General';
-  };
+  }, [getDepartmentFromTaskType, inferDepartmentFromText]);
 
   const groupedByDepartment = useMemo(() => {
     if (!isPMViewer) return null;
@@ -508,7 +508,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
       groups[department].push(notification);
     });
     return groups;
-  }, [notifications, isPMViewer]);
+  }, [notifications, isPMViewer, getNotificationDepartment]);
 
   const pmDepartments = useMemo(() => {
     if (!groupedByDepartment) return [];

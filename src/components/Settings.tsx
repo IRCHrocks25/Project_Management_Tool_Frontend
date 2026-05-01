@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaBell, FaEnvelope, FaSave } from 'react-icons/fa';
+import { authService } from '../services/auth.service';
 import './Settings.css';
+
+type SettingsState = {
+  emailNotifications: boolean;
+  dailyDigest: boolean;
+  taskReminders: boolean;
+  projectUpdates: boolean;
+  theme: 'light' | 'dark';
+};
+
+type ToggleSettingKey = Exclude<keyof SettingsState, 'theme'>;
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<SettingsState>({
     emailNotifications: true,
     dailyDigest: false,
     taskReminders: true,
@@ -14,25 +25,52 @@ const Settings: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleToggle = (key: string) => {
+  useEffect(() => {
+    const user = authService.getUser();
+    const saved = localStorage.getItem('userSettings');
+    const localSettings = saved ? JSON.parse(saved) : null;
+
     setSettings({
-      ...settings,
-      [key]: !settings[key as keyof typeof settings],
+      emailNotifications:
+        typeof user?.emailNotificationsEnabled === 'boolean'
+          ? user.emailNotificationsEnabled
+          : localSettings?.emailNotifications ?? true,
+      dailyDigest: localSettings?.dailyDigest ?? false,
+      taskReminders: localSettings?.taskReminders ?? true,
+      projectUpdates: localSettings?.projectUpdates ?? true,
+      theme: localSettings?.theme === 'dark' ? 'dark' : 'light',
     });
+  }, []);
+
+  const handleToggle = (key: ToggleSettingKey) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setMessage('');
-    
-    // In a real app, you'd save via API
-    setTimeout(() => {
+    setErrorMessage('');
+
+    try {
+      // Persist notification preference on backend so email webhook obeys the toggle.
+      await authService.updateProfile({
+        emailNotificationsEnabled: settings.emailNotifications,
+      });
+
+      // Keep non-backend settings local for now.
       localStorage.setItem('userSettings', JSON.stringify(settings));
       setMessage('Settings saved successfully!');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      setErrorMessage('Failed to save settings. Please try again.');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -132,6 +170,12 @@ const Settings: React.FC = () => {
 
           {message && (
             <div className="settings-message success">{message}</div>
+          )}
+
+          {errorMessage && (
+            <div className="settings-message" style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+              {errorMessage}
+            </div>
           )}
 
           <button onClick={handleSubmit} className="btn-primary-settings" disabled={loading}>
