@@ -11,6 +11,11 @@ interface AddTaskModalProps {
   projectId: string;
   taskType: string;
   onTaskAdded: () => void;
+  // Optional: when opened from Tuesday's "More fields" link, the user has
+  // already typed a title and chosen a parent deliverable in the inline
+  // add row. Pre-fill so they don't have to retype.
+  initialTitle?: string;
+  initialDeliverableId?: string;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -19,12 +24,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   projectId,
   taskType,
   onTaskAdded,
+  initialTitle,
+  initialDeliverableId,
 }) => {
   const [formData, setFormData] = useState({
-    title: '',
+    title: initialTitle || '',
     description: '',
     dueDate: '',
-    deliverableId: '',
+    deliverableId: initialDeliverableId || '',
   });
   const [deliverables, setDeliverables] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,17 +50,17 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        title: '',
+        title: initialTitle || '',
         description: '',
         dueDate: '',
-        deliverableId: '',
+        deliverableId: initialDeliverableId || '',
       });
       setShowCustomDeliverableInput(false);
       setCustomDeliverableName('');
       loadDeliverables();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, initialTitle, initialDeliverableId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const value = e.target.value;

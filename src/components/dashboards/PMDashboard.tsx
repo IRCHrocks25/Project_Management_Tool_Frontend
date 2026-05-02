@@ -1253,6 +1253,28 @@ const PMDashboard: React.FC = () => {
                 New Project
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => navigate('/tuesday')}
+              style={{
+                marginRight: '1rem',
+                padding: '0.2rem 0.25rem',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Hierarchical view: Project → Deliverable → Task"
+            >
+              <img
+                src="https://res.cloudinary.com/dcuswyfur/image/upload/v1777679193/Tuesday_iruicl.png"
+                alt="Tuesday"
+                style={{ height: '28px', width: 'auto', display: 'block' }}
+              />
+            </button>
             
             {/* Live Chat - Message Icon */}
             <button
@@ -1517,7 +1539,7 @@ const PMDashboard: React.FC = () => {
           </div>
           <div className="header-right">
             <div className="view-toggle">
-              <button 
+              <button
                 className={viewMode === 'kanban' ? 'active' : ''}
                 onClick={() => setViewMode('kanban')}
               >

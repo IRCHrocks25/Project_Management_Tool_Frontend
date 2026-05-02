@@ -10,6 +10,7 @@ import { clientUpdatesService, ClientUpdateComment } from '../services/client-up
 import { notificationService } from '../services/notification.service';
 import { useFocusRefetch } from '../hooks/useFocusRefetch';
 import TaskDetailSideModal from './TaskDetailSideModal';
+import StatusChangeNotesModal from './shared/StatusChangeNotesModal';
 import './Dashboard.css';
 
 type KanbanColumnSortOrder = 'newest' | 'oldest';
@@ -129,8 +130,8 @@ const DepartmentView: React.FC = () => {
     newStatus: string;
     label: string;
   } | null>(null);
-  const [statusChangeNotes, setStatusChangeNotes] = useState('');
-  const [statusChangeAttachment, setStatusChangeAttachment] = useState('');
+  // statusChangeNotes / statusChangeAttachment state removed —
+  // StatusChangeNotesModal owns these internally now.
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   
   // Notification modal state
@@ -3112,8 +3113,6 @@ const DepartmentView: React.FC = () => {
                                     newStatus: selectedStatus,
                                     label: labelMap[selectedStatus] || selectedStatus,
                                   });
-                                  setStatusChangeNotes('');
-                                  setStatusChangeAttachment('');
                                   setShowStatusChangeModal(true);
                                 } else {
                                   // Simple statuses can update immediately
@@ -6219,235 +6218,41 @@ const DepartmentView: React.FC = () => {
         </>
       )}
 
-      {/* Status Change Notes Modal for task status updates (Department boards) */}
+      {/* Status Change Notes Modal for task status updates (Department boards).
+          Migrated to shared StatusChangeNotesModal — gating logic + CRM
+          bypass live in the trigger code (around L3083-3120), unchanged. */}
       {showStatusChangeModal && statusChangeContext && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
+        <StatusChangeNotesModal
+          isOpen={true}
+          targetColumnLabel={statusChangeContext.label}
+          notesRequired={false}
+          attachmentMode="single"
+          saving={statusChangeLoading}
+          onClose={() => {
             if (statusChangeLoading) return;
             setShowStatusChangeModal(false);
             setStatusChangeContext(null);
-            setStatusChangeNotes('');
-            setStatusChangeAttachment('');
           }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2100,
+          onSave={async (notes, attachments) => {
+            if (!statusChangeContext) return;
+            setStatusChangeLoading(true);
+            try {
+              // Single-mode: attachments is [] or [url]. handleTaskStatusChange
+              // expects the single string shape (4th param). Format produced
+              // by handleTaskStatusChange (L1480+) is unchanged.
+              await handleTaskStatusChange(
+                statusChangeContext.taskId,
+                statusChangeContext.newStatus,
+                notes,
+                attachments[0] || '',
+              );
+              setShowStatusChangeModal(false);
+              setStatusChangeContext(null);
+            } finally {
+              setStatusChangeLoading(false);
+            }
           }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              margin: '1rem',
-            }}
-          >
-            <div
-              className="modal-header"
-              style={{
-                padding: '1.5rem 2rem',
-                borderBottom: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 600,
-                  color: '#111827',
-                }}
-              >
-                Update Status – {statusChangeContext.label}
-              </h2>
-              <button
-                className="close-button"
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeAttachment('');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                  padding: '0.5rem',
-                  borderRadius: '999px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div
-              className="modal-body"
-              style={{
-                padding: '1.5rem 2rem',
-                flex: 1,
-                overflowY: 'auto',
-              }}
-            >
-              <p style={{ marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
-                Add notes and links so PMs and team leads can see why this task moved into "
-                {statusChangeContext.label}".
-              </p>
-
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label
-                  htmlFor="status-change-notes"
-                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
-                >
-                  Notes (Optional)
-                </label>
-                <textarea
-                  id="status-change-notes"
-                  value={statusChangeNotes}
-                  onChange={(e) => setStatusChangeNotes(e.target.value)}
-                  className="form-input"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    minHeight: '100px',
-                    fontFamily: 'inherit',
-                    fontSize: '0.9rem',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                  }}
-                  placeholder="Add context about this status change..."
-                  disabled={statusChangeLoading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label
-                  htmlFor="status-change-attachment"
-                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
-                >
-                  Attachment/Link (Optional)
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaLink style={{ color: '#6b7280', fontSize: '0.875rem' }} />
-                  <input
-                    id="status-change-attachment"
-                    type="url"
-                    value={statusChangeAttachment}
-                    onChange={(e) => setStatusChangeAttachment(e.target.value)}
-                    className="form-input"
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      borderRadius: '8px',
-                      border: '1px solid #d1d5db',
-                      fontSize: '0.9rem',
-                    }}
-                    placeholder="https://example.com or Google Drive/Figma link..."
-                    disabled={statusChangeLoading}
-                  />
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
-                  Use this to attach references, client feedback, or handoff links.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="modal-footer"
-              style={{
-                padding: '1.25rem 2rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '0.75rem',
-              }}
-            >
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeAttachment('');
-                }}
-                disabled={statusChangeLoading}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  color: '#374151',
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={async () => {
-                  if (!statusChangeContext) return;
-                  try {
-                    setStatusChangeLoading(true);
-                    await handleTaskStatusChange(
-                      statusChangeContext.taskId,
-                      statusChangeContext.newStatus,
-                      statusChangeNotes,
-                      statusChangeAttachment
-                    );
-                    setShowStatusChangeModal(false);
-                    setStatusChangeContext(null);
-                    setStatusChangeNotes('');
-                    setStatusChangeAttachment('');
-                  } finally {
-                    setStatusChangeLoading(false);
-                  }
-                }}
-                disabled={statusChangeLoading}
-                style={{
-                  background: statusChangeLoading ? '#9ca3af' : '#667eea',
-                  border: 'none',
-                  color: 'white',
-                  padding: '0.6rem 1.4rem',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {statusChangeLoading ? 'Updating...' : 'Update Status'}
-              </button>
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {/* Notification Modal */}

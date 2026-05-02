@@ -24,6 +24,7 @@ import DailyFocusAndEodView from './components/DailyFocusAndEodView';
 import DepartmentPrioritiesPmView from './components/DepartmentPrioritiesPmView';
 import RapidProspectDashboard from './components/dashboards/RapidProspectDashboard';
 import RoleDashboard from './components/dashboards/RoleDashboard';
+import TuesdayView from './components/tuesday/TuesdayView';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
@@ -62,6 +63,17 @@ const PMDashboardRoute: React.FC = () => {
   const isHead = !!user?.isTeamLead;
   if (isPM || isHead) {
     return <PMDashboard />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
+/** Tuesday view: same access as PMDashboard. */
+const TuesdayRoute: React.FC = () => {
+  const user = authService.getUser();
+  const isPM = user?.role === 'Project Manager';
+  const isHead = !!user?.isTeamLead;
+  if (isPM || isHead) {
+    return <TuesdayView />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -160,6 +172,7 @@ const App: React.FC = () => {
         />
         {/* Routes that use the shared side navigation layout */}
         <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+          <Route path="tuesday" element={<TuesdayRoute />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="timeline/:userId" element={<TimelinePage />} />
           <Route path="my-projects" element={<MyProjectsView />} />

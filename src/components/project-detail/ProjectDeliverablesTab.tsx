@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FaChevronRight,
   FaCheckCircle,
@@ -16,6 +16,7 @@ import {
 } from 'react-icons/fa';
 
 const ProjectDeliverablesTab = (props: any) => {
+  const [deliverablesViewMode, setDeliverablesViewMode] = useState<'kanban' | 'list'>('kanban');
   const {
     authService,
     deliverablesForDisplay,
@@ -47,8 +48,6 @@ const ProjectDeliverablesTab = (props: any) => {
     setRevisionAttachment,
     setShowRevisionConfirm,
     setStatusChangeContext,
-    setStatusChangeNotes,
-    setStatusChangeAttachment,
     setShowStatusChangeModal,
     handleTaskStatusChange,
     setSelectedDeliverableForTask,
@@ -845,8 +844,6 @@ const ProjectDeliverablesTab = (props: any) => {
                         columnId: targetColumnId,
                         label: labelMap[targetColumnId] || targetColumnId,
                       });
-                      setStatusChangeNotes('');
-                      setStatusChangeAttachment('');
                       setShowStatusChangeModal(true);
                     } else {
                       // Simple columns can update immediately
@@ -963,19 +960,176 @@ const ProjectDeliverablesTab = (props: any) => {
                 }
               };
 
+              const renderDeliverablesListView = () => (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  marginTop: '0.5rem',
+                }}>
+                  {kanbanColumns.map((column) => (
+                    <div
+                      key={column.id}
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        background: '#fff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.75rem 1rem',
+                        borderBottom: '1px solid #e2e8f0',
+                        background: '#f8fafc',
+                      }}>
+                        <h5 style={{ margin: 0, fontSize: '0.9rem', color: '#1f2937' }}>{column.title}</h5>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          color: '#475569',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '999px',
+                          border: '1px solid #cbd5e1',
+                          background: '#fff',
+                        }}>
+                          {column.files.length}
+                        </span>
+                      </div>
+
+                      {column.files.length === 0 ? (
+                        <div style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: '#94a3b8' }}>
+                          No items
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          {column.files.map((link, idx) => {
+                            const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
+                            const relatedAssignees = relatedTask?.assignees || [];
+                            const relatedAssigneeIds = relatedAssignees.length > 0
+                              ? relatedAssignees.map((a: any) => a.userId || a.user?.id)
+                              : (relatedTask?.assignedToId ? [relatedTask.assignedToId] : []);
+                            const primaryAssigneeId = relatedAssigneeIds[0] || '';
+                            const ownerName = primaryAssigneeId
+                              ? (allUsers.find((u: any) => u.id === primaryAssigneeId)?.name || 'Unassigned')
+                              : (relatedTask?.assignedTo?.name || 'Unassigned');
+                            const displayDate = link.updatedAt || link.createdAt || relatedTask?.updatedAt || relatedTask?.createdAt;
+                            const formattedDate = displayDate
+                              ? new Date(displayDate).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                              : '';
+                            const title = relatedTask?.title || link.taskTitle || `${link.department} Task`;
+
+                            return (
+                              <div
+                                key={`${column.id}-${idx}-${link.url}`}
+                                onClick={() => {
+                                  if (relatedTask) {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }
+                                }}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '1.6fr 1fr 0.8fr 1fr 0.8fr',
+                                  gap: '0.75rem',
+                                  padding: '0.7rem 1rem',
+                                  borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
+                                  alignItems: 'center',
+                                  cursor: relatedTask ? 'pointer' : 'default',
+                                }}
+                              >
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.87rem', fontWeight: 600, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {title}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{link.department}</div>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#334155' }}>{ownerName}</div>
+                                <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{link.type}</div>
+                                <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{formattedDate || '-'}</div>
+                                <div>
+                                  {link.url.startsWith('task-') ? (
+                                    <span style={{ fontSize: '0.76rem', color: '#64748b' }}>Task</span>
+                                  ) : (
+                                    <a
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ fontSize: '0.78rem', color: '#2563eb', textDecoration: 'none' }}
+                                    >
+                                      Open
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+
               return (
                 <div className="deliverable-kanban-board">
                   <div className="kanban-header">
                     <h4 className="kanban-deliverable-title">{getDeliverableDisplayName(selectedDeliverable)}</h4>
-                    <div className="kanban-status-badge" style={{
-                      backgroundColor: selectedDeliverable.status === 'Approved' ? '#d1fae5' : 
-                                      selectedDeliverable.status === 'Ready for Review' ? '#fef3c7' :
-                                      selectedDeliverable.status === 'Revision' ? '#fee2e2' : '#f3f4f6',
-                      color: selectedDeliverable.status === 'Approved' ? '#065f46' :
-                             selectedDeliverable.status === 'Ready for Review' ? '#92400e' :
-                             selectedDeliverable.status === 'Revision' ? '#991b1b' : '#6b7280'
-                    }}>
-                      {selectedDeliverable.status}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{
+                        display: 'inline-flex',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        background: '#fff',
+                        overflow: 'hidden',
+                      }}>
+                        <button
+                          onClick={() => setDeliverablesViewMode('kanban')}
+                          style={{
+                            border: 'none',
+                            padding: '0.35rem 0.7rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            background: deliverablesViewMode === 'kanban' ? '#e2e8f0' : 'transparent',
+                            color: '#334155',
+                          }}
+                        >
+                          Kanban
+                        </button>
+                        <button
+                          onClick={() => setDeliverablesViewMode('list')}
+                          style={{
+                            border: 'none',
+                            borderLeft: '1px solid #cbd5e1',
+                            padding: '0.35rem 0.7rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            background: deliverablesViewMode === 'list' ? '#e2e8f0' : 'transparent',
+                            color: '#334155',
+                          }}
+                        >
+                          List
+                        </button>
+                      </div>
+                      <div className="kanban-status-badge" style={{
+                        backgroundColor: selectedDeliverable.status === 'Approved' ? '#d1fae5' : 
+                                        selectedDeliverable.status === 'Ready for Review' ? '#fef3c7' :
+                                        selectedDeliverable.status === 'Revision' ? '#fee2e2' : '#f3f4f6',
+                        color: selectedDeliverable.status === 'Approved' ? '#065f46' :
+                               selectedDeliverable.status === 'Ready for Review' ? '#92400e' :
+                               selectedDeliverable.status === 'Revision' ? '#991b1b' : '#6b7280'
+                      }}>
+                        {selectedDeliverable.status}
+                      </div>
                     </div>
                   </div>
                   
@@ -996,8 +1150,9 @@ const ProjectDeliverablesTab = (props: any) => {
                     <span><strong>Tip:</strong> Drag cards across columns to update their status. Cards can be moved between any columns.</span>
                   </div>
                   
-                  <div className="kanban-columns">
-                    {kanbanColumns.map((column) => (
+                  {deliverablesViewMode === 'kanban' ? (
+                    <div className="kanban-columns">
+                      {kanbanColumns.map((column) => (
                       <div 
                         key={column.id} 
                         className={`kanban-column ${dragOverColumn === column.id ? 'drag-over' : ''}`}
@@ -1805,8 +1960,6 @@ const ProjectDeliverablesTab = (props: any) => {
                                               columnId: newColumnId,
                                               label: labelMap[newColumnId] || newColumnId,
                                             });
-                                            setStatusChangeNotes('');
-                                            setStatusChangeAttachment('');
                                             setShowStatusChangeModal(true);
                                           } else {
                                             // Simple columns can update immediately
@@ -1859,8 +2012,11 @@ const ProjectDeliverablesTab = (props: any) => {
                           })}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    renderDeliverablesListView()
+                  )}
                 </div>
               );
             })()}

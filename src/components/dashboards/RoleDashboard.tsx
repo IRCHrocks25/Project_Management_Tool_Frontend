@@ -37,6 +37,7 @@ import SubmitTicketModal from '../SubmitTicketModal';
 import TicketsModal from '../TicketsModal';
 import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
+import StatusChangeNotesModal from '../shared/StatusChangeNotesModal';
 import UserAvatar from '../UserAvatar';
 import UserGreeting from '../UserGreeting';
 import TaskDetailSideModal from '../TaskDetailSideModal';
@@ -233,8 +234,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     targetColumnId: string;
     targetColumnLabel: string;
   } | null>(null);
-  const [statusChangeNotes, setStatusChangeNotes] = useState('');
-  const [statusChangeLinks, setStatusChangeLinks] = useState<string[]>(['']);
+  // statusChangeNotes / statusChangeLinks state removed —
+  // StatusChangeNotesModal owns these internally now (multi-link mode).
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
@@ -1300,10 +1301,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     await loadData();
   };
 
-  // Handle status change from drag and drop modal
-  const handleStatusChangeFromDrag = async () => {
+  // Handle status change from drag and drop modal.
+  //
+  // Signature changed during the StatusChangeNotesModal migration: notes
+  // and links are now passed as parameters by the modal's onSave callback
+  // instead of being read from local state. Behavior preserved otherwise:
+  // updateStatus → per-link addLinkAttachment → description write → reload.
+  //
+  // Description format: hybrid per spec — singular `Attachment: <url>`
+  // for one link, plural `Attachments:\n- ...` bulleted list for two or
+  // more. This is a deliberate change from the previous always-plural
+  // output for the 1-link case (was `Attachments:\n- url`); flagged at
+  // Gate 5.
+  const handleStatusChangeFromDrag = async (notes: string, links: string[]) => {
     if (!statusChangeContext) return;
-    
+
     try {
       setStatusChangeLoading(true);
       const task = tasks.find((t: any) => t.id === statusChangeContext.taskId);
@@ -1330,8 +1342,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         reviewIntent,
       );
 
-      // Persist each provided link as a real attachment so it appears in task side modal.
-      const validLinks = statusChangeLinks.map(link => link.trim()).filter(Boolean);
+      // Persist each provided link as a real attachment so it appears in
+      // task side modal. Iteration matches the existing pattern at the
+      // pre-migration L1334-1348 byte-for-byte.
+      const validLinks = links.map((link) => link.trim()).filter(Boolean);
       if (validLinks.length > 0) {
         await Promise.all(
           validLinks.map((link) =>
@@ -1339,9 +1353,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               statusChangeContext.taskId,
               link,
               undefined,
-              statusChangeNotes.trim() || undefined
-            )
-          )
+              notes.trim() || undefined,
+            ),
+          ),
         ).catch((attachmentError) => {
           console.warn('Failed to add one or more status-change attachment links:', attachmentError);
         });
@@ -1352,13 +1366,16 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       const descWithMarker = columnMarker ? `${baseDesc}${columnMarker}` : baseDesc;
       const timestamp = new Date().toLocaleString();
       let logBlock = `\n\n--- Status Change ---\nNew Column: ${statusChangeContext.targetColumnLabel}\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
-      
-      if (statusChangeNotes && statusChangeNotes.trim()) {
-        logBlock += `\nNotes: ${statusChangeNotes.trim()}`;
+
+      if (notes && notes.trim()) {
+        logBlock += `\nNotes: ${notes.trim()}`;
       }
-      
-      if (validLinks.length > 0) {
-        logBlock += `\nAttachments:\n${validLinks.map(link => `- ${link.trim()}`).join('\n')}`;
+
+      // Hybrid format: singular for length 1, plural+bullets for length >= 2.
+      if (validLinks.length === 1) {
+        logBlock += `\nAttachment: ${validLinks[0]}`;
+      } else if (validLinks.length > 1) {
+        logBlock += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
       }
 
       const updatedDesc = descWithMarker + logBlock;
@@ -1370,13 +1387,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
       // Reload data
       await loadData();
-      
+
       // Close modal
       setShowStatusChangeModal(false);
       setStatusChangeContext(null);
-      setStatusChangeNotes('');
-      setStatusChangeLinks(['']);
-      
+
       alert(`Task moved to ${statusChangeContext.targetColumnLabel} ✓`);
     } catch (error) {
       console.error('Failed to update task status:', error);
@@ -2619,8 +2634,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                         targetColumnId: column.id,
                         targetColumnLabel: targetLabel,
                       });
-                      setStatusChangeNotes('');
-                      setStatusChangeLinks(['']);
                       setShowStatusChangeModal(true);
                       setDraggedTask(null);
                     }}
@@ -5084,278 +5097,28 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         }}
       />
 
-      {/* Status Change Modal (for drag and drop) */}
+      {/* Status Change Modal (for drag and drop). Migrated to shared
+          StatusChangeNotesModal — drag-only trigger preserved at L2616-2624;
+          column-button click path stays silent (no modal). */}
       {showStatusChangeModal && statusChangeContext && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2100,
-          }}
-          onClick={() => {
+        <StatusChangeNotesModal
+          isOpen={true}
+          targetColumnLabel={statusChangeContext.targetColumnLabel}
+          notesRequired={false}
+          attachmentMode="multi"
+          saving={statusChangeLoading}
+          onClose={() => {
             if (statusChangeLoading) return;
             setShowStatusChangeModal(false);
             setStatusChangeContext(null);
-            setStatusChangeNotes('');
-            setStatusChangeLinks(['']);
           }}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              margin: '1rem',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                padding: '1.5rem 2rem',
-                borderBottom: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 600,
-                  color: '#111827',
-                }}
-              >
-                Update Status – {statusChangeContext.targetColumnLabel}
-              </h2>
-              <button
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeLinks(['']);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                  padding: '0.5rem',
-                  borderRadius: '999px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div
-              style={{
-                padding: '1.5rem 2rem',
-                flex: 1,
-                overflowY: 'auto',
-              }}
-            >
-              <p style={{ marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.9rem' }}>
-                Add notes and links so PMs and team leads can see why this task moved into "{statusChangeContext.targetColumnLabel}".
-              </p>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label
-                  htmlFor="status-change-notes"
-                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
-                >
-                  Notes (Optional)
-                </label>
-                <textarea
-                  id="status-change-notes"
-                  value={statusChangeNotes}
-                  onChange={(e) => setStatusChangeNotes(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    minHeight: '100px',
-                    fontFamily: 'inherit',
-                    fontSize: '0.9rem',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                  }}
-                  placeholder="Add context about this status change..."
-                  disabled={statusChangeLoading}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
-                >
-                  Links / Attachments (Optional)
-                </label>
-                {statusChangeLinks.map((link, index) => (
-                  <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <FaLink style={{ color: '#6b7280', fontSize: '0.875rem', flexShrink: 0 }} />
-                    <input
-                      type="url"
-                      value={link}
-                      onChange={(e) => {
-                        const newLinks = [...statusChangeLinks];
-                        newLinks[index] = e.target.value;
-                        setStatusChangeLinks(newLinks);
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: '1px solid #d1d5db',
-                        fontSize: '0.9rem',
-                      }}
-                      placeholder="https://example.com or Google Drive/Figma link..."
-                      disabled={statusChangeLoading}
-                    />
-                    {statusChangeLinks.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newLinks = statusChangeLinks.filter((_, i) => i !== index);
-                          setStatusChangeLinks(newLinks);
-                        }}
-                        disabled={statusChangeLoading}
-                        style={{
-                          padding: '0.5rem',
-                          border: 'none',
-                          background: 'transparent',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#fef2f2';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <FaTimes />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setStatusChangeLinks([...statusChangeLinks, ''])}
-                  disabled={statusChangeLoading}
-                  style={{
-                    marginTop: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    border: '1px solid #d1d5db',
-                    background: 'white',
-                    color: '#374151',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f9fafb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'white';
-                  }}
-                >
-                  <FaPlus style={{ fontSize: '0.75rem' }} />
-                  Add Another Link
-                </button>
-                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
-                  Use this to attach references, client feedback, or handoff links.
-                </p>
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: '1.25rem 2rem',
-                borderTop: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '0.75rem',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeLinks(['']);
-                }}
-                disabled={statusChangeLoading}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  color: '#374151',
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleStatusChangeFromDrag}
-                disabled={statusChangeLoading}
-                style={{
-                  background: statusChangeLoading ? '#9ca3af' : color,
-                  border: 'none',
-                  color: 'white',
-                  padding: '0.6rem 1.4rem',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: statusChangeLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                {statusChangeLoading ? (
-                  <>
-                    <FaSpinner className="spinner" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update Status'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+          onSave={async (notes, attachments) => {
+            // handleStatusChangeFromDrag does its own loading toggle,
+            // close-on-success, alert, and per-link addLinkAttachment
+            // iteration. We just hand it the modal's collected values.
+            await handleStatusChangeFromDrag(notes, attachments);
+          }}
+        />
       )}
     </div>
   );

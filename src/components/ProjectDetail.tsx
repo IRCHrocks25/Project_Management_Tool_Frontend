@@ -33,6 +33,7 @@ import { taskService } from '../services/task.service';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
+import StatusChangeNotesModal from './shared/StatusChangeNotesModal';
 import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyReminders.service';
 import { ProjectRegistryMeta, projectRegistryMetaService } from '../services/projectRegistryMeta.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
@@ -266,8 +267,10 @@ const ProjectDetail: React.FC = () => {
     columnId: string;
     label: string;
   } | null>(null);
-  const [statusChangeNotes, setStatusChangeNotes] = useState('');
-  const [statusChangeAttachment, setStatusChangeAttachment] = useState('');
+  // statusChangeNotes / statusChangeAttachment state removed —
+  // StatusChangeNotesModal owns these internally now (see
+  // shared/StatusChangeNotesModal.tsx). Reset-before-open is implicit
+  // via the modal's own useEffect on isOpen.
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [submittingTask, setSubmittingTask] = useState<string | null>(null);
   const [submissionForm, setSubmissionForm] = useState<{ taskId: string; data: string; type: 'url' | 'text' } | null>(null);
@@ -3010,8 +3013,6 @@ const ProjectDetail: React.FC = () => {
               setRevisionAttachment,
               setShowRevisionConfirm,
               setStatusChangeContext,
-              setStatusChangeNotes,
-              setStatusChangeAttachment,
               setShowStatusChangeModal,
               handleTaskStatusChange,
               setSelectedDeliverableForTask,
@@ -4354,117 +4355,37 @@ const ProjectDetail: React.FC = () => {
 
       {/* Status Change Notes Modal for task status updates */}
       {showStatusChangeModal && statusChangeContext && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
+        <StatusChangeNotesModal
+          isOpen={true}
+          targetColumnLabel={statusChangeContext.label}
+          notesRequired={false}
+          attachmentMode="single"
+          saving={statusChangeLoading}
+          onClose={() => {
             if (statusChangeLoading) return;
             setShowStatusChangeModal(false);
             setStatusChangeContext(null);
-            setStatusChangeNotes('');
-            setStatusChangeAttachment('');
           }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '600px' }}
-          >
-            <div className="modal-header">
-              <h2>Update Status – {statusChangeContext.label}</h2>
-              <button
-                className="close-button"
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeAttachment('');
-                }}
-              >
-                <FaTimes />
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
-                Add notes and links so PMs and team leads can see why this task moved into "{statusChangeContext.label}".
-              </p>
-
-              <div className="form-group">
-                <label htmlFor="status-change-notes">Notes (Optional)</label>
-                <textarea
-                  id="status-change-notes"
-                  value={statusChangeNotes}
-                  onChange={(e) => setStatusChangeNotes(e.target.value)}
-                  className="form-input"
-                  style={{ width: '100%', padding: '0.75rem', minHeight: '100px', fontFamily: 'inherit' }}
-                  placeholder="Add context about this status change..."
-                  disabled={statusChangeLoading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="status-change-attachment">Attachment/Link (Optional)</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaLink style={{ color: '#6b7280', fontSize: '0.875rem' }} />
-                  <input
-                    id="status-change-attachment"
-                    type="url"
-                    value={statusChangeAttachment}
-                    onChange={(e) => setStatusChangeAttachment(e.target.value)}
-                    className="form-input"
-                    style={{ flex: 1, padding: '0.75rem' }}
-                    placeholder="https://example.com or Google Drive/Figma link..."
-                    disabled={statusChangeLoading}
-                  />
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem', marginBottom: 0 }}>
-                  Use this to attach references, client feedback, or handoff links.
-                </p>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  if (statusChangeLoading) return;
-                  setShowStatusChangeModal(false);
-                  setStatusChangeContext(null);
-                  setStatusChangeNotes('');
-                  setStatusChangeAttachment('');
-                }}
-                disabled={statusChangeLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={async () => {
-                  if (!statusChangeContext) return;
-                  try {
-                    setStatusChangeLoading(true);
-                    await handleTaskStatusChange(
-                      statusChangeContext.taskId,
-                      statusChangeContext.columnId,
-                      statusChangeNotes,
-                      statusChangeAttachment
-                    );
-                    setShowStatusChangeModal(false);
-                    setStatusChangeContext(null);
-                    setStatusChangeNotes('');
-                    setStatusChangeAttachment('');
-                  } finally {
-                    setStatusChangeLoading(false);
-                  }
-                }}
-                disabled={statusChangeLoading}
-              >
-                {statusChangeLoading ? 'Updating...' : 'Update Status'}
-              </button>
-            </div>
-          </div>
-        </div>
+          onSave={async (notes, attachments) => {
+            if (!statusChangeContext) return;
+            setStatusChangeLoading(true);
+            try {
+              // Single-mode: attachments is [] or [url]. handleTaskStatusChange
+              // expects the single string shape (4th param). Format produced
+              // by handleTaskStatusChange (L1372-1394) is unchanged.
+              await handleTaskStatusChange(
+                statusChangeContext.taskId,
+                statusChangeContext.columnId,
+                notes,
+                attachments[0] || '',
+              );
+              setShowStatusChangeModal(false);
+              setStatusChangeContext(null);
+            } finally {
+              setStatusChangeLoading(false);
+            }
+          }}
+        />
       )}
 
       {/* Branding Notes Modal */}
