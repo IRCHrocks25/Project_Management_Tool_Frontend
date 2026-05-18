@@ -60,7 +60,7 @@ const TuesdayToolbar: React.FC<Props> = ({ controls, options, onExpandAll, onCol
           <FaSearch className="tuesday-search-icon" size={11} />
           <input
             className="tuesday-search-input"
-            placeholder="Search tasks…"
+            placeholder="Search projects or tasks…"
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             onKeyDown={(e) => {

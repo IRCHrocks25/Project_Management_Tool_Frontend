@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FaEllipsisV, FaTimes, FaUser } from 'react-icons/fa';
+import { FaEllipsisV, FaExchangeAlt, FaTimes, FaUser } from 'react-icons/fa';
 import ConfirmModal from '../ConfirmModal';
 import { taskService } from '../../services/task.service';
 
@@ -24,6 +24,7 @@ interface TaskHeaderProps {
   onClose: () => void;
   onTitleSaved?: (newTitle: string) => void;
   onDeleteTask?: () => void;
+  onOpenTransfer?: () => void;
 }
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
@@ -35,6 +36,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   onClose,
   onTitleSaved,
   onDeleteTask,
+  onOpenTransfer,
 }) => {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
@@ -121,25 +123,37 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   return (
     <div className="tdsm-header">
       <div className="tdsm-header-top">
-        {editingTitle ? (
-          <input
-            className="tdsm-title-input"
-            value={titleInput}
-            onChange={e => setTitleInput(e.target.value)}
-            onBlur={saveTitle}
-            onKeyDown={handleTitleKeyDown}
-            disabled={savingTitle}
-            autoFocus
-          />
-        ) : (
-          <h2
-            className={`tdsm-task-title${canEdit ? ' tdsm-title-editable' : ''}`}
-            onClick={canEdit ? startEditTitle : undefined}
-            title={canEdit ? 'Click to edit title' : undefined}
-          >
-            {loadingTask ? 'Loading…' : title}
-          </h2>
-        )}
+        <div className="tdsm-header-title-row">
+          {editingTitle ? (
+            <input
+              className="tdsm-title-input"
+              value={titleInput}
+              onChange={e => setTitleInput(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={handleTitleKeyDown}
+              disabled={savingTitle}
+              autoFocus
+            />
+          ) : (
+            <h2
+              className={`tdsm-task-title${canEdit ? ' tdsm-title-editable' : ''}`}
+              onClick={canEdit ? startEditTitle : undefined}
+              title={canEdit ? 'Click to edit title' : undefined}
+            >
+              {loadingTask ? 'Loading…' : title}
+            </h2>
+          )}
+          {canEdit && onOpenTransfer && (
+            <button
+              className="tdsm-header-transfer-btn"
+              onClick={onOpenTransfer}
+              title="Transfer to another department"
+            >
+              <FaExchangeAlt style={{ fontSize: '11px' }} />
+              Transfer to another department
+            </button>
+          )}
+        </div>
 
         <div className="tdsm-header-actions">
           {canEdit && onDeleteTask && (

@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
  * pagination).
  *
  * Format (each param optional, omitted when at default):
- *   ?q=design                       full-text search on task names
+ *   ?q=design                       full-text search on project + task names
  *   ?dept=Design,Copy               department filter (task.type values)
  *   ?pm=<uuid>,<uuid>               PM filter (user.id values)
  *   ?status=for_approval,revision   status filter (kanban column ids)

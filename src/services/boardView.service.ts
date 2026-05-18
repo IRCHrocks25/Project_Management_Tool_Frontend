@@ -41,6 +41,7 @@ export interface BoardProject {
   id: string;
   name: string;
   priority: string;
+  clientType: string | null;
   pm: { id: string; name: string; avatarUrl: string | null } | null;
   clientStartDate: string | null;
   targetCloseMonth: string;

@@ -90,12 +90,19 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
   openProject,
   onCreateProjectClick,
 }) => {
+  const filteredTaskDueAlerts = useMemo(() => {
+    return taskDueAlerts.filter((item) => {
+      const col = (item.currentColumn || '').trim().toLowerCase();
+      return col !== 'client validation' && col !== 'client review';
+    });
+  }, [taskDueAlerts]);
+
   const [dueSort, setDueSort] = useState<
     'days_closest' | 'most_overdue' | 'days_farthest' | 'project_az' | 'department_az'
   >('days_closest');
 
   const sortedTaskDueAlerts = useMemo(() => {
-    const copy = [...taskDueAlerts];
+    const copy = [...filteredTaskDueAlerts];
     switch (dueSort) {
       case 'most_overdue':
         return copy.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
@@ -117,7 +124,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
       default:
         return copy.sort((a, b) => Math.abs(a.daysLeft) - Math.abs(b.daysLeft) || a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
     }
-  }, [taskDueAlerts, dueSort]);
+  }, [filteredTaskDueAlerts, dueSort]);
   const sortedOverdueTaskDueAlerts = useMemo(
     () => sortedTaskDueAlerts.filter((item) => item.daysLeft < 0),
     [sortedTaskDueAlerts],
@@ -126,7 +133,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
     () => sortedTaskDueAlerts.filter((item) => item.daysLeft >= 0 && item.daysLeft <= 5),
     [sortedTaskDueAlerts],
   );
-  if (taskDueAlerts.length === 0 && !canManageMonthlyReminders) {
+  if (filteredTaskDueAlerts.length === 0 && !canManageMonthlyReminders) {
     return null;
   }
 
@@ -145,6 +152,12 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
     const dt = new Date(year, (month || 1) - 1, 1);
     dt.setMonth(dt.getMonth() + 1);
     return toMonthKey(dt);
+  };
+  const monthDiff = (fromKey: string, toKey: string) => {
+    const [fromYear, fromMonth] = fromKey.split('-').map(Number);
+    const [toYear, toMonth] = toKey.split('-').map(Number);
+    if (!fromYear || !fromMonth || !toYear || !toMonth) return 0;
+    return (toYear - fromYear) * 12 + (toMonth - fromMonth);
   };
   const currentMonthKeyNow = toMonthKey(new Date());
 
@@ -1283,10 +1296,16 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   const cmStatus = item.currentMonthStatus || 'pending';
                   const nmStatus = item.nextMonthStatus || null;
                   const monthRolled = baseMonthKey < currentMonthKeyNow;
+                  const monthsRolled = monthDiff(baseMonthKey, currentMonthKeyNow);
                   const stalePendingLabel = monthRolled && cmStatus !== 'done' ? monthLabel(baseMonthKey) : null;
                   const effectiveCMKey = monthRolled ? currentMonthKeyNow : baseMonthKey;
                   const effectiveNMKey = nextMonthKey(effectiveCMKey);
-                  const nmEnabled = (monthRolled ? 'pending' : cmStatus) === 'done';
+                  const effectiveCMStatus =
+                    monthRolled
+                      ? (monthsRolled === 1 ? (nmStatus || 'pending') : 'pending')
+                      : cmStatus;
+                  const effectiveNMStatus = monthRolled ? null : nmStatus;
+                  const nmEnabled = effectiveCMStatus === 'done';
 
                   const setCMStatus = async (status: 'done' | 'no') => {
                     const payload = monthRolled
@@ -1433,8 +1452,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             type="button"
                             onClick={() => setCMStatus('done')}
                             style={{
-                              borderRadius: 6, border: '1px solid #86efac', background: cmStatus === 'done' ? '#22c55e' : '#f0fdf4',
-                              color: cmStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
+                              borderRadius: 6, border: '1px solid #86efac', background: effectiveCMStatus === 'done' ? '#22c55e' : '#f0fdf4',
+                              color: effectiveCMStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
                             }}
                           >
                             Done
@@ -1443,8 +1462,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             type="button"
                             onClick={() => setCMStatus('no')}
                             style={{
-                              borderRadius: 6, border: '1px solid #fecaca', background: cmStatus === 'no' ? '#ef4444' : '#fff',
-                              color: cmStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
+                              borderRadius: 6, border: '1px solid #fecaca', background: effectiveCMStatus === 'no' ? '#ef4444' : '#fff',
+                              color: effectiveCMStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem', cursor: 'pointer',
                             }}
                           >
                             No
@@ -1460,8 +1479,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             onClick={() => setNMStatus('done')}
                             disabled={!nmEnabled}
                             style={{
-                              borderRadius: 6, border: '1px solid #86efac', background: nmStatus === 'done' ? '#22c55e' : '#f8fafc',
-                              color: nmStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
+                              borderRadius: 6, border: '1px solid #86efac', background: effectiveNMStatus === 'done' ? '#22c55e' : '#f8fafc',
+                              color: effectiveNMStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
                               cursor: nmEnabled ? 'pointer' : 'not-allowed', opacity: nmEnabled ? 1 : 0.45,
                             }}
                           >
@@ -1472,8 +1491,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             onClick={() => setNMStatus('no')}
                             disabled={!nmEnabled}
                             style={{
-                              borderRadius: 6, border: '1px solid #fecaca', background: nmStatus === 'no' ? '#ef4444' : '#fff',
-                              color: nmStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
+                              borderRadius: 6, border: '1px solid #fecaca', background: effectiveNMStatus === 'no' ? '#ef4444' : '#fff',
+                              color: effectiveNMStatus === 'no' ? '#fff' : '#b91c1c', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
                               cursor: nmEnabled ? 'pointer' : 'not-allowed', opacity: nmEnabled ? 1 : 0.45,
                             }}
                           >

@@ -1560,6 +1560,7 @@ const PMDashboard: React.FC = () => {
                   Tasks
                 </button>
               )}
+              {/* PM List temporarily hidden
               {user?.role === 'Project Manager' && (
                 <button
                   className={viewMode === 'pm_list' ? 'active' : ''}
@@ -1568,6 +1569,7 @@ const PMDashboard: React.FC = () => {
                   PM List
                 </button>
               )}
+              */}
               <button 
                 className={viewMode === 'overview' ? 'active' : ''}
                 onClick={() => {

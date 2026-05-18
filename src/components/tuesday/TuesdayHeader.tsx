@@ -11,17 +11,19 @@ const COLUMNS = [
   { key: 'status',     label: 'Status',     width: '18%' },
   { key: 'priority',   label: 'Priority',   width: '10%' },
   { key: 'timeline',   label: 'Timeline',   width: '14%' },
-  { key: 'pm',         label: 'PM',         width: '12%' },
+  { key: 'pm',         label: 'PM',         width: '11%' },
+  { key: 'clientType', label: 'Client Type', width: '11%' },
   { key: 'department', label: 'Department', width: '7%' },
   { key: 'assignee',   label: 'Assignee',   width: '7%' },
 ];
 
-// Assignee, department, and actions deliberately not sortable.
+// Assignee, department, clientType, and actions deliberately not sortable.
 // Assignee sorting is ambiguous (tasks have multiple assignees, no
 // canonical pick). Department sort doesn't apply at the project level
 // (a project owns multiple departments via its tasks) — sort happens
 // server-side at L1 only, so the toolbar exposes only project-level
-// sort columns. Actions is a non-data column.
+// sort columns. Client Type currently has no server-side sort support.
+// Actions is a non-data column.
 const SORTABLE_KEYS = new Set(['name', 'status', 'priority', 'timeline', 'pm']);
 
 interface Props {

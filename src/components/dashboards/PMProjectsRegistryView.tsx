@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectService } from '../../services/project.service';
+import { boardViewService } from '../../services/boardView.service';
 import {
   ProjectRegistryMeta,
   projectRegistryMetaService,
@@ -24,6 +25,54 @@ type EditableField =
 const WHERE_OPTIONS = ['', 'Katalyst', 'AI', 'WP'];
 const CLIENT_TYPE_OPTIONS = ['', 'ICON', 'STAR', 'Katalyst', 'Private', 'Premium', 'Powered-Up', 'Rapid Prospect'];
 const PROJECT_PRIORITY_OPTIONS = ['', 'Urgent', 'High', 'Medium', 'Low'];
+const CORE_DELIVERABLE_ORDER = ['Logo', 'Social Media Banners', 'Brand Book', 'Speaker Kit', 'Home Page'];
+
+const normalizeDeliverableName = (name: string) => {
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (normalized === 'homepage' || normalized === 'home page') return 'home page';
+  return normalized;
+};
+
+const getDeliverableName = (deliverable: any): string => {
+  if (!deliverable) return '';
+  const custom = typeof deliverable.customType === 'string' ? deliverable.customType.trim() : '';
+  const type = typeof deliverable.type === 'string' ? deliverable.type.trim() : '';
+  const raw = type.toLowerCase() === 'other' && custom ? custom : custom || type;
+  const key = normalizeDeliverableName(raw);
+  if (key === 'home page') return 'Home Page';
+  return raw;
+};
+
+const abbreviate = (name: string): string => {
+  const cleaned = name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const humanizeColumnLabel = (raw: string): string => {
+  if (!raw) return 'Not started';
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const getDeliverableCurrentColumn = (deliverable: any): string => {
+  if (!deliverable) return 'Not started';
+  const direct = deliverable.kanbanColumnLabel || deliverable.currentColumn || deliverable.status;
+  if (typeof direct === 'string' && direct.trim()) return humanizeColumnLabel(direct);
+  return 'Not started';
+};
+
+const getTaskCurrentColumn = (task: any): string => {
+  if (!task) return 'Not started';
+  const direct = task.kanbanColumnLabel || task.currentColumn || task.status;
+  if (typeof direct === 'string' && direct.trim()) return humanizeColumnLabel(direct);
+  return 'Not started';
+};
 
 /* ---------- Design tokens (scoped; no external deps) ---------- */
 const tokens = {
@@ -203,25 +252,299 @@ const scopedCss = `
     width: 6px; height: 6px; border-radius: 50%;
   }
 
-  .pmreg-deliverable {
+  .pmreg-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: transform 100ms ease;
+  }
+  .pmreg-dot-done {
+    background: ${tokens.successFg};
+    box-shadow: 0 0 0 2px ${tokens.successBg};
+  }
+  .pmreg-dot-empty {
+    background: transparent;
+    border: 1.5px solid #cbd5e1;
+  }
+  .pmreg-row:hover .pmreg-dot-done { transform: scale(1.2); }
+
+  .pmreg-deliv-th {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    padding: 10px 2px !important;
+    text-align: center !important;
+    border-left: 1px solid ${tokens.borderSubtle};
+  }
+  .pmreg-deliv-th-abbr {
+    display: inline-block;
+    font-family: ${tokens.fontNum};
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: ${tokens.inkMid};
+    letter-spacing: 0.04em;
+    cursor: help;
+  }
+  .pmreg-deliv-cell {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    padding: 12px 2px !important;
+    text-align: center;
+    border-left: 1px solid ${tokens.borderSubtle};
+  }
+  .pmreg-deliv-group-header {
+    background: ${tokens.surfaceSunk};
+    border-left: 2px solid ${tokens.border} !important;
+  }
+  .pmreg-deliv-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: ${tokens.surfaceAlt};
+    border-bottom: 1px solid ${tokens.borderSubtle};
+    font-size: 0.75rem;
+    color: ${tokens.inkMid};
+  }
+  .pmreg-deliv-toolbar-pill {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-width: 52px;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    border: 1px solid;
+    gap: 6px;
+    padding: 4px 10px;
+    background: ${tokens.surface};
+    border: 1px solid ${tokens.border};
+    border-radius: 999px;
+    font-size: 0.72rem;
     cursor: pointer;
-    user-select: none;
-    transition: transform 80ms ease, box-shadow 120ms ease;
+    transition: all 120ms ease;
   }
-  .pmreg-deliverable:hover { transform: translateY(-1px); box-shadow: ${tokens.shadowSm}; }
-  .pmreg-deliverable:active { transform: translateY(0); }
+  .pmreg-deliv-toolbar-pill:hover {
+    border-color: ${tokens.borderStrong};
+    background: ${tokens.surfaceHover};
+  }
+  .pmreg-deliv-toolbar-pill[data-active="true"] {
+    background: ${tokens.accentSoft};
+    border-color: ${tokens.accentBorder};
+    color: ${tokens.accent};
+    font-weight: 600;
+  }
+
+  .pmreg-atglance-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 20px;
+  }
+  .pmreg-atglance-card {
+    width: min(760px, 96vw);
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+    background: ${tokens.surface};
+    border: 1px solid ${tokens.border};
+    border-radius: 14px;
+    box-shadow: ${tokens.shadowMd};
+  }
+  .pmreg-atglance-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid ${tokens.borderSubtle};
+    background: linear-gradient(to bottom, ${tokens.surface}, ${tokens.surfaceAlt});
+  }
+  .pmreg-atglance-title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: ${tokens.ink};
+  }
+  .pmreg-atglance-sub {
+    margin: 4px 0 0;
+    font-size: 0.76rem;
+    color: ${tokens.inkMuted};
+  }
+  .pmreg-atglance-close {
+    border: 1px solid ${tokens.border};
+    background: ${tokens.surface};
+    color: ${tokens.inkMid};
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .pmreg-atglance-close:hover {
+    border-color: ${tokens.borderStrong};
+    background: ${tokens.surfaceHover};
+  }
+  .pmreg-atglance-body {
+    padding: 14px 18px 18px;
+    display: grid;
+    gap: 12px;
+  }
+  .pmreg-atglance-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pmreg-atglance-metric {
+    border: 1px solid ${tokens.borderSubtle};
+    background: ${tokens.surfaceAlt};
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .pmreg-atglance-k {
+    font-size: 0.68rem;
+    color: ${tokens.inkMuted};
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .pmreg-atglance-v {
+    margin-top: 4px;
+    font-size: 0.83rem;
+    color: ${tokens.ink};
+    font-weight: 600;
+  }
+  .pmreg-atglance-notes {
+    border: 1px solid ${tokens.borderSubtle};
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: ${tokens.surface};
+    font-size: 0.8rem;
+    color: ${tokens.inkMid};
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .pmreg-atglance-deliverables {
+    border: 1px solid ${tokens.borderSubtle};
+    border-radius: 10px;
+    background: ${tokens.surface};
+    overflow: hidden;
+  }
+  .pmreg-atglance-deliverables-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid ${tokens.borderSubtle};
+    background: ${tokens.surfaceAlt};
+    font-size: 0.78rem;
+    color: ${tokens.inkMid};
+    font-weight: 600;
+  }
+  .pmreg-atglance-deliverables-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 12px 12px;
+  }
+  .pmreg-atglance-deliv-block {
+    border: 1px solid ${tokens.borderSubtle};
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: ${tokens.surface};
+  }
+  .pmreg-atglance-deliv-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.79rem;
+    color: ${tokens.inkMid};
+  }
+  .pmreg-atglance-deliv-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .pmreg-atglance-deliv-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pmreg-atglance-deliv-col {
+    font-size: 0.7rem;
+    color: ${tokens.inkMuted};
+    border: 1px solid ${tokens.borderSubtle};
+    border-radius: 999px;
+    padding: 2px 8px;
+    background: ${tokens.surfaceAlt};
+    white-space: nowrap;
+  }
+  .pmreg-atglance-task-list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+  }
+  .pmreg-atglance-task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-left: 18px;
+    position: relative;
+    font-size: 0.75rem;
+    color: ${tokens.inkMid};
+  }
+  .pmreg-atglance-task-item::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${tokens.borderStrong};
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .pmreg-atglance-task-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pmreg-atglance-task-col {
+    font-size: 0.68rem;
+    color: ${tokens.inkMuted};
+    border: 1px solid ${tokens.borderSubtle};
+    border-radius: 999px;
+    padding: 1px 7px;
+    background: ${tokens.surfaceAlt};
+    white-space: nowrap;
+  }
+  .pmreg-atglance-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .pmreg-atglance-btn {
+    border: 1px solid ${tokens.border};
+    background: ${tokens.surface};
+    color: ${tokens.inkMid};
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .pmreg-atglance-btn-primary {
+    border-color: ${tokens.accentBorder};
+    background: ${tokens.accentSoft};
+    color: ${tokens.accent};
+  }
+  .pmreg-atglance-btn:hover { border-color: ${tokens.borderStrong}; background: ${tokens.surfaceHover}; }
+  .pmreg-atglance-btn-primary:hover { background: #dbeafe; border-color: ${tokens.accent}; }
 
   .pmreg-add-btn {
     display: inline-flex;
@@ -288,12 +611,6 @@ const SearchIcon: React.FC = () => (
   </svg>
 );
 
-const CheckIcon: React.FC = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
-);
-
 const PMProjectsRegistryView: React.FC<Props> = ({
   projects,
   users,
@@ -311,15 +628,14 @@ const PMProjectsRegistryView: React.FC<Props> = ({
     startDate: '',
     finishDate: '',
     pmPriority: '',
-    logo: '',
-    smb: '',
-    bb: '',
-    sk: '',
   });
+  const [deliverableMode, setDeliverableMode] = useState<'all' | 'incomplete' | 'complete'>('all');
   const [editingCell, setEditingCell] = useState<{
     projectId: string;
     field: EditableField;
   } | null>(null);
+  const [atGlanceProject, setAtGlanceProject] = useState<any | null>(null);
+  const [atGlanceLoading, setAtGlanceLoading] = useState(false);
   const [draftValue, setDraftValue] = useState('');
   const [savingPmFor, setSavingPmFor] = useState<string | null>(null);
   const [metaMap, setMetaMap] = useState<Record<string, ProjectRegistryMeta>>(() =>
@@ -360,6 +676,32 @@ const PMProjectsRegistryView: React.FC<Props> = ({
     setEditingCell({ projectId, field });
     setDraftValue(value);
   };
+
+  const handleOpenAtGlance = useCallback(async (project: any) => {
+    setAtGlanceProject(project);
+    setAtGlanceLoading(true);
+    try {
+      const [fullProject, boardData] = await Promise.all([
+        projectService.getOne(project.id),
+        boardViewService.fetch({ projectId: project.id, page: 1, pageSize: 1 }),
+      ]);
+      const boardProject = boardData?.projects?.[0];
+      setAtGlanceProject((prev: any) => {
+        if (!prev || prev.id !== project.id) return prev;
+        return {
+          ...fullProject,
+          // Use Tuesday's L3-ready deliverable/task tree shape when available.
+          deliverables: boardProject?.deliverables || fullProject?.deliverables || [],
+          // Keep PM-list naming contract for title rendering.
+          clientName: fullProject?.clientName || project?.clientName || boardProject?.name || '',
+        };
+      });
+    } catch {
+      // Keep lightweight row data if details fetch fails.
+    } finally {
+      setAtGlanceLoading(false);
+    }
+  }, []);
 
   const saveEdit = (project: any) => {
     if (!editingCell || editingCell.projectId !== project.id) return;
@@ -410,16 +752,39 @@ const PMProjectsRegistryView: React.FC<Props> = ({
     setDraftValue('');
   };
 
-  const onDeliverableToggle = (projectId: string, key: 'logo' | 'smb' | 'bb' | 'sk') => {
-    const current = getMeta(projectId).deliverables || { logo: false, smb: false, bb: false, sk: false };
-    projectRegistryMetaService.upsert(projectId, {
-      deliverables: {
-        ...current,
-        [key]: !current[key],
-      },
+  const deliverableColumns = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const p of projects) {
+      for (const d of p?.deliverables || []) {
+        const name = getDeliverableName(d);
+        if (!name) continue;
+        const key = normalizeDeliverableName(name);
+        if (!byKey.has(key)) byKey.set(key, name);
+      }
+    }
+    const values = Array.from(byKey.values());
+    values.sort((a, b) => {
+      const ai = CORE_DELIVERABLE_ORDER.findIndex((x) => x.toLowerCase() === a.toLowerCase());
+      const bi = CORE_DELIVERABLE_ORDER.findIndex((x) => x.toLowerCase() === b.toLowerCase());
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      return a.localeCompare(b);
     });
-    refreshMeta();
-  };
+    return values;
+  }, [projects]);
+
+  const projectDeliverableMap = useCallback((project: any) => {
+    const out = new Map<string, any>();
+    for (const d of project?.deliverables || []) {
+      const name = getDeliverableName(d);
+      if (!name) continue;
+      out.set(normalizeDeliverableName(name), d);
+    }
+    return out;
+  }, []);
 
   const rows = useMemo(() => {
     const allSearch = `${globalSearchTerm} ${localSearch}`.trim().toLowerCase();
@@ -427,8 +792,9 @@ const PMProjectsRegistryView: React.FC<Props> = ({
       const m = getMeta(p.id);
       const pmName =
         users.find((u: any) => u.id === (p.pmId || p.pm?.id))?.name || p.pm?.name || '';
-      const d = m.deliverables || { logo: false, smb: false, bb: false, sk: false };
+      const deliverableMap = projectDeliverableMap(p);
       const startDateValue = getProjectStartDate(p);
+      const deliverableNames = Array.from(deliverableMap.keys()).join(' ');
 
       const haystack = [
         p.clientName,
@@ -439,6 +805,7 @@ const PMProjectsRegistryView: React.FC<Props> = ({
         startDateValue,
         m.finishDate,
         p.priority,
+        deliverableNames,
       ]
         .map(getText)
         .join(' ')
@@ -458,16 +825,62 @@ const PMProjectsRegistryView: React.FC<Props> = ({
       if (filters.startDate && getText(startDateValue) !== filters.startDate) return false;
       if (filters.finishDate && getText(m.finishDate) !== filters.finishDate) return false;
       if (filters.pmPriority && getText(p.priority) !== filters.pmPriority) return false;
-      if (filters.logo && String(d.logo ? 'Done' : 'No') !== filters.logo) return false;
-      if (filters.smb && String(d.smb ? 'Done' : 'No') !== filters.smb) return false;
-      if (filters.bb && String(d.bb ? 'Done' : 'No') !== filters.bb) return false;
-      if (filters.sk && String(d.sk ? 'Done' : 'No') !== filters.sk) return false;
+      if (deliverableMode !== 'all') {
+        const totalDel = deliverableColumns.length;
+        const doneCount = deliverableColumns.filter((c) =>
+          deliverableMap.has(normalizeDeliverableName(c)),
+        ).length;
+        if (deliverableMode === 'complete' && doneCount !== totalDel) return false;
+        if (deliverableMode === 'incomplete' && doneCount === totalDel) return false;
+      }
       return true;
     });
-  }, [projects, users, filters, globalSearchTerm, localSearch, getMeta]);
+  }, [
+    projects,
+    users,
+    filters,
+    deliverableMode,
+    deliverableColumns,
+    globalSearchTerm,
+    localSearch,
+    getMeta,
+    projectDeliverableMap,
+  ]);
 
   const totalCount = projects.length;
   const shownCount = rows.length;
+
+  const atGlanceData = useMemo(() => {
+    if (!atGlanceProject) return null;
+    const meta = getMeta(atGlanceProject.id);
+    const listMap = new Map<string, { name: string; currentColumn: string; done: boolean; tasks: Array<{ id: string; title: string; currentColumn: string }> }>();
+    for (const d of atGlanceProject.deliverables || []) {
+      const name = getDeliverableName(d);
+      if (!name) continue;
+      const currentColumn = getDeliverableCurrentColumn(d);
+      const tasks = Array.isArray(d.tasks)
+        ? d.tasks.map((t: any, idx: number) => ({
+            id: t?.id || `${name}-${idx}`,
+            title: t?.title || 'Untitled task',
+            currentColumn: getTaskCurrentColumn(t),
+          }))
+        : [];
+      const key = normalizeDeliverableName(name);
+      const done = /(approved|complete|completed|done)/i.test(currentColumn);
+      if (!listMap.has(key)) listMap.set(key, { name, currentColumn, done, tasks });
+    }
+    const projectDeliverables = Array.from(listMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    const doneCount = projectDeliverables.filter((d) => d.done).length;
+    const totalTracked = projectDeliverables.length;
+    const completion = totalTracked > 0 ? Math.round((doneCount / totalTracked) * 100) : 0;
+    const pmName =
+      users.find((u: any) => u.id === (atGlanceProject.pmId || atGlanceProject.pm?.id))?.name
+      || atGlanceProject.pm?.name
+      || 'Unassigned';
+    return { meta, projectDeliverables, doneCount, totalTracked, completion, pmName };
+  }, [atGlanceProject, getMeta, users]);
 
   const thStyle: React.CSSProperties = {
     textAlign: 'left',
@@ -576,27 +989,50 @@ const PMProjectsRegistryView: React.FC<Props> = ({
         </div>
       </div>
 
+      <div className="pmreg-deliv-toolbar">
+        <span style={{ fontWeight: 600, color: tokens.inkMid }}>Deliverables:</span>
+        <button
+          className="pmreg-deliv-toolbar-pill"
+          data-active={deliverableMode === 'all'}
+          onClick={() => setDeliverableMode('all')}
+        >
+          All projects
+        </button>
+        <button
+          className="pmreg-deliv-toolbar-pill"
+          data-active={deliverableMode === 'incomplete'}
+          onClick={() => setDeliverableMode('incomplete')}
+        >
+          With pending
+        </button>
+        <button
+          className="pmreg-deliv-toolbar-pill"
+          data-active={deliverableMode === 'complete'}
+          onClick={() => setDeliverableMode('complete')}
+        >
+          Fully done
+        </button>
+        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: tokens.inkMuted }}>
+          {deliverableColumns.length} deliverable{deliverableColumns.length !== 1 ? 's' : ''} tracked · hover header for full name
+        </span>
+      </div>
+
       {/* ---------- Table ---------- */}
       <div className="pmreg-scroll" style={{ overflowX: 'auto', maxHeight: '72vh', overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead className="pmreg-thead">
             <tr>
-              {[
-                'Name',
-                'Where',
-                'Package',
-                'Comments / Notes',
-                'PM',
-                'Start',
-                'Finish',
-                'Priority',
-                'Logo',
-                'SMB',
-                'BB',
-                'SK',
-              ].map((h) => (
-                <th key={h} style={thStyle}>
-                  {h}
+              {['Name', 'Where', 'Package', 'Comments / Notes', 'PM', 'Start', 'Finish', 'Priority'].map((h) => (
+                <th key={h} style={thStyle}>{h}</th>
+              ))}
+              {deliverableColumns.map((name, i) => (
+                <th
+                  key={name}
+                  className={`pmreg-deliv-th${i === 0 ? ' pmreg-deliv-group-header' : ''}`}
+                >
+                  <span className="pmreg-deliv-th-abbr" title={name}>
+                    {abbreviate(name)}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -684,25 +1120,20 @@ const PMProjectsRegistryView: React.FC<Props> = ({
                   <option value="Low">Low</option>
                 </select>
               </th>
-              {(['logo', 'smb', 'bb', 'sk'] as const).map((k) => (
-                <th key={k} style={thFilterStyle}>
-                  <select
-                    className="pmreg-filter-select"
-                    value={filters[k]}
-                    onChange={(e) => setFilters((f) => ({ ...f, [k]: e.target.value }))}
-                  >
-                    <option value="">All</option>
-                    <option value="Done">Done</option>
-                    <option value="No">No</option>
-                  </select>
+              {deliverableColumns.length > 0 && (
+                <th
+                  colSpan={deliverableColumns.length}
+                  style={{ ...thFilterStyle, padding: '6px 10px', textAlign: 'center', color: tokens.inkMuted, fontSize: '0.7rem' }}
+                >
+                  use buttons above to filter
                 </th>
-              ))}
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((p) => {
               const m = getMeta(p.id);
-              const d = m.deliverables || { logo: false, smb: false, bb: false, sk: false };
+              const deliverableMap = projectDeliverableMap(p);
               const pmId = p.pmId || p.pm?.id || '';
               const isEditing = (field: EditableField) =>
                 editingCell?.projectId === p.id && editingCell?.field === field;
@@ -718,7 +1149,8 @@ const PMProjectsRegistryView: React.FC<Props> = ({
                   <td
                     className="pmreg-name-cell"
                     style={{ ...tdStyle, paddingLeft: 18, cursor: 'pointer' }}
-                    onClick={() => navigate(`/project/${p.id}`)}
+                    onClick={() => handleOpenAtGlance(p)}
+                    onDoubleClick={() => navigate(`/project/${p.id}`)}
                   >
                     <span
                       className="pmreg-name"
@@ -958,40 +1390,29 @@ const PMProjectsRegistryView: React.FC<Props> = ({
                     )}
                   </td>
 
-                  {/* Deliverables */}
-                  {(['logo', 'smb', 'bb', 'sk'] as const).map((k) => (
-                    <td
-                      key={k}
-                      style={{ ...tdStyle, textAlign: 'center' }}
-                      title="Double-click to toggle"
-                    >
-                      <span
-                        className="pmreg-deliverable"
-                        onDoubleClick={() => onDeliverableToggle(p.id, k)}
-                        style={{
-                          background: d[k] ? tokens.successBg : tokens.neutralBg,
-                          color: d[k] ? tokens.successFg : tokens.inkMuted,
-                          borderColor: d[k] ? tokens.successBorder : tokens.border,
-                        }}
+                  {/* Deliverables (actual + custom) */}
+                  {deliverableColumns.map((name, i) => {
+                    const item = deliverableMap.get(normalizeDeliverableName(name));
+                    const hasDeliverable = !!item;
+                    return (
+                      <td
+                        key={name}
+                        className={`pmreg-deliv-cell${i === 0 ? ' pmreg-deliv-group-header' : ''}`}
+                        title={`${name}: ${hasDeliverable ? 'Done' : 'Not done'}`}
                       >
-                        {d[k] ? (
-                          <>
-                            <CheckIcon />
-                            Done
-                          </>
-                        ) : (
-                          '—'
-                        )}
-                      </span>
-                    </td>
-                  ))}
+                        <span
+                          className={`pmreg-dot ${hasDeliverable ? 'pmreg-dot-done' : 'pmreg-dot-empty'}`}
+                        />
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={8 + Math.max(deliverableColumns.length, 1)}
                   style={{
                     textAlign: 'center',
                     padding: '48px 20px',
@@ -1010,6 +1431,107 @@ const PMProjectsRegistryView: React.FC<Props> = ({
           </tbody>
         </table>
       </div>
+      {atGlanceProject && atGlanceData && (
+        <div className="pmreg-atglance-overlay" onClick={() => setAtGlanceProject(null)}>
+          <div className="pmreg-atglance-card" onClick={(e) => e.stopPropagation()}>
+            <div className="pmreg-atglance-head">
+              <div>
+                <h4 className="pmreg-atglance-title">{atGlanceProject.clientName}</h4>
+                <p className="pmreg-atglance-sub">
+                  Client At a Glance
+                  {atGlanceLoading ? ' • Loading latest tasks…' : ''}
+                </p>
+              </div>
+              <button className="pmreg-atglance-close" onClick={() => setAtGlanceProject(null)}>
+                Close
+              </button>
+            </div>
+            <div className="pmreg-atglance-body">
+              <div className="pmreg-atglance-metrics">
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Package</div>
+                  <div className="pmreg-atglance-v">{atGlanceProject.clientType || '—'}</div>
+                </div>
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Project Manager</div>
+                  <div className="pmreg-atglance-v">{atGlanceData.pmName}</div>
+                </div>
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Priority</div>
+                  <div className="pmreg-atglance-v">{atGlanceProject.priority || '—'}</div>
+                </div>
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Where</div>
+                  <div className="pmreg-atglance-v">{atGlanceData.meta.where || '—'}</div>
+                </div>
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Start</div>
+                  <div className="pmreg-atglance-v">{formatDate(getProjectStartDate(atGlanceProject)) || '—'}</div>
+                </div>
+                <div className="pmreg-atglance-metric">
+                  <div className="pmreg-atglance-k">Finish</div>
+                  <div className="pmreg-atglance-v">{formatDate(atGlanceData.meta.finishDate || '') || '—'}</div>
+                </div>
+              </div>
+
+              <div className="pmreg-atglance-deliverables">
+                <div className="pmreg-atglance-deliverables-head">
+                  <span>Deliverables</span>
+                  <span>{atGlanceData.doneCount}/{atGlanceData.totalTracked} ({atGlanceData.completion}%)</span>
+                </div>
+                <div className="pmreg-atglance-deliverables-list">
+                  {atGlanceData.projectDeliverables.length === 0 && (
+                    <div className="pmreg-atglance-deliv-item">
+                      <span className="pmreg-atglance-deliv-name">No deliverables yet.</span>
+                    </div>
+                  )}
+                  {atGlanceData.projectDeliverables.map((item) => (
+                    <div key={item.name} className="pmreg-atglance-deliv-block">
+                      <div className="pmreg-atglance-deliv-item">
+                        <span className="pmreg-atglance-deliv-main">
+                          <span className={`pmreg-dot ${item.done ? 'pmreg-dot-done' : 'pmreg-dot-empty'}`} />
+                          <span className="pmreg-atglance-deliv-name">{item.name}</span>
+                        </span>
+                        <span className="pmreg-atglance-deliv-col">{item.currentColumn}</span>
+                      </div>
+                      {item.tasks.length > 0 ? (
+                        <ul className="pmreg-atglance-task-list">
+                          {item.tasks.map((task) => (
+                            <li key={task.id} className="pmreg-atglance-task-item">
+                              <span className="pmreg-atglance-task-title">{task.title}</span>
+                              <span className="pmreg-atglance-task-col">{task.currentColumn}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <ul className="pmreg-atglance-task-list">
+                          <li className="pmreg-atglance-task-item">
+                            <span className="pmreg-atglance-task-title">No tasks yet.</span>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pmreg-atglance-notes">
+                {atGlanceData.meta.comments || 'No notes yet.'}
+              </div>
+
+              <div className="pmreg-atglance-actions">
+                <button className="pmreg-atglance-btn" onClick={() => setAtGlanceProject(null)}>Done</button>
+                <button
+                  className="pmreg-atglance-btn pmreg-atglance-btn-primary"
+                  onClick={() => navigate(`/project/${atGlanceProject.id}`)}
+                >
+                  Open Project
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

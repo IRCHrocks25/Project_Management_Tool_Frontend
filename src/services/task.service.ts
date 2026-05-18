@@ -101,6 +101,18 @@ export const taskService = {
     return response.data;
   },
 
+  async updateMovedDueDate(
+    id: string,
+    payload: { movedDate: Date | string; comment?: string }
+  ): Promise<any> {
+    const response = await axios.patch(
+      `${API_URL}/tasks/${id}/moved-due-date`,
+      payload,
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
   async delete(id: string): Promise<any> {
     const response = await axios.delete(
       `${API_URL}/tasks/${id}`,

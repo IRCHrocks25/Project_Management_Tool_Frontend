@@ -272,7 +272,7 @@ const TuesdayView: React.FC = () => {
       // since no accessor / accessorKey is provided.
       { id: 'actions', enableSorting: false, enableColumnFilter: false },
       { id: 'status' }, { id: 'priority' }, { id: 'timeline' },
-      { id: 'pm' }, { id: 'department' }, { id: 'assignee' },
+      { id: 'pm' }, { id: 'clientType' }, { id: 'department' }, { id: 'assignee' },
     ],
     [],
   );
@@ -347,6 +347,7 @@ const TuesdayView: React.FC = () => {
     const project = projectRow && projectRow.kind === 'project' ? projectRow.data : null;
     const pm = project?.pm ?? null;
     const projectPriority = project?.priority ?? '';
+    const clientType = project?.clientType ?? null;
     const isUnassigned = r.kind === 'deliverable' && r.data.id === '__unassigned__';
     const trClass =
       r.kind === 'project' ? 'tuesday-tr-project'
@@ -454,6 +455,13 @@ const TuesdayView: React.FC = () => {
           <TimelineCell row={r} onChangeTaskDueDate={onChangeTaskDueDate} />
         </td>
         <td className="tuesday-td"><PMCell row={r} projectPm={pm} /></td>
+        <td className="tuesday-td">
+          {clientType ? (
+            <span className="tuesday-dept-cell" title={clientType}>{clientType}</span>
+          ) : (
+            <span className="tuesday-muted">-</span>
+          )}
+        </td>
         <td className="tuesday-td">
           <DepartmentCell row={r} onOpenTransfer={onOpenTransfer} />
         </td>
@@ -913,7 +921,7 @@ const TuesdayView: React.FC = () => {
                         projectId={bucketProjectId}
                         deliverableId={bucketDeliverableId}
                         siblingTasks={tasks}
-                        taskColumnCount={7}
+                        taskColumnCount={8}
                         onCreate={(title, type) => mutations.createTask(bucketProjectId!, bucketDeliverableId, title, type)}
                         onOpenMoreFields={(title) => setAddTaskModalState({
                           projectId: bucketProjectId!,
@@ -951,7 +959,7 @@ const TuesdayView: React.FC = () => {
                       <AddDeliverableRow
                         key={`add-deliv:${addDelivProjectId}`}
                         projectId={addDelivProjectId}
-                        taskColumnCount={7}
+                        taskColumnCount={8}
                         onCreate={(type, customType) =>
                           mutations.createDeliverable(addDelivProjectId!, type, customType)
                         }

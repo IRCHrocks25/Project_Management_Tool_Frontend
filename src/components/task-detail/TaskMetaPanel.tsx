@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaUser, FaClock, FaStickyNote, FaLink, FaCheck, FaTimes, FaExchangeAlt } from 'react-icons/fa';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { FaUser, FaClock, FaStickyNote, FaLink, FaCheck, FaTimes } from 'react-icons/fa';
 import { taskService } from '../../services/task.service';
 import { deliverableService } from '../../services/deliverable.service';
+import { authService } from '../../services/auth.service';
 import InlineEditDropdown from './InlineEditDropdown';
 import AssigneePicker from './AssigneePicker';
-import TransferTaskModal from './TransferTaskModal';
 
 const STATUS_OPTIONS = [
   { value: 'Todo',        cls: 'default' },
@@ -35,26 +35,104 @@ function initAssignees(task: any): string[] {
   return task.assignedToId ? [task.assignedToId] : [];
 }
 
-// ── Status-marker helpers ─────────────────────────────────────────────────────
+// ── Description marker helpers ────────────────────────────────────────────────
 // The description string embeds activity markers of the form:
 //   \n\n--- Status Change ---\nNew Column: ...\nBy: ...\nAt: ...
 // These are parsed by TaskDetailSideModal's parsedStatusChanges memo.
 // The editor must never show or corrupt these blocks.
+// We also store due-date move history blocks in description:
+//   \n\n--- Due Date Move ---\nDate moved by PM: ...\nComment: ...\nBy: ...\nAt: ...
+
+const ACTIVITY_MARKER_REGEX = /\n\n--- (?:Status Change|Due Date Move) ---[\s\S]*?(?=\n\n--- (?:Status Change|Due Date Move) ---|$)/g;
 
 function splitDescMarkers(desc: string): { prose: string; markerBlocks: string[] } {
-  if (!desc.includes('--- Status Change ---')) return { prose: desc, markerBlocks: [] };
-  const blocks = desc.split(/\n\n--- Status Change ---/);
-  return { prose: blocks[0], markerBlocks: blocks.slice(1) };
+  if (!desc.includes('--- Status Change ---') && !desc.includes('--- Due Date Move ---')) {
+    return { prose: desc, markerBlocks: [] };
+  }
+  const markerBlocks = desc.match(ACTIVITY_MARKER_REGEX) ?? [];
+  ACTIVITY_MARKER_REGEX.lastIndex = 0;
+  return {
+    prose: desc.replace(ACTIVITY_MARKER_REGEX, '').trimEnd(),
+    markerBlocks,
+  };
 }
 
 function rejoinDescMarkers(prose: string, markerBlocks: string[]): string {
   if (!markerBlocks.length) return prose;
-  return prose + markerBlocks.map(m => '\n\n--- Status Change ---' + m).join('');
+  return prose + markerBlocks.join('');
 }
 
-function countStatusMarkers(desc: string): number {
-  if (!desc.includes('--- Status Change ---')) return 0;
-  return desc.split(/\n\n--- Status Change ---/).length - 1;
+function countActivityMarkers(desc: string): number {
+  if (!desc.includes('--- Status Change ---') && !desc.includes('--- Due Date Move ---')) return 0;
+  const markers = desc.match(ACTIVITY_MARKER_REGEX) ?? [];
+  ACTIVITY_MARKER_REGEX.lastIndex = 0;
+  return markers.length;
+}
+
+interface DueDateMoveEntry {
+  id?: string;
+  date: string;
+  comment?: string;
+  by: string;
+  at: string;
+  index: number;
+}
+
+function normalizeDateOnly(value?: string | Date | null): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
+}
+
+function parseDueDateMoveHistory(desc: string): DueDateMoveEntry[] {
+  if (!desc.includes('--- Due Date Move ---')) return [];
+  const blocks = desc.split(/\n\n--- Due Date Move ---/);
+  const out: DueDateMoveEntry[] = [];
+  blocks.forEach((block, i) => {
+    if (i === 0) return;
+    const movedDate = block.match(/\nDate moved by PM:\s*(.+?)(?:\n|$)/)?.[1]?.trim();
+    if (!movedDate) return;
+    const by = block.match(/\nBy:\s*(.+?)(?:\n|$)/)?.[1]?.trim() || 'Unknown';
+    const at = block.match(/\nAt:\s*(.+?)(?:\n|$)/)?.[1]?.trim() || '';
+    const commentRaw = block.match(/\nComment:\s*([\s\S]*?)(?=\nBy:|\nAt:|$)/)?.[1]?.trim();
+    out.push({
+      date: movedDate,
+      comment: commentRaw && commentRaw !== 'No comment' ? commentRaw : undefined,
+      by,
+      at,
+      index: i,
+    });
+  });
+  return out.reverse();
+}
+
+function parseDueDateMoveHistoryFromTask(t: any): DueDateMoveEntry[] {
+  const apiMoves = Array.isArray(t?.dueDateMoves) ? t.dueDateMoves : [];
+  if (apiMoves.length > 0) {
+    return apiMoves.map((move: any, idx: number) => {
+      const normalizedDate = normalizeDateOnly(move?.movedDate);
+      return {
+        id: move?.id,
+        date: normalizedDate || String(move?.movedDate || ''),
+        comment: move?.comment || undefined,
+        by: move?.movedBy?.name || move?.movedBy?.email || 'Unknown',
+        at: move?.movedAt
+          ? new Date(move.movedAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '',
+        index: idx,
+      };
+    }).filter((move: DueDateMoveEntry) => Boolean(move.date));
+  }
+
+  const desc = t?.description ?? '';
+  return parseDueDateMoveHistory(desc);
 }
 
 function showToast(message: string) {
@@ -76,14 +154,67 @@ interface TaskMetaPanelProps {
   getUserName: (id: string) => string;
   getProjectName: (projectId: string) => string;
   renderTextWithLinks: (text: string) => React.ReactNode;
+  parsedStatusChanges?: Array<{ at?: string }>;
+  taskTransfers?: Array<{ transferredAt?: string }>;
   onTaskUpdate?: (updated: any) => void;
 }
 
+type MovedDateSource = 'manual' | 'dueDateHistory' | 'activity' | 'transfer' | null;
+
 const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
-  displayTask, task, allUsers, getUserName, getProjectName, renderTextWithLinks, onTaskUpdate,
+  displayTask, task, allUsers, getUserName, getProjectName, renderTextWithLinks, parsedStatusChanges = [], taskTransfers = [], onTaskUpdate,
 }) => {
   const taskId = displayTask?.id ?? task?.id;
   const projectId = displayTask?.projectId ?? task?.projectId;
+  const currentUser = authService.getUser();
+  const canEditMovedDate = currentUser?.role === 'Project Manager' || !!currentUser?.isTeamLead;
+  const dueDateMoveHistory = useMemo(() => parseDueDateMoveHistoryFromTask(displayTask ?? task), [displayTask, task]);
+  const latestDueDateMove = dueDateMoveHistory[0];
+  const movedDateFallback = useMemo<{ date: string | null; source: MovedDateSource }>(() => {
+    let latestStatusMs: number | null = null;
+    parsedStatusChanges.forEach((sc) => {
+      if (!sc?.at) return;
+      const dt = new Date(sc.at);
+      if (!Number.isNaN(dt.getTime()) && (latestStatusMs === null || dt.getTime() > latestStatusMs)) {
+        latestStatusMs = dt.getTime();
+      }
+    });
+
+    let latestTransferMs: number | null = null;
+    taskTransfers.forEach((transfer) => {
+      if (!transfer?.transferredAt) return;
+      const dt = new Date(transfer.transferredAt);
+      if (!Number.isNaN(dt.getTime()) && (latestTransferMs === null || dt.getTime() > latestTransferMs)) {
+        latestTransferMs = dt.getTime();
+      }
+    });
+
+    if (latestStatusMs === null && latestTransferMs === null) {
+      return { date: null as string | null, source: null as MovedDateSource };
+    }
+
+    if (latestStatusMs !== null && latestTransferMs !== null) {
+      const useStatus = latestStatusMs >= latestTransferMs;
+      const pickedMs = useStatus ? latestStatusMs : latestTransferMs;
+      return {
+        date: new Date(pickedMs).toISOString().split('T')[0],
+        source: useStatus ? 'activity' : 'transfer',
+      };
+    }
+
+    if (latestStatusMs !== null) {
+      return { date: new Date(latestStatusMs).toISOString().split('T')[0], source: 'activity' };
+    }
+
+    return { date: new Date(latestTransferMs!).toISOString().split('T')[0], source: 'transfer' };
+  }, [parsedStatusChanges, taskTransfers]);
+
+  const movedDateSource = useMemo<MovedDateSource>(() => {
+    const t = displayTask ?? task;
+    if (normalizeDateOnly(t?.movedDueDate)) return 'manual';
+    if (latestDueDateMove?.date) return 'dueDateHistory';
+    return movedDateFallback.source;
+  }, [displayTask, task, latestDueDateMove?.date, movedDateFallback.source]);
 
   // ── Local editable state (initialised from task on mount; key prop in parent forces remount on task change) ──
   const [localStatus, setLocalStatus]           = useState(() => deriveStatus(displayTask ?? task));
@@ -92,6 +223,13 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     const t = displayTask ?? task;
     return t?.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : null;
   });
+  const [localMovedDueDate, setLocalMovedDueDate] = useState<string | null>(() => {
+    const t = displayTask ?? task;
+    return normalizeDateOnly(t?.movedDueDate) || latestDueDateMove?.date || movedDateFallback.date || null;
+  });
+  const [localMovedDueDateComment, setLocalMovedDueDateComment] = useState<string>(
+    () => (displayTask ?? task)?.movedDueDateComment || latestDueDateMove?.comment || ''
+  );
   const [localDeliverableId, setLocalDeliverableId] = useState<string | null>(
     () => displayTask?.deliverableId ?? task?.deliverableId ?? null
   );
@@ -104,29 +242,31 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     setLocalStatus(deriveStatus(displayTask));
     setLocalAssigneeIds(initAssignees(displayTask));
     setLocalDueDate(displayTask.dueDate ? new Date(displayTask.dueDate).toISOString().split('T')[0] : null);
+    setLocalMovedDueDate(
+      normalizeDateOnly(displayTask?.movedDueDate) || latestDueDateMove?.date || movedDateFallback.date || null
+    );
+    setLocalMovedDueDateComment(displayTask?.movedDueDateComment || latestDueDateMove?.comment || '');
     setLocalDeliverableId(displayTask.deliverableId ?? null);
-  }, [displayTask]);
+  }, [displayTask, latestDueDateMove?.date, latestDueDateMove?.comment, movedDateFallback.date]);
 
   // ── Error / spinner state ──
   const [statusError,      setStatusError]      = useState<string | null>(null);
   const [assigneeError,    setAssigneeError]     = useState<string | null>(null);
   const [dueDateError,     setDueDateError]      = useState<string | null>(null);
   const [deliverableError, setDeliverableError]  = useState<string | null>(null);
+  const [movedDateError,   setMovedDateError]    = useState<string | null>(null);
   const [updatingStatus,   setUpdatingStatus]    = useState(false);
   const [updatingAssignees,setUpdatingAssignees] = useState(false);
   const [updatingDueDate,  setUpdatingDueDate]   = useState(false);
   const [updatingDeliv,    setUpdatingDeliv]     = useState(false);
-
-  // ── Transfer modal ──
-  const [showTransfer, setShowTransfer] = useState(false);
-
-  const handleTransferred = useCallback(async (updatedTask: any) => {
-    onTaskUpdate?.(updatedTask);
-  }, [onTaskUpdate]);
+  const [updatingMovedDate, setUpdatingMovedDate] = useState(false);
 
   // ── Due date edit mode ──
   const [editingDueDate, setEditingDueDate] = useState(false);
   const [dueDateInput,   setDueDateInput]   = useState('');
+  const [editingMovedDate, setEditingMovedDate] = useState(false);
+  const [movedDateInput, setMovedDateInput] = useState('');
+  const [movedDateCommentInput, setMovedDateCommentInput] = useState('');
 
   // ── Deliverable edit mode ──
   const [deliverables,          setDeliverables]          = useState<any[]>([]);
@@ -225,6 +365,35 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     }
   };
 
+  const handleMovedDateSave = async () => {
+    if (!taskId || !movedDateInput) return;
+    if (!canEditMovedDate) {
+      setMovedDateError('Only PM or Team Lead can update this field');
+      return;
+    }
+    const prevDate = localMovedDueDate;
+    const prevComment = localMovedDueDateComment;
+    const trimmedComment = movedDateCommentInput.trim();
+    setLocalMovedDueDate(movedDateInput);
+    setLocalMovedDueDateComment(trimmedComment);
+    setEditingMovedDate(false);
+    setMovedDateError(null);
+    setUpdatingMovedDate(true);
+    try {
+      const updated = await taskService.updateMovedDueDate(taskId, {
+        movedDate: movedDateInput,
+        comment: trimmedComment,
+      });
+      onTaskUpdate?.(updated);
+    } catch {
+      setLocalMovedDueDate(prevDate);
+      setLocalMovedDueDateComment(prevComment);
+      setMovedDateError('Failed to save moved date');
+    } finally {
+      setUpdatingMovedDate(false);
+    }
+  };
+
   // ── Deliverable ──
   const handleDeliverableSelect = async (deliverableId: string) => {
     if (!taskId) return;
@@ -280,7 +449,7 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     if (!taskId || updatingDesc) return;
     const recomposed = rejoinDescMarkers(descInput, savedMarkerBlocks);
     // Sanity check: marker count must be preserved
-    if (savedMarkerBlocks.length > 0 && countStatusMarkers(recomposed) !== savedMarkerBlocks.length) {
+    if (savedMarkerBlocks.length > 0 && countActivityMarkers(recomposed) !== savedMarkerBlocks.length) {
       showToast("Couldn't save description — please refresh and try again");
       return;
     }
@@ -357,15 +526,6 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
         {assigneeError && <div className="tdsm-field-error">{assigneeError}</div>}
       </div>
 
-      {/* Transfer to another department */}
-      <button
-        className="tdsm-transfer-btn"
-        onClick={() => setShowTransfer(true)}
-      >
-        <FaExchangeAlt style={{ fontSize: '11px' }} />
-        Transfer to another department
-      </button>
-
       {/* Due Date */}
       <div className="tdsm-card">
         <div className="tdsm-card-label"><FaClock /> Due Date</div>
@@ -440,6 +600,137 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
           </button>
         )}
         {dueDateError && <div className="tdsm-field-error">{dueDateError}</div>}
+
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed var(--td-border-soft)' }}>
+          <div className="tdsm-card-label" style={{ marginBottom: '8px' }}>Date moved by PM</div>
+          {editingMovedDate ? (
+            <div className="tdsm-due-edit">
+              <input
+                type="date"
+                className="tdsm-date-input"
+                value={movedDateInput}
+                onChange={e => setMovedDateInput(e.target.value)}
+                autoFocus
+              />
+              <textarea
+                className="tdsm-desc-textarea"
+                rows={3}
+                value={movedDateCommentInput}
+                onChange={e => setMovedDateCommentInput(e.target.value)}
+                placeholder="Why was this date moved?"
+                style={{ marginTop: '8px' }}
+              />
+              <div className="tdsm-due-actions">
+                <button
+                  className="tdsm-post-btn"
+                  onClick={handleMovedDateSave}
+                  disabled={!movedDateInput || updatingMovedDate}
+                >
+                  <FaCheck style={{ fontSize: '10px' }} /> Save
+                </button>
+                <button
+                  className="tdsm-btn-outline"
+                  onClick={() => setEditingMovedDate(false)}
+                  style={{ padding: '5px 10px' }}
+                >
+                  <FaTimes style={{ fontSize: '10px' }} />
+                </button>
+              </div>
+            </div>
+          ) : localMovedDueDate ? (
+            <>
+              <div
+                className="tdsm-inline-trigger"
+                tabIndex={canEditMovedDate ? 0 : -1}
+                role={canEditMovedDate ? 'button' : undefined}
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: '13.5px',
+                  color: 'var(--td-text-primary)',
+                  cursor: canEditMovedDate ? 'pointer' : 'default',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={() => {
+                  if (!canEditMovedDate) return;
+                  setMovedDateInput(localMovedDueDate);
+                  setMovedDateCommentInput(localMovedDueDateComment);
+                  setEditingMovedDate(true);
+                }}
+                onKeyDown={(e) => {
+                  if (!canEditMovedDate) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setMovedDateInput(localMovedDueDate);
+                    setMovedDateCommentInput(localMovedDueDateComment);
+                    setEditingMovedDate(true);
+                  }
+                }}
+              >
+                {new Date(localMovedDueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {canEditMovedDate && <span className="tdsm-inline-edit-icon">✎</span>}
+              </div>
+              {localMovedDueDateComment && (
+                <div className="tdsm-history-notes" style={{ marginTop: '8px' }}>
+                  {localMovedDueDateComment}
+                </div>
+              )}
+              <div style={{ marginTop: '6px', color: 'var(--td-text-tertiary)', fontSize: '11.5px' }}>
+                Source:{' '}
+                {movedDateSource === 'manual'
+                  ? 'Manual'
+                  : movedDateSource === 'dueDateHistory'
+                    ? 'Date move history'
+                    : movedDateSource === 'activity'
+                      ? 'Activity history'
+                      : movedDateSource === 'transfer'
+                        ? 'Transfer history'
+                        : 'Unknown'}
+              </div>
+            </>
+          ) : canEditMovedDate ? (
+            <button
+              className="tdsm-add-assignee-btn"
+              onClick={() => {
+                setMovedDateInput('');
+                setMovedDateCommentInput('');
+                setEditingMovedDate(true);
+              }}
+              disabled={updatingMovedDate}
+            >
+              + Add moved date
+            </button>
+          ) : (
+            <span style={{ color: 'var(--td-text-tertiary)', fontSize: '13px' }}>Not set</span>
+          )}
+          {!canEditMovedDate && (
+            <div style={{ marginTop: '6px', color: 'var(--td-text-tertiary)', fontSize: '11.5px' }}>
+              Only PM or Team Lead can update this field.
+            </div>
+          )}
+          {movedDateError && <div className="tdsm-field-error">{movedDateError}</div>}
+
+          {dueDateMoveHistory.length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <div className="tdsm-card-label" style={{ marginBottom: '8px' }}>Date move history</div>
+              {dueDateMoveHistory.map((entry) => (
+                <div key={entry.id || `${entry.index}-${entry.at}`} className="tdsm-history-item" style={{ marginBottom: '8px' }}>
+                  <div className="tdsm-history-header">
+                    <div className="tdsm-history-action">
+                      <span style={{ color: 'var(--td-text-primary)' }}>
+                        {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      <span style={{ color: 'var(--td-text-tertiary)' }}> by {entry.by}</span>
+                    </div>
+                    {entry.at && <span className="tdsm-history-time">{entry.at}</span>}
+                  </div>
+                  {entry.comment && <div className="tdsm-history-notes">{entry.comment}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Deliverable */}
@@ -591,14 +882,6 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
         )}
       </div>
 
-      {showTransfer && (
-        <TransferTaskModal
-          task={displayTask ?? task}
-          allUsers={allUsers}
-          onClose={() => setShowTransfer(false)}
-          onTransferred={handleTransferred}
-        />
-      )}
     </>
   );
 };

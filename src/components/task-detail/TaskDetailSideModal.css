@@ -179,6 +179,36 @@
   flex: 1;
 }
 
+.tdsm-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tdsm-header-transfer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px dashed rgba(230, 119, 0, 0.45);
+  border-radius: 6px;
+  color: var(--td-accent-warning);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 120ms;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tdsm-header-transfer-btn:hover {
+  border-color: var(--td-accent-warning);
+  background: rgba(230, 119, 0, 0.07);
+}
+
 .tdsm-pm-row {
   display: flex;
   align-items: center;

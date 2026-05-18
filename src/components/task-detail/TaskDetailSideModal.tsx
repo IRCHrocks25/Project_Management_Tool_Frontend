@@ -9,6 +9,7 @@ import TaskMetaPanel from './TaskMetaPanel';
 import TaskAttachmentsList from './TaskAttachmentsList';
 import TaskActivityHistory from './TaskActivityHistory';
 import TaskConversation from './TaskConversation';
+import TransferTaskModal from './TransferTaskModal';
 
 interface TaskDetailSideModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
   const [taskTransfers, setTaskTransfers] = useState<any[]>([]);
   const [loadingTaskTransfers, setLoadingTaskTransfers] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'conversation'>(initialTab);
   const displayTask = resolvedTask || task;
 
@@ -48,6 +50,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
     setResolvedTask(null);
     setTaskHistory([]);
     setTaskTransfers([]);
+    setShowTransfer(false);
   }, [onClose]);
 
   useEffect(() => { if (isOpen) setActiveTab(initialTab); }, [isOpen, initialTab]);
@@ -188,6 +191,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
             handleInternalClose();
             onTaskDeleted(deletedId);
           } : undefined}
+          onOpenTransfer={() => setShowTransfer(true)}
         />
 
         <div className="tdsm-tabs">
@@ -217,6 +221,8 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                 getUserName={getUserName}
                 getProjectName={getProjectName}
                 renderTextWithLinks={renderTextWithLinks}
+                parsedStatusChanges={parsedStatusChanges}
+                taskTransfers={taskTransfers}
                 onTaskUpdate={(updated) => {
                   setResolvedTask(updated);
                   onTaskUpdate?.(updated);
@@ -240,6 +246,18 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                   View Full Project <FaArrowRight style={{ fontSize: '11px' }} />
                 </button>
               </div>
+              {showTransfer && (
+                <TransferTaskModal
+                  task={displayTask ?? task}
+                  allUsers={allUsers}
+                  onClose={() => setShowTransfer(false)}
+                  onTransferred={(updatedTask) => {
+                    setShowTransfer(false);
+                    setResolvedTask(updatedTask);
+                    onTaskUpdate?.(updatedTask);
+                  }}
+                />
+              )}
             </>
           ) : (
             <TaskConversation

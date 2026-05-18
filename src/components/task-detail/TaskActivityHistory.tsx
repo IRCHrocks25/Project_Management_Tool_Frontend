@@ -127,7 +127,7 @@ const TaskActivityHistory: React.FC<TaskActivityHistoryProps> = ({
           ))
         ) : (
           <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--td-text-tertiary)' }}>
-            No deliverable activity yet
+            No deliverable activity yett
           </div>
         )}
       </>
