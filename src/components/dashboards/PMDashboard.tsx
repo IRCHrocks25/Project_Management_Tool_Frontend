@@ -1270,7 +1270,7 @@ const PMDashboard: React.FC = () => {
               title="Hierarchical view: Project → Deliverable → Task"
             >
               <img
-                src="https://res.cloudinary.com/dcuswyfur/image/upload/v1777679193/Tuesday_iruicl.png"
+                src="https://cdn.katalyst-crm.com/t1/cloudinary/Tuesday_iruicl.png"
                 alt="Tuesday"
                 style={{ height: '28px', width: 'auto', display: 'block' }}
               />

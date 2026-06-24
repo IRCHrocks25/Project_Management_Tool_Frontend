@@ -544,7 +544,7 @@ const TuesdayView: React.FC = () => {
               title="Hierarchical view: Project → Deliverable → Task"
             >
               <img
-                src="https://res.cloudinary.com/dcuswyfur/image/upload/v1777679193/Tuesday_iruicl.png"
+                src="https://cdn.katalyst-crm.com/t1/cloudinary/Tuesday_iruicl.png"
                 alt="Tuesday"
                 style={{ height: '28px', width: 'auto', display: 'block' }}
               />
@@ -806,7 +806,7 @@ const TuesdayView: React.FC = () => {
             <div>
               <h1 className="tuesday-pagetitle">
                 <img
-                  src="https://res.cloudinary.com/dcuswyfur/image/upload/v1777679193/Tuesday_iruicl.png"
+                  src="https://cdn.katalyst-crm.com/t1/cloudinary/Tuesday_iruicl.png"
                   alt="Tuesday"
                   style={{ height: '36px', width: 'auto', display: 'block' }}
                 />
