@@ -607,16 +607,64 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const handleReviewSubmit = async (driveLinks: string[], deliverableType: string, deliverableId?: string) => {
     if (!selectedTaskForReview || driveLinks.length === 0) return;
-    
+
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      const primaryLink = driveLinks[0];
-      await taskService.updateStatus(selectedTaskForReview.id, 'In Review', false, primaryLink, deliverableType, deliverableId);
-      if (driveLinks.length > 1) {
-        const extraLinksBlock = `\n\n--- Additional Links ---\n${driveLinks.slice(1).map((l) => `- ${l.trim()}`).join('\n')}`;
-        const currentDesc = selectedTaskForReview.description || '';
-        await taskService.update(selectedTaskForReview.id, { description: currentDesc + extraLinksBlock });
+      const validLinks = driveLinks.map((l) => l.trim()).filter(Boolean);
+      const primaryLink = validLinks[0];
+      const resolvedDeliverableId = deliverableId || selectedTaskForReview.deliverableId;
+
+      await taskService.updateStatus(
+        selectedTaskForReview.id,
+        'In Review',
+        false,
+        primaryLink,
+        deliverableType,
+        resolvedDeliverableId,
+      );
+
+      // Match drag-to-review: persist links as task attachments for Files & Links panel.
+      await Promise.all(
+        validLinks.map((link) => taskService.addLinkAttachment(selectedTaskForReview.id, link)),
+      ).catch((attachmentError) => {
+        console.warn('Failed to add one or more review attachment links:', attachmentError);
+      });
+
+      const timestamp = new Date().toLocaleString();
+      let logBlock = `\n\n--- Status Change ---\nNew Column: For Approval\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
+      if (validLinks.length === 1) {
+        logBlock += `\nAttachment: ${validLinks[0]}`;
+      } else if (validLinks.length > 1) {
+        logBlock += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
       }
+
+      const currentDesc = selectedTaskForReview.description || '';
+      try {
+        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock });
+      } catch (descError) {
+        console.warn('Failed to update task description with review log:', descError);
+      }
+
+      // Deliverable history populates Activity History in the task side panel.
+      if (resolvedDeliverableId && primaryLink) {
+        try {
+          let baseNote = `Status moved to "For Approval" by ${user?.name || 'Unknown'}.`;
+          if (validLinks.length === 1) {
+            baseNote += `\nAttachment: ${validLinks[0]}`;
+          } else {
+            baseNote += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
+          }
+          await deliverableService.updateStatus(
+            resolvedDeliverableId,
+            'Ready for Review',
+            baseNote,
+            primaryLink,
+          );
+        } catch (historyError) {
+          console.warn('Failed to record deliverable history for review:', historyError);
+        }
+      }
+
       await loadData();
       setShowReviewModal(false);
       setSelectedTaskForReview(null);

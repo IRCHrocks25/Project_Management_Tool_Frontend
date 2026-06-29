@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { ExpandedState, Updater } from '@tanstack/react-table';
+import type { ExpandedState, Updater } from '@tanstack/table-core';
 
 const PARAM = 'expanded';
 

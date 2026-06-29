@@ -16,13 +16,13 @@ import {
   FaUser,
   FaUsers,
 } from 'react-icons/fa';
+import { useReactTable } from '@tanstack/react-table';
 import {
   ColumnDef,
   getCoreRowModel,
   getExpandedRowModel,
   Row,
-  useReactTable,
-} from '@tanstack/react-table';
+} from '@tanstack/table-core';
 import { authService } from '../../services/auth.service';
 import { useBoardView } from './hooks/useBoardView';
 import { useExpansionState } from './hooks/useExpansionState';
@@ -283,7 +283,7 @@ const TuesdayView: React.FC = () => {
     state: { expanded },
     onExpandedChange: setExpanded,
     getSubRows: getRowSubRows,
-    getRowId: (row) => rowId(row),
+    getRowId: (row: TuesdayRow) => rowId(row),
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
   });
@@ -413,7 +413,8 @@ const TuesdayView: React.FC = () => {
     const onOpenTransfer = r.kind === 'task'
       ? () => setTransferTask({
           id: r.data.id, title: r.data.title, type: r.data.type, projectId: project?.id,
-          deliverableId: r.deliverableId, assignees: r.data.assignees.map((a) => ({ userId: a.id })),
+          deliverableId: r.deliverableId,
+          assignees: r.data.assignees.map((a) => ({ userId: a.id })),
         })
       : undefined;
 
