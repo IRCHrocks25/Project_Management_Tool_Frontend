@@ -711,7 +711,7 @@ const ProjectDetail: React.FC = () => {
 
   const handleImageUpload = async (file: File): Promise<string> => {
     try {
-      // Pass projectId to organize files by client name in Cloudinary
+      // Pass projectId to organize files by client name in Iceberg
       const url = await clientUpdatesService.uploadImage(file, id || undefined);
       return url;
     } catch (error: any) {
@@ -4775,7 +4775,7 @@ const ProjectDetail: React.FC = () => {
                   }}
                 />
                 {newTaskAttachmentUploading && (
-                  <small style={{ color: '#64748b' }}>Uploading to Cloudinary...</small>
+                  <small style={{ color: '#64748b' }}>Uploading...</small>
                 )}
                 {newTaskFileUrls.length > 0 && !newTaskAttachmentUploading && (
                   <small style={{ color: '#16a34a', display: 'block', marginTop: '0.25rem' }}>
@@ -5896,7 +5896,9 @@ const ProjectDetail: React.FC = () => {
                   const getLinkTypeIcon = (url: string) => {
                     const lowerUrl = url.toLowerCase();
                     
-                    // Detect file extensions from Cloudinary URLs or regular URLs
+                    // Detect file extensions from regular URLs, legacy Cloudinary
+                    // URLs, and Iceberg URLs (which carry the original filename
+                    // as a ?name= hint because /a/<id> has no extension)
                     const getFileExtension = (url: string): string | null => {
                       // First, try to extract extension from URL path (standard format)
                       const urlMatch = url.match(/\.([a-z0-9]+)(?:\?|$|#)/i);

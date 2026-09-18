@@ -196,7 +196,7 @@ const FormBuilder: React.FC = () => {
   const handleImageUpload = async (file: File): Promise<string> => {
     try {
       setUploadingImage(true);
-      // Pass projectId to organize files by client name in Cloudinary
+      // Pass projectId to organize files by client name in Iceberg
       const url = await clientUpdatesService.uploadImage(file, projectId || undefined);
       return url;
     } catch (error: any) {
