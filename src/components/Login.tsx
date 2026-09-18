@@ -97,7 +97,7 @@ const Login: React.FC = () => {
         .kp-panel-bg {
           position: absolute;
           inset: 0;
-          background-image: url('https://katalyst-crm.com/wp-content/uploads/2024/10/Katalyst-Project-2.1.png');
+          background-image: url('https://cdn.katalyst-crm.com/a/0c1c7814-f46c-ce5e-5d96-b1f439d15d03?name=katalyst-background.jpeg');
           background-size: cover;
           background-position: center top;
           filter: brightness(0.45);
@@ -462,7 +462,7 @@ const Login: React.FC = () => {
             {/* Logo */}
             <div className="kp-logo">
               <img
-                src="https://katalyst-crm.com/wp-content/uploads/2024/09/K-1.png"
+                src="https://cdn.katalyst-crm.com/a/4a2e375b-ff64-ff59-66d1-d90d6060c270?name=katalyst-logo-white.png"
                 alt="Katalyst"
               />
               <span className="kp-logo-name">Kata<em>lyst</em> PM</span>

@@ -89,7 +89,7 @@ const css = `
   /* Full-bleed background image */
   .hero-bg {
     position: absolute; inset: 0; z-index: 0;
-    background-image: url('https://katalyst-crm.com/wp-content/uploads/2024/10/Katalyst-Project-2.1.png');
+    background-image: url('https://cdn.katalyst-crm.com/a/0c1c7814-f46c-ce5e-5d96-b1f439d15d03?name=katalyst-background.jpeg');
     background-size: cover;
     background-position: center right;
     background-repeat: no-repeat;
@@ -500,7 +500,7 @@ export default function KatalystLanding() {
         <nav className="nav">
           <div className="wrap nav-inner">
             <a href="/" className="nav-logo">
-              <img src="https://katalyst-crm.com/wp-content/uploads/2024/09/K-1.png" alt="Katalyst"
+              <img src="https://cdn.katalyst-crm.com/a/4a2e375b-ff64-ff59-66d1-d90d6060c270?name=katalyst-logo-white.png" alt="Katalyst"
                 onError={(e)=>{ (e.target as HTMLImageElement).style.display="none"; }}/>
               <span className="nav-logo-text">Katalyst</span>
             </a>
