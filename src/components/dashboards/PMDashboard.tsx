@@ -17,6 +17,7 @@ import PMListView from './PMListView';
 import PMProjectsRegistryView from './PMProjectsRegistryView';
 import PMKanbanView from './PMKanbanView';
 import PMQuickOverview from './PMQuickOverview';
+import PMOverviewSearchResults from './PMOverviewSearchResults';
 import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './PMAlertsPanel';
 import UserAvatar from '../UserAvatar';
 import AppSidebar from '../AppSidebar';
@@ -71,6 +72,7 @@ const PMDashboard: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
   const [clientTypeFilter, setClientTypeFilter] = useState<string>('All Client Types');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [lastEmailLogDateFilter, setLastEmailLogDateFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [showAll, setShowAll] = useState<boolean>(false);
@@ -1059,6 +1061,56 @@ const PMDashboard: React.FC = () => {
     return map;
   }, [tasks, filteredProjects]);
 
+  // The open task behind a project's current stage (e.g. "Copy Revision" → its open Copy task),
+  // so search results can jump straight into that task's side panel
+  const STAGE_TASK_TYPES: Record<string, string[]> = {
+    'Onboarding': ['Onboarding', 'Intake'],
+    'Copy': ['Copy'],
+    'Copy Revision': ['Copy'],
+    'Design': ['Design'],
+    'Design Revision': ['Design'],
+    'Dev': ['Dev'],
+    'AI Team': ['AI'],
+    'Social Media Team': ['Social Media'],
+    'CRM': ['CRM'],
+    'SEO/GEO Team': ['SEO/GEO'],
+  };
+  const getStageTask = (project: any): any | null => {
+    const types = STAGE_TASK_TYPES[project?.stage];
+    if (!types) return null;
+    const open = tasks.filter((t: any) =>
+      t.projectId === project.id &&
+      types.includes(t.type) &&
+      !t.isArchived &&
+      !t.isCompleted &&
+      t.status !== 'Completed'
+    );
+    if (open.length === 0) return null;
+    const isRevisionStage = String(project.stage).includes('Revision');
+    const rank = (t: any) => {
+      const inRevision = (t.description || '').includes('--- Column: Revision ---') || t.status === 'Revision';
+      if (isRevisionStage && inRevision) return 0;
+      if (t.status === 'In Progress' || t.status === 'In Review') return 1;
+      return 2;
+    };
+    const dueTime = (t: any) => (t.dueDate ? new Date(t.dueDate).getTime() : Number.MAX_SAFE_INTEGER);
+    return [...open].sort((a, b) => rank(a) - rank(b) || dueTime(a) - dueTime(b))[0];
+  };
+  const openProjectAtStageTask = (project: any) => {
+    const task = getStageTask(project);
+    navigate(task ? `/project/${project.id}?task=${task.id}&tab=details` : `/project/${project.id}`);
+  };
+
+  // Overview: narrow Recent Activity to the search term so the tab reacts while typing
+  const overviewSearchLower = searchTerm.trim().toLowerCase();
+  const overviewNotifications = useMemo(() => {
+    if (!overviewSearchLower) return notifications;
+    return notifications.filter((n: any) =>
+      n.title?.toLowerCase().includes(overviewSearchLower) ||
+      n.message?.toLowerCase().includes(overviewSearchLower)
+    );
+  }, [notifications, overviewSearchLower]);
+
   // Paginate filtered projects
   const paginatedProjects = useMemo(() => {
     if (showAll) {
@@ -1588,8 +1640,59 @@ const PMDashboard: React.FC = () => {
                   className="search-input"
                   placeholder={viewMode === 'tasks' ? 'Search tasks or projects...' : 'Search by project name...'}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => { setSearchTerm(e.target.value); setShowSearchSuggestions(true); }}
+                  onFocus={() => setShowSearchSuggestions(true)}
+                  onBlur={() => setShowSearchSuggestions(false)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setShowSearchSuggestions(false); }}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={viewMode === 'overview' && showSearchSuggestions && !!overviewSearchLower}
+                  aria-controls="dashboard-search-suggestions"
                 />
+                {/* Overview has no list of its own near the search box, so show matches right here */}
+                {viewMode === 'overview' && showSearchSuggestions && overviewSearchLower && (
+                  <div
+                    id="dashboard-search-suggestions"
+                    className="search-suggestions"
+                    role="listbox"
+                    // Keep focus in the input so clicks register before blur closes the list
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {filteredProjects.length === 0 ? (
+                      <div className="search-suggestions-empty">No projects match “{searchTerm.trim()}”</div>
+                    ) : (
+                      <>
+                        {filteredProjects.slice(0, 6).map((p: any) => {
+                          const stageTask = getStageTask(p);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              role="option"
+                              aria-selected={false}
+                              className="search-suggestion"
+                              onClick={() => openProjectAtStageTask(p)}
+                              title={stageTask ? `Open ${p.clientName} at “${stageTask.title}”` : `Open ${p.clientName}`}
+                            >
+                              <span className="search-suggestion-text">
+                                <span className="search-suggestion-name">{p.clientName || 'Untitled project'}</span>
+                                {stageTask && <span className="search-suggestion-task">{stageTask.title}</span>}
+                              </span>
+                              <span className="search-suggestion-meta">{p.stage || ''}</span>
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          className="search-suggestion search-suggestion-all"
+                          onClick={() => { setShowSearchSuggestions(false); setViewMode('list'); }}
+                        >
+                          See all {filteredProjects.length} in List view →
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <select 
                 className="filter-select"
@@ -1689,6 +1792,21 @@ const PMDashboard: React.FC = () => {
         <div className="dashboard-main premium-main">
           {viewMode === 'overview' ? (
             <div className="overview-view" style={{ padding: '2rem' }}>
+              {overviewSearchLower && (
+                <PMOverviewSearchResults
+                  searchTerm={searchTerm}
+                  matchingProjects={filteredProjects}
+                  hasOtherFilters={priorityFilter !== 'All Priorities' || clientTypeFilter !== 'All Client Types' || !!activeFilter}
+                  getProjectPmName={getProjectPmName}
+                  onOpenProject={(projectId) => {
+                    const p = projects.find((pr: any) => pr.id === projectId);
+                    if (p) openProjectAtStageTask(p); else navigate(`/project/${projectId}`);
+                  }}
+                  onShowAllInList={() => setViewMode('list')}
+                  onClearSearch={() => setSearchTerm('')}
+                />
+              )}
+
               {/* Key Metrics Section */}
               <PMQuickOverview
                 projects={projects}
@@ -1725,7 +1843,7 @@ const PMDashboard: React.FC = () => {
                   overflowY: 'auto',
                   overflowX: 'hidden'
                 }}>
-                  {notifications.length === 0 ? (
+                  {overviewNotifications.length === 0 ? (
                     <div style={{ 
                       padding: '4rem 2rem', 
                       textAlign: 'center', 
@@ -1733,12 +1851,21 @@ const PMDashboard: React.FC = () => {
                       fontSize: '0.9375rem'
                     }}>
                       <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
-                      <div style={{ fontWeight: 500 }}>No recent activity</div>
-                      <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Activity will appear here as projects and tasks are updated</div>
+                      {overviewSearchLower ? (
+                        <>
+                          <div style={{ fontWeight: 500 }}>No recent activity matches “{searchTerm.trim()}”</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Clear the search to see all activity</div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 500 }}>No recent activity</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Activity will appear here as projects and tasks are updated</div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div>
-                      {notifications.map((notification: any) => {
+                      {overviewNotifications.map((notification: any) => {
                         const timeAgo = getTimeAgo(notification.createdAt);
                         const getNotificationIcon = () => {
                           switch (notification.type) {

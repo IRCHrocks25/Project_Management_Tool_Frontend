@@ -38,183 +38,10 @@ import { MonthlyReminder, monthlyRemindersService } from '../services/monthlyRem
 import { ProjectRegistryMeta, projectRegistryMetaService } from '../services/projectRegistryMeta.service';
 import TaskDetailSideModal from './TaskDetailSideModal';
 import AppSidebar from './AppSidebar';
+import ConfirmModal from './ConfirmModal';
 import ProjectOverviewTab from './project-detail/ProjectOverviewTab';
+import ProjectTimelineTab, { ProjectTimelineSkeleton } from './project-detail/ProjectTimelineTab';
 import './ProjectDetail.css';
-
-// Activity Log Kanban Component
-const ActivityLogKanban: React.FC<{ activities: any[] }> = ({ activities }) => {
-  // Group activities by department
-  // Activities are already sorted oldest first (newest at bottom) from backend
-  const groupedByDepartment: Record<string, any[]> = {};
-  
-  activities.forEach((activity) => {
-    const dept = activity.department || 'General';
-    if (!groupedByDepartment[dept]) {
-      groupedByDepartment[dept] = [];
-    }
-    groupedByDepartment[dept].push(activity); // Maintains order - oldest first
-  });
-
-  const departments = Object.keys(groupedByDepartment).sort();
-  
-  const getActionIcon = (action: string) => {
-    if (action.includes('Created')) return <FaCheckCircle style={{ color: '#10b981' }} />;
-    if (action.includes('Approved')) return <FaCheck style={{ color: '#10b981' }} />;
-    if (action.includes('Revision')) return <FaExclamationTriangle style={{ color: '#f59e0b' }} />;
-    if (action.includes('Submitted')) return <FaPaperPlane style={{ color: '#3b82f6' }} />;
-    if (action.includes('Updated')) return <FaEdit style={{ color: '#8b5cf6' }} />;
-    if (action.includes('Email')) return <FaEnvelope style={{ color: '#6366f1' }} />;
-    return <FaHistory style={{ color: '#6b7280' }} />;
-  };
-
-  const formatDateTime = (date: string | Date) => {
-    const d = new Date(date);
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getDepartmentColor = (dept: string) => {
-    const colors: Record<string, string> = {
-      'Design': '#8b5cf6',
-      'Copy Writing': '#3b82f6',
-      'Development': '#10b981',
-      'Project Management': '#6366f1',
-      'Onboarding': '#f59e0b',
-      'General': '#6b7280',
-    };
-    return colors[dept] || '#6b7280';
-  };
-
-  if (activities.length === 0) {
-    return (
-      <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-        <FaHistory style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
-        <h3 style={{ marginBottom: '0.5rem' }}>No activity yet</h3>
-        <p>Activity will appear here as the project progresses.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="activity-log-kanban">
-      <div className="activity-log-header">
-        <h2>Activity Log</h2>
-        <p className="activity-log-subtitle">Track all project activities by department</p>
-      </div>
-      <div className="activity-log-columns">
-        {departments.map((dept) => (
-          <div key={dept} className="activity-log-column">
-            <div className="activity-log-column-header" style={{ borderLeftColor: getDepartmentColor(dept) }}>
-              <h3>{dept}</h3>
-              <span className="activity-count">{groupedByDepartment[dept].length}</span>
-            </div>
-            <div className="activity-log-column-content">
-              {groupedByDepartment[dept].map((activity) => (
-                <div key={activity.id} className="activity-log-card">
-                  <div className="activity-log-card-header">
-                    <div className="activity-icon-wrapper">
-                      {getActionIcon(activity.action)}
-                    </div>
-                    <div className="activity-action-text">
-                      <span className="activity-action">{activity.action}</span>
-                    </div>
-                  </div>
-                  <div className="activity-log-card-body">
-                    {activity.metadata?.taskTitle && (
-                      <div className="activity-meta-item">
-                        <strong>Task:</strong> {activity.metadata.taskTitle}
-                      </div>
-                    )}
-                    {activity.metadata?.deliverableType && (
-                      <div className="activity-meta-item">
-                        <strong>Deliverable:</strong> {activity.metadata.deliverableType}
-                        {activity.metadata.deliverableCustomType && ` (${activity.metadata.deliverableCustomType})`}
-                      </div>
-                    )}
-                    {activity.metadata?.fileUrl && (
-                      <div className="activity-meta-item">
-                        <strong>File:</strong>{' '}
-                        <a 
-                          href={activity.metadata.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="activity-file-link"
-                        >
-                          {activity.metadata.fileUrl.length > 50 
-                            ? activity.metadata.fileUrl.substring(0, 50) + '...' 
-                            : activity.metadata.fileUrl}
-                        </a>
-                      </div>
-                    )}
-                    {activity.metadata?.previousStatus && activity.metadata?.newStatus && (
-                      <div className="activity-meta-item">
-                        <strong>Status:</strong> {activity.metadata.previousStatus} → {activity.metadata.newStatus}
-                      </div>
-                    )}
-                    {activity.metadata?.notes && (
-                      <div className="activity-meta-item">
-                        <strong>Notes:</strong>
-                        <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>
-                          {(() => {
-                            const notes = activity.metadata.notes;
-                            // Check if notes contain an attachment link
-                            const attachmentMatch = notes.match(/Attachment:\s*(https?:\/\/[^\s]+)/i);
-                            if (attachmentMatch) {
-                              const attachmentUrl = attachmentMatch[1];
-                              const notesText = notes.replace(/Attachment:\s*https?:\/\/[^\s]+/i, '').trim();
-                              return (
-                                <>
-                                  {notesText && <div style={{ marginBottom: '0.5rem' }}>{notesText}</div>}
-                                  <div>
-                                    <strong>Attachment: </strong>
-                                    <a 
-                                      href={attachmentUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      style={{ color: '#667eea', textDecoration: 'underline', wordBreak: 'break-all' }}
-                                    >
-                                      {attachmentUrl}
-                                    </a>
-                                  </div>
-                                </>
-                              );
-                            }
-                            return <div>{notes}</div>;
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="activity-log-card-footer">
-                    <div className="activity-user">
-                      {activity.user ? (
-                        <>
-                          <FaUser style={{ fontSize: '0.75rem', marginRight: '0.25rem' }} />
-                          {activity.user.name || activity.user.email || 'Unknown'}
-                        </>
-                      ) : (
-                        <span style={{ color: '#9ca3af' }}>System</span>
-                      )}
-                    </div>
-                    <div className="activity-time">
-                      <FaClock style={{ fontSize: '0.75rem', marginRight: '0.25rem' }} />
-                      {formatDateTime(activity.createdAt)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -650,7 +477,7 @@ const ProjectDetail: React.FC = () => {
       setEmailLinks(['']);
     } catch (error: any) {
       console.error('Failed to create client update:', error);
-      alert('Failed to create client update entry');
+      showToast('Couldn’t log the client update. Please try again.', 'error');
     }
   };
 
@@ -685,7 +512,7 @@ const ProjectDetail: React.FC = () => {
       await loadClientUpdates();
     } catch (error: any) {
       console.error('Failed to create form:', error);
-      alert('Failed to create form');
+      showToast('Couldn’t create the form. Please try again.', 'error');
     } finally {
       setCreatingForm(false);
     }
@@ -700,10 +527,10 @@ const ProjectDetail: React.FC = () => {
       setShowFormBuilder(false);
       setCurrentForm(null);
       setFormBlocks([]);
-      alert('Form published successfully! You can now share the URL with the client.');
+      showToast('Form published. You can now share the link with the client.', 'success');
     } catch (error: any) {
       console.error('Failed to publish form:', error);
-      alert('Failed to publish form');
+      showToast('Couldn’t publish the form. Please try again.', 'error');
     } finally {
       setPublishingForm(false);
     }
@@ -1212,7 +1039,7 @@ const ProjectDetail: React.FC = () => {
       setShowAddDeliverableModal(false);
     } catch (error: any) {
       console.error('Failed to create custom deliverable:', error);
-      alert(error.response?.data?.message || 'Failed to create custom deliverable');
+      showToast(error.response?.data?.message || 'Couldn’t create the deliverable. Please try again.', 'error');
     } finally {
       setCreatingDeliverable(false);
     }
@@ -1593,7 +1420,7 @@ const ProjectDetail: React.FC = () => {
       setSelectedUserId('');
     } catch (error: any) {
       console.error('Failed to add team member:', error);
-      alert(error.response?.data?.message || 'Failed to add team member');
+      showToast(error.response?.data?.message || 'Couldn’t add the team member. Please try again.', 'error');
     } finally {
       setAddingTeamMember(false);
     }
@@ -1632,25 +1459,34 @@ const ProjectDetail: React.FC = () => {
       setSelectedDeliverableUserId('');
     } catch (error: any) {
       console.error('Failed to add deliverable team member:', error);
-      alert(error.response?.data?.message || 'Failed to add team member');
+      showToast(error.response?.data?.message || 'Couldn’t add the team member. Please try again.', 'error');
     } finally {
       setAddingDeliverableTeamMember(false);
     }
   };
 
   const handleRemoveDeliverableTeamMember = async (deliverableId: string, userId: string) => {
-    if (!window.confirm('Are you sure you want to remove this team member?')) return;
+    if (!(await askConfirm({
+      title: 'Remove team member?',
+      message: 'They will no longer be assigned to this deliverable. You can add them again later.',
+      confirmText: 'Remove',
+      type: 'danger',
+    }))) return;
     try {
       await deliverableService.removeTeamMember(deliverableId, userId);
       await loadDeliverableTeamMembers(deliverableId);
     } catch (error: any) {
       console.error('Failed to remove deliverable team member:', error);
-      alert(error.response?.data?.message || 'Failed to remove team member');
+      showToast(error.response?.data?.message || 'Couldn’t remove the team member. Please try again.', 'error');
     }
   };
 
   const handleCloseProject = async () => {
-    if (!window.confirm('Are you sure you want to close this project?')) return;
+    if (!(await askConfirm({
+      title: 'Close this project?',
+      message: 'The project will be marked as closed and moved to Completed Projects.',
+      confirmText: 'Close project',
+    }))) return;
     
     try {
       await projectService.close(id!);
@@ -1661,11 +1497,16 @@ const ProjectDetail: React.FC = () => {
   };
 
   const handleArchiveProject = async () => {
-    if (!window.confirm('Are you sure you want to archive this project? It will be hidden from default views but can still be accessed via direct link.')) return;
+    if (!(await askConfirm({
+      title: 'Archive this project?',
+      message: 'It will be hidden from default views but can still be opened via its direct link.',
+      confirmText: 'Archive project',
+      type: 'danger',
+    }))) return;
     
     try {
       await projectService.archive(id!);
-      alert('Project archived successfully');
+      showToast('Project archived.', 'success');
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Failed to archive project:', error);
@@ -1675,7 +1516,7 @@ const ProjectDetail: React.FC = () => {
         message: errorMessage,
         userRole: authService.getUser()?.role,
       });
-      alert(errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -1925,16 +1766,37 @@ const ProjectDetail: React.FC = () => {
   };
 
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     const toast = document.createElement('div');
-    toast.className = 'toast-notification';
+    toast.className = `toast-notification toast-${variant}`;
+    // Errors are announced immediately and stay longer so they can be read
+    toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
       toast.classList.remove('show');
-      setTimeout(() => document.body.removeChild(toast), 300);
-    }, 2000);
+      setTimeout(() => toast.remove(), 300);
+    }, variant === 'error' ? 5000 : 2500);
+  };
+
+  // In-app replacement for window.confirm: resolves true when the user confirms
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    type: 'danger' | 'warning' | 'info';
+  } | null>(null);
+  const confirmResolverRef = useRef<((ok: boolean) => void) | null>(null);
+  const askConfirm = (opts: { title: string; message: string; confirmText: string; type?: 'danger' | 'warning' | 'info' }) =>
+    new Promise<boolean>((resolve) => {
+      confirmResolverRef.current = resolve;
+      setConfirmDialog({ type: 'warning', ...opts });
+    });
+  const settleConfirm = (ok: boolean) => {
+    confirmResolverRef.current?.(ok);
+    confirmResolverRef.current = null;
+    setConfirmDialog(null);
   };
 
   const copyTaskLink = async (task: any) => {
@@ -1945,10 +1807,24 @@ const ProjectDetail: React.FC = () => {
     const taskUrl = `${window.location.origin}/project/${task.projectId}?task=${task.id}&tab=details`;
     try {
       await navigator.clipboard.writeText(taskUrl);
-      showToast('Task link copied ✓');
+      showToast('Task link copied.', 'success');
     } catch (error) {
-      console.error('Failed to copy task link:', error);
-      showToast('Failed to copy task link');
+      // Clipboard API can be blocked (insecure origin, no focus); fall back to a hidden textarea
+      const textarea = document.createElement('textarea');
+      textarea.value = taskUrl;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (copied) {
+        showToast('Task link copied.', 'success');
+      } else {
+        console.error('Failed to copy task link:', error);
+        showToast('Couldn’t copy the link. Open the task and copy it from the address bar.', 'error');
+      }
     }
   };
 
@@ -2310,7 +2186,8 @@ const ProjectDetail: React.FC = () => {
                     className="health-indicator"
                     style={{ color: health.color }}
                   >
-                    {health.icon} {health.status}
+                    <span className="health-dot" style={{ background: health.color }} aria-hidden="true" />
+                    {health.status}
                   </span>
                 </div>
               </div>
@@ -2320,8 +2197,8 @@ const ProjectDetail: React.FC = () => {
               {(authService.getUser()?.role === 'Project Manager' || authService.getUser()?.role === 'FOUNDER/CEO') && !project?.isArchived && (
                 <button 
                   onClick={handleArchiveProject} 
-                  className="btn-primary-action"
-                  style={{ marginLeft: '0.5rem', backgroundColor: '#6b7280' }}
+                  className="btn-secondary-action"
+                  style={{ marginLeft: '0.5rem' }}
                 >
                   <FaArchive /> Archive Project
                 </button>
@@ -2378,23 +2255,22 @@ const ProjectDetail: React.FC = () => {
           boxSizing: 'border-box',
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 42%, #ffffff 100%)',
-            border: '1px solid #bfdbfe',
-            borderRadius: 16,
+            background: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
             padding: '1rem',
-            boxShadow: '0 8px 20px rgba(37, 99, 235, 0.09)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#1e3a8a', fontWeight: 800 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#111827', fontWeight: 600 }}>
                 <span style={{
                   width: 28,
                   height: 28,
                   borderRadius: 8,
-                  background: '#dbeafe',
+                  background: '#f3f4f6',
+                  color: '#4b5563',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '1px solid #93c5fd',
                 }}>
                   <FaStickyNote />
                 </span>
@@ -2404,11 +2280,10 @@ const ProjectDetail: React.FC = () => {
               </div>
               <span style={{
                 fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#1d4ed8',
-                background: '#dbeafe',
+                fontWeight: 600,
+                color: '#4b5563',
+                background: '#f3f4f6',
                 borderRadius: 999,
-                border: '1px solid #93c5fd',
                 padding: '0.18rem 0.52rem',
               }}>
                 {projectMonthlyReminders.length} linked note{projectMonthlyReminders.length !== 1 ? 's' : ''}
@@ -2419,18 +2294,9 @@ const ProjectDetail: React.FC = () => {
               <div style={{ marginTop: '0.72rem' }}>
                 <button
                   type="button"
-                  className="btn-primary"
+                  className="btn-secondary-action"
                   onClick={() => setShowProjectReminderForm(true)}
-                  style={{
-                    background: '#2563eb',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '0.48rem 0.74rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem' }}
                 >
                   + Add note
                 </button>
@@ -2634,7 +2500,7 @@ const ProjectDetail: React.FC = () => {
       {project.stage === 'Onboarding' && hideOnboardingPhase && (
         <div style={{ 
           maxWidth: '1600px', 
-          margin: '2rem auto', 
+          margin: '1.5rem auto 0', 
           padding: '0 2rem' 
         }}>
           <button
@@ -2713,12 +2579,6 @@ const ProjectDetail: React.FC = () => {
               title="New activity available"
             >
               !
-            </span>
-          )}
-          {/* Debug: Show badge state */}
-          {process.env.NODE_ENV === 'development' && (
-            <span style={{ fontSize: '10px', color: '#999', marginLeft: '4px' }}>
-              [{hasNewDeliverableUpdates ? 'NEW' : 'OK'}]
             </span>
           )}
         </button>
@@ -2808,6 +2668,28 @@ const ProjectDetail: React.FC = () => {
               </div>
             ) : (
               <div className="tasks-list premium-tasks">
+                {(() => {
+                  const clientTasks = tasks.filter((task) => task.type === 'Onboarding' || task.type === 'Intake');
+                  const done = clientTasks.filter((task) => task.isCompleted).length;
+                  if (clientTasks.length === 0) return null;
+                  return (
+                    <div className="client-tasks-progress" role="status">
+                      <div className="client-tasks-progress-label">
+                        <strong>{done} of {clientTasks.length}</strong> client tasks submitted
+                      </div>
+                      <div
+                        className="client-tasks-progress-track"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={clientTasks.length}
+                        aria-valuenow={done}
+                        aria-label="Client tasks submitted"
+                      >
+                        <div className="client-tasks-progress-fill" style={{ width: `${(done / clientTasks.length) * 100}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
                 {tasks
                   .filter((task) => task.type === 'Onboarding' || task.type === 'Intake')
                   .map((task) => (
@@ -2815,6 +2697,7 @@ const ProjectDetail: React.FC = () => {
                       <button
                         className="task-checkbox-premium"
                         onClick={() => handleTaskComplete(task.id, !task.isCompleted)}
+                        aria-label={task.isCompleted ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
                       >
                         {task.isCompleted ? <FaCheckCircle className="checked" /> : <FaCircle className="unchecked" />}
                       </button>
@@ -2893,9 +2776,9 @@ const ProjectDetail: React.FC = () => {
                               </div>
                             ) : (
                               <button
-                                className="btn-primary"
+                                className="btn-secondary-action"
                                 onClick={() => setSubmissionForm({ taskId: task.id, data: '', type: 'url' })}
-                                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                                style={{ padding: '0.45rem 0.875rem', fontSize: '0.875rem' }}
                               >
                                 Submit {task.title}
                               </button>
@@ -3346,12 +3229,9 @@ const ProjectDetail: React.FC = () => {
         {activeTab === 'timeline' && (
           <div className="tab-content fade-in">
             {loadingActivity ? (
-              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                <FaHistory style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.3 }} />
-                <p>Loading activity log...</p>
-              </div>
+              <ProjectTimelineSkeleton />
             ) : (
-              <ActivityLogKanban activities={activityLog} />
+              <ProjectTimelineTab activities={activityLog} />
             )}
           </div>
         )}
@@ -3359,16 +3239,20 @@ const ProjectDetail: React.FC = () => {
         {activeTab === 'branding' && (
           <div className="tab-content fade-in">
             <div style={{ padding: '2rem' }}>
-              <h2 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
-                Branding Management
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
+                  Branding Management
+                </h2>
+                <span role="status" style={{ fontSize: '0.875rem', color: '#4b5563' }}>
+                  <strong style={{ color: '#111827' }}>{Object.values(brandingCalls).filter((c) => c.isDone).length} of {Object.keys(brandingCalls).length}</strong> calls done
+                </span>
+              </div>
+              {/* Calls flow left to right and wrap, so every call is visible without sideways scrolling */}
               <div style={{
-                display: 'flex',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
                 gap: '1rem',
-                overflowX: 'auto',
-                paddingBottom: '1rem',
                 alignItems: 'stretch',
-                minHeight: '600px'
               }}>
                 {[
                   { id: 'call1', title: 'Call 1', subtitle: 'Brand Q&A Session #1', maxTime: '(Max 45min)' },
@@ -3385,16 +3269,13 @@ const ProjectDetail: React.FC = () => {
                   const callData = brandingCalls[call.id];
                   return (
                     <div key={call.id} style={{
-                      background: '#f9fafb',
+                      background: callData.isDone ? '#f0fdf4' : '#f9fafb',
                       borderRadius: '12px',
                       padding: '1rem',
-                      minWidth: '280px',
-                      width: '280px',
-                      minHeight: '500px',
+                      minWidth: 0,
                       display: 'flex',
                       flexDirection: 'column',
-                      border: '2px solid #e5e7eb',
-                      flexShrink: 0
+                      border: `1px solid ${callData.isDone ? '#bbf7d0' : '#e5e7eb'}`,
                     }}>
                       <div style={{ marginBottom: '1rem', minHeight: '80px' }}>
                         <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>
@@ -3417,11 +3298,12 @@ const ProjectDetail: React.FC = () => {
                       </div>
                       
                       <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>
+                        <label htmlFor={`branding-call-zoom-${call.id}`} style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>
                           Zoom Link
                         </label>
                         <input
-                          type="text"
+                          id={`branding-call-zoom-${call.id}`}
+                          type="url"
                           value={callData.zoomLink}
                           onChange={(e) => {
                             setBrandingCalls(prev => ({
@@ -3444,6 +3326,7 @@ const ProjectDetail: React.FC = () => {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                         <input
+                          id={`branding-call-done-${call.id}`}
                           type="checkbox"
                           checked={callData.isDone}
                           onChange={(e) => {
@@ -3461,7 +3344,7 @@ const ProjectDetail: React.FC = () => {
                           }}
                           style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        <label style={{ fontSize: '0.8125rem', color: '#475569', cursor: 'pointer', flex: 1 }}>
+                        <label htmlFor={`branding-call-done-${call.id}`} style={{ fontSize: '0.8125rem', color: '#475569', cursor: 'pointer', flex: 1 }}>
                           Done
                         </label>
                       </div>
@@ -3675,29 +3558,10 @@ const ProjectDetail: React.FC = () => {
                         navigate(`/project/${id}/form-builder/${updateToUse.id}`);
                       } catch (error: any) {
                         console.error('Failed to generate form:', error);
-                        alert('Failed to generate form. Please try again.');
+                        showToast('Couldn’t generate the form. Please try again.', 'error');
                       }
                     }}
-                    style={{
-                      background: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      padding: '0.625rem 1.25rem',
-                      borderRadius: '8px',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#059669';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#10b981';
-                    }}
+                    className="btn-secondary-action"
                   >
                     <FaFileAlt /> Generate Form
                   </button>
@@ -3895,7 +3759,7 @@ const ProjectDetail: React.FC = () => {
                                         style={{ cursor: 'pointer', textDecoration: 'underline' }}
                                         onClick={() => {
                                           navigator.clipboard.writeText(getFormUrl(form));
-                                          alert('Form URL copied to clipboard!');
+                                          showToast('Form link copied.', 'success');
                                         }}
                                       >
                                         {getFormUrl(form)}
@@ -4071,9 +3935,9 @@ const ProjectDetail: React.FC = () => {
                                       try {
                                         await clientUpdatesService.publishForm(form.id);
                                         await loadClientUpdates();
-                                        alert('Form published!');
+                                        showToast('Form published.', 'success');
                                       } catch (error) {
-                                        alert('Failed to publish form');
+                                        showToast('Couldn’t publish the form. Please try again.', 'error');
                                       }
                                     }}
                                     style={{
@@ -4768,7 +4632,7 @@ const ProjectDetail: React.FC = () => {
                       setNewTaskFileUrls((prev) => [...prev, ...uploadedUrls]);
                     } catch (error) {
                       console.error('Failed to upload attachments:', error);
-                      alert('Failed to upload file(s). Please try again.');
+                      showToast('Upload failed. Check your connection and try again.', 'error');
                     } finally {
                       setNewTaskAttachmentUploading(false);
                     }
@@ -5264,7 +5128,7 @@ const ProjectDetail: React.FC = () => {
                                 const url = await handleImageUpload(file);
                                 updateFormBlock(block.id, { imageUrl: url });
                               } catch (error) {
-                                alert('Failed to upload image');
+                                showToast('Image upload failed. Please try again.', 'error');
                               }
                             }
                           }}
@@ -5321,7 +5185,7 @@ const ProjectDetail: React.FC = () => {
                                 const url = await handleImageUpload(file);
                                 updateFormBlock(block.id, { imageUrl: url });
                               } catch (error) {
-                                alert('Failed to upload image');
+                                showToast('Image upload failed. Please try again.', 'error');
                               }
                             }
                           }}
@@ -5384,9 +5248,9 @@ const ProjectDetail: React.FC = () => {
                       try {
                         await clientUpdatesService.updateForm(currentForm.id, formBlocks);
                         await loadClientUpdates();
-                        alert('Form updated!');
+                        showToast('Form updated.', 'success');
                       } catch (error) {
-                        alert('Failed to update form');
+                        showToast('Couldn’t update the form. Please try again.', 'error');
                       }
                     }}
                     disabled={creatingForm || publishingForm}
@@ -6300,6 +6164,16 @@ const ProjectDetail: React.FC = () => {
           }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmDialog}
+        title={confirmDialog?.title || ''}
+        message={confirmDialog?.message || ''}
+        confirmText={confirmDialog?.confirmText}
+        type={confirmDialog?.type}
+        onConfirm={() => settleConfirm(true)}
+        onClose={() => settleConfirm(false)}
+      />
       </div>
     </div>
   );

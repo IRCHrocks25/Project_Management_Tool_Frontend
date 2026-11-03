@@ -9,6 +9,7 @@ import {
   FaEnvelope,
   FaTrash,
   FaEdit,
+  FaHistory,
 } from 'react-icons/fa';
 import { projectService } from '../../services/project.service';
 import { authService } from '../../services/auth.service';
@@ -415,7 +416,7 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: '0.1rem', minHeight: 0 }}>
             {projectNotes.length === 0 ? (
-              <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.875rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>
+              <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.875rem', textAlign: 'center', color: '#64748b', fontSize: '0.8125rem' }}>
                 No notes yet. Add the first note above.
               </div>
             ) : (
@@ -474,8 +475,10 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
         <div className="overview-card premium-card overview-card--activity">
           <h3 className="card-title">Recent Activity</h3>
           {recentActivities.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-              No recent activity
+            <div className="overview-empty-state">
+              <FaHistory className="overview-empty-icon" aria-hidden="true" />
+              <strong>No activity yet</strong>
+              Stage changes, revisions and task updates on this project will show up here.
             </div>
           ) : (
             <div className="activity-notifications-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, overflowY: 'auto', minHeight: 0 }}>
@@ -527,8 +530,10 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             )}
           </div>
           {allRevisions.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-              No active revisions
+            <div className="overview-empty-state">
+              <FaCheckCircle className="overview-empty-icon" aria-hidden="true" />
+              <strong>No active revisions</strong>
+              Revision requests from the client will be listed here.
             </div>
           ) : (
             <div className="revision-list-premium" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, minHeight: 0 }}>
@@ -583,8 +588,10 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             <span className="count-pill count-pill--blue">{getAllFilesAndLinks.length}</span>
           </div>
           {getAllFilesAndLinks.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-              No files or links shared yet
+            <div className="overview-empty-state">
+              <FaLink className="overview-empty-icon" aria-hidden="true" />
+              <strong>No files or links shared yet</strong>
+              Files and links attached to tasks and deliverables will collect here.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

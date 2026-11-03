@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FaHome,
@@ -10,12 +10,27 @@ import {
   FaStickyNote,
   FaBullseye,
   FaFlag,
+  FaBars,
+  FaTimes,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
 import './Dashboard.css';
 
 const SIDEBAR_WIDTH = 260;
+/** Below this width the sidebar becomes a slide-in drawer so the page keeps its full width */
+const MOBILE_QUERY = '(max-width: 768px)';
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_QUERY);
+    const onChange = () => setIsMobile(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return isMobile;
+};
 
 type NavItem = {
   path: string;
@@ -92,6 +107,20 @@ const AppSidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = authService.getUser();
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Close the drawer after navigating or when growing back to desktop width
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   const getEffectivePath = (item: NavItem): string => {
     if (item.path === '/dashboard' && user?.role === 'Project Manager') return '/pm-dashboard';
@@ -122,7 +151,28 @@ const AppSidebar: React.FC = () => {
     }),
   })).filter((s) => s.items.length > 0);
 
+  if (isMobile && !drawerOpen) {
+    return (
+      <button
+        type="button"
+        className="app-sidebar-toggle"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Open navigation"
+        aria-expanded={false}
+      >
+        <FaBars />
+      </button>
+    );
+  }
+
   return (
+    <>
+    {isMobile && (
+      <div
+        onClick={() => setDrawerOpen(false)}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 1290 }}
+      />
+    )}
     <aside
       style={{
         width: SIDEBAR_WIDTH,
@@ -132,13 +182,29 @@ const AppSidebar: React.FC = () => {
         borderRight: '1px solid rgba(255,255,255,0.08)',
         display: 'flex',
         flexDirection: 'column',
-        position: 'sticky',
+        position: isMobile ? 'fixed' : 'sticky',
         top: 0,
         left: 0,
+        // Keep page content (positioned or not) from ever painting over the sidebar
+        zIndex: isMobile ? 1300 : 20,
         overflowY: 'auto',
         flexShrink: 0,
       }}
     >
+      {isMobile && (
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close navigation"
+          style={{
+            position: 'absolute', top: 12, right: 12, width: 32, height: 32,
+            border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.08)',
+            color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <FaTimes />
+        </button>
+      )}
       {/* User block at top */}
       <div
         style={{
@@ -229,6 +295,7 @@ const AppSidebar: React.FC = () => {
         ))}
       </nav>
     </aside>
+    </>
   );
 };
 

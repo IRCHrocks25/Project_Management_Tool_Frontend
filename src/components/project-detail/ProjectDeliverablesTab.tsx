@@ -7,6 +7,7 @@ import {
   FaCopy,
   FaEdit,
   FaExclamationTriangle,
+  FaExternalLinkAlt,
   FaHistory,
   FaLink,
   FaPlus,
@@ -330,7 +331,7 @@ const ProjectDeliverablesTab = (props: any) => {
                   })}
                 </div>
               )}
-              {isPrivateClient && deliverablesForDisplay.length === 0 && (
+              {deliverablesForDisplay.length === 0 && (
                 <div
                   style={{
                     padding: '0.75rem 0.9rem',
@@ -343,7 +344,9 @@ const ProjectDeliverablesTab = (props: any) => {
                     marginRight: '0.75rem',
                   }}
                 >
-                  No deliverables set for this Private client yet. Create a custom deliverable or select an existing one when ready.
+                  {isPrivateClient
+                    ? 'No deliverables set for this Private client yet. Create a custom deliverable or select an existing one when ready.'
+                    : 'No deliverables yet. Package deliverables appear here once they are set up — use "Add Custom" to add one now.'}
                 </div>
               )}
               <button
@@ -1082,7 +1085,7 @@ const ProjectDeliverablesTab = (props: any) => {
                 <div className="deliverable-kanban-board">
                   <div className="kanban-header">
                     <h4 className="kanban-deliverable-title">{getDeliverableDisplayName(selectedDeliverable)}</h4>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <div style={{
                         display: 'inline-flex',
                         border: '1px solid #cbd5e1',
@@ -1316,6 +1319,13 @@ const ProjectDeliverablesTab = (props: any) => {
                                     setShowTaskDetailModal(true);
                                   }
                                 }}
+                                tabIndex={relatedTask ? 0 : undefined}
+                                onKeyDown={(e) => {
+                                  if (relatedTask && e.key === 'Enter' && e.target === e.currentTarget) {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }
+                                }}
                                 style={isInRevision ? {
                                   border: '2px solid #dc2626',
                                   borderLeft: '4px solid #dc2626',
@@ -1346,10 +1356,10 @@ const ProjectDeliverablesTab = (props: any) => {
                                   </div>
                                 )}
                                 <div className="kanban-card-header">
-                                  <div className="kanban-card-dept" style={{ backgroundColor: `${linkColor}20`, color: linkColor }}>
-                                    {link.department.charAt(0)}
-                                  </div>
-                                  <span className="kanban-card-type">{link.type}</span>
+                                  <span className="kanban-card-dept-badge" style={{ backgroundColor: `${linkColor}14`, color: linkColor }}>
+                                    <span className="kanban-card-dept-dot" style={{ background: linkColor }} />
+                                    {link.department}
+                                  </span>
                                   {/* Notification badge for notes/links */}
                                   {fileHistory.length > 0 && fileHistory[0].notes && (() => {
                                     const notes = fileHistory[0].notes;
@@ -1613,32 +1623,27 @@ const ProjectDeliverablesTab = (props: any) => {
                                         href={link.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="kanban-card-link"
+                                        className="kanban-card-file-link"
                                         onClick={(e) => e.stopPropagation()}
-                                        style={taskTitle ? {
-                                          fontSize: '0.8125rem',
-                                          color: '#64748b',
-                                          fontWeight: 400,
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '0.25rem'
-                                        } : {}}
+                                        title={link.url}
                                       >
-                                        {link.department}
-                                        <FaChevronRight className="kanban-link-icon" />
+                                        <FaExternalLinkAlt aria-hidden="true" />
+                                        Open {link.type === 'File' ? 'file' : `in ${link.type}`}
                                       </a>
                                     </>
                                   )}
                                 </div>
                           <div className="kanban-card-meta">
-                                  <div className="kanban-card-owner">
-                                    <span className="kanban-meta-label">Owner:</span>
-                                    <span className="kanban-meta-value">{ownerName}</span>
+                                  <div className="kanban-card-owner" title={`Owner: ${ownerName}`}>
+                                    <span className={`kanban-avatar${ownerName === 'Unassigned' ? ' kanban-avatar--empty' : ''}`} aria-hidden="true">
+                                      {ownerName === 'Unassigned' ? '?' : ownerName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                    </span>
+                                    <span className={ownerName === 'Unassigned' ? 'kanban-meta-label' : 'kanban-meta-value'}>{ownerName}</span>
                                   </div>
                                   {project.pm?.name && (
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                      <span className="kanban-meta-label">PM:</span>
-                                      <span className="kanban-meta-value" style={{ marginLeft: '0.25rem' }}>{project.pm.name}</span>
+                                    <div className="kanban-card-pm">
+                                      <span className="kanban-meta-label">PM</span>
+                                      <span>{project.pm.name}</span>
                                     </div>
                                   )}
                                   {deliverableMembers.length > 0 && (
@@ -1710,35 +1715,26 @@ const ProjectDeliverablesTab = (props: any) => {
                                     </div>
                                   )}
                                   {deliverableMembers.length === 0 && isPM && (
-                                    <div style={{ marginTop: '0.5rem' }}>
+                                    <div>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setSelectedDeliverableForTeam(selectedDeliverable.id);
                                           setShowAddDeliverableTeamMemberModal(true);
                                         }}
-                                        style={{
-                                          fontSize: '0.75rem',
-                                          color: '#667eea',
-                                          background: 'none',
-                                          border: '1px dashed #667eea',
-                                          padding: '0.25rem 0.5rem',
-                                          borderRadius: '4px',
-                                          cursor: 'pointer',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '0.25rem'
-                                        }}
+                                        className="kanban-text-btn"
                                         title="Add team member"
                                       >
-                                        <FaPlus style={{ fontSize: '0.625rem' }} /> Add Team Member
+                                        <FaPlus style={{ fontSize: '0.625rem' }} /> Add team member
                                       </button>
                                     </div>
                                   )}
 
                                   {canAssignOwners && link.taskId && (
-                                    <div style={{ marginTop: '0.5rem' }}>
+                                    <div className="kanban-card-actions">
                                       <button
+                                        type="button"
+                                        className="kanban-ghost-btn"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           const relatedTaskForEdit = tasks.find((t: any) => t.id === link.taskId);
@@ -1746,60 +1742,30 @@ const ProjectDeliverablesTab = (props: any) => {
                                           setSelectedTaskDetail(relatedTaskForEdit);
                                           setShowTaskDetailModal(true);
                                         }}
-                                        style={{
-                                          width: '100%',
-                                          padding: '0.35rem 0.5rem',
-                                          borderRadius: '6px',
-                                          border: '1px solid #e5e7eb',
-                                          background: '#f9fafb',
-                                          color: '#374151',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 500,
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          gap: '0.375rem',
-                                          marginTop: '0.25rem'
-                                        }}
                                       >
-                                        <FaEdit style={{ fontSize: '0.7rem' }} />
-                                        Edit Task
+                                        <FaEdit aria-hidden="true" />
+                                        Edit task
                                       </button>
                                       <button
+                                        type="button"
+                                        className="kanban-ghost-btn"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           const relatedTaskForLink = tasks.find((t: any) => t.id === link.taskId);
                                           if (!relatedTaskForLink) return;
                                           copyTaskLink(relatedTaskForLink);
                                         }}
-                                        style={{
-                                          width: '100%',
-                                          padding: '0.35rem 0.5rem',
-                                          borderRadius: '6px',
-                                          border: '1px solid #e5e7eb',
-                                          background: '#ffffff',
-                                          color: '#374151',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 500,
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          gap: '0.375rem',
-                                          marginTop: '0.375rem'
-                                        }}
                                       >
-                                        <FaCopy style={{ fontSize: '0.7rem' }} />
-                                        Copy Task Link
+                                        <FaCopy aria-hidden="true" />
+                                        Copy link
                                       </button>
                                     </div>
                                   )}
 
                                   {formattedDate && (
-                                    <div className="kanban-card-date" style={{ marginTop: '0.5rem' }}>
-                                      <span className="kanban-meta-label">Date:</span>
-                                      <span className="kanban-meta-value">{formattedDate}</span>
+                                    <div className="kanban-card-date">
+                                      <span className="kanban-meta-label">Updated</span>
+                                      <span>{formattedDate}</span>
                                     </div>
                                   )}
                                   
@@ -1863,17 +1829,13 @@ const ProjectDeliverablesTab = (props: any) => {
                                   
                                   {/* Status Dropdown - Show for tasks */}
                                   {relatedTask && (
-                                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
-                                      <label style={{ 
-                                        display: 'block', 
-                                        fontSize: '0.75rem', 
-                                        fontWeight: 500, 
-                                        color: '#64748b', 
-                                        marginBottom: '0.375rem' 
-                                      }}>
-                                        Status:
+                                    <div className="kanban-card-status-field">
+                                      <label htmlFor={`kanban-status-${relatedTask.id}`}>
+                                        Status
                                       </label>
                                       <select
+                                        id={`kanban-status-${relatedTask.id}`}
+                                        className="kanban-status-select"
                                         value={(() => {
                                           // Mirror DepartmentView/RoleDashboard kanban mapping so value corresponds to a kanban column id
                                           const task: any = relatedTask;
@@ -1967,25 +1929,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                           }
                                         }}
                                         onClick={(e) => e.stopPropagation()}
-                                        style={{
-                                          width: '100%',
-                                          padding: '0.5rem',
-                                          borderRadius: '6px',
-                                          border: '1px solid #d1d5db',
-                                          fontSize: '0.8125rem',
-                                          background: 'white',
-                                          color: '#1e293b',
-                                          cursor: 'pointer',
-                                          transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.borderColor = '#667eea';
-                                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.borderColor = '#d1d5db';
-                                          e.currentTarget.style.boxShadow = 'none';
-                                        }}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                       >
                                         {/* Kanban-aligned values that map to specific columns; handler converts to backend enums */}
                                         <option value="not_started">Not Yet Started</option>

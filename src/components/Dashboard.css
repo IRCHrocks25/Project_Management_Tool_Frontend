@@ -344,14 +344,16 @@
 /* Premium Header */
 .dashboard-header.premium-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 2rem;
-  gap: 2rem;
+  gap: 1rem 2rem;
 }
 
 .header-left {
-  flex: 1;
+  flex: 1 1 260px;
+  min-width: 0;
 }
 
 .premium-greeting {
@@ -372,6 +374,8 @@
 
 .header-right {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 1rem;
 }
@@ -413,6 +417,87 @@
   position: relative;
   display: flex;
   align-items: center;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 280px;
+  z-index: 1100;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  padding: 0.25rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.search-suggestion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.search-suggestion:hover,
+.search-suggestion:focus-visible {
+  background: #f3f4f6;
+  outline: none;
+}
+
+.search-suggestion-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.search-suggestion-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-suggestion-task {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-suggestion-meta {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.search-suggestion-all {
+  justify-content: center;
+  margin-top: 0.125rem;
+  border-top: 1px solid #f3f4f6;
+  border-radius: 0 0 6px 6px;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.search-suggestions-empty {
+  padding: 0.75rem 0.625rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
 }
 
 .search-icon {
@@ -535,6 +620,12 @@
 }
 
 .dashboard-content {
+  /* Explicit width: as a flex item with auto margins it would otherwise shrink-to-fit its
+     content, letting the wide Kanban board push the page past the viewport (and under the
+     sticky sidebar) instead of scrolling inside its own container. */
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
@@ -627,15 +718,83 @@
     flex-direction: column;
   }
 
+  .header-left {
+    flex-basis: auto;
+  }
+
   .header-right {
     width: 100%;
     flex-wrap: wrap;
   }
 }
 
+.app-sidebar-toggle {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1200;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #1e293b;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
 @media (max-width: 768px) {
   .dashboard-content {
     padding: 1rem;
+  }
+
+  /* Leave room for the fixed sidebar toggle */
+  .nav-container {
+    padding-left: 4rem;
+    padding-right: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-right {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .view-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .search-input-wrapper {
+    flex: 1 1 100%;
+  }
+
+  .search-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Wide tables scroll sideways inside the content area instead of widening the page */
+  .dashboard-main.premium-main {
+    overflow-x: auto;
+  }
+
+  .pml-wrap {
+    min-width: 1024px;
+  }
+
+  .pmt-wrap {
+    min-width: 900px;
   }
 
   .premium-greeting {

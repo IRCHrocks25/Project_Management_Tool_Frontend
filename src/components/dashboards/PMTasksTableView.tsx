@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FaTasks, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import { projectService } from '../../services/project.service';
 import TaskDetailSideModal from '../TaskDetailSideModal';
@@ -13,6 +13,8 @@ export const TASK_TYPE_TO_DEPARTMENT: Record<string, string> = {
   SEO: 'SEO/GEO',
   Onboarding: 'Onboarding',
 };
+
+const TASKS_PER_PAGE = 50;
 
 const DEPT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Copy Writing':   { bg: '#fefce8', text: '#92400e', border: '#fde68a' },
@@ -252,6 +254,40 @@ const STYLES = `
   .pmt-pm-select:disabled { opacity: 0.5; cursor: wait; }
   .pmt-pm-select option { background: #fff; color: #0f1923; }
 
+  .pmt-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .pmt-page-info {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    min-width: 90px;
+    text-align: center;
+  }
+  .pmt-page-count { font-size: 12.5px; color: var(--text-muted); }
+  .pmt-page-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: white;
+    color: var(--text-secondary);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .pmt-page-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+  .pmt-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pmt-page-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
   .pmt-empty {
     display: flex;
     flex-direction: column;
@@ -373,6 +409,25 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
     });
   }, [tasks, filteredProjects, projects, users, searchTerm, tasksTableSort, tasksDepartmentFilter, tasksPmFilter, tasksAssigneeFilter]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(tasksForTable.length / TASKS_PER_PAGE));
+
+  // Changes when the dashboard's priority/client-type filters change, but not on live edits to a project
+  const filteredProjectsKey = useMemo(() => filteredProjects.map((p: any) => p.id).join(','), [filteredProjects]);
+
+  // Back to page 1 whenever the search, filters or sort change the result set
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filteredProjectsKey, tasksTableSort, tasksDepartmentFilter, tasksPmFilter, tasksAssigneeFilter]);
+
+  // Keep the page in range if tasks disappear (e.g. after a live update)
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const pageStart = (currentPage - 1) * TASKS_PER_PAGE;
+  const pagedTasks = tasksForTable.slice(pageStart, pageStart + TASKS_PER_PAGE);
+
   return (
     <>
       <style>{STYLES}</style>
@@ -447,7 +502,7 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
               <p style={{ margin: 0 }}>No tasks found.</p>
             </div>
           ) : (
-            tasksForTable.map((task: any, i: number) => {
+            pagedTasks.map((task: any, i: number) => {
               const dept = TASK_TYPE_TO_DEPARTMENT[task.type] || task.type || '—';
               const ds = DEPT_COLORS[dept] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
               const project = projects.find((p: any) => p.id === task.projectId);
@@ -531,6 +586,35 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
             })
           )}
         </div>
+
+        {tasksForTable.length > TASKS_PER_PAGE && (
+          <div className="pmt-pagination">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                className="pmt-page-btn"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                ← Prev
+              </button>
+              <span className="pmt-page-info" aria-live="polite">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="pmt-page-btn"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next →
+              </button>
+            </div>
+            <span className="pmt-page-count">
+              {pageStart + 1}–{Math.min(pageStart + TASKS_PER_PAGE, tasksForTable.length)} of {tasksForTable.length} tasks
+            </span>
+          </div>
+        )}
       </div>
 
       <TaskDetailSideModal
