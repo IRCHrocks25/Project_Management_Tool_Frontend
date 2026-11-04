@@ -281,31 +281,31 @@ const ProjectDetail: React.FC = () => {
   }, [project?.deliverables, activeDeliverableTab]);
 
   // Task/content count per deliverable – highlights tabs that have work
+  // Follows the rules the deliverable board uses for its cards, so the tab number always
+  // matches what's on the board. Unlinked tasks with no owner or file aren't cards: they
+  // live in the Unassigned Tasks tab.
   const deliverableTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     if (!project?.deliverables) return counts;
-    const deliverableTasks = tasks.filter((t: any) => t.type !== 'Onboarding' && t.type !== 'Intake');
     for (const d of project.deliverables) {
       const deliverableType = d.customType || d.type;
       const isCustom = d.type === 'Other' || !!d.customType;
-      let count = 0;
-      for (const t of deliverableTasks) {
-        const linked = t.deliverableId === d.id;
-        if (isCustom) {
-          if (linked) count++;
-        } else {
-          if (linked) {
-            count++;
-          } else if (!t.deliverableId) {
-            if (t.type === 'Copy' && ['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other', 'Home Page'].includes(deliverableType)) count++;
-            else if (t.type === 'Design' && ['Logo', 'Social Banners', 'Home Page', 'Brand Book'].includes(deliverableType)) count++;
-            else if (t.type === 'Dev' && deliverableType === 'Home Page') count++;
-          }
+      const cards = new Set<string>();
+      for (const t of tasks) {
+        const card = t.fileUrl || `task-${t.id}`;
+        if (t.deliverableId === d.id) {
+          cards.add(card);
+        } else if (!isCustom && !t.deliverableId && (t.fileUrl || t.assignedToId)) {
+          const belongs =
+            (t.type === 'Copy' && ['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other', 'Home Page'].includes(deliverableType)) ||
+            (t.type === 'Design' && ['Logo', 'Social Banners', 'Home Page', 'Brand Book'].includes(deliverableType)) ||
+            (t.type === 'Dev' && deliverableType === 'Home Page');
+          if (belongs) cards.add(card);
         }
       }
-      // Deliverable has direct file submission (shows in Kanban even without tasks)
-      if (d.fileUrl) count++;
-      if (count > 0) counts[d.id] = count;
+      // A direct file submission is a card of its own
+      if (d.fileUrl) cards.add(d.fileUrl);
+      if (cards.size > 0) counts[d.id] = cards.size;
     }
     return counts;
   }, [project?.deliverables, tasks]);
