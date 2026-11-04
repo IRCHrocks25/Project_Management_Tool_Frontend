@@ -66,3 +66,16 @@
   .hub-share { padding:var(--s5) var(--s4); }
   .hub-share-card { padding:var(--s4); }
 }
+
+/* search + environment filter above the list */
+.hub-vbar { display:flex; gap:var(--s2); flex-wrap:wrap; align-items:center; }
+.hub-vq { position:relative; flex:0 1 360px; min-width:0; }
+.hub-vq .hub-ic { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+.hub-vq .hub-inp { width:100%; padding-left:34px; }
+.hub-venv { flex:0 1 200px; min-width:0; }
+.hub-venv .hub-inp { width:100%; }
+.hub-vcount { color:var(--muted); font-size:12.5px; margin-left:auto; }
+@media (max-width:640px) {
+  .hub-vq, .hub-venv { flex:1 1 100%; }
+  .hub-vcount { margin-left:0; }
+}
