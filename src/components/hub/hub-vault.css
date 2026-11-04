@@ -1,0 +1,68 @@
+/* Katalyst Hub: Vault, demo accounts and the public share page. Uses only the tokens from hub.css. */
+
+/* vault rows */
+.hub-vrow { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto; gap:var(--s3); align-items:center; padding:var(--s3) var(--s4); border-top:1px solid var(--line); transition:background var(--t), box-shadow var(--t); scroll-margin:96px; }
+.hub-vrow:first-child { border-top:none; border-radius:var(--r-card) var(--r-card) 0 0; }
+.hub-vrow:last-child { border-radius:0 0 var(--r-card) var(--r-card); }
+.hub-vrow:only-child { border-radius:var(--r-card); }
+.hub-vrow.hub-vflash { background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent); }
+.hub-vrow:focus { outline:none; }
+.hub-vrow:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.hub-vname { display:grid; gap:4px; min-width:0; }
+.hub-vname b { font-weight:600; overflow-wrap:anywhere; }
+.hub-vtags { display:flex; gap:6px; flex-wrap:wrap; }
+.hub-vlog { font-size:12px; color:var(--muted); }
+.hub-vfield { display:flex; align-items:center; gap:var(--s1); min-width:0; }
+.hub-vfield .hub-mono { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.hub-vfield .hub-vsecret { user-select:all; }
+.hub-vlabel { font-size:12px; color:var(--muted); display:none; min-width:72px; }
+.hub-vlocked { display:grid; gap:2px; min-width:0; }
+.hub-vlocked small { font-size:12px; color:var(--muted); }
+.hub-vact { display:flex; gap:var(--s1); justify-content:flex-end; align-items:center; }
+
+/* copy fallback + share link */
+.hub-copyrow { display:flex; gap:var(--s2); align-items:center; min-width:0; }
+.hub-copyrow .hub-inp { flex:1; min-width:0; }
+
+/* activity drawer */
+.hub-vevents { list-style:none; margin:0; padding:0; display:grid; }
+.hub-vevents li { display:flex; gap:var(--s3); align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+.hub-vevents li:first-child { border-top:none; }
+.hub-vevents .hub-grow { flex:1; min-width:0; }
+.hub-vevents small { display:block; font-size:12px; color:var(--muted); }
+.hub-vshare { display:flex; gap:var(--s3); align-items:center; padding:10px var(--s3); border:1px solid var(--line); border-radius:var(--r-ctl); }
+.hub-vshare + .hub-vshare { margin-top:var(--s2); }
+.hub-vshare .hub-grow { flex:1; min-width:0; }
+.hub-vshare small { display:block; font-size:12px; color:var(--muted); }
+.hub-vsec-t { font-size:13px; font-weight:600; color:var(--fg-2); margin:0 0 var(--s2); }
+
+/* demo accounts */
+.hub-inp.hub-dsel { height:32px; min-height:32px; padding-top:0; padding-bottom:0; width:auto; min-width:128px; max-width:170px; }
+.hub-inp.hub-dsel.hub-dsel-busy { opacity:.7; }
+.hub-dlogin { display:grid; gap:4px; min-width:240px; }
+
+/* public share page */
+.hub-share { min-height:100vh; display:grid; justify-items:center; align-content:start; gap:var(--s4); padding:var(--s8) var(--s4); background:var(--bg); }
+.hub-share-card { width:100%; max-width:520px; display:grid; gap:var(--s4); padding:var(--s5); }
+.hub-share-h { display:flex; gap:var(--s3); align-items:flex-start; }
+.hub-share-ic { width:40px; height:40px; border-radius:var(--r-ctl); background:var(--accent-soft); color:var(--accent-text); display:grid; place-items:center; flex:none; }
+.hub-share-h h1 { font-size:18px; font-weight:600; letter-spacing:-.005em; margin:0; overflow-wrap:anywhere; }
+.hub-share-h p { color:var(--muted); margin:2px 0 0; }
+.hub-share-meta { display:flex; gap:var(--s2); flex-wrap:wrap; }
+.hub-share-vals { display:grid; gap:var(--s3); }
+.hub-share-vals .hub-fld label { font-size:13px; }
+.hub-share-vals .hub-inp.hub-mono, .hub-copyrow .hub-inp.hub-mono { font-family:var(--mono); font-size:13px; }
+.hub-share-foot { font-size:12.5px; color:var(--muted); text-align:center; }
+
+@media (max-width:640px) {
+  .hub-vrow { grid-template-columns:minmax(0,1fr); gap:var(--s2); position:relative; }
+  .hub-vrow .hub-vname { padding-right:44px; }
+  .hub-vlabel { display:inline-block; }
+  .hub-vact { justify-content:flex-start; }
+  .hub-vact .hub-vmore { position:absolute; top:var(--s2); right:var(--s2); }
+  .hub-inp.hub-dsel { max-width:100%; }
+  .hub-rt td .hub-dlogin { flex:1 1 0; min-width:0; }
+  .hub-dlogin .hub-vfield .hub-mono { white-space:normal; overflow-wrap:anywhere; }
+  .hub-share { padding:var(--s5) var(--s4); }
+  .hub-share-card { padding:var(--s4); }
+}

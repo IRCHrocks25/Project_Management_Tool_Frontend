@@ -135,8 +135,15 @@ const Notifications: React.FC = () => {
                   <div
                     key={notification.id}
                     className={`notification-item ${notification.isRead ? 'read' : 'unread'}`}
-                    onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
-                    style={{ cursor: notification.isRead ? 'default' : 'pointer' }}
+                    onClick={() => {
+                      if (!notification.isRead) handleMarkAsRead(notification.id);
+                      // Notifications that carry a link (Katalyst Hub) open that page.
+                      if (notification.link) {
+                        if (notification.link.startsWith('/')) navigate(notification.link);
+                        else window.open(notification.link, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    style={{ cursor: notification.isRead && !notification.link ? 'default' : 'pointer' }}
                   >
                     <div className="notification-icon-wrapper">
                       {getNotificationIcon(notification.type)}

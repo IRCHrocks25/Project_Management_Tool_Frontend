@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaBell, FaCheckCircle, FaEnvelope, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { notificationService, Notification } from '../services/notification.service';
 import { authService } from '../services/auth.service';
@@ -405,6 +406,7 @@ const STYLES = `
 const NotificationsModal: React.FC<NotificationsModalProps> = ({
   isOpen, onClose, onUpdate, onMarkAllAsRead,
 }) => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const currentUser = authService.getUser();
@@ -460,6 +462,14 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
         setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
         if (onUpdate) onUpdate();
       }
+      // Notifications that carry a link (Katalyst Hub) open that page in the app.
+      if (notification.link) {
+        onClose();
+        if (notification.link.startsWith('/')) navigate(notification.link);
+        else window.open(notification.link, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
       const shouldOpenConversation = notification.type === 'mention' || notification.type === 'task_update';
 
       let path = '/dashboard';

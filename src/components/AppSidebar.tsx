@@ -12,6 +12,7 @@ import {
   FaFlag,
   FaBars,
   FaTimes,
+  FaCubes,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
@@ -48,6 +49,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
       { path: '/timeline', label: 'My Timeline', icon: <FaClock /> },
       { path: '/my-projects', label: 'My Projects', icon: <FaFolderOpen /> },
+      { path: '/products', label: 'Products', icon: <FaCubes /> },
     ],
   },
   {

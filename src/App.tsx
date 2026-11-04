@@ -30,6 +30,10 @@ import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
 import FAQHelpButton from './components/FAQHelpButton';
 import MBTIAssessment from './components/MBTIAssessment';
+import HubRoot from './components/hub/HubRoot';
+import AllProducts from './components/hub/AllProducts';
+import ProductPage from './components/hub/ProductPage';
+import SharePage from './components/hub/SharePage';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -129,6 +133,12 @@ const DepartmentBoardRoute: React.FC = () => {
   return <RoleDashboard role={mappedRole} pmPreviewMode={user?.role === 'Project Manager'} />;
 };
 
+/** The public client share page (/share/:token) shows no app chrome. */
+const FAQHelpButtonExceptSharePage: React.FC = () => {
+  const { pathname } = useLocation();
+  return pathname.startsWith('/share/') ? null : <FAQHelpButton />;
+};
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -184,7 +194,15 @@ const App: React.FC = () => {
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="mbti-assessment" element={<MBTIAssessment />} />
+          {/* Katalyst Hub */}
+          <Route path="products" element={<HubRoot />}>
+            <Route index element={<AllProducts />} />
+            <Route path=":slug" element={<ProductPage />} />
+            <Route path=":slug/:tab" element={<ProductPage />} />
+          </Route>
         </Route>
+        {/* Katalyst Hub: public client page for a shared vault login (no sign-in) */}
+        <Route path="/share/:token" element={<SharePage />} />
         <Route
           path="/users"
           element={
@@ -256,7 +274,7 @@ const App: React.FC = () => {
         {/* Fallback route - redirect to Home Page if route not found */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {authService.isAuthenticated() && <FAQHelpButton />}
+      {authService.isAuthenticated() && <FAQHelpButtonExceptSharePage />}
     </Router>
   );
 };

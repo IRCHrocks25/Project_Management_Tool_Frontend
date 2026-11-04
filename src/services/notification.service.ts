@@ -19,11 +19,15 @@ const getNotificationSocket = (): Socket | null => {
 
 export interface Notification {
   id: string;
-  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision' | 'mention' | 'task_update' | 'TASK_TRANSFER';
+  type: 'task' | 'task_available' | 'email' | 'project_stage' | 'project_created' | 'task_completed' | 'alert' | 'revision' | 'mention' | 'task_update' | 'TASK_TRANSFER' | 'product_mention' | 'product_assigned' | 'product_reply';
   title: string;
   message: string;
   projectId?: string;
   taskId?: string;
+  /** Katalyst Hub product the notification is about. */
+  productId?: string | null;
+  /** Frontend path to open on click, e.g. /products/courseforge/updates?update=<id> (Hub notifications). */
+  link?: string | null;
   userId?: string; // User ID this notification is for (if backend doesn't filter)
   assignedToId?: string; // For task notifications - the user assigned to the task
   task?: {
