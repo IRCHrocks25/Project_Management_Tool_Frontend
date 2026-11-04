@@ -56,15 +56,15 @@ const STYLES = `
 
   .nm-panel {
     --bg: #ffffff;
-    --surface: #f8f9fb;
-    --border: #e8ecf0;
-    --border-strong: #d0d7de;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --unread-bg: #fafbff;
+    --surface: #fafafa;
+    --border: #ececec;
+    --border-strong: #d7d7d7;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
+    --unread-bg: #fcfcfc;
 
     font-family: 'Instrument Sans', sans-serif;
     pointer-events: all;
@@ -180,7 +180,7 @@ const STYLES = `
     min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
-    background: #f8fafc;
+    background: #ffffff;
   }
   .nm-columns::-webkit-scrollbar { height: 6px; }
   .nm-columns::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
@@ -224,9 +224,9 @@ const STYLES = `
     font-weight: 600;
   }
   .nm-column-count.unread {
-    color: #1d4ed8;
-    border-color: #bfdbfe;
-    background: #eff6ff;
+    color: #111111;
+    border-color: #dedede;
+    background: #f7f7f7;
   }
   .nm-column-body {
     overflow-y: auto;
@@ -251,7 +251,7 @@ const STYLES = `
   .nm-item:last-child { border-bottom: none; }
   .nm-item:hover { background: var(--surface); }
   .nm-item.unread { background: var(--unread-bg); }
-  .nm-item.unread:hover { background: #f0f5ff; }
+  .nm-item.unread:hover { background: #f8f8f8; }
   .nm-column .nm-item {
     padding: 10px 11px;
     gap: 9px;
@@ -297,8 +297,8 @@ const STYLES = `
     margin-top: 1px;
   }
   .nm-icon-wrap.task          { background: #f0fdf4; color: #16a34a; }
-  .nm-icon-wrap.task-available{ background: #eff6ff; color: #2563eb; }
-  .nm-icon-wrap.email         { background: #f5f3ff; color: #6d28d9; }
+  .nm-icon-wrap.task-available{ background: #f7f7f7; color: #111111; }
+  .nm-icon-wrap.email         { background: #f9f9f9; color: #111111; }
   .nm-icon-wrap.alert         { background: #fff7ed; color: #d97706; }
   .nm-icon-wrap.default       { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
 
@@ -392,7 +392,7 @@ const STYLES = `
     border-bottom: 1px solid var(--border);
   }
   .nm-skel {
-    background: linear-gradient(90deg, #f1f4f8 25%, #e8ecf0 50%, #f1f4f8 75%);
+    background: linear-gradient(90deg, #f4f4f4 25%, #ececec 50%, #f4f4f4 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
     border-radius: 6px;

@@ -62,7 +62,7 @@ const RapidProspectOnboardingEntry: React.FC = () => {
   }, [envToken, navigate, queryToken]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0b1020', color: 'white', padding: '3rem 1rem' }}>
+    <div style={{ minHeight: '100vh', background: '#161616', color: 'white', padding: '3rem 1rem' }}>
       <div style={{ maxWidth: 760, margin: '0 auto', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 16, padding: '2rem' }}>
         <h1 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Rapid Prospect Onboarding</h1>
         <p style={{ marginTop: 0, color: 'rgba(255,255,255,0.75)' }}>

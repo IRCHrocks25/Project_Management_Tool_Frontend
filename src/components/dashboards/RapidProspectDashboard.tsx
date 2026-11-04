@@ -392,7 +392,7 @@ const RapidProspectDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh', color: '#64748b' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh', color: '#787878' }}>
         <FaSpinner style={{ animation: 'spin 1s linear infinite', marginRight: '0.6rem' }} />
         Loading Rapid Prospect workspace...
       </div>
@@ -401,49 +401,49 @@ const RapidProspectDashboard: React.FC = () => {
 
   const panelStyle: React.CSSProperties = {
     background: 'white',
-    border: '1px solid #e2e8f0',
+    border: '1px solid #e9e9e9',
     borderRadius: 16,
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)',
+    boxShadow: '0 8px 24px rgba(28, 28, 28, 0.06)',
   };
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    border: '1px solid #d1d5db',
+    border: '1px solid #d6d6d6',
     borderRadius: 10,
     padding: '0.6rem 0.7rem',
     fontSize: '0.88rem',
-    color: '#0f172a',
+    color: '#1c1c1c',
     background: '#fff',
   };
 
   const subtleButton: React.CSSProperties = {
-    border: '1px solid #cbd5e1',
+    border: '1px solid #d6d6d6',
     background: 'white',
     borderRadius: 10,
     padding: '0.5rem 0.8rem',
     cursor: 'pointer',
     fontWeight: 600,
-    color: '#0f172a',
+    color: '#1c1c1c',
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#ffffff' }}>
       <aside
         style={{
           width: 290,
-          background: 'linear-gradient(180deg, #0f172a 0%, #111827 100%)',
+          background: 'linear-gradient(180deg, #1c1c1c 0%, #1c1c1c 100%)',
           color: 'white',
           padding: '1.1rem 0.85rem',
-          borderRight: '1px solid rgba(148,163,184,0.2)',
+          borderRight: '1px solid rgba(166, 166, 166,0.2)',
           position: 'sticky',
           top: 0,
           height: '100vh',
           overflowY: 'auto',
         }}
       >
-        <div style={{ padding: '0.6rem 0.6rem 0.9rem 0.6rem', borderBottom: '1px solid rgba(148,163,184,0.22)', marginBottom: '0.8rem' }}>
+        <div style={{ padding: '0.6rem 0.6rem 0.9rem 0.6rem', borderBottom: '1px solid rgba(166, 166, 166,0.22)', marginBottom: '0.8rem' }}>
           <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>Rapid Prospect</div>
-          <div style={{ marginTop: '0.3rem', color: 'rgba(226,232,240,0.85)', fontSize: '0.82rem' }}>
+          <div style={{ marginTop: '0.3rem', color: 'rgba(233, 233, 233,0.85)', fontSize: '0.82rem' }}>
             Onboarding control center
           </div>
           <button
@@ -451,10 +451,10 @@ const RapidProspectDashboard: React.FC = () => {
             style={{
               marginTop: '0.7rem',
               width: '100%',
-              border: '1px solid rgba(148,163,184,0.45)',
-              background: 'rgba(148,163,184,0.12)',
+              border: '1px solid rgba(166, 166, 166,0.45)',
+              background: 'rgba(166, 166, 166,0.12)',
               borderRadius: 10,
-              color: '#e2e8f0',
+              color: '#e9e9e9',
               fontWeight: 600,
               padding: '0.5rem 0.65rem',
               cursor: 'pointer',
@@ -466,13 +466,13 @@ const RapidProspectDashboard: React.FC = () => {
         </div>
 
         <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.85rem' }}>
-          <MetricCard title="Rapid Prospects" value={metrics.total} icon={<FaLayerGroup />} tone="#38bdf8" dark />
-          <MetricCard title="In Progress" value={metrics.inProgress} icon={<FaSpinner />} tone="#60a5fa" dark />
+          <MetricCard title="Rapid Prospects" value={metrics.total} icon={<FaLayerGroup />} tone="#111111" dark />
+          <MetricCard title="In Progress" value={metrics.inProgress} icon={<FaSpinner />} tone="#111111" dark />
           <MetricCard title="Blocked" value={metrics.blocked} icon={<FaFlagCheckered />} tone="#f87171" dark />
           <MetricCard title="Ready for Go-Live" value={metrics.readyForGoLive} icon={<FaCheckCircle />} tone="#34d399" dark />
         </div>
 
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, margin: '0.3rem 0 0.5rem 0.2rem', letterSpacing: '0.04em' }}>
+        <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 700, margin: '0.3rem 0 0.5rem 0.2rem', letterSpacing: '0.04em' }}>
           PHASE COLUMNS
         </div>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -482,9 +482,9 @@ const RapidProspectDashboard: React.FC = () => {
               onClick={() => phaseColumnRefs.current[phase]?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })}
               style={{
                 textAlign: 'left',
-                border: '1px solid rgba(148,163,184,0.32)',
-                background: 'rgba(148,163,184,0.08)',
-                color: '#e2e8f0',
+                border: '1px solid rgba(166, 166, 166,0.32)',
+                background: 'rgba(166, 166, 166,0.08)',
+                color: '#e9e9e9',
                 borderRadius: 10,
                 padding: '0.45rem 0.55rem',
                 cursor: 'pointer',
@@ -497,14 +497,14 @@ const RapidProspectDashboard: React.FC = () => {
               title={phase}
             >
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phase}</span>
-              <span style={{ background: 'rgba(56,189,248,0.2)', color: '#7dd3fc', borderRadius: 999, padding: '0.05rem 0.4rem', fontWeight: 700 }}>
+              <span style={{ background: 'rgba(17, 17, 17,0.2)', color: '#111111', borderRadius: 999, padding: '0.05rem 0.4rem', fontWeight: 700 }}>
                 {phaseCounts[phase] || 0}
               </span>
             </button>
           ))}
         </div>
 
-        <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(148,163,184,0.22)' }}>
+        <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(166, 166, 166,0.22)' }}>
           <button
             onClick={handleLogout}
             style={{
@@ -530,7 +530,7 @@ const RapidProspectDashboard: React.FC = () => {
             ...panelStyle,
             marginBottom: '0.9rem',
             padding: '1.05rem 1.2rem',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f766e 100%)',
+            background: 'linear-gradient(135deg, #1c1c1c 0%, #2c2c2c 60%, #0f766e 100%)',
             borderColor: 'transparent',
             color: 'white',
           }}
@@ -542,14 +542,14 @@ const RapidProspectDashboard: React.FC = () => {
         </div>
 
         <div style={{ ...panelStyle, marginBottom: '0.9rem', padding: '0.9rem 0.95rem 1rem 0.95rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.55rem', fontWeight: 800, color: '#0f172a' }}>
-            <FaPlus style={{ color: '#0369a1' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.55rem', fontWeight: 800, color: '#1c1c1c' }}>
+            <FaPlus style={{ color: '#111111' }} />
             Create New Rapid Prospect Client
           </div>
           <div style={{ marginBottom: '0.42rem', fontSize: '0.83rem', color: '#0f766e' }}>
             Client Type: <strong>{RAPID_PROSPECT_CLIENT_TYPE}</strong> (auto)
           </div>
-          <div style={{ marginBottom: '0.65rem', fontSize: '0.82rem', color: '#64748b' }}>
+          <div style={{ marginBottom: '0.65rem', fontSize: '0.82rem', color: '#787878' }}>
             Package: <strong>{RAPID_PROSPECT_DEFAULT_PACKAGE}</strong> (auto) | Priority: <strong>{RAPID_PROSPECT_DEFAULT_PRIORITY}</strong> (auto)
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.55rem', marginBottom: '0.55rem' }}>
@@ -584,7 +584,7 @@ const RapidProspectDashboard: React.FC = () => {
                 <option key={pm.id} value={pm.id}>{pm.name}</option>
               ))}
             </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#475569', fontSize: '0.83rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#585858', fontSize: '0.83rem' }}>
               <input
                 type="checkbox"
                 checked={newClientForm.autoGenerateForm}
@@ -599,14 +599,14 @@ const RapidProspectDashboard: React.FC = () => {
               disabled={creatingClient}
               style={{
                 border: 'none',
-                background: creatingClient ? '#94a3b8' : '#0284c7',
+                background: creatingClient ? '#a6a6a6' : '#111111',
                 color: 'white',
                 borderRadius: 10,
                 padding: '0.53rem 0.82rem',
                 cursor: creatingClient ? 'not-allowed' : 'pointer',
                 fontWeight: 700,
                 fontSize: '0.83rem',
-                boxShadow: creatingClient ? 'none' : '0 6px 16px rgba(2, 132, 199, 0.3)',
+                boxShadow: creatingClient ? 'none' : '0 6px 16px rgba(17, 17, 17, 0.3)',
               }}
             >
               {creatingClient ? 'Creating...' : 'Create Rapid Prospect Client'}
@@ -614,13 +614,13 @@ const RapidProspectDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ marginBottom: '0.85rem', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e3a8a', borderRadius: 12, padding: '0.72rem 0.88rem', fontSize: '0.84rem' }}>
+        <div style={{ marginBottom: '0.85rem', background: '#ffffff', border: '1px solid #dedede', color: '#111111', borderRadius: 12, padding: '0.72rem 0.88rem', fontSize: '0.84rem' }}>
           Drag your attention through phases left-to-right. Each card shows who owns it, status, and actions for form + phase updates.
         </div>
 
         {projects.length === 0 ? (
-          <div style={{ ...panelStyle, padding: '1.2rem', color: '#475569' }}>
-            <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#0f172a' }}>No Rapid Prospect clients yet</div>
+          <div style={{ ...panelStyle, padding: '1.2rem', color: '#585858' }}>
+            <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#1c1c1c' }}>No Rapid Prospect clients yet</div>
             <div style={{ marginBottom: '0.4rem', fontSize: '0.87rem' }}>
               Create a client from the panel above, then they will appear in phase columns.
             </div>
@@ -651,24 +651,24 @@ const RapidProspectDashboard: React.FC = () => {
                   style={{
                     minHeight: 390,
                     maxHeight: 'calc(100vh - 320px)',
-                    background: '#e2e8f0',
-                    border: '1px solid #cbd5e1',
+                    background: '#e9e9e9',
+                    border: '1px solid #d6d6d6',
                     borderRadius: 14,
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{ padding: '0.7rem 0.75rem', background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
-                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.84rem' }}>{phase}</div>
-                    <div style={{ marginTop: '0.2rem', color: '#64748b', fontSize: '0.77rem' }}>
+                  <div style={{ padding: '0.7rem 0.75rem', background: '#ffffff', borderBottom: '1px solid #d6d6d6' }}>
+                    <div style={{ fontWeight: 800, color: '#1c1c1c', fontSize: '0.84rem' }}>{phase}</div>
+                    <div style={{ marginTop: '0.2rem', color: '#787878', fontSize: '0.77rem' }}>
                       {phaseProjects.length} client{phaseProjects.length === 1 ? '' : 's'}
                     </div>
                   </div>
 
                   <div style={{ padding: '0.65rem', display: 'grid', gap: '0.6rem', overflowY: 'auto' }}>
                     {phaseProjects.length === 0 ? (
-                      <div style={{ border: '1px dashed #94a3b8', borderRadius: 10, background: '#f8fafc', color: '#64748b', fontSize: '0.79rem', padding: '0.7rem' }}>
+                      <div style={{ border: '1px dashed #a6a6a6', borderRadius: 10, background: '#ffffff', color: '#787878', fontSize: '0.79rem', padding: '0.7rem' }}>
                         No clients in this phase.
                       </div>
                     ) : (
@@ -684,18 +684,18 @@ const RapidProspectDashboard: React.FC = () => {
                               }
                               openProjectProfile(project);
                             }}
-                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: 12, padding: '0.7rem', cursor: 'pointer' }}
+                            style={{ background: 'white', border: '1px solid #d6d6d6', borderRadius: 12, padding: '0.7rem', cursor: 'pointer' }}
                             title="Open client profile"
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.88rem' }}>{project.clientName}</div>
-                                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.15rem' }}>
+                                <div style={{ fontWeight: 800, color: '#1c1c1c', fontSize: '0.88rem' }}>{project.clientName}</div>
+                                <div style={{ color: '#787878', fontSize: '0.75rem', marginTop: '0.15rem' }}>
                                   <FaUserTie style={{ marginRight: 4 }} />
                                   {project.pm?.name || 'Unassigned'} | {project.stage}
                                 </div>
                               </div>
-                              <span style={{ fontSize: '0.7rem', background: '#eef2ff', color: '#3730a3', padding: '0.2rem 0.45rem', borderRadius: 999, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.7rem', background: '#ffffff', color: '#111111', padding: '0.2rem 0.45rem', borderRadius: 999, fontWeight: 700, whiteSpace: 'nowrap' }}>
                                 {project.onboardingPhaseStatus || 'In Progress'}
                               </span>
                             </div>
@@ -706,7 +706,7 @@ const RapidProspectDashboard: React.FC = () => {
                                 disabled={generatingFormFor === project.id}
                                 style={{
                                   border: 'none',
-                                  background: generatingFormFor === project.id ? '#94a3b8' : '#0284c7',
+                                  background: generatingFormFor === project.id ? '#a6a6a6' : '#111111',
                                   color: 'white',
                                   borderRadius: 9,
                                   padding: '0.4rem 0.55rem',
@@ -722,7 +722,7 @@ const RapidProspectDashboard: React.FC = () => {
                                   href={onboardingFormLinks[project.id]}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  style={{ color: '#0369a1', fontSize: '0.74rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
+                                  style={{ color: '#111111', fontSize: '0.74rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700 }}
                                 >
                                   <FaExternalLinkAlt style={{ fontSize: '0.68rem' }} />
                                   Open Form
@@ -813,7 +813,7 @@ const RapidProspectDashboard: React.FC = () => {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(15, 23, 42, 0.5)',
+              background: 'rgba(28, 28, 28, 0.5)',
               zIndex: 1090,
             }}
           />
@@ -826,29 +826,29 @@ const RapidProspectDashboard: React.FC = () => {
               width: 540,
               maxWidth: '100%',
               background: '#ffffff',
-              borderLeft: '1px solid #dbe4ef',
-              boxShadow: '-8px 0 24px rgba(15, 23, 42, 0.2)',
+              borderLeft: '1px solid #e5e5e5',
+              boxShadow: '-8px 0 24px rgba(28, 28, 28, 0.2)',
               zIndex: 1100,
               display: 'flex',
               flexDirection: 'column',
             }}
           >
-            <div style={{ padding: '1rem 1rem 0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ padding: '1rem 1rem 0.85rem 1rem', borderBottom: '1px solid #e9e9e9' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem' }}>
                 <div>
-                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>{selectedProject.clientName}</div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.2rem' }}>
+                  <div style={{ fontWeight: 800, color: '#1c1c1c', fontSize: '1.05rem' }}>{selectedProject.clientName}</div>
+                  <div style={{ fontSize: '0.82rem', color: '#787878', marginTop: '0.2rem' }}>
                     <FaUserTie style={{ marginRight: 5 }} />
                     PM: {selectedProject.pm?.name || 'Unassigned'} | Phase: {selectedProject.onboardingPhase || 'Welcome + Call Booking'}
                   </div>
                 </div>
-                <button onClick={closeProjectProfile} style={{ border: '1px solid #cbd5e1', background: 'white', borderRadius: 8, cursor: 'pointer', width: 32, height: 32 }}>
+                <button onClick={closeProjectProfile} style={{ border: '1px solid #d6d6d6', background: 'white', borderRadius: 8, cursor: 'pointer', width: 32, height: 32 }}>
                   <FaTimes />
                 </button>
               </div>
             </div>
 
-            <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0.6rem 1rem', display: 'flex', gap: '0.45rem', background: '#f8fafc' }}>
+            <div style={{ borderBottom: '1px solid #e9e9e9', padding: '0.6rem 1rem', display: 'flex', gap: '0.45rem', background: '#ffffff' }}>
               {[
                 { id: 'profile', label: 'Profile' },
                 { id: 'credentials', label: 'Credentials' },
@@ -859,9 +859,9 @@ const RapidProspectDashboard: React.FC = () => {
                   key={tab.id}
                   onClick={() => setProfileTab(tab.id as 'profile' | 'credentials' | 'responses' | 'activity')}
                   style={{
-                    border: profileTab === tab.id ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                    background: profileTab === tab.id ? '#e0f2fe' : 'white',
-                    color: profileTab === tab.id ? '#0c4a6e' : '#334155',
+                    border: profileTab === tab.id ? '1px solid #111111' : '1px solid #d6d6d6',
+                    background: profileTab === tab.id ? '#efefef' : 'white',
+                    color: profileTab === tab.id ? '#111111' : '#444444',
                     borderRadius: 9,
                     padding: '0.4rem 0.55rem',
                     cursor: 'pointer',
@@ -876,8 +876,8 @@ const RapidProspectDashboard: React.FC = () => {
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '0.95rem 1rem 1.1rem 1rem' }}>
               {profileTab === 'profile' && (
-                <div style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
-                  <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '0.65rem' }}>Client Profile</div>
+                <div style={{ border: '1px solid #e5e5e5', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
+                  <div style={{ fontWeight: 800, color: '#1c1c1c', marginBottom: '0.65rem' }}>Client Profile</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
                     <ProfileField label="Client" value={selectedProject.clientName || '-'} />
                     <ProfileField label="Client Type" value={selectedProject.clientType || RAPID_PROSPECT_CLIENT_TYPE} />
@@ -892,19 +892,19 @@ const RapidProspectDashboard: React.FC = () => {
                     <ProfileField label="Automation Specialist" value={getUserNameById(selectedProject.automationSpecialistId)} />
                     <ProfileField label="QA Specialist" value={getUserNameById(selectedProject.qaSpecialistId)} />
                   </div>
-                  <div style={{ marginTop: '0.7rem', fontSize: '0.78rem', color: '#64748b' }}>
+                  <div style={{ marginTop: '0.7rem', fontSize: '0.78rem', color: '#787878' }}>
                     Created: {selectedProject.createdAt ? new Date(selectedProject.createdAt).toLocaleString() : '-'}
                   </div>
                 </div>
               )}
 
               {profileTab === 'credentials' && (
-                <div style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '0.8rem', background: '#f8fafc' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
-                    <FaLock style={{ color: '#0369a1' }} />
+                <div style={{ border: '1px solid #e5e5e5', borderRadius: 12, padding: '0.8rem', background: '#ffffff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, color: '#1c1c1c', marginBottom: '0.5rem' }}>
+                    <FaLock style={{ color: '#111111' }} />
                     Credentials / Access Notes
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#787878', marginBottom: '0.5rem' }}>
                     Store platform logins, handoff notes, and access details for the credential collection phase.
                   </div>
                   <textarea
@@ -912,7 +912,7 @@ const RapidProspectDashboard: React.FC = () => {
                     onChange={(e) => setCredentialsDraft(e.target.value)}
                     placeholder="Example: CRM login, social account owner, domain host, 2FA steps..."
                     rows={8}
-                    style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '0.6rem 0.65rem', fontSize: '0.83rem', resize: 'vertical' }}
+                    style={{ width: '100%', border: '1px solid #d6d6d6', borderRadius: 10, padding: '0.6rem 0.65rem', fontSize: '0.83rem', resize: 'vertical' }}
                   />
                   <div style={{ marginTop: '0.55rem' }}>
                     <button
@@ -920,7 +920,7 @@ const RapidProspectDashboard: React.FC = () => {
                       disabled={savingCredentials}
                       style={{
                         border: 'none',
-                        background: savingCredentials ? '#94a3b8' : '#0284c7',
+                        background: savingCredentials ? '#a6a6a6' : '#111111',
                         color: 'white',
                         borderRadius: 9,
                         padding: '0.5rem 0.75rem',
@@ -934,14 +934,14 @@ const RapidProspectDashboard: React.FC = () => {
                   </div>
                   {savedCredentialNotes.length > 0 && (
                     <div style={{ marginTop: '0.7rem' }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#787878', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
                         Saved Credentials Notes
                       </div>
                       <div style={{ display: 'grid', gap: '0.4rem' }}>
                         {savedCredentialNotes.map((item, idx) => (
-                          <div key={`${item.savedAt}-${idx}`} style={{ border: '1px solid #dbe4ef', borderRadius: 9, padding: '0.45rem 0.55rem', background: 'white' }}>
-                            <div style={{ color: '#0f172a', fontSize: '0.79rem', whiteSpace: 'pre-wrap' }}>{item.text}</div>
-                            <div style={{ color: '#64748b', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                          <div key={`${item.savedAt}-${idx}`} style={{ border: '1px solid #e5e5e5', borderRadius: 9, padding: '0.45rem 0.55rem', background: 'white' }}>
+                            <div style={{ color: '#1c1c1c', fontSize: '0.79rem', whiteSpace: 'pre-wrap' }}>{item.text}</div>
+                            <div style={{ color: '#787878', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                               {new Date(item.savedAt).toLocaleString()}
                             </div>
                           </div>
@@ -953,39 +953,39 @@ const RapidProspectDashboard: React.FC = () => {
               )}
 
               {profileTab === 'responses' && (
-                <div style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
+                <div style={{ border: '1px solid #e5e5e5', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                    <div style={{ fontWeight: 800, color: '#0f172a' }}>Onboarding Form Responses</div>
-                    <span style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                    <div style={{ fontWeight: 800, color: '#1c1c1c' }}>Onboarding Form Responses</div>
+                    <span style={{ fontSize: '0.76rem', color: '#787878' }}>
                       {totalProfileResponses} total response(s)
                     </span>
                   </div>
 
                   {profileLoading ? (
-                    <div style={{ color: '#64748b', fontSize: '0.83rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ color: '#787878', fontSize: '0.83rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
                       Loading profile...
                     </div>
                   ) : profileError ? (
                     <div style={{ color: '#b91c1c', fontSize: '0.82rem' }}>{profileError}</div>
                   ) : profileForms.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '0.82rem' }}>No onboarding forms found for this client yet.</div>
+                    <div style={{ color: '#787878', fontSize: '0.82rem' }}>No onboarding forms found for this client yet.</div>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.7rem' }}>
                       {profileForms.map((bundle) => {
                         const formUrl = `${window.location.origin}/rapid-prospect-onboarding?token=${encodeURIComponent(bundle.form.publicToken)}`;
                         return (
-                          <div key={bundle.form.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.65rem 0.7rem', background: '#f8fafc' }}>
+                          <div key={bundle.form.id} style={{ border: '1px solid #e9e9e9', borderRadius: 10, padding: '0.65rem 0.7rem', background: '#ffffff' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.82rem' }}>
+                                <div style={{ color: '#1c1c1c', fontWeight: 700, fontSize: '0.82rem' }}>
                                   Form from update {new Date(bundle.update.createdAt).toLocaleDateString()}
                                 </div>
-                                <div style={{ color: '#64748b', fontSize: '0.74rem' }}>
+                                <div style={{ color: '#787878', fontSize: '0.74rem' }}>
                                   {bundle.submissions.length} response(s)
                                 </div>
                               </div>
-                              <a href={formUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', fontSize: '0.76rem', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                              <a href={formUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#111111', fontSize: '0.76rem', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                                 <FaExternalLinkAlt style={{ marginRight: 4, fontSize: '0.68rem' }} />
                                 Open Form
                               </a>
@@ -994,20 +994,20 @@ const RapidProspectDashboard: React.FC = () => {
                             {bundle.submissions.length > 0 && (
                               <div style={{ marginTop: '0.55rem', display: 'grid', gap: '0.5rem' }}>
                                 {bundle.submissions.map((submission) => (
-                                  <div key={submission.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.5rem 0.55rem' }}>
-                                    <div style={{ fontSize: '0.73rem', color: '#64748b', marginBottom: '0.35rem' }}>
+                                  <div key={submission.id} style={{ background: 'white', border: '1px solid #e9e9e9', borderRadius: 8, padding: '0.5rem 0.55rem' }}>
+                                    <div style={{ fontSize: '0.73rem', color: '#787878', marginBottom: '0.35rem' }}>
                                       {submission.clientName || 'Unknown'} {submission.clientEmail ? `(${submission.clientEmail})` : ''} - {new Date(submission.submittedAt).toLocaleString()}
                                     </div>
                                     <div style={{ display: 'grid', gap: '0.35rem' }}>
                                       {submission.responses.map((response: SubmissionResponse, idx: number) => (
-                                        <div key={`${submission.id}-${response.blockId}-${idx}`} style={{ fontSize: '0.76rem', color: '#0f172a' }}>
+                                        <div key={`${submission.id}-${response.blockId}-${idx}`} style={{ fontSize: '0.76rem', color: '#1c1c1c' }}>
                                           <strong>{getBlockTextById(bundle.form.blocks, response.blockId)}:</strong>{' '}
                                           {response.text?.trim() ? (
                                             <span>{response.text}</span>
                                           ) : response.imageUrls?.length ? (
                                             <span>{response.imageUrls.length} image(s) uploaded</span>
                                           ) : (
-                                            <span style={{ color: '#94a3b8' }}>No answer</span>
+                                            <span style={{ color: '#a6a6a6' }}>No answer</span>
                                           )}
                                         </div>
                                       ))}
@@ -1025,17 +1025,17 @@ const RapidProspectDashboard: React.FC = () => {
               )}
 
               {profileTab === 'activity' && (
-                <div style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
-                  <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '0.6rem' }}>Activity Log</div>
+                <div style={{ border: '1px solid #e5e5e5', borderRadius: 12, padding: '0.8rem', background: 'white' }}>
+                  <div style={{ fontWeight: 800, color: '#1c1c1c', marginBottom: '0.6rem' }}>Activity Log</div>
                   {profileActivity.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '0.82rem' }}>No activity entries yet.</div>
+                    <div style={{ color: '#787878', fontSize: '0.82rem' }}>No activity entries yet.</div>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       {profileActivity.map((entry, idx) => (
-                        <div key={`${entry.label}-${idx}`} style={{ border: '1px solid #e2e8f0', borderRadius: 9, padding: '0.5rem 0.55rem', background: '#f8fafc' }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.79rem' }}>{entry.label}</div>
-                          {entry.value && <div style={{ color: '#334155', fontSize: '0.76rem', marginTop: '0.2rem' }}>{entry.value}</div>}
-                          <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.2rem' }}>
+                        <div key={`${entry.label}-${idx}`} style={{ border: '1px solid #e9e9e9', borderRadius: 9, padding: '0.5rem 0.55rem', background: '#ffffff' }}>
+                          <div style={{ fontWeight: 700, color: '#1c1c1c', fontSize: '0.79rem' }}>{entry.label}</div>
+                          {entry.value && <div style={{ color: '#444444', fontSize: '0.76rem', marginTop: '0.2rem' }}>{entry.value}</div>}
+                          <div style={{ color: '#787878', fontSize: '0.72rem', marginTop: '0.2rem' }}>
                             {entry.at ? new Date(entry.at).toLocaleString() : 'No timestamp'}
                           </div>
                         </div>
@@ -1060,19 +1060,19 @@ const RapidProspectDashboard: React.FC = () => {
 };
 
 const MetricCard: React.FC<{ title: string; value: number; icon: React.ReactNode; tone: string; dark?: boolean }> = ({ title, value, icon, tone, dark = false }) => (
-  <div style={{ background: dark ? 'rgba(148,163,184,0.08)' : 'white', border: dark ? '1px solid rgba(148,163,184,0.26)' : '1px solid #e2e8f0', borderRadius: 12, padding: '0.65rem 0.75rem', boxShadow: dark ? 'none' : '0 6px 16px rgba(15, 23, 42, 0.05)' }}>
+  <div style={{ background: dark ? 'rgba(166, 166, 166,0.08)' : 'white', border: dark ? '1px solid rgba(166, 166, 166,0.26)' : '1px solid #e9e9e9', borderRadius: 12, padding: '0.65rem 0.75rem', boxShadow: dark ? 'none' : '0 6px 16px rgba(28, 28, 28, 0.05)' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <div style={{ color: dark ? '#cbd5e1' : '#64748b', fontSize: '0.76rem', fontWeight: 600 }}>{title}</div>
+      <div style={{ color: dark ? '#d6d6d6' : '#787878', fontSize: '0.76rem', fontWeight: 600 }}>{title}</div>
       <div style={{ color: tone, fontSize: '0.92rem' }}>{icon}</div>
     </div>
-    <div style={{ color: dark ? 'white' : '#0f172a', fontSize: '1.25rem', fontWeight: 800, marginTop: '0.16rem' }}>{value}</div>
+    <div style={{ color: dark ? 'white' : '#1c1c1c', fontSize: '1.25rem', fontWeight: 800, marginTop: '0.16rem' }}>{value}</div>
   </div>
 );
 
 const ProfileField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={{ border: '1px solid #e2e8f0', borderRadius: 9, padding: '0.45rem 0.5rem', background: '#f8fafc' }}>
-    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-    <div style={{ fontSize: '0.8rem', color: '#0f172a', marginTop: '0.15rem', fontWeight: 600 }}>{value || '-'}</div>
+  <div style={{ border: '1px solid #e9e9e9', borderRadius: 9, padding: '0.45rem 0.5rem', background: '#ffffff' }}>
+    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#787878', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+    <div style={{ fontSize: '0.8rem', color: '#1c1c1c', marginTop: '0.15rem', fontWeight: 600 }}>{value || '-'}</div>
   </div>
 );
 

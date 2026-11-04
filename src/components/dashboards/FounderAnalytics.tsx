@@ -267,7 +267,7 @@ const FounderAnalytics: React.FC<FounderAnalyticsProps> = ({ projects, tasks, us
                   <tr key={pm.id}>
                     <td>
                       <span className="fa-person">
-                        <UserAvatar name={pm.name} avatarUrl={pm.avatarUrl} size={25} color="#6555e9" />
+                        <UserAvatar name={pm.name} avatarUrl={pm.avatarUrl} size={25} color="#111111" />
                         {pm.name}
                       </span>
                     </td>

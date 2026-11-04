@@ -45,7 +45,7 @@ const TodaysPrioritiesCard: React.FC<TodaysPrioritiesCardProps> = ({ taskType, r
     <section className="rd-panel rd-rail-card">
       <div className="rd-rail-title">
         <h3>Today's priorities</h3>
-        <FaFlag style={{ color: '#6555e9' }} aria-hidden="true" />
+        <FaFlag style={{ color: '#111111' }} aria-hidden="true" />
       </div>
       {state === 'loading' && <p className="rd-rail-note">Loading priorities…</p>}
       {state === 'error' && (

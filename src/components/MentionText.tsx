@@ -58,7 +58,7 @@ const MentionText: React.FC<MentionTextProps> = ({ text, className, style }) => 
           to={`/timeline/${token.userId}`}
           className={className}
           style={{
-            color: '#6366f1',
+            color: '#111111',
             fontWeight: 600,
             textDecoration: 'none',
             ...style,
@@ -84,7 +84,7 @@ const MentionText: React.FC<MentionTextProps> = ({ text, className, style }) => 
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           style={{
-            color: '#2563eb',
+            color: '#111111',
             textDecoration: 'none',
           }}
           onMouseEnter={(e) => {

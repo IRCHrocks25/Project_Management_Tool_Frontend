@@ -99,15 +99,15 @@ const getStageBadgeClass = (stage: string) => {
 
 const getDeptColor = (dept: string): string => {
   const map: Record<string, string> = {
-    Design: '#8b5cf6',
+    Design: '#111111',
     'AI Developer': '#10b981',
-    'Copy Writing': '#3b82f6',
+    'Copy Writing': '#111111',
     Development: '#f59e0b',
     'Social Media': '#ec4899',
     'SEO/GEO': '#06b6d4',
-    CRM: '#6366f1',
+    CRM: '#111111',
   };
-  return map[dept] || '#3b82f6';
+  return map[dept] || '#111111';
 };
 
 const formatTime = (date: string | Date) => {
@@ -389,7 +389,7 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
         <div className="overview-card premium-card overview-card--notes">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
             <h3 className="card-title" style={{ margin: 0 }}>Project Notes</h3>
-            <span style={{ fontSize: '0.71rem', color: '#64748b', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.71rem', color: '#787878', fontWeight: 600 }}>
               {projectNotes.length} {projectNotes.length === 1 ? 'note' : 'notes'}
             </span>
           </div>
@@ -416,7 +416,7 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
           <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: '0.1rem', minHeight: 0 }}>
             {projectNotes.length === 0 ? (
-              <div style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.875rem', textAlign: 'center', color: '#64748b', fontSize: '0.8125rem' }}>
+              <div style={{ border: '1px dashed #d6d6d6', borderRadius: '8px', padding: '0.875rem', textAlign: 'center', color: '#787878', fontSize: '0.8125rem' }}>
                 No notes yet. Add the first note above.
               </div>
             ) : (
@@ -491,26 +491,26 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                     key={activity.key}
                     className="activity-notification-item"
                     onClick={() => { setActiveTab('deliverables'); if (activity.deliverableId) setActiveDeliverableTab(activity.deliverableId); }}
-                    style={{ padding: '0.75rem 0.875rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}
+                    style={{ padding: '0.75rem 0.875rem', background: '#ffffff', border: '1px solid #e8e8e8', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}
                   >
                     <div className={getActivityIconClass(actionText)}>
                       {getActivityIcon(actionText)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.18rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, color: '#111827', fontSize: '0.84rem' }}>{userName}</span>
+                        <span style={{ fontWeight: 700, color: '#1c1c1c', fontSize: '0.84rem' }}>{userName}</span>
                         <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>{actionText}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 600, color: '#374151', fontSize: '0.8rem' }}>{activity.deliverableType}</span>
+                        <span style={{ fontWeight: 600, color: '#444444', fontSize: '0.8rem' }}>{activity.deliverableType}</span>
                         {fileName && (
                           <>
-                            <span style={{ color: '#cbd5e1' }}>·</span>
-                            <span style={{ color: '#94a3b8', fontSize: '0.73rem', fontFamily: 'monospace' }}>{fileName}</span>
+                            <span style={{ color: '#d6d6d6' }}>·</span>
+                            <span style={{ color: '#a6a6a6', fontSize: '0.73rem', fontFamily: 'monospace' }}>{fileName}</span>
                           </>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>{formatTime(activity.createdAt)}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#a6a6a6', marginTop: '0.2rem' }}>{formatTime(activity.createdAt)}</div>
                     </div>
                   </div>
                 );
@@ -551,9 +551,9 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                         <span style={{ padding: '0.22rem 0.55rem', borderRadius: '5px', fontSize: '0.72rem', fontWeight: 700, background: `${deptColor}18`, color: deptColor, border: `1px solid ${deptColor}30` }}>
                           {revision.department}
                         </span>
-                        <span style={{ fontWeight: 700, color: '#111827', fontSize: '0.85rem' }}>{revision.deliverableType}</span>
+                        <span style={{ fontWeight: 700, color: '#1c1c1c', fontSize: '0.85rem' }}>{revision.deliverableType}</span>
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.72rem', color: '#a6a6a6', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {new Date(revision.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -562,8 +562,8 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                     )}
                     {attachmentUrl && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.4rem' }}>
-                        <FaLink style={{ color: '#667eea', fontSize: '0.7rem' }} />
-                        <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', fontSize: '0.75rem', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                        <FaLink style={{ color: '#111111', fontSize: '0.7rem' }} />
+                        <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#111111', fontSize: '0.75rem', textDecoration: 'underline', wordBreak: 'break-all' }}>
                           View Attachment
                         </a>
                       </div>
@@ -597,19 +597,19 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {getAllFilesAndLinks.slice(0, 3).map((link: any) => (
                 <div key={link.id} className="file-link-preview-item" onClick={(e) => e.stopPropagation()}>
-                  <div className="file-link-icon" style={{ background: link.sourceType === 'Task' ? '#dbeafe' : '#fef3c7' }}>
+                  <div className="file-link-icon" style={{ background: link.sourceType === 'Task' ? '#ececec' : '#fef3c7' }}>
                     {link.sourceType === 'Task'
-                      ? <FaClipboard style={{ color: '#3b82f6' }} />
+                      ? <FaClipboard style={{ color: '#111111' }} />
                       : <FaEnvelope style={{ color: '#f59e0b' }} />
                     }
                   </div>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#2c2c2c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {formatLinkDisplay(link.url)}
                   </span>
                 </div>
               ))}
               {getAllFilesAndLinks.length > 3 && (
-                <div style={{ paddingTop: '0.25rem', textAlign: 'center', fontSize: '0.8rem', color: '#667eea', fontWeight: 600 }}>
+                <div style={{ paddingTop: '0.25rem', textAlign: 'center', fontSize: '0.8rem', color: '#111111', fontWeight: 600 }}>
                   View all {getAllFilesAndLinks.length} files & links →
                 </div>
               )}
@@ -627,7 +627,7 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               </div>
               <span className="count-pill count-pill--green">{completedTasks.length}</span>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+            <p style={{ fontSize: '0.8rem', color: '#787878', margin: '0 0 1rem 0' }}>
               Completed tasks with files stored for client access
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
@@ -640,13 +640,13 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 >
                   <FaCheckCircle style={{ color: '#10b981', fontSize: '0.95rem', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem' }}>{task.title}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#2c2c2c', marginBottom: '0.2rem' }}>{task.title}</div>
                     <a
                       href={task.fileUrl.startsWith('http') ? task.fileUrl : `https://${task.fileUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: '0.75rem', color: '#667eea', textDecoration: 'none', wordBreak: 'break-all', display: 'block' }}
+                      style={{ fontSize: '0.75rem', color: '#111111', textDecoration: 'none', wordBreak: 'break-all', display: 'block' }}
                       onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                     >
@@ -656,25 +656,25 @@ const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   <button
                     onClick={() => handleTaskComplete(task.id, false)}
                     title="Mark as incomplete"
-                    style={{ background: 'transparent', border: '1px solid #d1d5db', borderRadius: '6px', padding: '0.35rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', transition: 'all 0.2s', flexShrink: 0 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#6b7280'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#9ca3af'; }}
+                    style={{ background: 'transparent', border: '1px solid #d6d6d6', borderRadius: '6px', padding: '0.35rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', transition: 'all 0.2s', flexShrink: 0 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f4f4f4'; e.currentTarget.style.borderColor = '#9ca3af'; e.currentTarget.style.color = '#6b7280'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#d6d6d6'; e.currentTarget.style.color = '#9ca3af'; }}
                   >
                     <FaCircle style={{ fontSize: '0.7rem' }} />
                   </button>
                 </div>
               ))}
               {completedTasks.length > 5 && (
-                <div style={{ paddingTop: '0.25rem', textAlign: 'center', fontSize: '0.8rem', color: '#667eea', fontWeight: 600 }}>
+                <div style={{ paddingTop: '0.25rem', textAlign: 'center', fontSize: '0.8rem', color: '#111111', fontWeight: 600 }}>
                   +{completedTasks.length - 5} more completed tasks
                 </div>
               )}
             </div>
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e8e8e8' }}>
               <button
                 onClick={() => setShowFilesLinksModal(true)}
-                style={{ width: '100%', padding: '0.7rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: 'inherit' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(102,126,234,0.4)'; }}
+                style={{ width: '100%', padding: '0.7rem', background: 'linear-gradient(135deg, #111111 0%, #767676 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: 'inherit' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 17, 17,0.4)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <FaLink /> View All Files & Links

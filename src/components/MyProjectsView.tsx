@@ -473,7 +473,7 @@ const MyProjectsView: React.FC = () => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
         padding: '2rem'
       }}>
         <div style={{
@@ -521,7 +521,7 @@ const MyProjectsView: React.FC = () => {
   }
 
   return (
-    <div className="dashboard premium" style={{ minHeight: '100vh', padding: '2rem', background: '#f8fafc' }}>
+    <div className="dashboard premium" style={{ minHeight: '100vh', padding: '2rem', background: '#ffffff' }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -540,7 +540,7 @@ const MyProjectsView: React.FC = () => {
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f5f9';
+              e.currentTarget.style.background = '#f5f5f5';
               e.currentTarget.style.transform = 'translateX(-2px)';
             }}
             onMouseLeave={(e) => {
@@ -548,13 +548,13 @@ const MyProjectsView: React.FC = () => {
               e.currentTarget.style.transform = 'translateX(0)';
             }}
           >
-            <FaArrowLeft style={{ fontSize: '1rem', color: '#64748b' }} />
+            <FaArrowLeft style={{ fontSize: '1rem', color: '#787878' }} />
           </button>
           <div style={{
             width: '56px',
             height: '56px',
             borderRadius: '14px',
-            background: 'linear-gradient(135deg, #667eea 0%, #667eeadd 100%)',
+            background: 'linear-gradient(135deg, #111111 0%, #667eeadd 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -563,10 +563,10 @@ const MyProjectsView: React.FC = () => {
             <FaFileAlt style={{ fontSize: '1.5rem', color: 'white' }} />
           </div>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c', margin: 0, letterSpacing: '-0.02em' }}>
               My Projects
             </h1>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>
+            <p style={{ fontSize: '0.875rem', color: '#787878', margin: '0.25rem 0 0 0' }}>
               {getGreeting()}, {user?.name?.split(' ')[0]} • {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across {projects.length} {projects.length === 1 ? 'project' : 'projects'}
             </p>
           </div>
@@ -583,15 +583,15 @@ const MyProjectsView: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#64748b',
+              color: '#787878',
               fontSize: '1.25rem',
               transition: 'color 0.2s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#667eea';
+              e.currentTarget.style.color = '#111111';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#64748b';
+              e.currentTarget.style.color = '#787878';
             }}
             title="Live Chat"
           >
@@ -632,15 +632,15 @@ const MyProjectsView: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#64748b',
+              color: '#787878',
               fontSize: '1.25rem',
               transition: 'color 0.2s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#667eea';
+              e.currentTarget.style.color = '#111111';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#64748b';
+              e.currentTarget.style.color = '#787878';
             }}
           >
             <FaBell />
@@ -747,30 +747,30 @@ const MyProjectsView: React.FC = () => {
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>My Projects</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{projects.length}</div>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>My Projects</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>{projects.length}</div>
         </div>
         <div style={{
           background: 'white',
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>Total Tasks</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{tasks.length}</div>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>Total Tasks</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>{tasks.length}</div>
         </div>
         <div style={{
           background: 'white',
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>In Progress</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>In Progress</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>
             {tasks.filter((t: any) => t.status === 'In Progress').length}
           </div>
         </div>
@@ -779,10 +779,10 @@ const MyProjectsView: React.FC = () => {
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>In Review</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>In Review</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>
             {tasks.filter((t: any) => t.status === 'In Review').length}
           </div>
         </div>
@@ -790,10 +790,10 @@ const MyProjectsView: React.FC = () => {
 
       {/* View Toggle */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', margin: 0, flex: 1 }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#2c2c2c', margin: 0, flex: 1 }}>
           My Tasks by Project
         </h2>
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', background: '#ffffff', padding: '0.25rem', borderRadius: '0.5rem' }}>
           <button
             onClick={() => setViewMode('list')}
             style={{
@@ -801,7 +801,7 @@ const MyProjectsView: React.FC = () => {
               border: 'none',
               borderRadius: '0.375rem',
               background: viewMode === 'list' ? 'white' : 'transparent',
-              color: viewMode === 'list' ? '#1e293b' : '#64748b',
+              color: viewMode === 'list' ? '#2c2c2c' : '#787878',
               cursor: 'pointer',
               fontWeight: viewMode === 'list' ? 600 : 400,
               boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
@@ -817,7 +817,7 @@ const MyProjectsView: React.FC = () => {
               border: 'none',
               borderRadius: '0.375rem',
               background: viewMode === 'kanban' ? 'white' : 'transparent',
-              color: viewMode === 'kanban' ? '#1e293b' : '#64748b',
+              color: viewMode === 'kanban' ? '#2c2c2c' : '#787878',
               cursor: 'pointer',
               fontWeight: viewMode === 'kanban' ? 600 : 400,
               boxShadow: viewMode === 'kanban' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
@@ -837,19 +837,19 @@ const MyProjectsView: React.FC = () => {
             padding: '3rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0',
+            border: '1px solid #e9e9e9',
             textAlign: 'center',
-            color: '#64748b'
+            color: '#787878'
           }}>
             <FaFileAlt style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#2c2c2c', marginBottom: '0.5rem' }}>
               No tasks assigned to you
             </h3>
             <p>Tasks will appear here once they are assigned to you.</p>
           </div>
         ) : viewMode === 'list' ? (
           /* List View - Table Format (Projects) */
-          <div className="projects-list-view" style={{ background: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+          <div className="projects-list-view" style={{ background: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e9e9e9', overflow: 'hidden' }}>
             <div className="list-header">
               <div className="list-header-cell" style={{ flex: '2', minWidth: '200px' }}>Project Name</div>
               <div className="list-header-cell" style={{ width: '120px', flex: '0 0 120px' }}>Client Type</div>
@@ -900,7 +900,7 @@ const MyProjectsView: React.FC = () => {
                       </div>
                       <div className="list-cell" style={{ width: '120px', flex: '0 0 120px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#2c2c2c' }}>
                             {projectTasks.length} {projectTasks.length === 1 ? 'task' : 'tasks'}
                           </span>
                           {projectTasks.some((t: any) => !t.assignedToId) && (
@@ -914,7 +914,7 @@ const MyProjectsView: React.FC = () => {
                         <button
                           onClick={(e) => handleViewUpdatesClick(project, e)}
                           style={{
-                            background: '#667eea',
+                            background: '#111111',
                             color: 'white',
                             border: 'none',
                             borderRadius: '0.375rem',
@@ -929,10 +929,10 @@ const MyProjectsView: React.FC = () => {
                             position: 'relative'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#5568d3';
+                            e.currentTarget.style.background = '#333333';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#667eea';
+                            e.currentTarget.style.background = '#111111';
                           }}
                         >
                           <FaEnvelope style={{ fontSize: '0.875rem' }} />
@@ -973,7 +973,7 @@ const MyProjectsView: React.FC = () => {
                             }}
                             style={{
                               background: 'transparent',
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid #e9e9e9',
                               borderRadius: '0.375rem',
                               padding: '0.5rem',
                               cursor: 'pointer',
@@ -982,18 +982,18 @@ const MyProjectsView: React.FC = () => {
                               justifyContent: 'center',
                               width: '36px',
                               height: '36px',
-                              color: '#64748b',
+                              color: '#787878',
                               transition: 'all 0.2s',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f1f5f9';
-                              e.currentTarget.style.borderColor = '#cbd5e1';
-                              e.currentTarget.style.color = '#475569';
+                              e.currentTarget.style.background = '#f5f5f5';
+                              e.currentTarget.style.borderColor = '#d6d6d6';
+                              e.currentTarget.style.color = '#585858';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.borderColor = '#e2e8f0';
-                              e.currentTarget.style.color = '#64748b';
+                              e.currentTarget.style.borderColor = '#e9e9e9';
+                              e.currentTarget.style.color = '#787878';
                             }}
                           >
                             <FaEllipsisV style={{ fontSize: '1rem' }} />
@@ -1006,7 +1006,7 @@ const MyProjectsView: React.FC = () => {
                                 right: 0,
                                 marginTop: '0.25rem',
                                 background: 'white',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid #e9e9e9',
                                 borderRadius: '0.5rem',
                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                                 zIndex: 9999,
@@ -1032,17 +1032,17 @@ const MyProjectsView: React.FC = () => {
                                   alignItems: 'center',
                                   gap: '0.75rem',
                                   fontSize: '0.875rem',
-                                  color: '#374151',
+                                  color: '#444444',
                                   transition: 'background 0.15s',
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#f8fafc';
+                                  e.currentTarget.style.background = '#fafafa';
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.background = 'transparent';
                                 }}
                               >
-                                <FaEye style={{ fontSize: '0.875rem', color: '#3b82f6' }} />
+                                <FaEye style={{ fontSize: '0.875rem', color: '#111111' }} />
                                 View
                               </button>
                             </div>
@@ -1061,11 +1061,11 @@ const MyProjectsView: React.FC = () => {
             <div style={{
               marginBottom: '1rem',
               padding: '0.75rem 1rem',
-              background: '#f0f4ff',
-              border: '1px solid #c7d2fe',
+              background: '#ffffff',
+              border: '1px solid #e2e2e2',
               borderRadius: '8px',
               fontSize: '0.875rem',
-              color: '#4c51bf',
+              color: '#111111',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem'
@@ -1104,7 +1104,7 @@ const MyProjectsView: React.FC = () => {
                       background: 'white',
                       borderRadius: '0.5rem',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      border: '2px solid #e2e8f0',
+                      border: '2px solid #e9e9e9',
                       display: 'flex',
                       flexDirection: 'column',
                       transition: 'all 0.2s',
@@ -1116,15 +1116,15 @@ const MyProjectsView: React.FC = () => {
                     <div
                       style={{
                         padding: '1rem',
-                        background: '#f8fafc',
-                        borderBottom: '1px solid #e2e8f0',
+                        background: '#ffffff',
+                        borderBottom: '1px solid #e9e9e9',
                         borderRadius: '0.5rem 0.5rem 0 0'
                       }}
                     >
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.25rem 0' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#2c2c2c', margin: '0 0 0.25rem 0' }}>
                         {column.title}
                       </h3>
-                      <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                      <span style={{ color: '#787878', fontSize: '0.875rem' }}>
                         {columnTasks.length} task(s)
                       </span>
                     </div>
@@ -1147,7 +1147,7 @@ const MyProjectsView: React.FC = () => {
                             style={{
                               padding: '0.75rem',
                               marginBottom: '0.75rem',
-                              border: taskInRevision ? '2px solid #dc2626' : '1px solid #e2e8f0',
+                              border: taskInRevision ? '2px solid #dc2626' : '1px solid #e9e9e9',
                               borderRadius: '0.5rem',
                               background: 'white',
                               cursor: 'pointer',
@@ -1164,14 +1164,14 @@ const MyProjectsView: React.FC = () => {
                               navigate(`/project/${task.projectId}`);
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.borderColor = '#667eea';
-                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.15)';
+                              e.currentTarget.style.background = '#fafafa';
+                              e.currentTarget.style.borderColor = '#111111';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(17, 17, 17, 0.15)';
                               e.currentTarget.style.transform = 'translateY(-2px)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = 'white';
-                              e.currentTarget.style.borderColor = taskInRevision ? '#dc2626' : '#e2e8f0';
+                              e.currentTarget.style.borderColor = taskInRevision ? '#dc2626' : '#e9e9e9';
                               e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
                               e.currentTarget.style.transform = 'translateY(0)';
                             }}
@@ -1197,7 +1197,7 @@ const MyProjectsView: React.FC = () => {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
                                   fontSize: '0.75rem',
-                                  color: '#667eea',
+                                  color: '#111111',
                                   fontWeight: 500,
                                   marginBottom: '0.25rem'
                                 }}>
@@ -1213,7 +1213,7 @@ const MyProjectsView: React.FC = () => {
                                   <h4 style={{
                                     fontSize: '0.875rem',
                                     fontWeight: 600,
-                                    color: '#1e293b',
+                                    color: '#2c2c2c',
                                     margin: 0,
                                     flex: 1,
                                     minWidth: 0
@@ -1234,7 +1234,7 @@ const MyProjectsView: React.FC = () => {
                                 </div>
                                 {task.description && (
                                   <p style={{
-                                    color: '#64748b',
+                                    color: '#787878',
                                     fontSize: '0.75rem',
                                     margin: '0 0 0.5rem 0',
                                     overflow: 'hidden',
@@ -1269,13 +1269,13 @@ const MyProjectsView: React.FC = () => {
                                     alignItems: 'center',
                                     gap: '0.5rem'
                                   }}>
-                                    <FaGoogleDrive style={{ color: '#4285f4', fontSize: '0.75rem' }} />
+                                    <FaGoogleDrive style={{ color: '#111111', fontSize: '0.75rem' }} />
                                     <a 
                                       href={task.fileUrl} 
                                       target="_blank" 
                                       rel="noopener noreferrer"
                                       style={{ 
-                                        color: '#667eea', 
+                                        color: '#111111', 
                                         textDecoration: 'underline',
                                         fontSize: '0.7rem'
                                       }}
@@ -1291,7 +1291,7 @@ const MyProjectsView: React.FC = () => {
                                     alignItems: 'center',
                                     gap: '0.5rem',
                                     fontSize: '0.75rem',
-                                    color: '#64748b',
+                                    color: '#787878',
                                     marginTop: '0.5rem'
                                   }}>
                                     <FaClock style={{ fontSize: '0.75rem' }} />
@@ -1312,7 +1312,7 @@ const MyProjectsView: React.FC = () => {
                                           padding: '0.5rem',
                                           border: 'none',
                                           borderRadius: '0.375rem',
-                                          background: '#3b82f6',
+                                          background: '#111111',
                                           color: 'white',
                                           cursor: 'pointer',
                                           fontSize: '0.75rem',
@@ -1429,7 +1429,7 @@ const MyProjectsView: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
       <NotificationsModal
         isOpen={showNotificationsModal}
@@ -1497,7 +1497,7 @@ const MyProjectsView: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#1c1c1c' }}>
                 Revision Notes - {selectedTaskTitle}
               </h2>
               <button
@@ -1560,13 +1560,13 @@ const MyProjectsView: React.FC = () => {
                     
                     {hasAttachment && attachmentUrl && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'white', borderRadius: '4px' }}>
-                        <FaLink style={{ color: '#667eea', fontSize: '0.875rem' }} />
+                        <FaLink style={{ color: '#111111', fontSize: '0.875rem' }} />
                         <a 
                           href={attachmentUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           style={{ 
-                            color: '#667eea', 
+                            color: '#111111', 
                             textDecoration: 'underline', 
                             wordBreak: 'break-all',
                             fontSize: '0.875rem'
@@ -1624,16 +1624,16 @@ const MyProjectsView: React.FC = () => {
             {/* Header */}
             <div style={{
               padding: '1.5rem',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid #e8e8e8',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#2c2c2c' }}>
                   PM Updates
                 </h2>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#787878' }}>
                   {projectForUpdates.clientName}
                 </p>
               </div>
@@ -1654,10 +1654,10 @@ const MyProjectsView: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#64748b',
+                  color: '#787878',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.background = '#f4f4f4';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -1674,11 +1674,11 @@ const MyProjectsView: React.FC = () => {
               padding: '1.5rem',
             }}>
               {loadingUpdates ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#787878' }}>
                   Loading updates...
                 </div>
               ) : clientUpdates.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#787878' }}>
                   <FaEnvelope style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
                   <p>No updates from PM yet.</p>
                 </div>
@@ -1688,7 +1688,7 @@ const MyProjectsView: React.FC = () => {
                     <div
                       key={update.id}
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid #e8e8e8',
                         borderRadius: '8px',
                         padding: '1.5rem',
                         background: 'white',
@@ -1703,12 +1703,12 @@ const MyProjectsView: React.FC = () => {
                       }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                            <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
-                            <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
+                            <FaUser style={{ fontSize: '0.875rem', color: '#787878' }} />
+                            <span style={{ fontWeight: 600, color: '#2c2c2c', fontSize: '0.875rem' }}>
                               {update.pm?.name || 'PM'}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#787878' }}>
                             {new Date(update.emailSentAt).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -1723,8 +1723,8 @@ const MyProjectsView: React.FC = () => {
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
-                          color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                          background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#ececec' : '#f4f4f4',
+                          color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#111111' : '#444444',
                         }}>
                           {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
                         </span>
@@ -1736,10 +1736,10 @@ const MyProjectsView: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
                             <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.25rem' }}>
                                 Note:
                               </div>
-                              <div style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                              <div style={{ color: '#444444', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                                 {update.notes}
                               </div>
                             </div>
@@ -1751,8 +1751,8 @@ const MyProjectsView: React.FC = () => {
                       {update.links && update.links.length > 0 && (
                         <div style={{ marginBottom: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <FaLink style={{ color: '#667eea', fontSize: '0.875rem', flexShrink: 0 }} />
-                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
+                            <FaLink style={{ color: '#111111', fontSize: '0.875rem', flexShrink: 0 }} />
+                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878' }}>
                               Links:
                             </div>
                           </div>
@@ -1764,7 +1764,7 @@ const MyProjectsView: React.FC = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
-                                  color: '#667eea',
+                                  color: '#111111',
                                   fontSize: '0.875rem',
                                   textDecoration: 'none',
                                   wordBreak: 'break-all',
@@ -1788,9 +1788,9 @@ const MyProjectsView: React.FC = () => {
                         <div style={{
                           marginTop: '1rem',
                           paddingTop: '1rem',
-                          borderTop: '1px solid #e5e7eb',
+                          borderTop: '1px solid #e8e8e8',
                         }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.75rem' }}>
                             Comments ({comments[update.id].length}):
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1798,20 +1798,20 @@ const MyProjectsView: React.FC = () => {
                               <div
                                 key={comment.id}
                                 style={{
-                                  background: '#f9fafb',
+                                  background: '#ffffff',
                                   borderRadius: '6px',
                                   padding: '0.75rem',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid #e8e8e8',
                                 }}
                               >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
-                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>
+                                    <FaUser style={{ fontSize: '0.75rem', color: '#787878' }} />
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#2c2c2c' }}>
                                       {comment.user?.name || 'User'}
                                     </span>
                                   </div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  <span style={{ fontSize: '0.75rem', color: '#787878' }}>
                                     {new Date(comment.createdAt).toLocaleString('en-US', {
                                       month: 'short',
                                       day: 'numeric',
@@ -1820,7 +1820,7 @@ const MyProjectsView: React.FC = () => {
                                     })}
                                   </span>
                                 </div>
-                                <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                <div style={{ fontSize: '0.875rem', color: '#444444', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                                   {comment.text}
                                 </div>
                               </div>
@@ -1833,10 +1833,10 @@ const MyProjectsView: React.FC = () => {
                       <div style={{
                         marginTop: '1rem',
                         paddingTop: '1rem',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid #e8e8e8',
                         position: 'relative',
                       }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.75rem' }}>
                           Add Comment (use @ to mention users):
                         </div>
                         <textarea
@@ -1850,7 +1850,7 @@ const MyProjectsView: React.FC = () => {
                             width: '100%',
                             minHeight: '80px',
                             padding: '0.75rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             fontSize: '0.875rem',
                             fontFamily: 'inherit',
@@ -1862,7 +1862,7 @@ const MyProjectsView: React.FC = () => {
                           <div style={{
                             position: 'absolute',
                             background: 'white',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                             maxHeight: '200px',
@@ -1875,7 +1875,7 @@ const MyProjectsView: React.FC = () => {
                             minWidth: '200px',
                           }}>
                             {users.length === 0 ? (
-                              <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+                              <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#787878' }}>
                                 Loading users...
                               </div>
                             ) : (
@@ -1896,7 +1896,7 @@ const MyProjectsView: React.FC = () => {
                                     fontSize: '0.875rem',
                                   }}
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f3f4f6';
+                                    e.currentTarget.style.background = '#f4f4f4';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'white';
@@ -1912,7 +1912,7 @@ const MyProjectsView: React.FC = () => {
                           onClick={() => handleAddComment(update.id)}
                           disabled={!commentTexts[update.id]?.trim() || submittingComment[update.id]}
                           style={{
-                            background: submittingComment[update.id] ? '#9ca3af' : '#667eea',
+                            background: submittingComment[update.id] ? '#9ca3af' : '#111111',
                             border: 'none',
                             color: 'white',
                             padding: '0.5rem 1rem',

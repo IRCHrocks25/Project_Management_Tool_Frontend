@@ -18,17 +18,17 @@ const STYLES = `
 
   /* ── Board wrapper ── */
   .kb-wrapper {
-    --bg: #f4f6f9;
+    --bg: #f6f6f6;
     --card-bg: #ffffff;
-    --col-bg: #f0f2f5;
-    --col-bg-drag: #e8edf5;
-    --border: #e2e6ec;
-    --border-strong: #cdd3db;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --col-bg: #f2f2f2;
+    --col-bg-drag: #eeeeee;
+    --border: #e7e7e7;
+    --border-strong: #d4d4d4;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
     --success: #16a34a;
     --danger: #dc2626;
     --amber: #d97706;
@@ -44,10 +44,10 @@ const STYLES = `
     padding: 8px 14px;
     margin-bottom: 14px;
     background: var(--accent-light);
-    border: 1px solid #bfdbfe;
+    border: 1px solid #dedede;
     border-radius: 8px;
     font-size: 12px;
-    color: #3b82f6;
+    color: #111111;
     font-weight: 500;
   }
   .kb-hint-dot {
@@ -117,7 +117,7 @@ const STYLES = `
   .kb-col.drag-over {
     background: var(--col-bg-drag);
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.1);
   }
 
   /* ── Column header ── */
@@ -153,7 +153,7 @@ const STYLES = `
   }
   .kb-col.drag-over .kb-col-count {
     background: var(--accent-light);
-    border-color: #bfdbfe;
+    border-color: #dedede;
     color: var(--accent);
   }
   .kb-sla-warn {
@@ -210,7 +210,7 @@ const STYLES = `
   .kb-card.dragging { opacity: 0.45; transform: rotate(1.5deg) scale(0.98); }
   .kb-card.stuck    { border-left: 3px solid var(--amber); }
   .kb-card.overdue  { border-left: 3px solid var(--danger); }
-  .kb-card.waiting-client { border-left: 3px solid #8b5cf6; }
+  .kb-card.waiting-client { border-left: 3px solid #111111; }
 
   @keyframes cardIn {
     from { opacity: 0; transform: translateY(4px); }
@@ -273,7 +273,7 @@ const STYLES = `
     border-radius: 20px;
     font-size: 10.5px;
     font-weight: 600;
-    background: #f1f5f9;
+    background: #f5f5f5;
     color: var(--text-secondary);
     border: 1px solid var(--border);
     white-space: nowrap;
@@ -311,7 +311,7 @@ const STYLES = `
     border-radius: 10px;
     letter-spacing: 0.03em;
   }
-  .kb-signal-waiting  { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .kb-signal-waiting  { background: #ffffff; color: #111111; border: 1px solid #eaeaea; }
   .kb-signal-stuck    { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
   .kb-signal-overdue  { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
   .kb-signal-rev      { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
@@ -367,7 +367,7 @@ const STYLES = `
 
   /* ── Tooltip ── */
   .kb-tooltip {
-    background: #0f1923;
+    background: #191919;
     color: white;
     font-family: 'Instrument Sans', sans-serif;
     font-size: 11.5px;
@@ -384,7 +384,7 @@ const STYLES = `
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
-    border-top-color: #0f1923;
+    border-top-color: #191919;
   }
 
   /* ── Toast ── */
@@ -393,7 +393,7 @@ const STYLES = `
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%) translateY(12px);
-    background: #0f1923;
+    background: #191919;
     color: white;
     font-family: 'Instrument Sans', sans-serif;
     font-size: 13px;
@@ -673,12 +673,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
   const getClientTypeColor = (clientType: string) => {
     switch (clientType) {
       case 'ICON': return '#d97706';
-      case 'STAR': return '#7c3aed';
-      case 'Katalyst': return '#2563eb';
-      case 'Private': return '#64748b';
-      case 'Premium': return '#7c3aed';
-      case 'Powered-Up': return '#7c3aed';
-      default: return '#64748b';
+      case 'STAR': return '#111111';
+      case 'Katalyst': return '#111111';
+      case 'Private': return '#787878';
+      case 'Premium': return '#111111';
+      case 'Powered-Up': return '#111111';
+      default: return '#787878';
     }
   };
 
@@ -687,7 +687,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, tasks = [], onUpdat
       case 'Urgent': return '#dc2626';
       case 'High': return '#ea580c';
       case 'Medium': return '#d97706';
-      default: return '#cbd5e1';
+      default: return '#d6d6d6';
     }
   };
 

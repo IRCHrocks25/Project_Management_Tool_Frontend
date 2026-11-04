@@ -1,12 +1,12 @@
 .notifications-page {
   min-height: 100vh;
-  background: #fafbfc;
+  background: #ffffff;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .notifications-header {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
   padding: 1.5rem 2rem;
 }
 
@@ -16,7 +16,7 @@
   gap: 0.5rem;
   background: none;
   border: none;
-  color: #667eea;
+  color: #111111;
   cursor: pointer;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -27,7 +27,7 @@
 }
 
 .back-button-notifications:hover {
-  color: #5568d3;
+  color: #333333;
   transform: translateX(-2px);
 }
 
@@ -41,13 +41,13 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 700;
-  color: #111827;
+  color: #1c1c1c;
   letter-spacing: -0.02em;
 }
 
 .unread-badge {
   padding: 0.375rem 0.875rem;
-  background: #667eea;
+  background: #111111;
   color: white;
   border-radius: 12px;
   font-size: 0.8125rem;
@@ -64,7 +64,7 @@
   background: white;
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e8e8;
   overflow: hidden;
 }
 
@@ -77,7 +77,7 @@
   display: flex;
   gap: 1rem;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f4f4f4;
   transition: background 0.2s ease;
   cursor: pointer;
 }
@@ -87,15 +87,15 @@
 }
 
 .notification-item:hover {
-  background: #f9fafb;
+  background: #fafafa;
 }
 
 .notification-item.unread {
-  background: #f0f4ff;
+  background: #ffffff;
 }
 
 .notification-item.unread:hover {
-  background: #eef2ff;
+  background: #f6f6f6;
 }
 
 .notification-icon-wrapper {
@@ -106,7 +106,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #f3f4f6;
+  background: #f4f4f4;
 }
 
 .notification-icon {
@@ -115,11 +115,11 @@
 }
 
 .notification-icon.task {
-  color: #3b82f6;
+  color: #111111;
 }
 
 .notification-icon.email {
-  color: #667eea;
+  color: #111111;
 }
 
 .notification-icon.alert {
@@ -143,14 +143,14 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .unread-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #667eea;
+  background: #111111;
   flex-shrink: 0;
 }
 
@@ -173,7 +173,7 @@
 
 .empty-icon {
   font-size: 3rem;
-  color: #d1d5db;
+  color: #d6d6d6;
   margin-bottom: 1rem;
 }
 
@@ -181,7 +181,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .empty-notifications p {

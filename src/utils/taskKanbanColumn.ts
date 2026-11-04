@@ -27,10 +27,10 @@ export interface KanbanColumn {
 
 export const KANBAN_COLUMNS: readonly KanbanColumn[] = [
   { id: 'not_started',        label: 'Not yet started',             color: '#6b7280' },
-  { id: 'owned_in_progress',  label: 'Owned/In Progress',           color: '#3b82f6' },
+  { id: 'owned_in_progress',  label: 'Owned/In Progress',           color: '#111111' },
   { id: 'for_approval',       label: 'For Approval',                color: '#f59e0b' },
   { id: 'revision',           label: 'Revision',                    color: '#ef4444' },
-  { id: 'elliot_review',      label: 'Elliot Review',               color: '#8b5cf6' },
+  { id: 'elliot_review',      label: 'Elliot Review',               color: '#111111' },
   { id: 'approved_completed', label: 'Approved/Completed',          color: '#10b981' },
   { id: 'qa_before_client',   label: 'QA Before Sending to Client', color: '#06b6d4' },
   { id: 'client_validation',  label: 'Client Validation',           color: '#f97316' },

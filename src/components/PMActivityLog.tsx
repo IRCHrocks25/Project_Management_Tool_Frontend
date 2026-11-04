@@ -18,9 +18,9 @@ const css = `
   .pm-root * { box-sizing: border-box; }
   .pm-root {
     font-family: 'DM Sans', sans-serif;
-    background: #f5f6fa;
+    background: #ffffff;
     min-height: 100vh;
-    color: #1e293b;
+    color: #2c2c2c;
   }
 
   /* ── NAV ── */
@@ -29,28 +29,28 @@ const css = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 2rem; height: 58px;
     background: #fff;
-    border-bottom: 1px solid #e8ecf0;
+    border-bottom: 1px solid #ececec;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
   .pm-nav-back {
     display: flex; align-items: center; gap: 0.5rem;
-    background: transparent; border: none; color: #94a3b8;
+    background: transparent; border: none; color: #a6a6a6;
     cursor: pointer; font-family: 'DM Sans', sans-serif;
     font-size: 0.875rem; font-weight: 500;
     padding: 0.375rem 0.625rem; border-radius: 6px; transition: all 0.15s;
   }
-  .pm-nav-back:hover { background: #f1f5f9; color: #475569; }
+  .pm-nav-back:hover { background: #f5f5f5; color: #585858; }
   .pm-nav-title {
     font-size: 0.8125rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8;
+    letter-spacing: 0.08em; text-transform: uppercase; color: #a6a6a6;
   }
   .pm-nav-right { display: flex; align-items: center; gap: 0.625rem; }
   .pm-icon-btn {
-    position: relative; background: transparent; border: none; color: #94a3b8;
+    position: relative; background: transparent; border: none; color: #a6a6a6;
     cursor: pointer; width: 34px; height: 34px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
-  .pm-icon-btn:hover { background: #f1f5f9; color: #475569; }
+  .pm-icon-btn:hover { background: #f5f5f5; color: #585858; }
   .pm-badge {
     position: absolute; top: 2px; right: 2px;
     min-width: 16px; height: 16px; border-radius: 8px;
@@ -62,7 +62,7 @@ const css = `
   /* ── AVATAR DROPDOWN ── */
   .pm-avatar {
     width: 30px; height: 30px; border-radius: 8px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #111111, #111111);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.75rem; font-weight: 700; color: white;
     cursor: pointer; border: none; transition: opacity 0.15s;
@@ -70,7 +70,7 @@ const css = `
   .pm-avatar:hover { opacity: 0.85; }
   .pm-dropdown {
     position: absolute; top: calc(100% + 8px); right: 0; width: 210px;
-    background: #fff; border: 1px solid #e8ecf0; border-radius: 12px;
+    background: #fff; border: 1px solid #ececec; border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.1); z-index: 9999; overflow: hidden;
     animation: pmFadeDown 0.15s ease;
   }
@@ -79,22 +79,22 @@ const css = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .pm-dropdown-header {
-    padding: 0.875rem 1rem; border-bottom: 1px solid #f1f5f9;
+    padding: 0.875rem 1rem; border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: center; gap: 0.625rem;
   }
-  .pm-dropdown-name { font-size: 0.875rem; font-weight: 600; color: #1e293b; }
-  .pm-dropdown-email { font-size: 0.75rem; color: #94a3b8; margin-top: 1px; }
+  .pm-dropdown-name { font-size: 0.875rem; font-weight: 600; color: #2c2c2c; }
+  .pm-dropdown-email { font-size: 0.75rem; color: #a6a6a6; margin-top: 1px; }
   .pm-dropdown-item {
     display: flex; align-items: center; gap: 0.625rem;
     width: 100%; background: transparent; border: none;
     padding: 0.5625rem 1rem; font-family: 'DM Sans', sans-serif;
-    font-size: 0.8125rem; color: #475569; cursor: pointer;
+    font-size: 0.8125rem; color: #585858; cursor: pointer;
     transition: all 0.12s; text-align: left;
   }
-  .pm-dropdown-item:hover { background: #f8fafc; color: #1e293b; }
+  .pm-dropdown-item:hover { background: #fafafa; color: #2c2c2c; }
   .pm-dropdown-item.danger { color: #ef4444; }
   .pm-dropdown-item.danger:hover { background: #fef2f2; }
-  .pm-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+  .pm-divider { height: 1px; background: #ffffff; margin: 4px 0; }
 
   /* ── MAIN ── */
   .pm-main { max-width: 1280px; margin: 0 auto; padding: 2rem 2rem 3rem; }
@@ -105,30 +105,30 @@ const css = `
     margin-bottom: 1.75rem; gap: 1rem; flex-wrap: wrap;
   }
   .pm-page-heading {
-    font-size: 1.5rem; font-weight: 600; color: #0f172a;
+    font-size: 1.5rem; font-weight: 600; color: #1c1c1c;
     margin: 0 0 0.25rem; letter-spacing: -0.02em;
   }
-  .pm-page-sub { font-size: 0.875rem; color: #94a3b8; margin: 0; }
+  .pm-page-sub { font-size: 0.875rem; color: #a6a6a6; margin: 0; }
 
   /* ── SEARCH ── */
   .pm-search-wrap { position: relative; }
   .pm-search-wrap svg {
     position: absolute; left: 0.75rem; top: 50%;
-    transform: translateY(-50%); color: #cbd5e1; font-size: 0.75rem; pointer-events: none;
+    transform: translateY(-50%); color: #d6d6d6; font-size: 0.75rem; pointer-events: none;
   }
   .pm-search {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
-    color: #1e293b; font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+    background: #fff; border: 1px solid #e9e9e9; border-radius: 8px;
+    color: #2c2c2c; font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
     padding: 0.5rem 0.875rem 0.5rem 2.125rem; width: 210px;
     transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
-  .pm-search::placeholder { color: #cbd5e1; }
-  .pm-search:focus { outline: none; border-color: #6366f1; width: 250px; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  .pm-search::placeholder { color: #d6d6d6; }
+  .pm-search:focus { outline: none; border-color: #111111; width: 250px; box-shadow: 0 0 0 3px rgba(17, 17, 17,0.08); }
 
   /* ── STATS ── */
   .pm-stats {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 1px; background: #e8ecf0; border: 1px solid #e8ecf0;
+    gap: 1px; background: #ececec; border: 1px solid #ececec;
     border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
@@ -139,22 +139,22 @@ const css = `
   .pm-stat-dot { width: 6px; height: 6px; border-radius: 50%; margin-bottom: 0.125rem; }
   .pm-stat-value {
     font-family: 'DM Mono', monospace; font-size: 1.5rem;
-    font-weight: 500; color: #0f172a; line-height: 1;
+    font-weight: 500; color: #1c1c1c; line-height: 1;
   }
   .pm-stat-label {
     font-size: 0.6875rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.07em; color: #a6a6a6;
   }
 
   /* ── PM TABS ── */
   .pm-tabs-row {
     display: flex; align-items: stretch; flex-wrap: nowrap;
-    background: #fff; border: 1px solid #e2e8f0;
+    background: #fff; border: 1px solid #e9e9e9;
     border-radius: 12px 12px 0 0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     overflow-x: auto; overflow-y: hidden;
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: #d6d6d6 transparent;
   }
   .pm-tabs-row::-webkit-scrollbar {
     height: 6px;
@@ -163,10 +163,10 @@ const css = `
     background: transparent;
   }
   .pm-tabs-row::-webkit-scrollbar-thumb {
-    background: #cbd5e1; border-radius: 3px;
+    background: #d6d6d6; border-radius: 3px;
   }
   .pm-tabs-row::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #a6a6a6;
   }
 
   .pm-tab {
@@ -174,17 +174,17 @@ const css = `
     background: transparent; border: none;
     padding: 0.875rem 1.375rem;
     font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
-    color: #94a3b8; cursor: pointer;
-    border-right: 1px solid #f1f5f9;
+    color: #a6a6a6; cursor: pointer;
+    border-right: 1px solid #f5f5f5;
     transition: all 0.15s; position: relative; white-space: nowrap;
   }
   .pm-tab:last-child { border-right: none; }
-  .pm-tab:hover { background: #f8fafc; color: #475569; }
-  .pm-tab.active { color: #1e293b; font-weight: 600; background: #fff; }
+  .pm-tab:hover { background: #fafafa; color: #585858; }
+  .pm-tab.active { color: #2c2c2c; font-weight: 600; background: #fff; }
   .pm-tab.active::after {
     content: ''; position: absolute; bottom: 0; left: 0; right: 0;
     height: 2.5px; border-radius: 2px 2px 0 0;
-    background: #6366f1;
+    background: #111111;
   }
   .pm-tab-avatar {
     width: 22px; height: 22px; border-radius: 6px;
@@ -194,15 +194,15 @@ const css = `
   .pm-tab-count {
     font-family: 'DM Mono', monospace; font-size: 0.6875rem;
     padding: 0.125rem 0.4375rem; border-radius: 20px;
-    background: #f1f5f9; color: #94a3b8; font-weight: 500; transition: all 0.15s;
+    background: #f5f5f5; color: #a6a6a6; font-weight: 500; transition: all 0.15s;
   }
   .pm-tab.active .pm-tab-count {
-    background: #eef2ff; color: #6366f1;
+    background: #f6f6f6; color: #111111;
   }
 
   /* ── TAB PANEL ── */
   .pm-tab-panel {
-    background: #fff; border: 1px solid #e2e8f0; border-top: none;
+    background: #fff; border: 1px solid #e9e9e9; border-top: none;
     border-radius: 0 0 12px 12px; overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-height: 320px;
     animation: pmFadeTab 0.18s ease;
@@ -215,19 +215,19 @@ const css = `
   /* ── PM PANEL HEADER ── */
   .pm-panel-header {
     padding: 1.125rem 1.5rem;
-    border-bottom: 1px solid #f8fafc;
+    border-bottom: 1px solid #fafafa;
     display: flex; align-items: center; justify-content: space-between;
-    background: #fafbfc;
+    background: #ffffff;
   }
   .pm-panel-pm-info { display: flex; align-items: center; gap: 0.75rem; }
   .pm-panel-avatar {
     width: 36px; height: 36px; border-radius: 10px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #111111, #111111);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.875rem; font-weight: 700; color: white; flex-shrink: 0;
   }
-  .pm-panel-name { font-size: 0.9375rem; font-weight: 600; color: #0f172a; }
-  .pm-panel-role { font-size: 0.8125rem; color: #94a3b8; margin-top: 1px; }
+  .pm-panel-name { font-size: 0.9375rem; font-weight: 600; color: #1c1c1c; }
+  .pm-panel-role { font-size: 0.8125rem; color: #a6a6a6; margin-top: 1px; }
   .pm-panel-meta { display: flex; align-items: center; gap: 0.75rem; }
   .pm-panel-stat {
     display: flex; flex-direction: column; align-items: flex-end;
@@ -235,20 +235,20 @@ const css = `
   }
   .pm-panel-stat-val {
     font-family: 'DM Mono', monospace; font-size: 1.125rem;
-    font-weight: 500; color: #0f172a; line-height: 1;
+    font-weight: 500; color: #1c1c1c; line-height: 1;
   }
-  .pm-panel-stat-label { font-size: 0.6875rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-  .pm-panel-divider { width: 1px; height: 32px; background: #e8ecf0; }
+  .pm-panel-stat-label { font-size: 0.6875rem; color: #a6a6a6; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .pm-panel-divider { width: 1px; height: 32px; background: #ececec; }
 
   /* ── ACTIVITY LIST ── */
   .pm-activities { max-height: 560px; overflow-y: auto; }
   .pm-activities::-webkit-scrollbar { width: 4px; }
   .pm-activities::-webkit-scrollbar-track { background: transparent; }
-  .pm-activities::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+  .pm-activities::-webkit-scrollbar-thumb { background: #e9e9e9; border-radius: 2px; }
 
   .pm-activity {
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid #f8fafc;
+    border-bottom: 1px solid #fafafa;
     display: grid;
     grid-template-columns: auto 1fr auto;
     gap: 0.875rem;
@@ -256,21 +256,21 @@ const css = `
     transition: background 0.1s;
   }
   .pm-activity:last-child { border-bottom: none; }
-  .pm-activity:hover { background: #fafbfc; }
+  .pm-activity:hover { background: #fbfbfb; }
 
   .pm-activity-dot {
     width: 7px; height: 7px; border-radius: 50%;
-    background: #6366f1; margin-top: 0.4375rem; flex-shrink: 0;
+    background: #111111; margin-top: 0.4375rem; flex-shrink: 0;
   }
   .pm-activity-project {
-    font-size: 0.875rem; font-weight: 600; color: #1e293b; margin-bottom: 0.25rem;
+    font-size: 0.875rem; font-weight: 600; color: #2c2c2c; margin-bottom: 0.25rem;
   }
   .pm-activity-desc {
-    font-size: 0.875rem; color: #475569; margin-bottom: 0.375rem; line-height: 1.4;
+    font-size: 0.875rem; color: #585858; margin-bottom: 0.375rem; line-height: 1.4;
   }
   .pm-activity-time {
     font-family: 'DM Mono', monospace; font-size: 0.6875rem;
-    color: #cbd5e1; display: flex; align-items: center; gap: 0.375rem;
+    color: #d6d6d6; display: flex; align-items: center; gap: 0.375rem;
   }
   .pm-activity-type {
     display: inline-flex; align-items: center;
@@ -283,25 +283,25 @@ const css = `
   /* ── EMPTY / NO RESULTS ── */
   .pm-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 4rem 2rem; text-align: center; color: #cbd5e1;
+    padding: 4rem 2rem; text-align: center; color: #d6d6d6;
   }
   .pm-empty-icon { font-size: 2.25rem; margin-bottom: 1rem; opacity: 0.35; }
-  .pm-empty-head { font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.375rem; }
+  .pm-empty-head { font-size: 1rem; font-weight: 600; color: #a6a6a6; margin-bottom: 0.375rem; }
   .pm-empty-sub { font-size: 0.875rem; }
-  .pm-no-results { padding: 2.5rem 1.5rem; text-align: center; font-size: 0.875rem; color: #94a3b8; }
+  .pm-no-results { padding: 2.5rem 1.5rem; text-align: center; font-size: 0.875rem; color: #a6a6a6; }
 
   /* ── LOADING ── */
   .pm-loading {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    height: 100vh; background: #f5f6fa;
-    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; color: #94a3b8; gap: 0.625rem;
+    height: 100vh; background: #ffffff;
+    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; color: #a6a6a6; gap: 0.625rem;
   }
   .pm-spinner {
-    width: 20px; height: 20px; border: 2px solid #e2e8f0;
-    border-top-color: #6366f1; border-radius: 50%; animation: pmSpin 0.7s linear infinite;
+    width: 20px; height: 20px; border: 2px solid #e9e9e9;
+    border-top-color: #111111; border-radius: 50%; animation: pmSpin 0.7s linear infinite;
   }
   @keyframes pmSpin { to { transform: rotate(360deg); } }
-  .pm-loading-sub { font-size: 0.8125rem; color: #cbd5e1; }
+  .pm-loading-sub { font-size: 0.8125rem; color: #d6d6d6; }
 
   /* ── REASSIGN MODAL ── */
   .pm-modal-overlay {
@@ -318,68 +318,68 @@ const css = `
   }
   @keyframes pmSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   .pm-modal-header {
-    padding: 1.5rem; border-bottom: 1px solid #e8ecf0;
+    padding: 1.5rem; border-bottom: 1px solid #ececec;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .pm-modal-title { font-size: 1.25rem; font-weight: 600; color: #0f172a; }
+  .pm-modal-title { font-size: 1.25rem; font-weight: 600; color: #1c1c1c; }
   .pm-modal-close {
-    background: transparent; border: none; color: #94a3b8;
+    background: transparent; border: none; color: #a6a6a6;
     cursor: pointer; width: 32px; height: 32px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
   }
-  .pm-modal-close:hover { background: #f1f5f9; color: #475569; }
+  .pm-modal-close:hover { background: #f5f5f5; color: #585858; }
   .pm-modal-body {
     padding: 1.5rem; overflow-y: auto; flex: 1;
   }
   .pm-modal-section { margin-bottom: 1.5rem; }
   .pm-modal-label {
-    font-size: 0.875rem; font-weight: 600; color: #1e293b;
+    font-size: 0.875rem; font-weight: 600; color: #2c2c2c;
     margin-bottom: 0.625rem; display: block;
   }
   .pm-modal-select {
     width: 100%; padding: 0.625rem 0.875rem;
-    border: 1px solid #e2e8f0; border-radius: 8px;
+    border: 1px solid #e9e9e9; border-radius: 8px;
     font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
-    color: #1e293b; background: #fff;
+    color: #2c2c2c; background: #fff;
     transition: all 0.2s;
   }
   .pm-modal-select:focus {
-    outline: none; border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+    outline: none; border-color: #111111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.08);
   }
   .pm-modal-search {
     width: 100%; padding: 0.625rem 0.875rem 0.625rem 2.125rem;
-    border: 1px solid #e2e8f0; border-radius: 8px;
+    border: 1px solid #e9e9e9; border-radius: 8px;
     font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
-    color: #1e293b; background: #fff;
+    color: #2c2c2c; background: #fff;
     transition: all 0.2s;
   }
-  .pm-modal-search::placeholder { color: #cbd5e1; }
+  .pm-modal-search::placeholder { color: #d6d6d6; }
   .pm-modal-search:focus {
-    outline: none; border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+    outline: none; border-color: #111111;
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.08);
   }
   .pm-projects-list {
-    max-height: 300px; overflow-y: auto; border: 1px solid #e8ecf0;
-    border-radius: 8px; background: #fafbfc;
+    max-height: 300px; overflow-y: auto; border: 1px solid #ececec;
+    border-radius: 8px; background: #ffffff;
   }
   .pm-project-item {
-    padding: 0.875rem 1rem; border-bottom: 1px solid #f1f5f9;
+    padding: 0.875rem 1rem; border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: center; gap: 0.75rem;
     transition: background 0.1s; cursor: pointer;
   }
   .pm-project-item:last-child { border-bottom: none; }
   .pm-project-item:hover { background: #fff; }
   .pm-project-checkbox {
-    color: #6366f1; cursor: pointer; flex-shrink: 0;
+    color: #111111; cursor: pointer; flex-shrink: 0;
   }
-  .pm-project-name { font-size: 0.875rem; font-weight: 500; color: #1e293b; flex: 1; }
+  .pm-project-name { font-size: 0.875rem; font-weight: 500; color: #2c2c2c; flex: 1; }
   .pm-project-meta {
-    font-size: 0.75rem; color: #94a3b8;
+    font-size: 0.75rem; color: #a6a6a6;
   }
   .pm-modal-footer {
-    padding: 1.5rem; border-top: 1px solid #e8ecf0;
+    padding: 1.5rem; border-top: 1px solid #ececec;
     display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem;
   }
   .pm-modal-btn {
@@ -388,37 +388,37 @@ const css = `
     cursor: pointer; transition: all 0.15s; border: none;
   }
   .pm-modal-btn-secondary {
-    background: #f1f5f9; color: #475569;
+    background: #ffffff; color: #585858;
   }
-  .pm-modal-btn-secondary:hover { background: #e2e8f0; }
+  .pm-modal-btn-secondary:hover { background: #e9e9e9; }
   .pm-modal-btn-primary {
-    background: #6366f1; color: #fff;
+    background: #111111; color: #fff;
   }
-  .pm-modal-btn-primary:hover { background: #4f46e5; }
+  .pm-modal-btn-primary:hover { background: #111111; }
   .pm-modal-btn-primary:disabled {
-    background: #cbd5e1; color: #94a3b8; cursor: not-allowed;
+    background: #d6d6d6; color: #a6a6a6; cursor: not-allowed;
   }
   .pm-reassign-btn {
     display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.5rem 1rem; background: #f1f5f9; border: 1px solid #e2e8f0;
+    padding: 0.5rem 1rem; background: #ffffff; border: 1px solid #e9e9e9;
     border-radius: 8px; font-family: 'DM Sans', sans-serif;
-    font-size: 0.8125rem; font-weight: 500; color: #475569;
+    font-size: 0.8125rem; font-weight: 500; color: #585858;
     cursor: pointer; transition: all 0.15s;
   }
   .pm-reassign-btn:hover {
-    background: #e2e8f0; border-color: #cbd5e1; color: #1e293b;
+    background: #e9e9e9; border-color: #d6d6d6; color: #2c2c2c;
   }
 `;
 
 /* ─── Activity type display config ───────────────────────────────────────── */
 const activityTypeStyle = (type: string): { background: string; color: string; label: string } => {
   switch (type) {
-    case 'email_log':       return { background: '#eff6ff', color: '#2563eb', label: 'Email' };
+    case 'email_log':       return { background: '#ffffff', color: '#111111', label: 'Email' };
     case 'task_created':    return { background: '#ecfdf5', color: '#059669', label: 'Created' };
-    case 'task_assigned':   return { background: '#f5f3ff', color: '#7c3aed', label: 'Assigned' };
+    case 'task_assigned':   return { background: '#ffffff', color: '#111111', label: 'Assigned' };
     case 'task_updated':    return { background: '#fff7ed', color: '#c2410c', label: 'Updated' };
     case 'task_status_changed': return { background: '#fefce8', color: '#a16207', label: 'Status' };
-    default:                return { background: '#f8fafc',  color: '#64748b', label: type.replace(/_/g, ' ') };
+    default:                return { background: '#ffffff',  color: '#787878', label: type.replace(/_/g, ' ') };
   }
 };
 
@@ -427,12 +427,12 @@ const fmt = (d: Date) =>
 
 /* ── PM avatar gradient by index ── */
 const PM_GRADIENTS = [
-  'linear-gradient(135deg,#6366f1,#8b5cf6)',
-  'linear-gradient(135deg,#0ea5e9,#6366f1)',
-  'linear-gradient(135deg,#10b981,#0ea5e9)',
+  'linear-gradient(135deg,#111111,#111111)',
+  'linear-gradient(135deg,#111111,#111111)',
+  'linear-gradient(135deg,#10b981,#111111)',
   'linear-gradient(135deg,#f59e0b,#ef4444)',
-  'linear-gradient(135deg,#ec4899,#8b5cf6)',
-  'linear-gradient(135deg,#14b8a6,#6366f1)',
+  'linear-gradient(135deg,#ec4899,#111111)',
+  'linear-gradient(135deg,#14b8a6,#111111)',
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -797,9 +797,9 @@ const PMActivityLog: React.FC = () => {
           {/* Stats */}
           <div className="pm-stats">
             {[
-              { label: 'Total PMs',        value: allPMs.size,          dot: '#6366f1' },
+              { label: 'Total PMs',        value: allPMs.size,          dot: '#111111' },
               { label: 'PMs with Activity',value: activePMsCount,       dot: '#059669' },
-              { label: 'Total Activities', value: allActivities.length, dot: '#2563eb' },
+              { label: 'Total Activities', value: allActivities.length, dot: '#111111' },
               { label: 'Viewing',          value: currentActs.length,   dot: '#d97706' },
             ].map(s => (
               <div className="pm-stat" key={s.label}>
@@ -812,7 +812,7 @@ const PMActivityLog: React.FC = () => {
 
           {/* Empty */}
           {pmTabList.length === 0 ? (
-            <div className="pm-empty" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '5rem 2rem' }}>
+            <div className="pm-empty" style={{ background: '#fff', border: '1px solid #e9e9e9', borderRadius: 12, padding: '5rem 2rem' }}>
               <div className="pm-empty-icon"><FaHistory /></div>
               <div className="pm-empty-head">No PM activity found</div>
               <div className="pm-empty-sub">Activity will appear here as PMs interact with projects</div>
@@ -927,7 +927,7 @@ const PMActivityLog: React.FC = () => {
             setShowLiveChat(false);
             refreshUnreadChat();
           }}
-          accentColor="#667eea"
+          accentColor="#111111"
         />
         {/* ── NOTIFS ── */}
         <NotificationsModal
@@ -980,7 +980,7 @@ const PMActivityLog: React.FC = () => {
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: '#6366f1',
+                        color: '#111111',
                         fontSize: '0.8125rem',
                         fontWeight: 500,
                         cursor: 'pointer',
@@ -1027,7 +1027,7 @@ const PMActivityLog: React.FC = () => {
                       left: '0.75rem',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#cbd5e1',
+                      color: '#d6d6d6',
                       fontSize: '0.75rem',
                       pointerEvents: 'none'
                     }} />
@@ -1049,7 +1049,7 @@ const PMActivityLog: React.FC = () => {
                           )
                         : pmProjects;
                       return filtered.length === 0 ? (
-                        <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#a6a6a6', fontSize: '0.875rem' }}>
                           {projectSearch.trim() ? `No projects found matching "${projectSearch}"` : 'No projects found'}
                         </div>
                       ) : (
@@ -1071,7 +1071,7 @@ const PMActivityLog: React.FC = () => {
                             {selectedProjects.has(project.id) ? (
                               <FaCheckSquare className="pm-project-checkbox" />
                             ) : (
-                              <FaSquare className="pm-project-checkbox" style={{ color: '#cbd5e1' }} />
+                              <FaSquare className="pm-project-checkbox" style={{ color: '#d6d6d6' }} />
                             )}
                             <div style={{ flex: 1 }}>
                               <div className="pm-project-name">{project.clientName}</div>

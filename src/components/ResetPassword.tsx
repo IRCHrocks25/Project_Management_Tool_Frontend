@@ -137,7 +137,7 @@ const ResetPassword: React.FC = () => {
             style={{
               background: 'none',
               border: 'none',
-              color: '#667eea',
+              color: '#111111',
               cursor: 'pointer',
               textDecoration: 'underline',
               fontSize: 'inherit',

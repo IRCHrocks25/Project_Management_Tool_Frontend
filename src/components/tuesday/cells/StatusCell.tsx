@@ -10,7 +10,7 @@ const COLOR_BY_LABEL: Record<string, string> = KANBAN_COLUMNS.reduce(
 
 const DELIV_DOT_COLOR: Record<string, string> = {
   'Not Started':       '#9199a8',
-  'In Progress':       '#1971c2',
+  'In Progress':       '#111111',
   'Ready for Review':  '#e67700',
   'Client Review':     '#f97316',
   'Approved':          '#2f9e44',

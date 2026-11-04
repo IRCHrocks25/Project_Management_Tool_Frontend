@@ -110,7 +110,7 @@ const ClientUpdateFormView: React.FC = () => {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              color: '#1a73e8',
+              color: '#111111',
               textDecoration: 'none',
               wordBreak: 'break-all',
             }}
@@ -231,11 +231,11 @@ const ClientUpdateFormView: React.FC = () => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: '#ffffff'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <FaSpinner style={{ fontSize: '2rem', color: '#667eea', animation: 'spin 1s linear infinite' }} />
-          <p style={{ marginTop: '1rem', color: '#64748b' }}>Loading form...</p>
+          <FaSpinner style={{ fontSize: '2rem', color: '#111111', animation: 'spin 1s linear infinite' }} />
+          <p style={{ marginTop: '1rem', color: '#787878' }}>Loading form...</p>
         </div>
       </div>
     );
@@ -248,10 +248,10 @@ const ClientUpdateFormView: React.FC = () => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: '#ffffff'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#64748b' }}>Form not found</p>
+          <p style={{ color: '#787878' }}>Form not found</p>
         </div>
       </div>
     );
@@ -264,7 +264,7 @@ const ClientUpdateFormView: React.FC = () => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: '#ffffff'
       }}>
         <div style={{ 
           background: 'white',
@@ -275,8 +275,8 @@ const ClientUpdateFormView: React.FC = () => {
           maxWidth: '500px'
         }}>
           <FaCheckCircle style={{ fontSize: '3rem', color: '#10b981', marginBottom: '1rem' }} />
-          <h2 style={{ color: '#1e293b', marginBottom: '0.5rem' }}>Thank You!</h2>
-          <p style={{ color: '#64748b' }}>Your response has been submitted successfully.</p>
+          <h2 style={{ color: '#2c2c2c', marginBottom: '0.5rem' }}>Thank You!</h2>
+          <p style={{ color: '#787878' }}>Your response has been submitted successfully.</p>
         </div>
       </div>
     );
@@ -285,7 +285,7 @@ const ClientUpdateFormView: React.FC = () => {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      background: '#f8f9fa',
+      background: '#ffffff',
       padding: '2rem 1rem'
     }}>
       <div style={{ 
@@ -321,8 +321,8 @@ const ClientUpdateFormView: React.FC = () => {
               <span>{activeSection?.title || `Section ${safeSectionIndex + 1}`}</span>
               <span>Section {safeSectionIndex + 1} of {sections.length}</span>
             </div>
-            <div style={{ width: '100%', height: 8, borderRadius: 999, background: '#e5e7eb', overflow: 'hidden' }}>
-              <div style={{ width: `${progressPercent}%`, height: '100%', background: '#673ab7', transition: 'width 0.25s ease' }} />
+            <div style={{ width: '100%', height: 8, borderRadius: 999, background: '#e8e8e8', overflow: 'hidden' }}>
+              <div style={{ width: `${progressPercent}%`, height: '100%', background: '#111111', transition: 'width 0.25s ease' }} />
             </div>
           </div>
         )}
@@ -416,7 +416,7 @@ const ClientUpdateFormView: React.FC = () => {
                       lineHeight: '1.5',
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#673ab7';
+                      e.target.style.borderColor = '#111111';
                       e.target.style.outline = 'none';
                     }}
                     onBlur={(e) => {
@@ -442,7 +442,7 @@ const ClientUpdateFormView: React.FC = () => {
                     borderRadius: '4px',
                     padding: '1.5rem',
                     textAlign: 'center',
-                    background: '#f8f9fa',
+                    background: '#ffffff',
                     marginBottom: '0.75rem',
                     cursor: 'pointer',
                     position: 'relative',
@@ -536,9 +536,9 @@ const ClientUpdateFormView: React.FC = () => {
                 disabled={safeSectionIndex === 0}
                 onClick={() => setCurrentSectionIndex((prev) => Math.max(prev - 1, 0))}
                 style={{
-                  background: '#f3f4f6',
+                  background: '#ffffff',
                   color: '#202124',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid #d6d6d6',
                   padding: '0.75rem 1rem',
                   borderRadius: '4px',
                   fontSize: '0.875rem',
@@ -553,7 +553,7 @@ const ClientUpdateFormView: React.FC = () => {
                   type="button"
                   onClick={() => setCurrentSectionIndex((prev) => Math.min(prev + 1, sections.length - 1))}
                   style={{
-                    background: '#673ab7',
+                    background: '#111111',
                     color: 'white',
                     border: 'none',
                     padding: '0.75rem 1rem',
@@ -600,7 +600,7 @@ const ClientUpdateFormView: React.FC = () => {
                 disabled={submitting}
                 style={{
                   width: '100%',
-                  background: '#673ab7',
+                  background: '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.5rem',

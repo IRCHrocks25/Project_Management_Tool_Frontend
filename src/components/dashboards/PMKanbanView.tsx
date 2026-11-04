@@ -15,11 +15,11 @@ const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap');
 
   .pmk-scope-bar {
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --border: #e8ecf0;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
+    --border: #ececec;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
     font-family: 'Instrument Sans', sans-serif;
 
     display: flex;
@@ -31,13 +31,13 @@ const STYLES = `
     padding: 12px 16px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #f8f9fb;
+    background: #fafafa;
     transition: background 0.2s, border-color 0.2s;
   }
 
   .pmk-scope-bar.all-active {
     background: var(--accent-light);
-    border-color: #bfdbfe;
+    border-color: #dedede;
   }
 
   .pmk-scope-left {
@@ -80,7 +80,7 @@ const STYLES = `
     line-height: 1;
   }
   .pmk-scope-bar.all-active .pmk-scope-label {
-    color: #3b82f6;
+    color: #111111;
   }
   .pmk-scope-desc {
     font-size: 13px;
@@ -109,16 +109,16 @@ const STYLES = `
     color: white;
   }
   .pmk-toggle-btn.to-all:hover {
-    background: #1d4ed8;
+    background: #111111;
   }
 
   .pmk-toggle-btn.to-dept {
     background: white;
     color: var(--accent);
-    border: 1px solid #bfdbfe;
+    border: 1px solid #dedede;
   }
   .pmk-toggle-btn.to-dept:hover {
-    background: #dbeafe;
+    background: #ececec;
   }
 `;
 

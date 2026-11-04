@@ -79,7 +79,7 @@ const AssigneePicker: React.FC<AssigneePickerProps> = ({
           const user = allUsers.find(u => u.id === id);
           return (
             <div key={id} className="tdsm-assignee-row" style={{ paddingTop: 0, paddingBottom: 0 }}>
-              <UserAvatar name={user?.name || getUserName(id)} avatarUrl={user?.avatarUrl} size={28} color="#6366f1" />
+              <UserAvatar name={user?.name || getUserName(id)} avatarUrl={user?.avatarUrl} size={28} color="#111111" />
               <span className="tdsm-assignee-name">{getUserName(id)}</span>
               {!disabled && (
                 <button
@@ -138,7 +138,7 @@ const AssigneePicker: React.FC<AssigneePickerProps> = ({
                     className={`tdsm-picker-user${selected ? ' selected' : ''}${index === focusedIndex ? ' focused' : ''}`}
                     onMouseDown={e => { e.preventDefault(); handleToggle(user.id); }}
                   >
-                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={24} color="#6366f1" />
+                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={24} color="#111111" />
                     <span>{user.name}</span>
                     <span className="tdsm-picker-role">{user.role}</span>
                     {selected && <span className="tdsm-picker-check">✓</span>}

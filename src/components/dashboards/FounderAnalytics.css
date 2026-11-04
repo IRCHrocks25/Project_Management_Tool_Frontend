@@ -1,22 +1,22 @@
 .fa-root {
-  --fa-line: #e8ebf1;
-  --fa-ink: #20263a;
-  --fa-sub: #596276;
+  --fa-line: #ececec;
+  --fa-ink: #2d2d2d;
+  --fa-sub: #686868;
   --fa-muted: #747b8c;
   margin-bottom: 3rem;
   color: var(--fa-ink);
 }
 .fa-head { margin-bottom: 1.25rem; }
-.fa-head h2 { margin: 0 0 4px; color: #1e293b; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+.fa-head h2 { margin: 0 0 4px; color: #2c2c2c; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
 .fa-head p { margin: 0; color: var(--fa-muted); font-size: 0.875rem; }
 
-.fa-card { min-width: 0; padding: 20px; background: #fff; border: 1px solid var(--fa-line); border-radius: 13px; box-shadow: 0 8px 30px rgba(34, 45, 79, 0.035); }
+.fa-card { min-width: 0; padding: 20px; background: #fff; border: 1px solid var(--fa-line); border-radius: 13px; box-shadow: 0 8px 30px rgba(56, 56, 56, 0.035); }
 .fa-card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; letter-spacing: -0.015em; }
 .fa-card-sub { margin: 0 0 14px; color: var(--fa-muted); font-size: 12px; line-height: 1.5; }
 
 .fa-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
 .fa-tile-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--fa-sub); font-size: 12px; font-weight: 640; }
-.fa-tile-icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; background: #f1edff; color: #6852dd; font-size: 13px; }
+.fa-tile-icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; background: #f1f1f1; color: #111111; font-size: 13px; }
 .fa-tile-num { margin-top: 10px; font-size: 28px; font-weight: 750; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .fa-tile-foot { margin-top: 3px; color: var(--fa-muted); font-size: 11.5px; }
 
@@ -29,7 +29,7 @@
 .fa-health-seg.healthy, .fa-legend-icon.healthy { background: #1b9668; }
 .fa-health-seg.attention, .fa-legend-icon.attention { background: #d0912a; }
 .fa-health-seg.critical, .fa-legend-icon.critical { background: #c94f40; }
-.fa-health-empty { width: 100%; border-radius: 4px; background: #f0f2f6; }
+.fa-health-empty { width: 100%; border-radius: 4px; background: #f3f3f3; }
 .fa-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .fa-legend-item { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .fa-legend-icon { width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center; border-radius: 7px; color: #fff; font-size: 11px; }
@@ -39,34 +39,34 @@
 /* Lists */
 .fa-table { width: 100%; border-collapse: collapse; }
 .fa-table th { padding: 0 8px 8px; color: var(--fa-muted); font-size: 11px; font-weight: 650; text-align: right; white-space: nowrap; }
-.fa-table td { padding: 9px 8px; border-top: 1px solid #f0f1f5; color: var(--fa-sub); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fa-table td { padding: 9px 8px; border-top: 1px solid #f2f2f2; color: var(--fa-sub); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fa-table th:first-child, .fa-table td:first-child { padding-left: 0; text-align: left; }
 .fa-table th:last-child, .fa-table td:last-child { padding-right: 0; }
-.fa-person { display: flex; align-items: center; gap: 8px; color: #2b3447; font-weight: 620; white-space: normal; }
+.fa-person { display: flex; align-items: center; gap: 8px; color: #393939; font-weight: 620; white-space: normal; }
 .fa-stale { color: #96660f; font-weight: 620; }
 .fa-critical { color: #b84436; font-weight: 650; }
-.fa-project-row { width: 100%; padding: 9px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-top: 1px solid #f0f1f5; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.fa-project-row { width: 100%; padding: 9px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-top: 1px solid #f2f2f2; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 .fa-project-row:first-of-type { border-top: 0; }
-.fa-project-row:hover b { color: #5a46e0; }
+.fa-project-row:hover b { color: #333333; }
 .fa-project-text { min-width: 0; }
 .fa-project-text b, .fa-project-text small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fa-project-text b { color: #2b3447; font-size: 12.5px; font-weight: 640; }
+.fa-project-text b { color: #393939; font-size: 12.5px; font-weight: 640; }
 .fa-project-text small { margin-top: 2px; color: var(--fa-muted); font-size: 11px; }
 .fa-project-age { flex-shrink: 0; font-size: 11.5px; }
 .fa-empty { margin: 0; padding: 18px 0; color: var(--fa-muted); font-size: 12.5px; text-align: center; }
-.fa-more { margin-top: 10px; padding: 0; border: 0; background: transparent; color: #5a46e0; font: inherit; font-size: 12px; font-weight: 660; cursor: pointer; }
+.fa-more { margin-top: 10px; padding: 0; border: 0; background: transparent; color: #333333; font: inherit; font-size: 12px; font-weight: 660; cursor: pointer; }
 .fa-more:hover { text-decoration: underline; }
-.fa-root button:focus-visible { outline: 2px solid #6555e9; outline-offset: 2px; }
+.fa-root button:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
 
-.fa-activity-icon { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #f0edff; color: #6d5add; font-size: 11px; }
+.fa-activity-icon { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: #f6f6f6; color: #111111; font-size: 11px; }
 
 /* Distributions */
 .fa-dist-row { margin-bottom: 11px; }
 .fa-dist-row:last-child { margin-bottom: 0; }
 .fa-dist-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px; color: var(--fa-sub); font-size: 12px; }
 .fa-dist-label b { color: var(--fa-ink); font-variant-numeric: tabular-nums; }
-.fa-track { display: block; height: 6px; overflow: hidden; border-radius: 10px; background: #f0f2f6; }
-.fa-fill { display: block; height: 100%; border-radius: 10px; background: #7663e7; }
+.fa-track { display: block; height: 6px; overflow: hidden; border-radius: 10px; background: #f3f3f3; }
+.fa-fill { display: block; height: 100%; border-radius: 10px; background: #111111; }
 
 @media (max-width: 1100px) {
   .fa-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }

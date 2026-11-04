@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaFolder, FaFolderOpen, FaClock, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaHistory, FaComment, FaComments, FaTasks, FaTicketAlt } from 'react-icons/fa';
+import { FaPlus, FaFolder, FaFolderOpen, FaEnvelope, FaChevronDown, FaUser, FaBell, FaCog, FaSignOutAlt, FaUsers, FaCheckCircle, FaSearch, FaTimes, FaStickyNote, FaLink, FaPaperPlane, FaHistory, FaComment, FaComments, FaTasks, FaTicketAlt, FaThLarge, FaLayerGroup, FaColumns, FaInbox, FaCalendarDay, FaExclamationTriangle } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
 import { taskService } from '../../services/task.service';
@@ -16,7 +16,20 @@ import PMTasksTableView from './PMTasksTableView';
 import PMListView from './PMListView';
 import PMProjectsRegistryView from './PMProjectsRegistryView';
 import PMKanbanView from './PMKanbanView';
-import PMQuickOverview from './PMQuickOverview';
+import TaskDetailSideModal from '../TaskDetailSideModal';
+import StatusChangeNotesModal from '../shared/StatusChangeNotesModal';
+import {
+  PMActionQueue,
+  PMApprovalsView,
+  PMDepartmentBars,
+  PMPipelineView,
+  PMWorkloadView,
+  Workstream,
+  buildWorkstreams,
+} from './PMWorkspaceViews';
+import { useProductTour } from '../tours/useProductTour';
+import { PM_TOUR_STEPS } from '../tours/tourSteps';
+import { BOARD_COLUMNS, COLUMN_LABEL, ColumnId, NEXT_STEP, getTaskColumn, moveTaskToColumn } from './taskColumns';
 import FounderAnalytics from './FounderAnalytics';
 import PMOverviewSearchResults from './PMOverviewSearchResults';
 import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './PMAlertsPanel';
@@ -24,6 +37,8 @@ import UserAvatar from '../UserAvatar';
 import AppSidebar from '../AppSidebar';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
+import './RoleDashboard.css';
+import './PMWorkspace.css';
 
 const ITEMS_PER_PAGE = 10; // Constant for pagination
 
@@ -70,7 +85,7 @@ const PMDashboard: React.FC = () => {
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [stats, setStats] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview' | 'tasks' | 'pm_list'>('overview');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'overview' | 'tasks' | 'pm_list' | 'pipeline' | 'approvals' | 'workload' | 'activity'>('overview');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
@@ -86,6 +101,13 @@ const PMDashboard: React.FC = () => {
   const [reassigningPMFor, setReassigningPMFor] = useState<string | null>(null);
   const [tasksTableSort, setTasksTableSort] = useState<{ column: string; dir: 'asc' | 'desc' }>({ column: 'updated', dir: 'desc' });
   const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
+  const [drawerTask, setDrawerTask] = useState<any>(null);
+  const [drawerSiblings, setDrawerSiblings] = useState<any[]>([]);
+  const [drawerBusy, setDrawerBusy] = useState(false);
+  const [stageChange, setStageChange] = useState<{ task: any; columnId: ColumnId } | null>(null);
+  const [stageChangeSaving, setStageChangeSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | undefined>(undefined);
   const [tasksDepartmentFilter, setTasksDepartmentFilter] = useState<string>('All Departments');
   const [tasksPmFilter, setTasksPmFilter] = useState<string>('All');
   const [tasksAssigneeFilter, setTasksAssigneeFilter] = useState<string>('All');
@@ -1199,71 +1221,306 @@ const PMDashboard: React.FC = () => {
     return u?.name || '';
   };
 
+  const workstreams = useMemo(() => buildWorkstreams(stageProjectsMap, tasks), [stageProjectsMap, tasks]);
+  useProductTour({
+    tourKey: 'pm-v1',
+    userId: user?.id,
+    ready: !loading,
+    steps: PM_TOUR_STEPS,
+    beforeStart: () => setViewMode('overview'),
+  });
+  const activeProjectIds = useMemo(
+    () => new Set<string>(projects.filter((p: any) => !p.isArchived && !p.isCompleted).map((p: any) => p.id)),
+    [projects],
+  );
+  const approvalsCount = useMemo(
+    () => tasks.filter((t: any) => activeProjectIds.has(t.projectId) && !t.isArchived && getTaskColumn(t) === 'for_approval').length,
+    [tasks, activeProjectIds],
+  );
+
+  const notify = (message: string) => {
+    setToast(message);
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3200);
+  };
+
+  const openTaskDrawer = (task: any, siblings: any[] = []) => {
+    setDrawerTask(task);
+    setDrawerSiblings(siblings);
+  };
+  const closeTaskDrawer = useCallback(() => {
+    setDrawerTask(null);
+    setDrawerSiblings([]);
+  }, []);
+  const openWorkstream = (workstream: Workstream) => {
+    if (workstream.next) openTaskDrawer(workstream.next, workstream.tasks);
+    else navigate(`/project/${workstream.project.id}`);
+  };
+
+  // Goes through moveTaskToColumn so a stale review marker can't keep the task in its old stage
+  const quickMoveTask = async (task: any, columnId: ColumnId, message: string) => {
+    try {
+      setDrawerBusy(true);
+      await moveTaskToColumn(task, columnId, COLUMN_LABEL[columnId], '', [], user?.name);
+      closeTaskDrawer();
+      await loadData();
+      notify(message);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      notify('Could not update the task. Please try again.');
+    } finally {
+      setDrawerBusy(false);
+    }
+  };
+
+  const goToAlerts = (tab: 'due' | 'overdue') => {
+    setAlertsTab(tab);
+    setViewMode('overview');
+    window.setTimeout(() => document.getElementById('pm-alerts')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
   if (loading) {
     return (
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <div className="rd-root pm-root">
         <AppSidebar />
-        <div className="dashboard" style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        }}>
-        <div style={{
-          textAlign: 'center',
-          color: 'white'
-        }}>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-            @keyframes pulse {
-              0%, 100% { opacity: 1; }
-              50% { opacity: 0.5; }
-            }
-            .dashboard-loader-spinner {
-              width: 80px;
-              height: 80px;
-              margin: 0 auto 2rem;
-              border: 4px solid rgba(255, 255, 255, 0.2);
-              border-top: 4px solid white;
-              border-radius: 50%;
-              animation: spin 1s linear infinite;
-            }
-            .dashboard-loader-text {
-              animation: pulse 2s ease-in-out infinite;
-            }
-          `}</style>
-          <div className="dashboard-loader-spinner" />
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: 600,
-            marginBottom: '0.5rem'
-          }} className="dashboard-loader-text">
-            Loading Dashboard...
-          </h2>
-          <p style={{
-            fontSize: '0.875rem',
-            opacity: 0.9
-          }} className="dashboard-loader-text">
-            Fetching your projects and tasks
-          </p>
-        </div>
+        <div className="rd-main rd-loading" aria-live="polite">
+          <div style={{ textAlign: 'center' }}>
+            <FaFolderOpen style={{ fontSize: 22, color: '#111111', marginBottom: 12 }} />
+            <div>Loading your projects and tasks…</div>
+          </div>
         </div>
       </div>
     );
   }
 
+  const stageChangeLabel = stageChange ? COLUMN_LABEL[stageChange.columnId] : '';
+  const currentDrawerTask = drawerTask ? tasks.find((t: any) => t.id === drawerTask.id) || drawerTask : null;
+  const drawerColumn: ColumnId = currentDrawerTask ? getTaskColumn(currentDrawerTask) : 'not_started';
+  const otherDrawerTasks = currentDrawerTask ? drawerSiblings.filter((t: any) => t.id !== currentDrawerTask.id) : [];
+  const overdueCount = taskDueAlerts.filter((a) => a.daysLeft < 0).length;
+  const dueSoonCount = taskDueAlerts.length - overdueCount;
+  const activeProjects = projects.filter((p: any) => !p.isArchived).length;
+  const pageCopy: Record<string, { title: string; desc: string }> = {
+    overview: { title: 'Overview', desc: '' },
+    pipeline: { title: 'Project pipeline', desc: 'Track handoffs across teams, spot blockers, and keep projects moving.' },
+    kanban: { title: 'Kanban', desc: 'Your project board. Drag a project to move it between stages.' },
+    tasks: { title: 'Task inbox', desc: 'Every task, with sorting, filters and inline updates.' },
+    approvals: { title: 'Approvals', desc: 'Review submitted work and unblock the team.' },
+    list: { title: 'All projects', desc: 'Projects, PMs, client email logs, completion and archiving.' },
+    pm_list: { title: 'All projects', desc: 'Projects, PMs, client email logs, completion and archiving.' },
+    workload: { title: 'Team workload', desc: 'See who owns what, and where someone needs help.' },
+    activity: { title: 'Activity', desc: 'Your recent updates, plus the full activity logs.' },
+  };
+  const pageTitle = pageCopy[viewMode]?.title || 'Overview';
+  const goToPage = (page: typeof viewMode) => {
+    setViewMode(page);
+    if (page === 'overview' || page === 'activity') loadNotifications();
+  };
+  const navItem = (key: typeof viewMode, label: string, icon: React.ReactNode, count?: number) => ({
+    key,
+    label,
+    icon,
+    count,
+    active: viewMode === key,
+    onClick: () => goToPage(key),
+  });
+  const showFilterBar = !['workload', 'activity'].includes(viewMode);
+  const recentActivitySection = (
+    <div style={{ marginBottom: '3rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  marginBottom: '1.5rem'
+                }}>
+                  <h2 style={{ 
+                    fontSize: '1.75rem', 
+                    fontWeight: 700, 
+                    color: '#2c2c2c',
+                    margin: 0,
+                    letterSpacing: '-0.02em'
+                  }}>
+                    Recent Activity
+                  </h2>
+                </div>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #e9e9e9',
+                  maxHeight: '600px',
+                  overflowY: 'auto',
+                  overflowX: 'hidden'
+                }}>
+                  {overviewNotifications.length === 0 ? (
+                    <div style={{ 
+                      padding: '4rem 2rem', 
+                      textAlign: 'center', 
+                      color: '#a6a6a6',
+                      fontSize: '0.9375rem'
+                    }}>
+                      <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
+                      {overviewSearchLower ? (
+                        <>
+                          <div style={{ fontWeight: 500 }}>No recent activity matches “{searchTerm.trim()}”</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Clear the search to see all activity</div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 500 }}>No recent activity</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Activity will appear here as projects and tasks are updated</div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      {overviewNotifications.map((notification: any) => {
+                        const timeAgo = getTimeAgo(notification.createdAt);
+                        const getNotificationIcon = () => {
+                          switch (notification.type) {
+                            case 'task_completed': return '✅';
+                            case 'project_stage': return '🔄';
+                            case 'project_created': return '➕';
+                            case 'task': return '📋';
+                            case 'email': return '📧';
+                            case 'revision': return '✏️';
+                            case 'alert': return '⚠️';
+                            default: return '📌';
+                          }
+                        };
+                        const getNotificationColor = () => {
+                          switch (notification.type) {
+                            case 'task_completed': return '#10b981';
+                            case 'project_stage': return '#111111';
+                            case 'project_created': return '#111111';
+                            case 'alert': return '#f59e0b';
+                            default: return '#787878';
+                          }
+                        };
+                        return (
+                          <div
+                            key={notification.id}
+                            onClick={() => {
+                              if (notification.projectId) {
+                                const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
+                                const url = isConversation
+                                  ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
+                                  : `/project/${notification.projectId}`;
+                                navigate(url);
+                              }
+                            }}
+                            style={{
+                              padding: '1.25rem 1.5rem',
+                              borderBottom: '1px solid #f5f5f5',
+                              cursor: notification.projectId ? 'pointer' : 'default',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '1.25rem',
+                              transition: 'all 0.2s ease',
+                              backgroundColor: notification.isRead ? 'white' : '#fafafa',
+                              position: 'relative'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (notification.projectId) {
+                                e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                e.currentTarget.style.transform = 'translateX(4px)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = notification.isRead ? 'white' : '#fafafa';
+                              e.currentTarget.style.transform = 'translateX(0)';
+                            }}
+                          >
+                            {!notification.isRead && (
+                              <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: '4px',
+                                background: getNotificationColor(),
+                                borderRadius: '0 4px 4px 0'
+                              }}></div>
+                            )}
+                            <div style={{ 
+                              fontSize: '1.75rem',
+                              flexShrink: 0,
+                              width: '40px',
+                              height: '40px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: `${getNotificationColor()}15`,
+                              borderRadius: '10px'
+                            }}>{getNotificationIcon()}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ 
+                                fontWeight: notification.isRead ? 500 : 600, 
+                                color: '#2c2c2c',
+                                marginBottom: '0.375rem',
+                                fontSize: '0.9375rem',
+                                lineHeight: 1.4
+                              }}>
+                                {notification.title}
+                              </div>
+                              <div style={{ color: '#787878', fontSize: '0.875rem', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+                                {notification.message}
+                              </div>
+                              <div style={{ 
+                                fontSize: '0.75rem', 
+                                color: '#a6a6a6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}>
+                                <span>{timeAgo}</span>
+                                {!notification.isRead && (
+                                  <span style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: getNotificationColor(),
+                                    display: 'inline-block'
+                                  }}></span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+  );
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <AppSidebar />
-      <div className="dashboard premium" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <nav className="dashboard-nav premium-nav">
-        <div className="nav-container">
+    <div className="rd-root pm-root" style={{ padding: 0 }}>
+      <AppSidebar
+        workspace={{
+          items: [
+            navItem('overview', 'Overview', <FaThLarge />),
+            navItem('pipeline', 'Project pipeline', <FaLayerGroup />, workstreams.length),
+            navItem('kanban', 'Kanban', <FaColumns />),
+            ...(hasPmTools
+              ? [
+                  navItem('tasks', 'Task inbox', <FaTasks />, todayTasks),
+                  navItem('approvals', 'Approvals', <FaInbox />, approvalsCount),
+                ]
+              : []),
+          ],
+          secondary: {
+            label: 'Manage',
+            items: [
+              navItem('list', 'All projects', <FaFolder />),
+              ...(hasPmTools ? [navItem('workload', 'Team workload', <FaUsers />)] : []),
+              navItem('activity', 'Activity', <FaHistory />),
+            ],
+          },
+        }}
+      />
+      <div className="dashboard pm-shell">
+      <header className="rd-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {user?.role !== 'Project Manager' && !!user?.isTeamLead && (
               <button
@@ -1273,63 +1530,51 @@ const PMDashboard: React.FC = () => {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.5rem 0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid #e9e9e9',
                   borderRadius: '8px',
                   background: 'white',
-                  color: '#64748b',
+                  color: '#787878',
                   fontSize: '0.875rem',
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f8fafc';
-                  e.currentTarget.style.borderColor = '#667eea';
-                  e.currentTarget.style.color = '#667eea';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.borderColor = '#111111';
+                  e.currentTarget.style.color = '#111111';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'white';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.borderColor = '#e9e9e9';
+                  e.currentTarget.style.color = '#787878';
                 }}
               >
                 ← My Department
               </button>
             )}
-            <h2 className="logo">Katalyst PM</h2>
+            <div className="rd-crumb"><span className="rd-crumb-root">Workspace /</span><strong>{pageTitle}</strong></div>
           </div>
           <div className="nav-right">
             {hasPmTools && (
-              <button 
-                onClick={() => setShowCreateModal(true)} 
-                className="btn-primary btn-primary-premium"
-                style={{ marginRight: '1rem' }}
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className="rd-btn rd-btn-primary"
+                aria-label="New project"
               >
-                <FaPlus className="btn-icon" />
-                New Project
+                <FaPlus /> <span className="rd-btn-label">New Project</span>
               </button>
             )}
 
             <button
               type="button"
+              className="pm-tuesday"
               onClick={() => navigate('/tuesday')}
-              style={{
-                marginRight: '1rem',
-                padding: '0.2rem 0.25rem',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
               title="Hierarchical view: Project → Deliverable → Task"
+              aria-label="Open Tuesday view"
             >
-              <img
-                src="https://cdn.katalyst-crm.com/t1/cloudinary/Tuesday_iruicl.png"
-                alt="Tuesday"
-                style={{ height: '28px', width: 'auto', display: 'block' }}
-              />
+              <img src="https://cdn.katalyst-crm.com/t1/cloudinary/Tuesday_iruicl.png" alt="" />
             </button>
             
             {/* Live Chat - Message Icon */}
@@ -1346,15 +1591,15 @@ const PMDashboard: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '1.25rem',
                 transition: 'color 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#667eea';
+                e.currentTarget.style.color = '#111111';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = '#787878';
               }}
               title="Live Chat"
             >
@@ -1398,15 +1643,15 @@ const PMDashboard: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '1.25rem',
                 transition: 'color 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#667eea';
+                e.currentTarget.style.color = '#111111';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = '#787878';
               }}
             >
               <FaBell />
@@ -1579,63 +1824,67 @@ const PMDashboard: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-      </nav>
 
-      <div className="dashboard-content">
-        <div className="dashboard-header premium-header">
-          <div className="header-left">
-            <h1 className="premium-greeting">
-              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0]}.
+      </header>
+
+      <div className="pm-content">
+        <div className="rd-header">
+          <div>
+            <div className="rd-eyebrow"><span className="rd-live" />Delivery operations</div>
+            <h1 className="rd-h1">
+              {viewMode === 'overview'
+                ? `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, ${user?.name?.split(' ')[0]}.`
+                : pageTitle}
             </h1>
-            <p className="dashboard-subtitle premium-subtitle">
-              {greetingMessage}
-              {waitingOnClient > 0 && ` • ${waitingOnClient} ${waitingOnClient === 1 ? 'project' : 'projects'} waiting on client review`}
+            <p className="rd-desc">
+              {viewMode === 'overview'
+                ? <>{greetingMessage}{waitingOnClient > 0 && ` • ${waitingOnClient} ${waitingOnClient === 1 ? 'project' : 'projects'} waiting on client review`}</>
+                : pageCopy[viewMode]?.desc}
             </p>
           </div>
-          <div className="header-right">
-            <div className="view-toggle">
-              <button
-                className={viewMode === 'kanban' ? 'active' : ''}
-                onClick={() => setViewMode('kanban')}
-              >
-                Kanban
-              </button>
-              <button 
-                className={viewMode === 'list' ? 'active' : ''}
-                onClick={() => setViewMode('list')}
-              >
-                List
-              </button>
-              {hasPmTools && (
-                <button 
-                  className={viewMode === 'tasks' ? 'active' : ''}
-                  onClick={() => setViewMode('tasks')}
-                >
-                  <FaTasks style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
-                  Tasks
-                </button>
-              )}
-              {/* PM List temporarily hidden
-              {user?.role === 'Project Manager' && (
-                <button
-                  className={viewMode === 'pm_list' ? 'active' : ''}
-                  onClick={() => setViewMode('pm_list')}
-                >
-                  PM List
-                </button>
-              )}
-              */}
-              <button 
-                className={viewMode === 'overview' ? 'active' : ''}
-                onClick={() => {
-                  setViewMode('overview');
-                  loadNotifications(); // Refresh notifications when switching to overview
-                }}
-              >
-                Overview
-              </button>
-            </div>
+        </div>
+
+        <div className="pm-metrics">
+          <button type="button" className="pm-metric" onClick={() => { setActiveFilter(null); setViewMode('list'); }}>
+            <span className="pm-metric-icon" aria-hidden="true"><FaFolder /></span>
+            <span className="pm-metric-text"><b>{stats?.total || 0}</b><span>Total projects</span><small>{activeProjects} active</small></span>
+          </button>
+          <button type="button" className="pm-metric" onClick={() => setViewMode('pipeline')}>
+            <span className="pm-metric-icon blue" aria-hidden="true"><FaLayerGroup /></span>
+            <span className="pm-metric-text"><b>{workstreams.length}</b><span>Department workstreams</span><small>{activeTasksCount} active tasks</small></span>
+          </button>
+          <button type="button" className="pm-metric" onClick={() => navigate('/tasks-due-today')} title="View all tasks due today">
+            <span className="pm-metric-icon amber" aria-hidden="true"><FaCalendarDay /></span>
+            <span className="pm-metric-text"><b>{todayTasks}</b><span>Tasks due today</span></span>
+          </button>
+          <button type="button" className="pm-metric" onClick={() => goToAlerts('overdue')}>
+            <span className="pm-metric-icon red" aria-hidden="true"><FaExclamationTriangle /></span>
+            <span className="pm-metric-text"><b>{overdueCount}</b><span>Overdue tasks</span></span>
+          </button>
+          <button
+            type="button"
+            className={`pm-metric${activeFilter === 'waiting' ? ' active' : ''}`}
+            aria-pressed={activeFilter === 'waiting'}
+            onClick={() => {
+              handleStatClick('waiting');
+              if (viewMode === 'overview') setViewMode('list');
+            }}
+          >
+            <span className="pm-metric-icon green" aria-hidden="true"><FaEnvelope /></span>
+            <span className="pm-metric-text"><b>{waitingOnClient}</b><span>Waiting on client</span></span>
+          </button>
+        </div>
+
+        {(overdueCount > 0 || dueSoonCount > 0) && (
+          <div className="pm-attention">
+            <FaExclamationTriangle aria-hidden="true" />
+            <p><b>Attention needed:</b> {overdueCount} {overdueCount === 1 ? 'task' : 'tasks'} overdue and {dueSoonCount} due within 5 days.</p>
+            <button type="button" className="rd-btn rd-btn-subtle" onClick={() => goToAlerts(overdueCount > 0 ? 'overdue' : 'due')}>View alerts</button>
+          </div>
+        )}
+
+        {showFilterBar && (
+          <div className="pm-filterbar">
             <div className="filters">
               <div className="search-input-wrapper">
                 <FaSearch className="search-icon" />
@@ -1724,19 +1973,53 @@ const PMDashboard: React.FC = () => {
                 <option>Rapid Prospect</option>
               </select>
             </div>
-          </div>
-        </div>
 
-        {isFounder && viewMode === 'overview' && (
-          <FounderAnalytics
-            projects={projects}
-            tasks={tasks}
-            users={users}
-            lastEmailLogs={lastEmailLogs}
-          />
+          </div>
         )}
 
-        <PMAlertsPanel
+        <div className="dashboard-main premium-main">
+          {viewMode === 'overview' ? (
+            <div className="overview-view">
+              {overviewSearchLower && (
+                <PMOverviewSearchResults
+                  searchTerm={searchTerm}
+                  matchingProjects={filteredProjects}
+                  hasOtherFilters={priorityFilter !== 'All Priorities' || clientTypeFilter !== 'All Client Types' || !!activeFilter}
+                  getProjectPmName={getProjectPmName}
+                  onOpenProject={(projectId) => {
+                    const p = projects.find((pr: any) => pr.id === projectId);
+                    if (p) openProjectAtStageTask(p); else navigate(`/project/${projectId}`);
+                  }}
+                  onShowAllInList={() => setViewMode('list')}
+                  onClearSearch={() => setSearchTerm('')}
+                />
+              )}
+
+              {isFounder && (
+                <FounderAnalytics
+                  projects={projects}
+                  tasks={tasks}
+                  users={users}
+                  lastEmailLogs={lastEmailLogs}
+                />
+              )}
+
+              <div className="pm-overview-grid">
+                <PMActionQueue
+                  tasks={tasks}
+                  activeProjectIds={activeProjectIds}
+                  getProjectName={getProjectName}
+                  onOpenTask={(task) => openTaskDrawer(task)}
+                  onOpenInbox={() => setViewMode(hasPmTools ? 'tasks' : 'pipeline')}
+                />
+                <PMDepartmentBars
+                  stageProjectsMap={stageProjectsMap}
+                  onOpenStage={(stage) => navigate(`/department/${encodeURIComponent(stage)}`)}
+                />
+              </div>
+
+              <div id="pm-alerts" className="pm-section-gap">
+                <PMAlertsPanel
           taskDueAlerts={taskDueAlerts}
           canManageMonthlyReminders={canManageMonthlyReminders}
           alertsTab={alertsTab}
@@ -1760,341 +2043,49 @@ const PMDashboard: React.FC = () => {
           openProject={(projectId) => navigate(`/project/${projectId}`)}
           onCreateProjectClick={() => setShowCreateModal(true)}
         />
-
-        <div className="dashboard-stats premium-stats">
-          <div 
-            className={`stat-card premium-stat-card ${activeFilter === 'total' ? 'active' : ''}`}
-            onClick={() => handleStatClick('total')}
-          >
-            <div className="stat-icon">
-              <FaFolder />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats?.total || 0}</div>
-              <div className="stat-label">Total Projects</div>
-            </div>
-          </div>
-          <div 
-            className={`stat-card premium-stat-card ${activeFilter === 'tasks' ? 'active' : ''}`}
-            onClick={() => navigate('/tasks-due-today')}
-            style={{ cursor: 'pointer' }}
-            title="View all tasks due today"
-          >
-            <div className="stat-icon">
-              <FaClock />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{todayTasks}</div>
-              <div className="stat-label">Tasks Due Today</div>
-            </div>
-          </div>
-          <div 
-            className={`stat-card premium-stat-card ${activeFilter === 'waiting' ? 'active' : ''}`}
-            onClick={() => handleStatClick('waiting')}
-          >
-            <div className="stat-icon">
-              <FaEnvelope />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{waitingOnClient}</div>
-              <div className="stat-label">Waiting on Client</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard-main premium-main">
-          {viewMode === 'overview' ? (
-            <div className="overview-view" style={{ padding: '2rem' }}>
-              {overviewSearchLower && (
-                <PMOverviewSearchResults
-                  searchTerm={searchTerm}
-                  matchingProjects={filteredProjects}
-                  hasOtherFilters={priorityFilter !== 'All Priorities' || clientTypeFilter !== 'All Client Types' || !!activeFilter}
-                  getProjectPmName={getProjectPmName}
-                  onOpenProject={(projectId) => {
-                    const p = projects.find((pr: any) => pr.id === projectId);
-                    if (p) openProjectAtStageTask(p); else navigate(`/project/${projectId}`);
-                  }}
-                  onShowAllInList={() => setViewMode('list')}
-                  onClearSearch={() => setSearchTerm('')}
-                />
-              )}
-
-              {/* Key Metrics Section */}
-              <PMQuickOverview
-                projects={projects}
-                activeTasksCount={activeTasksCount}
-                todayTasks={todayTasks}
-                waitingOnClient={waitingOnClient}
-                navigate={navigate}
-              />
-
-              {/* Recent Activity Section */}
-              <div style={{ marginBottom: '3rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  marginBottom: '1.5rem'
-                }}>
-                  <h2 style={{ 
-                    fontSize: '1.75rem', 
-                    fontWeight: 700, 
-                    color: '#1e293b',
-                    margin: 0,
-                    letterSpacing: '-0.02em'
-                  }}>
-                    Recent Activity
-                  </h2>
-                </div>
-                <div style={{
-                  background: 'white',
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid #e2e8f0',
-                  maxHeight: '600px',
-                  overflowY: 'auto',
-                  overflowX: 'hidden'
-                }}>
-                  {overviewNotifications.length === 0 ? (
-                    <div style={{ 
-                      padding: '4rem 2rem', 
-                      textAlign: 'center', 
-                      color: '#94a3b8',
-                      fontSize: '0.9375rem'
-                    }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
-                      {overviewSearchLower ? (
-                        <>
-                          <div style={{ fontWeight: 500 }}>No recent activity matches “{searchTerm.trim()}”</div>
-                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Clear the search to see all activity</div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ fontWeight: 500 }}>No recent activity</div>
-                          <div style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Activity will appear here as projects and tasks are updated</div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      {overviewNotifications.map((notification: any) => {
-                        const timeAgo = getTimeAgo(notification.createdAt);
-                        const getNotificationIcon = () => {
-                          switch (notification.type) {
-                            case 'task_completed': return '✅';
-                            case 'project_stage': return '🔄';
-                            case 'project_created': return '➕';
-                            case 'task': return '📋';
-                            case 'email': return '📧';
-                            case 'revision': return '✏️';
-                            case 'alert': return '⚠️';
-                            default: return '📌';
-                          }
-                        };
-                        const getNotificationColor = () => {
-                          switch (notification.type) {
-                            case 'task_completed': return '#10b981';
-                            case 'project_stage': return '#3b82f6';
-                            case 'project_created': return '#8b5cf6';
-                            case 'alert': return '#f59e0b';
-                            default: return '#64748b';
-                          }
-                        };
-                        return (
-                          <div
-                            key={notification.id}
-                            onClick={() => {
-                              if (notification.projectId) {
-                                const isConversation = (notification.type === 'mention' || notification.type === 'task_update') && notification.taskId;
-                                const url = isConversation
-                                  ? `/project/${notification.projectId}?task=${notification.taskId}&tab=conversation`
-                                  : `/project/${notification.projectId}`;
-                                navigate(url);
-                              }
-                            }}
-                            style={{
-                              padding: '1.25rem 1.5rem',
-                              borderBottom: '1px solid #f1f5f9',
-                              cursor: notification.projectId ? 'pointer' : 'default',
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: '1.25rem',
-                              transition: 'all 0.2s ease',
-                              backgroundColor: notification.isRead ? 'white' : '#f8fafc',
-                              position: 'relative'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (notification.projectId) {
-                                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                                e.currentTarget.style.transform = 'translateX(4px)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = notification.isRead ? 'white' : '#f8fafc';
-                              e.currentTarget.style.transform = 'translateX(0)';
-                            }}
-                          >
-                            {!notification.isRead && (
-                              <div style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: '4px',
-                                background: getNotificationColor(),
-                                borderRadius: '0 4px 4px 0'
-                              }}></div>
-                            )}
-                            <div style={{ 
-                              fontSize: '1.75rem',
-                              flexShrink: 0,
-                              width: '40px',
-                              height: '40px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: `${getNotificationColor()}15`,
-                              borderRadius: '10px'
-                            }}>{getNotificationIcon()}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ 
-                                fontWeight: notification.isRead ? 500 : 600, 
-                                color: '#1e293b',
-                                marginBottom: '0.375rem',
-                                fontSize: '0.9375rem',
-                                lineHeight: 1.4
-                              }}>
-                                {notification.title}
-                              </div>
-                              <div style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '0.5rem', lineHeight: 1.5 }}>
-                                {notification.message}
-                              </div>
-                              <div style={{ 
-                                fontSize: '0.75rem', 
-                                color: '#94a3b8',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                              }}>
-                                <span>{timeAgo}</span>
-                                {!notification.isRead && (
-                                  <span style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    backgroundColor: getNotificationColor(),
-                                    display: 'inline-block'
-                                  }}></span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Projects by Stage Summary */}
-              <div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', color: '#1e293b' }}>
-                  Projects by Stage
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {['Onboarding', 'Copy Writing', 'Design', 'Development', 'AI Team', 'Social Media Team', 'CRM', 'SEO/GEO Team', 'Ready to Close'].map((displayStage) => {
-                    // Use pre-computed stage projects map for instant lookup
-                    const stageProjects = stageProjectsMap.get(displayStage) || [];
-                    // Get color for each stage
-                    const getStageColor = (stage: string) => {
-                      const colors: Record<string, string> = {
-                        'Onboarding': '#667eea',
-                        'Copy Writing': '#8b5cf6',
-                        'Design': '#f59e0b',
-                        'Development': '#10b981',
-                        'AI Team': '#ec4899',
-                        'Social Media Team': '#06b6d4',
-                        'CRM': '#3b82f6',
-                        'SEO/GEO Team': '#14b8a6',
-                        'Ready to Close': '#64748b'
-                      };
-                      return colors[stage] || '#667eea';
-                    };
-                    
-                    const stageColor = getStageColor(displayStage);
-                    
-                    return (
-                      <div
-                        key={displayStage}
-                        onClick={() => {
-                          navigate(`/department/${encodeURIComponent(displayStage)}`);
-                        }}
-                        style={{
-                          background: 'white',
-                          padding: '1.5rem',
-                          borderRadius: '16px',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
-                          border: `1px solid ${stageColor}20`,
-                          cursor: 'pointer',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          position: 'relative',
-                          overflow: 'hidden'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          e.currentTarget.style.boxShadow = `0 12px 24px ${stageColor}25, 0 4px 8px rgba(0, 0, 0, 0.1)`;
-                          e.currentTarget.style.borderColor = `${stageColor}40`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)';
-                          e.currentTarget.style.borderColor = `${stageColor}20`;
-                        }}
-                      >
-                        <div style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: '4px',
-                          background: `linear-gradient(90deg, ${stageColor} 0%, ${stageColor}dd 100%)`
-                        }}></div>
-                        <div style={{ 
-                          fontSize: '0.875rem', 
-                          color: '#64748b', 
-                          marginBottom: '0.75rem',
-                          fontWeight: 500,
-                          letterSpacing: '0.01em'
-                        }}>
-                          {displayStage}
-                        </div>
-                        <div style={{ 
-                          fontSize: '2.25rem', 
-                          fontWeight: 700, 
-                          color: '#1e293b',
-                          lineHeight: 1,
-                          marginBottom: '0.25rem'
-                        }}>
-                          {stageProjects.length}
-                        </div>
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#94a3b8',
-                          fontWeight: 500
-                        }}>
-                          {stageProjects.length === 1 ? 'project' : 'projects'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              {recentActivitySection}
             </div>
+          ) : viewMode === 'pipeline' ? (
+            <PMPipelineView
+              workstreams={workstreams}
+              users={users}
+              getProjectPmName={getProjectPmName}
+              onOpen={openWorkstream}
+              onOpenKanban={() => setViewMode('kanban')}
+            />
+          ) : viewMode === 'approvals' ? (
+            <PMApprovalsView
+              tasks={tasks}
+              users={users}
+              activeProjectIds={activeProjectIds}
+              searchTerm={searchTerm}
+              getProjectName={getProjectName}
+              getProjectPmName={getProjectPmName}
+              onOpenTask={(task) => openTaskDrawer(task)}
+            />
+          ) : viewMode === 'workload' ? (
+            <PMWorkloadView
+              tasks={tasks}
+              users={users}
+              activeProjectIds={activeProjectIds}
+              onOpenAssignee={(assigneeId) => {
+                setTasksAssigneeFilter(assigneeId);
+                setViewMode('tasks');
+              }}
+            />
+          ) : viewMode === 'activity' ? (
+            <>
+              <section className="rd-panel pm-section-gap">
+                <div className="pm-activity-links">
+                  <button type="button" className="rd-btn rd-btn-subtle" onClick={() => navigate('/pm-activity-log')}>PM activity log</button>
+                  <button type="button" className="rd-btn rd-btn-subtle" onClick={() => navigate('/department-activity-log')}>Department activity log</button>
+                  <button type="button" className="rd-btn rd-btn-subtle" onClick={() => navigate('/completed-projects')}>Completed projects</button>
+                </div>
+              </section>
+              {recentActivitySection}
+            </>
           ) : viewMode === 'kanban' ? (
             <PMKanbanView
               user={user}
@@ -2164,8 +2155,99 @@ const PMDashboard: React.FC = () => {
               onArchive={handleArchiveClick}
             />
           )}
+
         </div>
       </div>
+
+      <TaskDetailSideModal
+        isOpen={!!currentDrawerTask}
+        task={currentDrawerTask}
+        onClose={closeTaskDrawer}
+        allUsers={users}
+        getProjectName={getProjectName}
+        getProjectPmName={getProjectPmName}
+        onTaskUpdate={(updatedTask) => {
+          setDrawerTask(updatedTask);
+          setTasks((prev) => prev.map((t: any) => (t.id === updatedTask.id ? updatedTask : t)));
+          tasksRef.current = tasksRef.current.map((t: any) => (t.id === updatedTask.id ? updatedTask : t));
+        }}
+        footer={currentDrawerTask ? (
+          <div className="rd-drawer-foot">
+            <div className="rd-next">
+              <b>What happens next?</b>
+              {NEXT_STEP[drawerColumn]}
+            </div>
+            {currentDrawerTask.status === 'In Review' && !currentDrawerTask.isCompleted && (
+              <div className="rd-foot-actions">
+                <button type="button" className="rd-btn rd-btn-primary" disabled={drawerBusy} onClick={() => quickMoveTask(currentDrawerTask, 'approved_completed', 'Task marked complete.')}>Mark complete</button>
+                <button type="button" className="rd-btn rd-btn-subtle" disabled={drawerBusy} onClick={() => setStageChange({ task: currentDrawerTask, columnId: 'revision' })}>Request changes</button>
+                <button type="button" className="rd-btn rd-btn-subtle" disabled={drawerBusy} onClick={() => quickMoveTask(currentDrawerTask, 'owned_in_progress', 'Task moved back to in progress.')}>Back to in progress</button>
+              </div>
+            )}
+            <div className="rd-foot-tools">
+              <select
+                className="rd-select"
+                aria-label="Move task to stage"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) setStageChange({ task: currentDrawerTask, columnId: e.target.value as ColumnId });
+                }}
+              >
+                <option value="">Move to stage…</option>
+                {BOARD_COLUMNS.filter((id) => id !== drawerColumn).map((id) => (
+                  <option key={id} value={id}>{COLUMN_LABEL[id]}</option>
+                ))}
+              </select>
+            </div>
+            {otherDrawerTasks.length > 0 && (
+              <div className="pm-other-tasks">
+                <select
+                  className="rd-select"
+                  aria-label="Open another task in this department"
+                  value=""
+                  onChange={(e) => {
+                    const next = otherDrawerTasks.find((t: any) => t.id === e.target.value);
+                    if (next) setDrawerTask(next);
+                  }}
+                >
+                  <option value="">{otherDrawerTasks.length} more open {otherDrawerTasks.length === 1 ? 'task' : 'tasks'} here…</option>
+                  {otherDrawerTasks.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        ) : null}
+      />
+
+      {stageChange && (
+        <StatusChangeNotesModal
+          isOpen={true}
+          targetColumnLabel={stageChangeLabel}
+          notesRequired={false}
+          attachmentMode="multi"
+          saving={stageChangeSaving}
+          onClose={() => {
+            if (!stageChangeSaving) setStageChange(null);
+          }}
+          onSave={async (notes, attachments) => {
+            try {
+              setStageChangeSaving(true);
+              await moveTaskToColumn(stageChange.task, stageChange.columnId, stageChangeLabel, notes, attachments, user?.name);
+              setStageChange(null);
+              closeTaskDrawer();
+              await loadData();
+              notify(`Task moved to ${stageChangeLabel}.`);
+            } catch (error) {
+              console.error('Failed to move task:', error);
+              notify('Could not move the task. Please try again.');
+            } finally {
+              setStageChangeSaving(false);
+            }
+          }}
+        />
+      )}
+
+      {toast && <div className="rd-toast" role="status">{toast}</div>}
 
       {showCreateModal && (
         <CreateProjectModal
@@ -2182,12 +2264,12 @@ const PMDashboard: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
       <SubmitTicketModal
         isOpen={showSubmitTicketModal}
         onClose={() => setShowSubmitTicketModal(false)}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
       <NotificationsModal
         isOpen={showNotificationsModal}
@@ -2257,7 +2339,7 @@ const PMDashboard: React.FC = () => {
       }}
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(15, 23, 42, 0.4)',
+        background: 'rgba(28, 28, 28, 0.4)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         zIndex: 1000,
@@ -2271,8 +2353,8 @@ const PMDashboard: React.FC = () => {
         position: 'fixed', top: 0, right: 0,
         width: '500px', height: '100vh',
         background: '#ffffff',
-        borderLeft: '1px solid #e2e8f0',
-        boxShadow: '-12px 0 40px rgba(15, 23, 42, 0.12)',
+        borderLeft: '1px solid #e9e9e9',
+        boxShadow: '-12px 0 40px rgba(28, 28, 28, 0.12)',
         zIndex: 1001,
         display: 'flex', flexDirection: 'column',
         animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -2283,24 +2365,24 @@ const PMDashboard: React.FC = () => {
       {/* ── Header ── */}
       <div style={{
         padding: '1.25rem 1.5rem',
-        borderBottom: '1px solid #f1f5f9',
+        borderBottom: '1px solid #f5f5f5',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: '#fafbff',
+        background: '#ffffff',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
             width: '38px', height: '38px', borderRadius: '10px',
-            background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)',
+            background: 'linear-gradient(135deg, #f3f3f3, #eaeaea)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#7c6af7', flexShrink: 0,
+            color: '#111111', flexShrink: 0,
           }}>
             <FaEnvelope style={{ fontSize: '0.9rem' }} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+            <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1c1c1c', letterSpacing: '-0.01em' }}>
               Email Logs
             </h2>
-            <p style={{ margin: 0, fontSize: '0.775rem', color: '#94a3b8', fontWeight: 400 }}>
+            <p style={{ margin: 0, fontSize: '0.775rem', color: '#a6a6a6', fontWeight: 400 }}>
               {projectForEmailLog.clientName}
             </p>
           </div>
@@ -2315,22 +2397,22 @@ const PMDashboard: React.FC = () => {
             setEmailLogsTab('logs');
           }}
           style={{
-            background: 'transparent', border: '1px solid #e2e8f0',
+            background: 'transparent', border: '1px solid #e9e9e9',
             cursor: 'pointer', padding: '0.4rem',
             borderRadius: '8px', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            color: '#94a3b8', width: '32px', height: '32px',
+            color: '#a6a6a6', width: '32px', height: '32px',
             transition: 'all 0.15s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#f1f5f9';
-            e.currentTarget.style.color = '#475569';
-            e.currentTarget.style.borderColor = '#cbd5e1';
+            e.currentTarget.style.background = '#f5f5f5';
+            e.currentTarget.style.color = '#585858';
+            e.currentTarget.style.borderColor = '#d6d6d6';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = '#94a3b8';
-            e.currentTarget.style.borderColor = '#e2e8f0';
+            e.currentTarget.style.color = '#a6a6a6';
+            e.currentTarget.style.borderColor = '#e9e9e9';
           }}
         >
           <FaTimes style={{ fontSize: '0.7rem' }} />
@@ -2341,8 +2423,8 @@ const PMDashboard: React.FC = () => {
       <div style={{
         display: 'flex', gap: '0.25rem',
         padding: '0.75rem 1.5rem 0',
-        borderBottom: '1px solid #f1f5f9',
-        background: '#fafbff',
+        borderBottom: '1px solid #f5f5f5',
+        background: '#ffffff',
       }}>
         {(['logs', 'new'] as const).map((tab) => (
           <button
@@ -2350,17 +2432,17 @@ const PMDashboard: React.FC = () => {
             onClick={() => setEmailLogsTab(tab)}
             style={{
               padding: '0.5rem 1rem',
-              background: emailLogsTab === tab ? '#7c6af7' : 'transparent',
+              background: emailLogsTab === tab ? '#111111' : 'transparent',
               border: 'none',
               borderRadius: '8px 8px 0 0',
-              color: emailLogsTab === tab ? '#fff' : '#94a3b8',
+              color: emailLogsTab === tab ? '#fff' : '#a6a6a6',
               fontWeight: emailLogsTab === tab ? 600 : 500,
               cursor: 'pointer',
               fontSize: '0.8rem',
               letterSpacing: '0.01em',
               transition: 'all 0.15s',
               marginBottom: '-1px',
-              borderBottom: emailLogsTab === tab ? '2px solid #7c6af7' : '2px solid transparent',
+              borderBottom: emailLogsTab === tab ? '2px solid #111111' : '2px solid transparent',
             }}
           >
             {tab === 'logs' ? `Logs (${clientUpdates.length})` : '+ New Log'}
@@ -2369,13 +2451,13 @@ const PMDashboard: React.FC = () => {
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#f8fafc' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#ffffff' }}>
         {emailLogsTab === 'logs' ? (
           loadingUpdates ? (
-            <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#94a3b8' }}>
+            <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#a6a6a6' }}>
               <div style={{
                 width: '28px', height: '28px', borderRadius: '50%',
-                border: '2px solid #e2e8f0', borderTopColor: '#7c6af7',
+                border: '2px solid #e9e9e9', borderTopColor: '#111111',
                 animation: 'spin 0.7s linear infinite', margin: '0 auto 1rem',
               }} />
               <p style={{ margin: 0, fontSize: '0.875rem' }}>Loading logs…</p>
@@ -2384,14 +2466,14 @@ const PMDashboard: React.FC = () => {
             <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
               <div style={{
                 width: '56px', height: '56px', borderRadius: '16px',
-                background: 'linear-gradient(135deg, #ede9fe, #ddd6fe)',
+                background: 'linear-gradient(135deg, #f3f3f3, #eaeaea)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '0 auto 1rem',
               }}>
-                <FaEnvelope style={{ fontSize: '1.25rem', color: '#7c6af7' }} />
+                <FaEnvelope style={{ fontSize: '1.25rem', color: '#111111' }} />
               </div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.6 }}>
-                No email logs yet.<br />Click <strong style={{ color: '#7c6af7' }}>+ New Log</strong> to create one.
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#a6a6a6', lineHeight: 1.6 }}>
+                No email logs yet.<br />Click <strong style={{ color: '#111111' }}>+ New Log</strong> to create one.
               </p>
             </div>
           ) : (
@@ -2400,11 +2482,11 @@ const PMDashboard: React.FC = () => {
                 <div
                   key={update.id}
                   style={{
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid #e9e9e9',
                     borderRadius: '12px',
                     padding: '1.25rem',
                     background: '#ffffff',
-                    boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+                    boxShadow: '0 1px 4px rgba(28, 28, 28,0.05)',
                   }}
                 >
                   {/* Log Header */}
@@ -2412,17 +2494,17 @@ const PMDashboard: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                       <div style={{
                         width: '30px', height: '30px', borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                        background: 'linear-gradient(135deg, #f3f3f3, #d9d9d9)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#7c6af7', flexShrink: 0,
+                        color: '#111111', flexShrink: 0,
                       }}>
                         <FaUser style={{ fontSize: '0.65rem' }} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.8rem' }}>
+                        <div style={{ fontWeight: 600, color: '#1c1c1c', fontSize: '0.8rem' }}>
                           {update.pm?.name || 'PM'}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '1px' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#a6a6a6', marginTop: '1px' }}>
                           {new Date(update.emailSentAt).toLocaleString('en-US', {
                             month: 'short', day: 'numeric', year: 'numeric',
                             hour: '2-digit', minute: '2-digit',
@@ -2439,8 +2521,8 @@ const PMDashboard: React.FC = () => {
                       ...(update.status === 'responded'
                         ? { background: '#dcfce7', color: '#15803d' }
                         : update.status === 'published'
-                        ? { background: '#dbeafe', color: '#1d4ed8' }
-                        : { background: '#f1f5f9', color: '#64748b' }),
+                        ? { background: '#ececec', color: '#111111' }
+                        : { background: '#ffffff', color: '#787878' }),
                     }}>
                       {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
                     </span>
@@ -2473,8 +2555,8 @@ const PMDashboard: React.FC = () => {
                   {update.links && update.links.length > 0 && (
                     <div style={{ marginBottom: '0.875rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                        <FaLink style={{ color: '#7c6af7', fontSize: '0.7rem' }} />
-                        <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Links</span>
+                        <FaLink style={{ color: '#111111', fontSize: '0.7rem' }} />
+                        <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#787878', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Links</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '1rem' }}>
                         {update.links.map((link: string, linkIndex: number) => (
@@ -2484,7 +2566,7 @@ const PMDashboard: React.FC = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              color: '#7c6af7', fontSize: '0.8rem',
+                              color: '#111111', fontSize: '0.8rem',
                               textDecoration: 'none', wordBreak: 'break-all',
                               display: 'flex', alignItems: 'center', gap: '0.25rem',
                             }}
@@ -2500,8 +2582,8 @@ const PMDashboard: React.FC = () => {
 
                   {/* Existing Comments */}
                   {comments[update.id] && comments[update.id].length > 0 && (
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f5f5f5' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#a6a6a6', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         Comments ({comments[update.id].length})
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -2509,34 +2591,34 @@ const PMDashboard: React.FC = () => {
                           <div
                             key={comment.id}
                             style={{
-                              background: '#f8fafc', borderRadius: '8px',
-                              padding: '0.75rem', border: '1px solid #f1f5f9',
+                              background: '#ffffff', borderRadius: '8px',
+                              padding: '0.75rem', border: '1px solid #f5f5f5',
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <div style={{
                                   width: '20px', height: '20px', borderRadius: '50%',
-                                  background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                                  background: 'linear-gradient(135deg, #f3f3f3, #d9d9d9)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                 }}>
-                                  <FaUser style={{ fontSize: '0.5rem', color: '#7c6af7' }} />
+                                  <FaUser style={{ fontSize: '0.5rem', color: '#111111' }} />
                                 </div>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#1e293b' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#2c2c2c' }}>
                                   {comment.user?.name || 'User'}
                                 </span>
                               </div>
-                              <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                              <span style={{ fontSize: '0.68rem', color: '#a6a6a6' }}>
                                 {new Date(comment.createdAt).toLocaleString('en-US', {
                                   month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                                 })}
                               </span>
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#585858', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                               {comment.text}
                             </div>
                             {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
-                              <div style={{ marginTop: '0.35rem', fontSize: '0.7rem', color: '#7c6af7', fontWeight: 500 }}>
+                              <div style={{ marginTop: '0.35rem', fontSize: '0.7rem', color: '#111111', fontWeight: 500 }}>
                                 @ {comment.mentionedUserIds.length} mention{comment.mentionedUserIds.length > 1 ? 's' : ''}
                               </div>
                             )}
@@ -2547,8 +2629,8 @@ const PMDashboard: React.FC = () => {
                   )}
 
                   {/* Add Comment */}
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', position: 'relative' }}>
-                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f5f5f5', position: 'relative' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#a6a6a6', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Add comment · use @ to mention
                     </div>
                     <textarea
@@ -2561,30 +2643,30 @@ const PMDashboard: React.FC = () => {
                       style={{
                         width: '100%', minHeight: '72px',
                         padding: '0.65rem 0.75rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #e9e9e9',
                         borderRadius: '8px',
                         fontSize: '0.82rem', fontFamily: 'inherit',
                         resize: 'vertical', marginBottom: '0.5rem',
-                        color: '#1e293b', background: '#fff',
+                        color: '#2c2c2c', background: '#fff',
                         outline: 'none', lineHeight: 1.5,
                         transition: 'border-color 0.15s',
                       }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#111111'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e9e9e9'; }}
                     />
                     {showMentionDropdown && showMentionDropdown.updateId === update.id && (
                       <div style={{
                         position: 'absolute',
                         background: '#fff',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #e9e9e9',
                         borderRadius: '10px',
-                        boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                        boxShadow: '0 8px 24px rgba(28, 28, 28,0.12)',
                         maxHeight: '200px', overflowY: 'auto',
                         zIndex: 10000, top: '100%', left: 0, right: 0,
                         marginTop: '0.25rem',
                       }}>
                         {users.length === 0 ? (
-                          <div style={{ padding: '0.75rem', fontSize: '0.82rem', color: '#94a3b8' }}>Loading users…</div>
+                          <div style={{ padding: '0.75rem', fontSize: '0.82rem', color: '#a6a6a6' }}>Loading users…</div>
                         ) : (
                           users.map((user: any) => (
                             <div
@@ -2606,18 +2688,18 @@ const PMDashboard: React.FC = () => {
                                 }, 0);
                               }}
                               style={{ padding: '0.6rem 0.75rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
                             >
                               <div style={{
                                 width: '22px', height: '22px', borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #ede9fe, #c4b5fd)',
+                                background: 'linear-gradient(135deg, #f3f3f3, #d9d9d9)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                               }}>
-                                <FaUser style={{ fontSize: '0.5rem', color: '#7c6af7' }} />
+                                <FaUser style={{ fontSize: '0.5rem', color: '#111111' }} />
                               </div>
-                              <span style={{ fontWeight: 500, color: '#0f172a' }}>{user.name}</span>
-                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{user.role || 'User'}</span>
+                              <span style={{ fontWeight: 500, color: '#1c1c1c' }}>{user.name}</span>
+                              <span style={{ color: '#a6a6a6', fontSize: '0.75rem' }}>{user.role || 'User'}</span>
                             </div>
                           ))
                         )}
@@ -2627,8 +2709,8 @@ const PMDashboard: React.FC = () => {
                       onClick={() => handleAddComment(update.id)}
                       disabled={!commentTexts[update.id]?.trim() || submittingComment[update.id]}
                       style={{
-                        background: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#e2e8f0' : '#7c6af7',
-                        border: 'none', color: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#94a3b8' : '#fff',
+                        background: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#e9e9e9' : '#111111',
+                        border: 'none', color: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? '#a6a6a6' : '#fff',
                         padding: '0.45rem 0.9rem',
                         borderRadius: '7px', fontSize: '0.78rem', fontWeight: 600,
                         cursor: submittingComment[update.id] || !commentTexts[update.id]?.trim() ? 'not-allowed' : 'pointer',
@@ -2648,13 +2730,13 @@ const PMDashboard: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Notes */}
             <div style={{
-              background: '#fff', border: '1px solid #e2e8f0',
+              background: '#fff', border: '1px solid #e9e9e9',
               borderRadius: '12px', padding: '1.25rem',
-              boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+              boxShadow: '0 1px 4px rgba(28, 28, 28,0.05)',
             }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontWeight: 600, color: '#0f172a', fontSize: '0.82rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontWeight: 600, color: '#1c1c1c', fontSize: '0.82rem' }}>
                 <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.8rem' }} />
-                Notes <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Optional)</span>
+                Notes <span style={{ fontWeight: 400, color: '#a6a6a6' }}>(Optional)</span>
               </label>
               <textarea
                 value={emailNotes}
@@ -2662,41 +2744,41 @@ const PMDashboard: React.FC = () => {
                 placeholder="Add any notes about this email…"
                 style={{
                   width: '100%', minHeight: '140px',
-                  padding: '0.75rem', border: '1px solid #e2e8f0',
+                  padding: '0.75rem', border: '1px solid #e9e9e9',
                   borderRadius: '8px', fontSize: '0.82rem',
                   fontFamily: 'inherit', resize: 'vertical',
-                  lineHeight: 1.6, color: '#1e293b', outline: 'none',
+                  lineHeight: 1.6, color: '#2c2c2c', outline: 'none',
                   transition: 'border-color 0.15s',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#111111'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = '#e9e9e9'; }}
               />
             </div>
 
             {/* Links */}
             <div style={{
-              background: '#fff', border: '1px solid #e2e8f0',
+              background: '#fff', border: '1px solid #e9e9e9',
               borderRadius: '12px', padding: '1.25rem',
-              boxShadow: '0 1px 4px rgba(15,23,42,0.05)',
+              boxShadow: '0 1px 4px rgba(28, 28, 28,0.05)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0f172a', fontSize: '0.82rem', margin: 0 }}>
-                  <FaLink style={{ color: '#7c6af7', fontSize: '0.75rem' }} />
-                  Links <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Optional)</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#1c1c1c', fontSize: '0.82rem', margin: 0 }}>
+                  <FaLink style={{ color: '#111111', fontSize: '0.75rem' }} />
+                  Links <span style={{ fontWeight: 400, color: '#a6a6a6' }}>(Optional)</span>
                 </label>
                 <button
                   type="button"
                   onClick={addEmailLink}
                   style={{
-                    background: '#f1f5f9', border: '1px solid #e2e8f0',
+                    background: '#ffffff', border: '1px solid #e9e9e9',
                     padding: '0.3rem 0.65rem', borderRadius: '6px',
                     fontSize: '0.72rem', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: '0.25rem',
-                    color: '#475569', fontWeight: 600, fontFamily: 'inherit',
+                    color: '#585858', fontWeight: 600, fontFamily: 'inherit',
                     transition: 'all 0.15s',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e9e9e9'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
                 >
                   <FaPlus style={{ fontSize: '0.55rem' }} /> Add Link
                 </button>
@@ -2711,12 +2793,12 @@ const PMDashboard: React.FC = () => {
                       placeholder="https://example.com"
                       style={{
                         flex: 1, padding: '0.65rem 0.75rem',
-                        border: '1px solid #e2e8f0', borderRadius: '8px',
+                        border: '1px solid #e9e9e9', borderRadius: '8px',
                         fontSize: '0.82rem', fontFamily: 'inherit',
-                        color: '#1e293b', outline: 'none', transition: 'border-color 0.15s',
+                        color: '#2c2c2c', outline: 'none', transition: 'border-color 0.15s',
                       }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = '#7c6af7'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = '#111111'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = '#e9e9e9'; }}
                     />
                     {emailLinks.length > 1 && (
                       <button
@@ -2738,7 +2820,7 @@ const PMDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.6rem', marginBottom: 0 }}>
+              <p style={{ fontSize: '0.72rem', color: '#a6a6a6', marginTop: '0.6rem', marginBottom: 0 }}>
                 Attach links to relevant documents, files, or resources
               </p>
             </div>
@@ -2750,9 +2832,9 @@ const PMDashboard: React.FC = () => {
       {emailLogsTab === 'new' && (
         <div style={{
           padding: '1rem 1.5rem',
-          borderTop: '1px solid #f1f5f9',
+          borderTop: '1px solid #f5f5f5',
           display: 'flex', gap: '0.625rem', justifyContent: 'flex-end',
-          background: '#fafbff',
+          background: '#ffffff',
         }}>
           <button
             onClick={() => {
@@ -2761,12 +2843,12 @@ const PMDashboard: React.FC = () => {
               setEmailLinks(['']);
             }}
             style={{
-              background: '#fff', border: '1px solid #e2e8f0',
-              color: '#475569', padding: '0.55rem 1.1rem',
+              background: '#fff', border: '1px solid #e9e9e9',
+              color: '#585858', padding: '0.55rem 1.1rem',
               borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
           >
             Cancel
@@ -2775,17 +2857,17 @@ const PMDashboard: React.FC = () => {
             onClick={handleLogEmailSubmit}
             disabled={loggingEmail}
             style={{
-              background: loggingEmail ? '#c4b5fd' : '#7c6af7',
+              background: loggingEmail ? '#d9d9d9' : '#111111',
               border: 'none', color: '#fff',
               padding: '0.55rem 1.25rem',
               borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600,
               cursor: loggingEmail ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', gap: '0.4rem',
               fontFamily: 'inherit', transition: 'all 0.15s',
-              boxShadow: loggingEmail ? 'none' : '0 2px 8px rgba(124,106,247,0.35)',
+              boxShadow: loggingEmail ? 'none' : '0 2px 8px rgba(17, 17, 17,0.35)',
             }}
-            onMouseEnter={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#6a58e8'; }}
-            onMouseLeave={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#7c6af7'; }}
+            onMouseEnter={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#111111'; }}
+            onMouseLeave={(e) => { if (!loggingEmail) e.currentTarget.style.background = '#111111'; }}
           >
             <FaPaperPlane style={{ fontSize: '0.75rem' }} />
             {loggingEmail ? 'Logging…' : 'Log Email'}

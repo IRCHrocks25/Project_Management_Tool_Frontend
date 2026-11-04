@@ -185,10 +185,10 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
               // Show read-only deliverable name if task is already assigned
               <div style={{
                 padding: '0.875rem 1rem',
-                border: '1.5px solid #e5e7eb',
+                border: '1.5px solid #e8e8e8',
                 borderRadius: '8px',
-                background: '#f9fafb',
-                color: '#111827',
+                background: '#ffffff',
+                color: '#1c1c1c',
                 fontWeight: 500,
                 fontSize: '1rem'
               }}>
@@ -391,9 +391,9 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
               style={{
                 marginTop: '0.5rem',
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid #d6d6d6',
                 background: 'white',
-                color: '#374151',
+                color: '#444444',
                 cursor: 'pointer',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
@@ -403,7 +403,7 @@ const SendForReviewModal: React.FC<SendForReviewModalProps> = ({
                 gap: '0.5rem',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f9fafb';
+                e.currentTarget.style.background = '#fafafa';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'white';

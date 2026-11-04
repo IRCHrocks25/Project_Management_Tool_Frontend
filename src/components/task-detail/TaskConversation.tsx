@@ -178,7 +178,7 @@ const TaskConversation: React.FC<TaskConversationProps> = ({
         conversations.map((question: any) => (
           <div key={question.id} className="tdsm-q-block">
             <div className="tdsm-user-meta">
-              <UserAvatar name={question.user?.name} avatarUrl={question.user?.avatarUrl} size={28} color="#6366f1" />
+              <UserAvatar name={question.user?.name} avatarUrl={question.user?.avatarUrl} size={28} color="#111111" />
               <div>
                 <div className="tdsm-user-meta-name">{question.user?.name || 'Unknown'}</div>
                 <div className="tdsm-user-meta-time">{formatTimestamp(question.createdAt)}</div>
@@ -191,7 +191,7 @@ const TaskConversation: React.FC<TaskConversationProps> = ({
                 {question.comments.map((comment: any) => (
                   <div key={comment.id} className="tdsm-comment">
                     <div className="tdsm-user-meta">
-                      <UserAvatar name={comment.user?.name} avatarUrl={comment.user?.avatarUrl} size={24} color="#6366f1" />
+                      <UserAvatar name={comment.user?.name} avatarUrl={comment.user?.avatarUrl} size={24} color="#111111" />
                       <div>
                         <div className="tdsm-user-meta-name" style={{ fontSize: '12.5px' }}>{comment.user?.name || 'Unknown'}</div>
                         <div className="tdsm-user-meta-time">{formatTimestamp(comment.createdAt)}</div>

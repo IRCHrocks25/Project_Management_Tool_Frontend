@@ -18,9 +18,9 @@ const TASKS_PER_PAGE = 50;
 
 const DEPT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Copy Writing':   { bg: '#fefce8', text: '#92400e', border: '#fde68a' },
-  'Design':         { bg: '#f5f3ff', text: '#5b21b6', border: '#ddd6fe' },
+  'Design':         { bg: '#f9f9f9', text: '#111111', border: '#eaeaea' },
   'Development':    { bg: '#f0fdf4', text: '#14532d', border: '#bbf7d0' },
-  'AI Development': { bg: '#eff6ff', text: '#1e3a5f', border: '#bfdbfe' },
+  'AI Development': { bg: '#f7f7f7', text: '#111111', border: '#dedede' },
   'Social Media':   { bg: '#fff1f2', text: '#881337', border: '#fecdd3' },
   'CRM':            { bg: '#fff7ed', text: '#7c2d12', border: '#fed7aa' },
   'SEO/GEO':        { bg: '#f0fdfa', text: '#134e4a', border: '#99f6e4' },
@@ -32,15 +32,15 @@ const STYLES = `
 
   .pmt-wrap {
     --bg: #ffffff;
-    --surface: #f8f9fb;
-    --surface-hover: #f1f4f8;
-    --border: #e8ecf0;
-    --border-strong: #d0d7de;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --surface: #fafafa;
+    --surface-hover: #f4f4f4;
+    --border: #ececec;
+    --border-strong: #d7d7d7;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
     font-family: 'Instrument Sans', sans-serif;
     background: var(--bg);
     border-radius: 12px;
@@ -129,7 +129,7 @@ const STYLES = `
     padding: 0;
   }
   .pmt-filter-select.active { color: var(--accent); font-weight: 600; }
-  .pmt-filter-select option { background: #fff; color: #0f1923; }
+  .pmt-filter-select option { background: #fff; color: #191919; }
 
   .pmt-row {
     display: grid;
@@ -215,7 +215,7 @@ const STYLES = `
     font-weight: 700;
     flex-shrink: 0;
   }
-  .pmt-avatar-assigned { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+  .pmt-avatar-assigned { background: linear-gradient(135deg, #111111, #111111); color: #fff; }
   .pmt-avatar-unassigned {
     background: var(--surface);
     color: var(--text-muted);
@@ -252,7 +252,7 @@ const STYLES = `
   .pmt-pm-select:hover { border-color: var(--border-strong); background: var(--surface); }
   .pmt-pm-select:focus { outline: none; border-color: var(--accent); }
   .pmt-pm-select:disabled { opacity: 0.5; cursor: wait; }
-  .pmt-pm-select option { background: #fff; color: #0f1923; }
+  .pmt-pm-select option { background: #fff; color: #191919; }
 
   .pmt-pagination {
     display: flex;
@@ -504,7 +504,7 @@ const PMTasksTableView: React.FC<PMTasksTableViewProps> = ({
           ) : (
             pagedTasks.map((task: any, i: number) => {
               const dept = TASK_TYPE_TO_DEPARTMENT[task.type] || task.type || '—';
-              const ds = DEPT_COLORS[dept] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+              const ds = DEPT_COLORS[dept] || { bg: '#f5f5f5', text: '#585858', border: '#e9e9e9' };
               const project = projects.find((p: any) => p.id === task.projectId);
               const assigneeName = task.assignedToId ? getUserName(task.assignedToId) : null;
 

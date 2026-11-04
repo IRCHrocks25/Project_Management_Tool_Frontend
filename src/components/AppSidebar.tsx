@@ -13,6 +13,7 @@ import {
   FaTimes,
   FaCubes,
   FaWpforms,
+  FaRegCompass,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
@@ -62,6 +63,8 @@ export type SidebarPinnedProject = {
 export type SidebarWorkspace = {
   items: SidebarWorkspaceItem[];
   pinned?: SidebarPinnedProject[];
+  /** Extra group below the main items, e.g. Manage */
+  secondary?: { label: string; items: SidebarWorkspaceItem[] };
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -160,7 +163,7 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
   const visibleSections = navSections.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
-      if (workspace && item.path === '/dashboard' && location.pathname === '/dashboard') return false;
+      if (workspace && item.path === '/dashboard' && ['/dashboard', '/pm-dashboard'].includes(location.pathname)) return false;
       if (item.roles && item.roles.length > 0) {
         const roleOk = user?.role && item.roles.includes(user.role);
         const headOk = item.alsoHeadPM && user?.isHeadPM;
@@ -209,6 +212,7 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
                 <button
                   key={item.key}
                   type="button"
+                  data-tour={`nav-${item.key}`}
                   className={`as-item${item.active ? ' active' : ''}`}
                   aria-current={item.active ? 'page' : undefined}
                   onClick={() => { item.onClick(); setDrawerOpen(false); }}
@@ -218,6 +222,25 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
                   {typeof item.count === 'number' && item.count > 0 && <span className="as-count">{item.count}</span>}
                 </button>
               ))}
+              {workspace.secondary && (
+                <>
+                  <div className="as-label">{workspace.secondary.label}</div>
+                  {workspace.secondary.items.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      data-tour={`nav-${item.key}`}
+                      className={`as-item${item.active ? ' active' : ''}`}
+                      aria-current={item.active ? 'page' : undefined}
+                      onClick={() => { item.onClick(); setDrawerOpen(false); }}
+                    >
+                      {item.icon}
+                      <span className="as-item-label">{item.label}</span>
+                      {typeof item.count === 'number' && item.count > 0 && <span className="as-count">{item.count}</span>}
+                    </button>
+                  ))}
+                </>
+              )}
               {workspace.pinned && workspace.pinned.length > 0 && (
                 <>
                   <div className="as-label">My active projects</div>
@@ -245,6 +268,7 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
                   <button
                     key={item.path + item.label}
                     type="button"
+                    data-tour={`nav-${item.path.slice(1)}`}
                     className={`as-item${active ? ' active' : ''}`}
                     aria-current={active ? 'page' : undefined}
                     onClick={() => handleNav(item)}
@@ -261,6 +285,15 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
         <div className="as-bottom">
           <button
             type="button"
+            data-tour="replay"
+            className="as-item"
+            onClick={() => { setDrawerOpen(false); navigate('/dashboard?tour=1'); }}
+          >
+            <FaRegCompass />
+            <span className="as-item-label">Take a tour</span>
+          </button>
+          <button
+            type="button"
             className={`as-item${isActive('/settings') ? ' active' : ''}`}
             onClick={() => navigate('/settings')}
           >
@@ -268,7 +301,7 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
             <span className="as-item-label">Settings</span>
           </button>
           <button type="button" className="as-person" onClick={() => navigate('/profile')} title="Open your profile">
-            <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#6555e9" />
+            <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#111111" />
             <span className="as-person-text">
               <b>{user?.name || 'User'}</b>
               <small>{user?.role || ''}</small>

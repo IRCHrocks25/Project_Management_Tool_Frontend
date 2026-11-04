@@ -17,7 +17,7 @@ const STYLES = `
   .cpm-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 25, 35, 0.45);
+    background: rgba(25, 25, 25, 0.45);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 1000;
@@ -34,14 +34,14 @@ const STYLES = `
 
   .cpm-modal {
     --bg: #ffffff;
-    --surface: #f8f9fb;
-    --border: #e8ecf0;
-    --border-strong: #d0d7de;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --surface: #fafafa;
+    --border: #ececec;
+    --border-strong: #d7d7d7;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
     --danger: #dc2626;
     --danger-light: #fff1f2;
     --success: #16a34a;
@@ -201,7 +201,7 @@ const STYLES = `
   .cpm-select:focus,
   .cpm-textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.1);
   }
   .cpm-input::placeholder { color: var(--text-muted); }
   .cpm-textarea { resize: vertical; min-height: 80px; }
@@ -230,7 +230,7 @@ const STYLES = `
     box-sizing: border-box;
   }
   .cpm-client-card:hover:not(:disabled) { border-color: var(--border-strong); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-  .cpm-client-card.selected { border-width: 2px; background: #fafbff; }
+  .cpm-client-card.selected { border-width: 2px; background: #fcfcfc; }
   .cpm-client-card:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .cpm-client-pill {
@@ -328,7 +328,7 @@ const STYLES = `
   .cpm-deliverable-toggle:hover { border-color: var(--border-strong); }
   .cpm-deliverable-toggle.checked {
     background: var(--accent-light);
-    border-color: #bfdbfe;
+    border-color: #dedede;
     color: var(--accent);
     font-weight: 600;
   }
@@ -432,7 +432,7 @@ const STYLES = `
     align-items: center;
     gap: 7px;
   }
-  .cpm-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+  .cpm-btn-primary:hover:not(:disabled) { background: #111111; }
   .cpm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Divider */
@@ -463,10 +463,10 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onSucc
 
   const clientTypes = [
     { value: 'ICON',       label: 'ICON',       color: '#d97706' },
-    { value: 'STAR',       label: 'STAR',       color: '#7c3aed' },
-    { value: 'Katalyst',   label: 'Katalyst',   color: '#2563eb' },
-    { value: 'Private',    label: 'Private',    color: '#64748b' },
-    { value: 'Premium',    label: 'Premium',    color: '#7c3aed' },
+    { value: 'STAR',       label: 'STAR',       color: '#111111' },
+    { value: 'Katalyst',   label: 'Katalyst',   color: '#111111' },
+    { value: 'Private',    label: 'Private',    color: '#787878' },
+    { value: 'Premium',    label: 'Premium',    color: '#111111' },
     { value: 'Powered-Up', label: 'Powered-Up', color: '#db2777' },
   ];
 

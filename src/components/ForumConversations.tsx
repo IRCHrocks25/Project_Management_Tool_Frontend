@@ -18,9 +18,9 @@ const T = {
   textPrimary: '#0f0f0f',
   textSecondary: '#6b6b6b',
   textTertiary: '#a0a0a0',
-  accent: '#0095f6',
-  accentHover: '#0077cc',
-  avatarGrad: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  accent: '#111111',
+  accentHover: '#111111',
+  avatarGrad: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
   danger: '#ed4956',
 };
 
@@ -471,7 +471,7 @@ const Avatar = ({
       name={name}
       avatarUrl={avatarUrl}
       size={small ? 32 : 40}
-      color="#667eea"
+      color="#111111"
       className={`fc-avatar${small ? ' small' : ''}`}
     />
   );

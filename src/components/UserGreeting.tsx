@@ -35,7 +35,7 @@ interface UserGreetingProps {
   compact?: boolean;
 }
 
-const UserGreeting: React.FC<UserGreetingProps> = ({ userName, accentColor = '#667eea', compact = false }) => {
+const UserGreeting: React.FC<UserGreetingProps> = ({ userName, accentColor = '#111111', compact = false }) => {
   const { salutation, message } = useMemo(() => getGreeting(), []);
   const displayName = userName?.trim() || 'there';
 
@@ -58,7 +58,7 @@ const UserGreeting: React.FC<UserGreetingProps> = ({ userName, accentColor = '#6
           style={{
             fontSize: '1.25rem',
             fontWeight: 700,
-            color: '#111827',
+            color: '#1c1c1c',
             margin: 0,
             letterSpacing: '-0.02em',
             lineHeight: 1.5,
@@ -66,7 +66,7 @@ const UserGreeting: React.FC<UserGreetingProps> = ({ userName, accentColor = '#6
         >
           <span style={{ color: '#6b7280', fontWeight: 600 }}>{salutation}, </span>
           <span style={{ color: accentColor, fontWeight: 700 }}>{displayName}</span>
-          <span style={{ color: '#111827', fontWeight: 600 }}>!</span>
+          <span style={{ color: '#1c1c1c', fontWeight: 600 }}>!</span>
           <span style={{ color: '#6b7280', fontWeight: 500, fontSize: '0.9375rem', marginLeft: '0.5rem' }}>
             {message}
           </span>
@@ -90,7 +90,7 @@ const UserGreeting: React.FC<UserGreetingProps> = ({ userName, accentColor = '#6
           margin: 0,
           fontSize: '1.125rem',
           fontWeight: 700,
-          color: '#111827',
+          color: '#1c1c1c',
           letterSpacing: '-0.02em',
         }}
       >

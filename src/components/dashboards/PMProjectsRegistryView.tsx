@@ -78,27 +78,27 @@ const getTaskCurrentColumn = (task: any): string => {
 const tokens = {
   // Surfaces
   surface: '#ffffff',
-  surfaceAlt: '#fafbfc',
-  surfaceSunk: '#f5f7fa',
-  surfaceHover: '#f8fafc',
+  surfaceAlt: '#fbfbfb',
+  surfaceSunk: '#f8f8f8',
+  surfaceHover: '#fafafa',
   // Lines
-  border: '#e6e8ec',
-  borderStrong: '#d4d8df',
-  borderSubtle: '#eef0f3',
+  border: '#e9e9e9',
+  borderStrong: '#dadada',
+  borderSubtle: '#f0f0f0',
   // Text
-  ink: '#0b1220',
-  inkMid: '#475569',
-  inkMuted: '#94a3b8',
+  ink: '#161616',
+  inkMid: '#585858',
+  inkMuted: '#a6a6a6',
   // Accents
-  accent: '#2563eb',
-  accentSoft: '#eff6ff',
-  accentBorder: '#bfdbfe',
+  accent: '#111111',
+  accentSoft: '#f7f7f7',
+  accentBorder: '#dedede',
   // Status palette
   successBg: '#ecfdf5',
   successFg: '#047857',
   successBorder: '#a7f3d0',
-  neutralBg: '#f1f5f9',
-  neutralFg: '#64748b',
+  neutralBg: '#f5f5f5',
+  neutralFg: '#787878',
   // Priority
   urgentBg: '#fef2f2',
   urgentFg: '#b91c1c',
@@ -118,8 +118,8 @@ const tokens = {
   fontNum:
     '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
   // Shadow
-  shadowSm: '0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03)',
-  shadowMd: '0 4px 16px -4px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04)',
+  shadowSm: '0 1px 2px rgba(28, 28, 28, 0.04), 0 1px 1px rgba(28, 28, 28, 0.03)',
+  shadowMd: '0 4px 16px -4px rgba(28, 28, 28, 0.08), 0 2px 4px -2px rgba(28, 28, 28, 0.04)',
 };
 
 const priorityStyle = (priority?: string) => {
@@ -133,7 +133,7 @@ const priorityStyle = (priority?: string) => {
     case 'Low':
       return { bg: tokens.lowBg, fg: tokens.lowFg, border: tokens.lowBorder, dot: '#0d9488' };
     default:
-      return { bg: tokens.neutralBg, fg: tokens.neutralFg, border: tokens.border, dot: '#94a3b8' };
+      return { bg: tokens.neutralBg, fg: tokens.neutralFg, border: tokens.border, dot: '#a6a6a6' };
   }
 };
 
@@ -192,7 +192,7 @@ const scopedCss = `
   .pmreg-select:focus,
   .pmreg-textarea:focus {
     border-color: ${tokens.accent};
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.12);
     background: ${tokens.surface};
   }
   .pmreg-textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
@@ -214,7 +214,7 @@ const scopedCss = `
   .pmreg-filter-input:focus,
   .pmreg-filter-select:focus {
     border-color: ${tokens.accent};
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.12);
   }
 
   .pmreg-search {
@@ -232,7 +232,7 @@ const scopedCss = `
   .pmreg-search::placeholder { color: ${tokens.inkMuted}; }
   .pmreg-search:focus {
     border-color: ${tokens.accent};
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.12);
     width: 320px;
   }
 
@@ -265,7 +265,7 @@ const scopedCss = `
   }
   .pmreg-dot-empty {
     background: transparent;
-    border: 1.5px solid #cbd5e1;
+    border: 1.5px solid #d6d6d6;
   }
   .pmreg-row:hover .pmreg-dot-done { transform: scale(1.2); }
 
@@ -334,7 +334,7 @@ const scopedCss = `
   .pmreg-atglance-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(2, 6, 23, 0.45);
+    background: rgba(12, 12, 12, 0.45);
     backdrop-filter: blur(2px);
     display: flex;
     align-items: center;
@@ -544,7 +544,7 @@ const scopedCss = `
     color: ${tokens.accent};
   }
   .pmreg-atglance-btn:hover { border-color: ${tokens.borderStrong}; background: ${tokens.surfaceHover}; }
-  .pmreg-atglance-btn-primary:hover { background: #dbeafe; border-color: ${tokens.accent}; }
+  .pmreg-atglance-btn-primary:hover { background: #ececec; border-color: ${tokens.accent}; }
 
   .pmreg-add-btn {
     display: inline-flex;
@@ -561,7 +561,7 @@ const scopedCss = `
     transition: background 120ms ease, border-color 120ms ease;
   }
   .pmreg-add-btn:hover {
-    background: #dbeafe;
+    background: #ececec;
     border-style: solid;
   }
 
@@ -589,9 +589,9 @@ const scopedCss = `
   .pmreg-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
   .pmreg-scroll::-webkit-scrollbar-track { background: transparent; }
   .pmreg-scroll::-webkit-scrollbar-thumb {
-    background: #e2e8f0; border-radius: 10px; border: 2px solid ${tokens.surface};
+    background: #e9e9e9; border-radius: 10px; border: 2px solid ${tokens.surface};
   }
-  .pmreg-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+  .pmreg-scroll::-webkit-scrollbar-thumb:hover { background: #d6d6d6; }
 `;
 
 const SearchIcon: React.FC = () => (

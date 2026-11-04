@@ -1910,12 +1910,12 @@ const ProjectDetail: React.FC = () => {
   const getClientTypeColor = (clientType: string) => {
     switch (clientType) {
       case 'ICON': return { bg: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: 'white' };
-      case 'STAR': return { bg: '#a855f7', color: 'white' };
-      case 'Katalyst': return { bg: '#667eea', color: 'white' };
-      case 'Private': return { bg: '#64748b', color: 'white' };
-      case 'Premium': return { bg: '#8b5cf6', color: 'white' };
-      case 'Powered-Up': return { bg: '#a855f7', color: 'white' };
-      default: return { bg: '#64748b', color: 'white' };
+      case 'STAR': return { bg: '#111111', color: 'white' };
+      case 'Katalyst': return { bg: '#111111', color: 'white' };
+      case 'Private': return { bg: '#787878', color: 'white' };
+      case 'Premium': return { bg: '#111111', color: 'white' };
+      case 'Powered-Up': return { bg: '#111111', color: 'white' };
+      default: return { bg: '#787878', color: 'white' };
     }
   };
 
@@ -1979,7 +1979,7 @@ const ProjectDetail: React.FC = () => {
         <div className="error" style={{ color: '#dc2626', fontSize: '1.2rem', marginBottom: '1rem' }}>
           {error || 'Project not found'}
         </div>
-        <p style={{ color: '#64748b', marginBottom: '1rem' }}>
+        <p style={{ color: '#787878', marginBottom: '1rem' }}>
           Project ID: {id}
         </p>
         <button
@@ -2044,7 +2044,7 @@ const ProjectDetail: React.FC = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRadius: '4px',
-                      color: '#64748b',
+                      color: '#787878',
                       transition: 'all 0.2s'
                     }}
                     title="Edit project details"
@@ -2063,7 +2063,7 @@ const ProjectDetail: React.FC = () => {
                         alignItems: 'center',
                         gap: '0.4rem',
                         fontSize: '0.84rem',
-                        color: '#4f46e5',
+                        color: '#111111',
                         textDecoration: 'none',
                         fontWeight: 500,
                         maxWidth: '100%',
@@ -2084,7 +2084,7 @@ const ProjectDetail: React.FC = () => {
                         border: 'none',
                         padding: 0,
                         margin: 0,
-                        color: '#64748b',
+                        color: '#787878',
                         fontSize: '0.82rem',
                         cursor: 'pointer',
                         textDecoration: 'underline',
@@ -2151,9 +2151,9 @@ const ProjectDetail: React.FC = () => {
                       gap: '0.45rem',
                       padding: '0.38rem 0.68rem',
                       borderRadius: '999px',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      color: '#334155',
+                      background: '#ffffff',
+                      border: '1px solid #e9e9e9',
+                      color: '#444444',
                       fontSize: '0.8rem',
                       fontWeight: 600,
                       maxWidth: 'min(100%, 720px)',
@@ -2218,13 +2218,13 @@ const ProjectDetail: React.FC = () => {
         }}>
           <div style={{
             background: '#fff',
-            border: '1px solid #e2e8f0',
+            border: '1px solid #e9e9e9',
             borderRadius: 12,
             padding: '0.85rem 1rem',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.45rem' }}>
-              <FaStickyNote style={{ color: '#1d4ed8' }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a' }}>PM List Notes</span>
+              <FaStickyNote style={{ color: '#111111' }} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#111111' }}>PM List Notes</span>
               {projectRegistryMeta?.pmPriority && (
                 <span style={{
                   marginLeft: 6,
@@ -2232,14 +2232,14 @@ const ProjectDetail: React.FC = () => {
                   fontWeight: 800,
                   borderRadius: 999,
                   padding: '0.12rem 0.45rem',
-                  background: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#fee2e2' : '#e2e8f0',
-                  color: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#b91c1c' : '#334155',
+                  background: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#fee2e2' : '#e9e9e9',
+                  color: projectRegistryMeta.pmPriority === 'Hot Potato' ? '#b91c1c' : '#444444',
                 }}>
                   {projectRegistryMeta.pmPriority}
                 </span>
               )}
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '0.82rem', color: '#444444', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
               {projectRegistryMeta?.comments || '—'}
             </div>
           </div>
@@ -2256,18 +2256,18 @@ const ProjectDetail: React.FC = () => {
         }}>
           <div style={{
             background: '#ffffff',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #e8e8e8',
             borderRadius: 12,
             padding: '1rem',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#111827', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#1c1c1c', fontWeight: 600 }}>
                 <span style={{
                   width: 28,
                   height: 28,
                   borderRadius: 8,
-                  background: '#f3f4f6',
-                  color: '#4b5563',
+                  background: '#ffffff',
+                  color: '#575757',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -2281,8 +2281,8 @@ const ProjectDetail: React.FC = () => {
               <span style={{
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                color: '#4b5563',
-                background: '#f3f4f6',
+                color: '#575757',
+                background: '#ffffff',
                 borderRadius: 999,
                 padding: '0.18rem 0.52rem',
               }}>
@@ -2307,13 +2307,13 @@ const ProjectDetail: React.FC = () => {
               <div style={{
                 marginTop: '0.75rem',
                 background: '#ffffff',
-                border: '1px solid #dbeafe',
+                border: '1px solid #ececec',
                 borderRadius: 12,
                 padding: '0.75rem',
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: '0.55rem', alignItems: 'start' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#111111', marginBottom: 4 }}>
                       Reminder Day
                     </label>
                     <input
@@ -2323,11 +2323,11 @@ const ProjectDetail: React.FC = () => {
                       value={projectReminderForm.reminderDay}
                       onChange={(e) => setProjectReminderForm((prev) => ({ ...prev, reminderDay: e.target.value }))}
                       className="form-input"
-                      style={{ width: '100%', padding: '0.5rem 0.55rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem' }}
+                      style={{ width: '100%', padding: '0.5rem 0.55rem', borderRadius: 8, border: '1px solid #dedede', fontSize: '0.82rem' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#111111', marginBottom: 4 }}>
                       Note
                     </label>
                     <textarea
@@ -2336,7 +2336,7 @@ const ProjectDetail: React.FC = () => {
                       rows={2}
                       placeholder="Ex: Monthly report on day 24 - 10 articles + GA report"
                       className="form-input"
-                      style={{ width: '100%', minHeight: 66, padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: '0.82rem', resize: 'vertical' }}
+                      style={{ width: '100%', minHeight: 66, padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #dedede', fontSize: '0.82rem', resize: 'vertical' }}
                     />
                   </div>
                   <div style={{ alignSelf: 'end', display: 'flex', gap: 8 }}>
@@ -2346,8 +2346,8 @@ const ProjectDetail: React.FC = () => {
                         onClick={() => setShowProjectReminderForm(false)}
                         className="btn-primary"
                         style={{
-                          background: '#e2e8f0',
-                          color: '#334155',
+                          background: '#e9e9e9',
+                          color: '#444444',
                           border: 'none',
                           borderRadius: 8,
                           padding: '0.5rem 0.72rem',
@@ -2365,7 +2365,7 @@ const ProjectDetail: React.FC = () => {
                       disabled={savingProjectMonthlyReminder}
                       className="btn-primary"
                       style={{
-                        background: '#2563eb',
+                        background: '#111111',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
@@ -2385,12 +2385,12 @@ const ProjectDetail: React.FC = () => {
             )}
 
             {loadingProjectMonthlyReminders && (
-              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#1d4ed8' }}>
+              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#111111' }}>
                 Loading monthly reminders...
               </div>
             )}
             {!loadingProjectMonthlyReminders && projectMonthlyReminders.length === 0 && (
-              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#475569' }}>
+              <div style={{ marginTop: '0.62rem', fontSize: '0.82rem', color: '#585858' }}>
                 No monthly reminders linked to this client yet.
               </div>
             )}
@@ -2402,14 +2402,14 @@ const ProjectDetail: React.FC = () => {
                     alignItems: 'flex-start',
                     gap: '0.5rem',
                     background: '#ffffff',
-                    border: '1px solid #bfdbfe',
+                    border: '1px solid #dedede',
                     borderRadius: 10,
                     padding: '0.52rem 0.62rem',
                   }}>
                     <span style={{
                       fontSize: '0.72rem',
                       borderRadius: 999,
-                      background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                      background: 'linear-gradient(135deg, #111111, #111111)',
                       color: '#fff',
                       fontWeight: 700,
                       padding: '0.14rem 0.42rem',
@@ -2418,10 +2418,10 @@ const ProjectDetail: React.FC = () => {
                       Day {item.reminderDay}
                     </span>
                     <div style={{ display: 'grid', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.82rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                      <span style={{ fontSize: '0.82rem', color: '#444444', whiteSpace: 'pre-wrap' }}>
                         {item.note}
                       </span>
-                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#787878' }}>
                         Updated {new Date(item.updatedAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -2456,8 +2456,8 @@ const ProjectDetail: React.FC = () => {
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                  e.currentTarget.style.color = '#374151';
+                  e.currentTarget.style.background = '#f4f4f4';
+                  e.currentTarget.style.color = '#444444';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'none';
@@ -2507,7 +2507,7 @@ const ProjectDetail: React.FC = () => {
             onClick={() => setHideOnboardingPhase(false)}
             style={{
               background: 'white',
-              border: '1px solid #e5e7eb',
+              border: '1px solid #e8e8e8',
               color: '#6b7280',
               cursor: 'pointer',
               padding: '0.75rem 1.5rem',
@@ -2521,13 +2521,13 @@ const ProjectDetail: React.FC = () => {
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f9fafb';
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.color = '#374151';
+              e.currentTarget.style.background = '#fafafa';
+              e.currentTarget.style.borderColor = '#d6d6d6';
+              e.currentTarget.style.color = '#444444';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'white';
-              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.borderColor = '#e8e8e8';
               e.currentTarget.style.color = '#6b7280';
             }}
           >
@@ -2656,12 +2656,12 @@ const ProjectDetail: React.FC = () => {
         {activeTab === 'tasks' && (
           <div className="tab-content fade-in">
             {tasks.length === 0 ? (
-              <div className="no-tasks-message" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+              <div className="no-tasks-message" style={{ padding: '3rem', textAlign: 'center', color: '#787878' }}>
                 <FaCheckCircle style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
                 <h3 style={{ marginBottom: '0.5rem' }}>No tasks found</h3>
                 <p>Tasks will appear here once they are created for this project.</p>
                 {project?.stage === 'Onboarding' && (
-                  <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#94a3b8' }}>
+                  <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#a6a6a6' }}>
                     Onboarding tasks are created automatically. If they don't appear, refresh the page.
                   </p>
                 )}
@@ -2706,10 +2706,10 @@ const ProjectDetail: React.FC = () => {
                         {task.description && <p className="task-description">{task.description}</p>}
                         
                         {task.isCompleted && task.submissionData && (
-                          <div className="submission-display" style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px' }}>
+                          <div className="submission-display" style={{ marginTop: '1rem', padding: '1rem', background: '#ffffff', borderRadius: '8px' }}>
                             <strong>Submitted:</strong>
                             {task.submissionType === 'url' ? (
-                              <a href={task.submissionData} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '0.5rem', color: '#667eea', wordBreak: 'break-all' }}>
+                              <a href={task.submissionData} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '0.5rem', color: '#111111', wordBreak: 'break-all' }}>
                                 {task.submissionData}
                               </a>
                             ) : (
@@ -2721,19 +2721,19 @@ const ProjectDetail: React.FC = () => {
                         {!task.isCompleted && (
                           <div className="submission-form" style={{ marginTop: '1rem' }}>
                             {submissionForm?.taskId === task.id ? (
-                              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e9e9e9' }}>
                                 <div style={{ marginBottom: '1rem' }}>
                                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submission Type:</label>
                                   <div style={{ display: 'flex', gap: '1rem' }}>
                                     <button
                                       onClick={() => submissionForm && setSubmissionForm({ ...submissionForm, type: 'url' })}
-                                      style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: submissionForm?.type === 'url' ? '#667eea' : 'white', color: submissionForm?.type === 'url' ? 'white' : '#1a1a1a', cursor: 'pointer' }}
+                                      style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid #e9e9e9', background: submissionForm?.type === 'url' ? '#111111' : 'white', color: submissionForm?.type === 'url' ? 'white' : '#1a1a1a', cursor: 'pointer' }}
                                     >
                                       URL
                                     </button>
                                     <button
                                       onClick={() => submissionForm && setSubmissionForm({ ...submissionForm, type: 'text' })}
-                                      style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: submissionForm?.type === 'text' ? '#667eea' : 'white', color: submissionForm?.type === 'text' ? 'white' : '#1a1a1a', cursor: 'pointer' }}
+                                      style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid #e9e9e9', background: submissionForm?.type === 'text' ? '#111111' : 'white', color: submissionForm?.type === 'text' ? 'white' : '#1a1a1a', cursor: 'pointer' }}
                                     >
                                       Text
                                     </button>
@@ -2745,7 +2745,7 @@ const ProjectDetail: React.FC = () => {
                                     placeholder="Enter URL (e.g., https://example.com)"
                                     value={submissionForm?.data || ''}
                                     onChange={(e) => submissionForm && setSubmissionForm({ ...submissionForm, data: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e9e9e9', marginBottom: '1rem' }}
                                   />
                                 ) : (
                                   <textarea
@@ -2753,7 +2753,7 @@ const ProjectDetail: React.FC = () => {
                                     value={submissionForm?.data || ''}
                                     onChange={(e) => submissionForm && setSubmissionForm({ ...submissionForm, data: e.target.value })}
                                     rows={4}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1rem', fontFamily: 'inherit' }}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e9e9e9', marginBottom: '1rem', fontFamily: 'inherit' }}
                                   />
                                 )}
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -2801,10 +2801,10 @@ const ProjectDetail: React.FC = () => {
                 {project?.stage !== 'Onboarding' && (
                   <span style={{ 
                     padding: '0.5rem 1rem', 
-                    background: '#f1f5f9', 
+                    background: '#ffffff', 
                     borderRadius: '8px', 
                     fontSize: '0.875rem', 
-                    color: '#64748b',
+                    color: '#787878',
                     fontWeight: 500
                   }}>
                     Historical Data
@@ -2812,15 +2812,15 @@ const ProjectDetail: React.FC = () => {
                 )}
               </div>
               {tasks.filter((t) => (t.type === 'Onboarding' || t.type === 'Intake') && t.isCompleted && t.submissionData).length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#787878' }}>
                   <FaFileAlt style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }} />
                   <p>No Branding Documents submitted yet.</p>
                   {project?.stage === 'Onboarding' ? (
-                    <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#94a3b8' }}>
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#a6a6a6' }}>
                       Submit information in the Tasks tab to see it here.
                     </p>
                   ) : (
-                    <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#94a3b8' }}>
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#a6a6a6' }}>
                       This project has moved past the onboarding stage.
                     </p>
                   )}
@@ -2835,23 +2835,23 @@ const ProjectDetail: React.FC = () => {
                         <div style={{ marginTop: '1rem' }}>
                           {task.submissionType === 'url' ? (
                             <div>
-                              <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.9rem' }}>URL:</strong>
+                              <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#787878', fontSize: '0.9rem' }}>URL:</strong>
                               <a
                                 href={task.submissionData}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ color: '#667eea', wordBreak: 'break-all', textDecoration: 'underline' }}
+                                style={{ color: '#111111', wordBreak: 'break-all', textDecoration: 'underline' }}
                               >
                                 {task.submissionData}
                               </a>
                             </div>
                           ) : (
                             <div>
-                              <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.9rem' }}>Text:</strong>
+                              <strong style={{ display: 'block', marginBottom: '0.5rem', color: '#787878', fontSize: '0.9rem' }}>Text:</strong>
                               <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{task.submissionData}</p>
                             </div>
                           )}
-                          <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                          <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#a6a6a6' }}>
                             Submitted: {new Date(task.updatedAt).toLocaleString()}
                           </div>
                         </div>
@@ -2930,10 +2930,10 @@ const ProjectDetail: React.FC = () => {
           <div className="tab-content fade-in">
             <div style={{ padding: '1.5rem' }}>
               <div style={{ marginBottom: '1.25rem' }}>
-                <h2 style={{ color: '#1e293b', fontSize: '1.25rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>
+                <h2 style={{ color: '#2c2c2c', fontSize: '1.25rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>
                   Tasks Without Deliverables
                 </h2>
-                <p style={{ color: '#64748b', fontSize: '0.8125rem', margin: 0 }}>
+                <p style={{ color: '#787878', fontSize: '0.8125rem', margin: 0 }}>
                   Assign tasks to deliverables or create custom ones
                 </p>
               </div>
@@ -2945,14 +2945,14 @@ const ProjectDetail: React.FC = () => {
                 if (unassignedTasks.length === 0) {
                   return (
                     <div style={{
-                      background: '#f9fafb',
+                      background: '#ffffff',
                       borderRadius: '8px',
                       padding: '2rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid #e8e8e8',
                       textAlign: 'center'
                     }}>
-                      <FaClipboard style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '0.75rem' }} />
-                      <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: '1.5', margin: 0 }}>
+                      <FaClipboard style={{ fontSize: '2.5rem', color: '#a6a6a6', marginBottom: '0.75rem' }} />
+                      <p style={{ color: '#787878', fontSize: '0.875rem', lineHeight: '1.5', margin: 0 }}>
                         All tasks are connected to deliverables.
                       </p>
                     </div>
@@ -2971,11 +2971,11 @@ const ProjectDetail: React.FC = () => {
 
                 const getTypeColor = (type: string) => {
                   const colors: Record<string, string> = {
-                    'Copy': '#3b82f6',
-                    'Design': '#8b5cf6',
+                    'Copy': '#111111',
+                    'Design': '#111111',
                     'Dev': '#10b981',
                     'AI': '#10b981',
-                    'CRM': '#6366f1',
+                    'CRM': '#111111',
                     'Social Media': '#ec4899',
                     'SEO/GEO': '#06b6d4',
                     'General': '#6b7280',
@@ -2986,11 +2986,11 @@ const ProjectDetail: React.FC = () => {
                 const getStatusColor = (status: string, isCompleted: boolean) => {
                   if (isCompleted) return { bg: '#d1fae5', color: '#065f46' };
                   switch (status) {
-                    case 'In Progress': return { bg: '#dbeafe', color: '#1e40af' };
+                    case 'In Progress': return { bg: '#ececec', color: '#111111' };
                     case 'In Review': return { bg: '#fef3c7', color: '#92400e' };
                     case 'Blocked': return { bg: '#fee2e2', color: '#991b1b' };
                     case 'Completed': return { bg: '#d1fae5', color: '#065f46' };
-                    default: return { bg: '#f3f4f6', color: '#6b7280' };
+                    default: return { bg: '#f4f4f4', color: '#6b7280' };
                   }
                 };
 
@@ -3003,7 +3003,7 @@ const ProjectDetail: React.FC = () => {
                           background: 'white',
                           borderRadius: '8px',
                           padding: '1rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid #e8e8e8',
                           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                         }}
                       >
@@ -3016,7 +3016,7 @@ const ProjectDetail: React.FC = () => {
                               backgroundColor: getTypeColor(type),
                             }}
                           />
-                          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#2c2c2c', margin: 0 }}>
                             {type} ({typeTasks.length})
                           </h3>
                         </div>
@@ -3028,9 +3028,9 @@ const ProjectDetail: React.FC = () => {
                                 key={task.id}
                                 style={{
                                   padding: '0.75rem',
-                                  background: '#fafbfc',
+                                  background: '#ffffff',
                                   borderRadius: '6px',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid #e8e8e8',
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
@@ -3038,12 +3038,12 @@ const ProjectDetail: React.FC = () => {
                                   transition: 'all 0.2s',
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#f8f9fa';
-                                  e.currentTarget.style.borderColor = '#d1d5db';
+                                  e.currentTarget.style.background = '#f9f9f9';
+                                  e.currentTarget.style.borderColor = '#d6d6d6';
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = '#fafbfc';
-                                  e.currentTarget.style.borderColor = '#e5e7eb';
+                                  e.currentTarget.style.background = '#fbfbfb';
+                                  e.currentTarget.style.borderColor = '#e8e8e8';
                                 }}
                               >
                                 <div 
@@ -3054,7 +3054,7 @@ const ProjectDetail: React.FC = () => {
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#2c2c2c', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {task.title}
                                     </h4>
                                     <span
@@ -3073,7 +3073,7 @@ const ProjectDetail: React.FC = () => {
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
                                     {project.pm?.name && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#787878' }}>
                                         <FaUser style={{ fontSize: '0.625rem' }} />
                                         <span>PM: {project.pm.name}</span>
                                       </div>
@@ -3087,14 +3087,14 @@ const ProjectDetail: React.FC = () => {
                                       const primaryId = assigneeIds[0];
                                       const primaryName = (allUsers.find((u: any) => u.id === primaryId)?.name) || task.assignedTo?.name || 'Unassigned';
                                       return (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#787878' }}>
                                           <FaUser style={{ fontSize: '0.625rem' }} />
                                           <span>{primaryName}</span>
                                         </div>
                                       );
                                     })()}
                                     {task.dueDate && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#787878' }}>
                                         <FaClock style={{ fontSize: '0.625rem' }} />
                                         <span>{new Date(task.dueDate).toLocaleDateString()}</span>
                                       </div>
@@ -3109,7 +3109,7 @@ const ProjectDetail: React.FC = () => {
                                           alignItems: 'center',
                                           gap: '0.375rem',
                                           fontSize: '0.75rem',
-                                          color: '#667eea',
+                                          color: '#111111',
                                           textDecoration: 'none',
                                         }}
                                         onClick={(e) => e.stopPropagation()}
@@ -3127,7 +3127,7 @@ const ProjectDetail: React.FC = () => {
                                     onClick={() => copyTaskLink(task)}
                                     style={{
                                       background: 'transparent',
-                                      border: '1px solid #e5e7eb',
+                                      border: '1px solid #e8e8e8',
                                       borderRadius: '6px',
                                       padding: '0.375rem 0.625rem',
                                       cursor: 'pointer',
@@ -3141,12 +3141,12 @@ const ProjectDetail: React.FC = () => {
                                       gap: '0.25rem',
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = '#f3f4f6';
-                                      e.currentTarget.style.borderColor = '#d1d5db';
+                                      e.currentTarget.style.background = '#f4f4f4';
+                                      e.currentTarget.style.borderColor = '#d6d6d6';
                                     }}
                                     onMouseLeave={(e) => {
                                       e.currentTarget.style.background = 'transparent';
-                                      e.currentTarget.style.borderColor = '#e5e7eb';
+                                      e.currentTarget.style.borderColor = '#e8e8e8';
                                     }}
                                     title="Copy task link"
                                   >
@@ -3162,7 +3162,7 @@ const ProjectDetail: React.FC = () => {
                                       setShowAssignDeliverableModal(true);
                                     }}
                                     style={{
-                                      background: '#667eea',
+                                      background: '#111111',
                                       border: 'none',
                                       borderRadius: '6px',
                                       padding: '0.375rem 0.625rem',
@@ -3176,10 +3176,10 @@ const ProjectDetail: React.FC = () => {
                                       transition: 'all 0.2s',
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = '#5568d3';
+                                      e.currentTarget.style.background = '#333333';
                                     }}
                                     onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = '#667eea';
+                                      e.currentTarget.style.background = '#111111';
                                     }}
                                     title="Assign to deliverable"
                                   >
@@ -3190,7 +3190,7 @@ const ProjectDetail: React.FC = () => {
                                     onClick={() => handleTaskComplete(task.id, !task.isCompleted)}
                                     style={{
                                       background: 'transparent',
-                                      border: '1px solid #e5e7eb',
+                                      border: '1px solid #e8e8e8',
                                       borderRadius: '6px',
                                       padding: '0.375rem',
                                       cursor: 'pointer',
@@ -3201,12 +3201,12 @@ const ProjectDetail: React.FC = () => {
                                       transition: 'all 0.2s',
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = '#f3f4f6';
-                                      e.currentTarget.style.borderColor = '#d1d5db';
+                                      e.currentTarget.style.background = '#f4f4f4';
+                                      e.currentTarget.style.borderColor = '#d6d6d6';
                                     }}
                                     onMouseLeave={(e) => {
                                       e.currentTarget.style.background = 'transparent';
-                                      e.currentTarget.style.borderColor = '#e5e7eb';
+                                      e.currentTarget.style.borderColor = '#e8e8e8';
                                     }}
                                     title={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
                                   >
@@ -3240,11 +3240,11 @@ const ProjectDetail: React.FC = () => {
           <div className="tab-content fade-in">
             <div style={{ padding: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
+                <h2 style={{ margin: 0, color: '#2c2c2c', fontSize: '1.5rem', fontWeight: 600 }}>
                   Branding Management
                 </h2>
-                <span role="status" style={{ fontSize: '0.875rem', color: '#4b5563' }}>
-                  <strong style={{ color: '#111827' }}>{Object.values(brandingCalls).filter((c) => c.isDone).length} of {Object.keys(brandingCalls).length}</strong> calls done
+                <span role="status" style={{ fontSize: '0.875rem', color: '#575757' }}>
+                  <strong style={{ color: '#1c1c1c' }}>{Object.values(brandingCalls).filter((c) => c.isDone).length} of {Object.keys(brandingCalls).length}</strong> calls done
                 </span>
               </div>
               {/* Calls flow left to right and wrap, so every call is visible without sideways scrolling */}
@@ -3269,27 +3269,27 @@ const ProjectDetail: React.FC = () => {
                   const callData = brandingCalls[call.id];
                   return (
                     <div key={call.id} style={{
-                      background: callData.isDone ? '#f0fdf4' : '#f9fafb',
+                      background: callData.isDone ? '#f0fdf4' : '#fafafa',
                       borderRadius: '12px',
                       padding: '1rem',
                       minWidth: 0,
                       display: 'flex',
                       flexDirection: 'column',
-                      border: `1px solid ${callData.isDone ? '#bbf7d0' : '#e5e7eb'}`,
+                      border: `1px solid ${callData.isDone ? '#bbf7d0' : '#e8e8e8'}`,
                     }}>
                       <div style={{ marginBottom: '1rem', minHeight: '80px' }}>
-                        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>
+                        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#2c2c2c', marginBottom: '0.25rem' }}>
                           {call.title}
                         </h3>
                         {call.subtitle ? (
-                          <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '0.25rem', lineHeight: '1.4' }}>
+                          <p style={{ fontSize: '0.8125rem', color: '#787878', marginBottom: '0.25rem', lineHeight: '1.4' }}>
                             {call.subtitle}
                           </p>
                         ) : (
                           <div style={{ height: '1.125rem' }}></div>
                         )}
                         {call.maxTime ? (
-                          <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                          <p style={{ fontSize: '0.75rem', color: '#a6a6a6' }}>
                             {call.maxTime}
                           </p>
                         ) : (
@@ -3298,7 +3298,7 @@ const ProjectDetail: React.FC = () => {
                       </div>
                       
                       <div style={{ marginBottom: '1rem' }}>
-                        <label htmlFor={`branding-call-zoom-${call.id}`} style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>
+                        <label htmlFor={`branding-call-zoom-${call.id}`} style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#585858', marginBottom: '0.5rem' }}>
                           Zoom Link
                         </label>
                         <input
@@ -3315,7 +3315,7 @@ const ProjectDetail: React.FC = () => {
                           style={{
                             width: '100%',
                             padding: '0.625rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             fontSize: '0.8125rem',
                             fontFamily: 'inherit',
@@ -3344,19 +3344,19 @@ const ProjectDetail: React.FC = () => {
                           }}
                           style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        <label htmlFor={`branding-call-done-${call.id}`} style={{ fontSize: '0.8125rem', color: '#475569', cursor: 'pointer', flex: 1 }}>
+                        <label htmlFor={`branding-call-done-${call.id}`} style={{ fontSize: '0.8125rem', color: '#585858', cursor: 'pointer', flex: 1 }}>
                           Done
                         </label>
                       </div>
 
                       {callData.isDone && (callData.notes || callData.attachmentLink) && (
-                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #e8e8e8' }}>
                           {callData.notes && (
                             <div style={{ marginBottom: '0.75rem' }}>
-                              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Notes: </span>
+                              <span style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500 }}>Notes: </span>
                               {callData.notes.length > 100 ? (
                                 <div style={{ marginTop: '0.25rem' }}>
-                                  <p style={{ fontSize: '0.8125rem', color: '#64748b', wordBreak: 'break-word', marginBottom: '0.5rem' }}>
+                                  <p style={{ fontSize: '0.8125rem', color: '#787878', wordBreak: 'break-word', marginBottom: '0.5rem' }}>
                                     {callData.notes.substring(0, 100)}...
                                   </p>
                                   <button
@@ -3368,7 +3368,7 @@ const ProjectDetail: React.FC = () => {
                                     }}
                                     style={{
                                       fontSize: '0.75rem',
-                                      color: '#667eea',
+                                      color: '#111111',
                                       background: 'none',
                                       border: 'none',
                                       cursor: 'pointer',
@@ -3381,18 +3381,18 @@ const ProjectDetail: React.FC = () => {
                                   </button>
                                 </div>
                               ) : (
-                                <p style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: '0.25rem', wordBreak: 'break-word' }}>{callData.notes}</p>
+                                <p style={{ fontSize: '0.8125rem', color: '#787878', marginTop: '0.25rem', wordBreak: 'break-word' }}>{callData.notes}</p>
                               )}
                             </div>
                           )}
                           {callData.attachmentLink && (
                             <div>
-                              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Attachment: </span>
+                              <span style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500 }}>Attachment: </span>
                               <a 
                                 href={callData.attachmentLink} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                style={{ fontSize: '0.8125rem', color: '#667eea', textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '0.25rem' }}
+                                style={{ fontSize: '0.8125rem', color: '#111111', textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '0.25rem' }}
                               >
                                 View Link
                               </a>
@@ -3411,10 +3411,10 @@ const ProjectDetail: React.FC = () => {
         {activeTab === 'revisions' && (
           <div className="tab-content fade-in">
             <div style={{ padding: '2rem' }}>
-              <h2 style={{ marginBottom: '1.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 600 }}>
+              <h2 style={{ marginBottom: '1.5rem', color: '#2c2c2c', fontSize: '1.5rem', fontWeight: 600 }}>
                 Revision Tracking
               </h2>
-              <p style={{ marginBottom: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
+              <p style={{ marginBottom: '2rem', color: '#787878', fontSize: '0.875rem' }}>
                 Track the number of revisions for each deliverable type in this project.
               </p>
               
@@ -3426,12 +3426,12 @@ const ProjectDetail: React.FC = () => {
               }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <tr style={{ background: '#ffffff', borderBottom: '2px solid #e9e9e9' }}>
                       <th style={{ 
                         padding: '1rem', 
                         textAlign: 'left', 
                         fontWeight: 600, 
-                        color: '#475569',
+                        color: '#585858',
                         fontSize: '0.875rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
@@ -3442,7 +3442,7 @@ const ProjectDetail: React.FC = () => {
                         padding: '1rem', 
                         textAlign: 'right', 
                         fontWeight: 600, 
-                        color: '#475569',
+                        color: '#585858',
                         fontSize: '0.875rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
@@ -3452,36 +3452,36 @@ const ProjectDetail: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                    <tr style={{ borderBottom: '1px solid #e9e9e9' }}>
+                      <td style={{ padding: '1rem', color: '#2c2c2c', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <FaExclamationTriangle style={{ color: '#3b82f6', fontSize: '1rem' }} />
+                          <FaExclamationTriangle style={{ color: '#111111', fontSize: '1rem' }} />
                           <span>Copy Revisions</span>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#2c2c2c', fontWeight: 600, fontSize: '1.125rem' }}>
                         {project?.copyRevisionCount || 0}
                       </td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                    <tr style={{ borderBottom: '1px solid #e9e9e9' }}>
+                      <td style={{ padding: '1rem', color: '#2c2c2c', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <FaExclamationTriangle style={{ color: '#8b5cf6', fontSize: '1rem' }} />
+                          <FaExclamationTriangle style={{ color: '#111111', fontSize: '1rem' }} />
                           <span>Design Revisions</span>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#2c2c2c', fontWeight: 600, fontSize: '1.125rem' }}>
                         {project?.designRevisionCount || 0}
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ padding: '1rem', color: '#1e293b', fontWeight: 500 }}>
+                      <td style={{ padding: '1rem', color: '#2c2c2c', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <FaExclamationTriangle style={{ color: '#10b981', fontSize: '1rem' }} />
                           <span>Home Page Revisions</span>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem', textAlign: 'right', color: '#1e293b', fontWeight: 600, fontSize: '1.125rem' }}>
+                      <td style={{ padding: '1rem', textAlign: 'right', color: '#2c2c2c', fontWeight: 600, fontSize: '1.125rem' }}>
                         {project?.landingPageRevisionCount || 0}
                       </td>
                     </tr>
@@ -3492,11 +3492,11 @@ const ProjectDetail: React.FC = () => {
               <div style={{ 
                 marginTop: '2rem', 
                 padding: '1rem', 
-                background: '#f0f9ff', 
+                background: '#ffffff', 
                 borderRadius: '0.5rem',
-                border: '1px solid #bae6fd'
+                border: '1px solid #dcdcdc'
               }}>
-                <p style={{ margin: 0, color: '#0369a1', fontSize: '0.875rem' }}>
+                <p style={{ margin: 0, color: '#111111', fontSize: '0.875rem' }}>
                   <strong>Note:</strong> Revision counts are automatically tracked when deliverables are marked for revision. 
                   Each time a deliverable is sent back for revision, the corresponding counter is incremented.
                 </p>
@@ -3509,14 +3509,14 @@ const ProjectDetail: React.FC = () => {
           <div className="tab-content fade-in">
             <div style={{ padding: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ color: '#1e293b', fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>
+                <h2 style={{ color: '#2c2c2c', fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>
                   Client Updates
                 </h2>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <button
                     onClick={() => setShowCreateUpdateModal(true)}
                     style={{
-                      background: '#667eea',
+                      background: '#111111',
                       color: 'white',
                       border: 'none',
                       padding: '0.625rem 1.25rem',
@@ -3530,10 +3530,10 @@ const ProjectDetail: React.FC = () => {
                       transition: 'all 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#5568d3';
+                      e.currentTarget.style.background = '#333333';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#667eea';
+                      e.currentTarget.style.background = '#111111';
                     }}
                   >
                     <FaPlus /> Log Email Sent
@@ -3569,19 +3569,19 @@ const ProjectDetail: React.FC = () => {
               </div>
 
               {loadingUpdates ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#787878' }}>
                   Loading client updates...
                 </div>
               ) : clientUpdates.length === 0 ? (
                 <div style={{
-                  background: '#f9fafb',
+                  background: '#ffffff',
                   borderRadius: '12px',
                   padding: '3rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   textAlign: 'center'
                 }}>
-                  <FaEnvelopeOpen style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem' }} />
-                  <p style={{ color: '#64748b', fontSize: '0.9375rem', lineHeight: '1.6' }}>
+                  <FaEnvelopeOpen style={{ fontSize: '3rem', color: '#a6a6a6', marginBottom: '1rem' }} />
+                  <p style={{ color: '#787878', fontSize: '0.9375rem', lineHeight: '1.6' }}>
                     No client updates yet. Click "Log Email Sent" to create your first entry.
                   </p>
                 </div>
@@ -3594,19 +3594,19 @@ const ProjectDetail: React.FC = () => {
                         background: 'white',
                         borderRadius: '12px',
                         padding: '1.5rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid #e8e8e8',
                         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <FaEnvelope style={{ color: '#667eea' }} />
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                            <FaEnvelope style={{ color: '#111111' }} />
+                            <span style={{ fontWeight: 600, color: '#2c2c2c' }}>
                               Email sent by {update.pm?.name || 'PM'}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                          <div style={{ fontSize: '0.875rem', color: '#787878' }}>
                             {new Date(update.emailSentAt).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -3622,8 +3622,8 @@ const ProjectDetail: React.FC = () => {
                                 borderRadius: '12px',
                                 fontSize: '0.75rem',
                                 fontWeight: 500,
-                                background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
-                                color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                                background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#ececec' : '#f4f4f4',
+                                color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#111111' : '#444444',
                               }}
                             >
                               {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
@@ -3636,7 +3636,7 @@ const ProjectDetail: React.FC = () => {
                         <div style={{ 
                           marginTop: '1rem', 
                           paddingTop: '1rem', 
-                          borderTop: '1px solid #e5e7eb' 
+                          borderTop: '1px solid #e8e8e8' 
                         }}>
                           {update.notes && (
                             <div style={{ marginBottom: (update.links && update.links.length > 0) ? '0.75rem' : '0' }}>
@@ -3656,13 +3656,13 @@ const ProjectDetail: React.FC = () => {
                                   <div style={{ 
                                     fontSize: '0.75rem', 
                                     fontWeight: 500, 
-                                    color: '#64748b',
+                                    color: '#787878',
                                     marginBottom: '0.25rem'
                                   }}>
                                     Notes:
                                   </div>
                                   <div style={{ 
-                                    color: '#374151', 
+                                    color: '#444444', 
                                     fontSize: '0.875rem',
                                     lineHeight: '1.5',
                                     whiteSpace: 'pre-wrap'
@@ -3682,14 +3682,14 @@ const ProjectDetail: React.FC = () => {
                                 marginBottom: '0.5rem'
                               }}>
                                 <FaLink style={{ 
-                                  color: '#667eea', 
+                                  color: '#111111', 
                                   fontSize: '0.875rem',
                                   flexShrink: 0
                                 }} />
                                 <div style={{ 
                                   fontSize: '0.75rem', 
                                   fontWeight: 500, 
-                                  color: '#64748b'
+                                  color: '#787878'
                                 }}>
                                   Links:
                                 </div>
@@ -3702,24 +3702,24 @@ const ProjectDetail: React.FC = () => {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
-                                      color: '#667eea',
+                                      color: '#111111',
                                       fontSize: '0.875rem',
                                       textDecoration: 'none',
                                       wordBreak: 'break-all',
                                       display: 'inline-block',
                                       maxWidth: '100%',
                                       padding: '0.5rem',
-                                      background: '#f9fafb',
+                                      background: '#ffffff',
                                       borderRadius: '6px',
-                                      border: '1px solid #e5e7eb',
+                                      border: '1px solid #e8e8e8',
                                     }}
                                     onMouseEnter={(e) => {
                                       e.currentTarget.style.textDecoration = 'underline';
-                                      e.currentTarget.style.background = '#f3f4f6';
+                                      e.currentTarget.style.background = '#f4f4f4';
                                     }}
                                     onMouseLeave={(e) => {
                                       e.currentTarget.style.textDecoration = 'none';
-                                      e.currentTarget.style.background = '#f9fafb';
+                                      e.currentTarget.style.background = '#fafafa';
                                     }}
                                   >
                                     {link}
@@ -3732,13 +3732,13 @@ const ProjectDetail: React.FC = () => {
                       )}
 
                       {update.forms && update.forms.length > 0 ? (
-                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                          <div style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#1e293b' }}>Forms:</div>
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e8e8e8' }}>
+                          <div style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#2c2c2c' }}>Forms:</div>
                           {update.forms.map((form) => (
                             <div
                               key={form.id}
                               style={{
-                                background: '#f9fafb',
+                                background: '#ffffff',
                                 borderRadius: '8px',
                                 padding: '1rem',
                                 marginBottom: '0.75rem',
@@ -3748,12 +3748,12 @@ const ProjectDetail: React.FC = () => {
                               }}
                             >
                               <div>
-                                <div style={{ fontWeight: 500, marginBottom: '0.25rem', color: '#1e293b' }}>
+                                <div style={{ fontWeight: 500, marginBottom: '0.25rem', color: '#2c2c2c' }}>
                                   Form {form.isPublished ? '(Published)' : '(Draft)'}
                                 </div>
                                 {form.isPublished && (
                                   <>
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#787878', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
                                       <FaLink style={{ marginRight: '0.25rem' }} />
                                       <span
                                         style={{ cursor: 'pointer', textDecoration: 'underline' }}
@@ -3768,8 +3768,8 @@ const ProjectDetail: React.FC = () => {
                                     <button
                                       onClick={() => loadFormSubmissions(form.id)}
                                       style={{
-                                        background: '#f3f4f6',
-                                        border: '1px solid #d1d5db',
+                                        background: '#ffffff',
+                                        border: '1px solid #d6d6d6',
                                         padding: '0.375rem 0.75rem',
                                         borderRadius: '6px',
                                         fontSize: '0.75rem',
@@ -3780,11 +3780,11 @@ const ProjectDetail: React.FC = () => {
                                       {loadingSubmissions[form.id] ? 'Loading...' : `View Submissions (${formSubmissions[form.id]?.length || 0})`}
                                     </button>
                                     {formSubmissions[form.id] && formSubmissions[form.id].length > 0 && (
-                                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e8e8e8' }}>
                                         {formSubmissions[form.id].map((submission, idx) => (
                                           <div key={submission.id} style={{ 
                                             background: '#ffffff',
-                                            border: '1px solid #e5e7eb',
+                                            border: '1px solid #e8e8e8',
                                             padding: '1rem',
                                             borderRadius: '8px',
                                             marginBottom: '1rem',
@@ -3796,23 +3796,23 @@ const ProjectDetail: React.FC = () => {
                                               alignItems: 'center',
                                               marginBottom: '0.75rem',
                                               paddingBottom: '0.75rem',
-                                              borderBottom: '1px solid #e5e7eb'
+                                              borderBottom: '1px solid #e8e8e8'
                                             }}>
                                               <div>
-                                                <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                                                <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#2c2c2c' }}>
                                                   Submission #{idx + 1}
                                                 </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#787878' }}>
                                                   {new Date(submission.submittedAt).toLocaleString()}
                                                 </div>
                                               </div>
                                               {submission.clientName && (
                                                 <div style={{ 
                                                   padding: '0.25rem 0.75rem',
-                                                  background: '#f1f5f9',
+                                                  background: '#ffffff',
                                                   borderRadius: '12px',
                                                   fontSize: '0.75rem',
-                                                  color: '#475569'
+                                                  color: '#585858'
                                                 }}>
                                                   <FaUser style={{ marginRight: '0.25rem' }} />
                                                   {submission.clientName}
@@ -3831,15 +3831,15 @@ const ProjectDetail: React.FC = () => {
                                                       style={{ 
                                                         marginBottom: '1rem',
                                                         padding: '0.75rem',
-                                                        background: '#f9fafb',
+                                                        background: '#ffffff',
                                                         borderRadius: '6px',
-                                                        border: '1px solid #e5e7eb'
+                                                        border: '1px solid #e8e8e8'
                                                       }}
                                                     >
                                                       {block && (
                                                         <div style={{ 
                                                           fontSize: '0.75rem', 
-                                                          color: '#64748b', 
+                                                          color: '#787878', 
                                                           marginBottom: '0.5rem',
                                                           fontWeight: 500
                                                         }}>
@@ -3852,7 +3852,7 @@ const ProjectDetail: React.FC = () => {
                                                       )}
                                                       {resp.text && (
                                                         <div style={{ 
-                                                          color: '#374151', 
+                                                          color: '#444444', 
                                                           whiteSpace: 'pre-wrap',
                                                           lineHeight: '1.6',
                                                           marginBottom: resp.imageUrls?.length > 0 ? '0.75rem' : '0'
@@ -3893,7 +3893,7 @@ const ProjectDetail: React.FC = () => {
                                                                   height: '120px', 
                                                                   objectFit: 'cover', 
                                                                   borderRadius: '6px',
-                                                                  border: '1px solid #e5e7eb',
+                                                                  border: '1px solid #e8e8e8',
                                                                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                                                                 }} 
                                                               />
@@ -3920,7 +3920,7 @@ const ProjectDetail: React.FC = () => {
                                 }}
                                 style={{
                                   background: 'white',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid #d6d6d6',
                                   padding: '0.5rem 1rem',
                                   borderRadius: '6px',
                                   fontSize: '0.875rem',
@@ -3941,7 +3941,7 @@ const ProjectDetail: React.FC = () => {
                                       }
                                     }}
                                     style={{
-                                      background: '#667eea',
+                                      background: '#111111',
                                       color: 'white',
                                       border: 'none',
                                       padding: '0.5rem 1rem',
@@ -3958,14 +3958,14 @@ const ProjectDetail: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e8e8e8' }}>
                           <button
                             onClick={() => {
                               navigate(`/project/${id}/form-builder/${update.id}`);
                             }}
                             style={{
-                              background: '#f3f4f6',
-                              border: '1px solid #d1d5db',
+                              background: '#ffffff',
+                              border: '1px solid #d6d6d6',
                               padding: '0.5rem 1rem',
                               borderRadius: '6px',
                               fontSize: '0.875rem',
@@ -4304,7 +4304,7 @@ const ProjectDetail: React.FC = () => {
                       marginBottom: '0.5rem',
                       fontSize: '0.875rem',
                       fontWeight: 500,
-                      color: '#374151'
+                      color: '#444444'
                     }}
                   >
                     Notes (Optional)
@@ -4320,7 +4320,7 @@ const ProjectDetail: React.FC = () => {
                       minHeight: '120px', 
                       fontFamily: 'inherit',
                       fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #d6d6d6',
                       borderRadius: '6px',
                       resize: 'vertical'
                     }}
@@ -4336,7 +4336,7 @@ const ProjectDetail: React.FC = () => {
                       marginBottom: '0.5rem',
                       fontSize: '0.875rem',
                       fontWeight: 500,
-                      color: '#374151'
+                      color: '#444444'
                     }}
                   >
                     Attachment/Link (Optional)
@@ -4353,7 +4353,7 @@ const ProjectDetail: React.FC = () => {
                         flex: 1, 
                         padding: '0.75rem',
                         fontSize: '0.875rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid #d6d6d6',
                         borderRadius: '6px'
                       }}
                       placeholder="https://example.com or Google Drive/Figma link..."
@@ -4372,12 +4372,12 @@ const ProjectDetail: React.FC = () => {
               </div>
               <div className="modal-footer" style={{ 
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid #e8e8e8',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
                 gap: '0.75rem',
-                background: '#f9fafb'
+                background: '#ffffff'
               }}>
                 <button
                   type="button"
@@ -4393,9 +4393,9 @@ const ProjectDetail: React.FC = () => {
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     borderRadius: '6px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #d6d6d6',
                     background: 'white',
-                    color: '#374151',
+                    color: '#444444',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     textAlign: 'center',
@@ -4404,12 +4404,12 @@ const ProjectDetail: React.FC = () => {
                     justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f3f4f6';
+                    e.currentTarget.style.background = '#f4f4f4';
                     e.currentTarget.style.borderColor = '#9ca3af';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'white';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.borderColor = '#d6d6d6';
                   }}
                 >
                   Cancel
@@ -4435,14 +4435,14 @@ const ProjectDetail: React.FC = () => {
                     setBrandingAttachment('');
                   }}
                   style={{ 
-                    background: '#667eea', 
-                    borderColor: '#667eea',
+                    background: '#111111', 
+                    borderColor: '#111111',
                     color: 'white',
                     padding: '0.625rem 1.25rem',
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     borderRadius: '6px',
-                    border: '1px solid #667eea',
+                    border: '1px solid #111111',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     textAlign: 'center',
@@ -4451,12 +4451,12 @@ const ProjectDetail: React.FC = () => {
                     justifyContent: 'center'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#5568d3';
-                    e.currentTarget.style.borderColor = '#5568d3';
+                    e.currentTarget.style.background = '#333333';
+                    e.currentTarget.style.borderColor = '#333333';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#667eea';
-                    e.currentTarget.style.borderColor = '#667eea';
+                    e.currentTarget.style.background = '#111111';
+                    e.currentTarget.style.borderColor = '#111111';
                   }}
                 >
                   Save
@@ -4482,7 +4482,7 @@ const ProjectDetail: React.FC = () => {
                 </button>
               </div>
               <div className="modal-body">
-                <p style={{ marginBottom: '1rem', color: '#64748b' }}>
+                <p style={{ marginBottom: '1rem', color: '#787878' }}>
                   Are you sure you want to delete <strong>"{getDeliverableDisplayName(deliverableToDelete)}"</strong>?
                 </p>
                 <p style={{ marginBottom: '1rem', color: '#dc2626', fontSize: '0.875rem' }}>
@@ -4567,7 +4567,7 @@ const ProjectDetail: React.FC = () => {
                   value={newTaskData.dueDate}
                   onChange={(e) => setNewTaskData({ ...newTaskData, dueDate: e.target.value })}
                   className="form-input"
-                  style={{ padding: '0.625rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                  style={{ padding: '0.625rem', border: '1px solid #d6d6d6', borderRadius: '6px' }}
                 />
               </div>
               <div className="form-group">
@@ -4639,7 +4639,7 @@ const ProjectDetail: React.FC = () => {
                   }}
                 />
                 {newTaskAttachmentUploading && (
-                  <small style={{ color: '#64748b' }}>Uploading...</small>
+                  <small style={{ color: '#787878' }}>Uploading...</small>
                 )}
                 {newTaskFileUrls.length > 0 && !newTaskAttachmentUploading && (
                   <small style={{ color: '#16a34a', display: 'block', marginTop: '0.25rem' }}>
@@ -4678,7 +4678,7 @@ const ProjectDetail: React.FC = () => {
               
               {/* Quick Complete Option for PMs */}
               {authService.getUser()?.role === 'Project Manager' && (
-                <div className="form-group" style={{ marginTop: '1rem', padding: '0.75rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                <div className="form-group" style={{ marginTop: '1rem', padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcdcdc' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
                     <input
                       type="checkbox"
@@ -4686,11 +4686,11 @@ const ProjectDetail: React.FC = () => {
                       onChange={(e) => setMarkTaskCompleteOnCreate(e.target.checked)}
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: '0.875rem', color: '#0369a1', fontWeight: 500 }}>
+                    <span style={{ fontSize: '0.875rem', color: '#111111', fontWeight: 500 }}>
                       ✓ Mark as completed (for work already done)
                     </span>
                   </label>
-                  <small style={{ display: 'block', marginTop: '0.25rem', color: '#0284c7', fontSize: '0.75rem' }}>
+                  <small style={{ display: 'block', marginTop: '0.25rem', color: '#111111', fontSize: '0.75rem' }}>
                     Use this when adding tasks for work that's already finished
                   </small>
                 </div>
@@ -4793,7 +4793,7 @@ const ProjectDetail: React.FC = () => {
               </button>
             </div>
             <div className="modal-body">
-              <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+              <p style={{ color: '#787878', marginBottom: '1.5rem' }}>
                 Record that an email was sent to the client. Add notes and attach links if necessary.
               </p>
               
@@ -4802,7 +4802,7 @@ const ProjectDetail: React.FC = () => {
                   display: 'block', 
                   marginBottom: '0.5rem', 
                   fontWeight: 500, 
-                  color: '#1e293b',
+                  color: '#2c2c2c',
                   fontSize: '0.875rem'
                 }}>
                   <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b' }} />
@@ -4816,7 +4816,7 @@ const ProjectDetail: React.FC = () => {
                     width: '100%',
                     minHeight: '120px',
                     padding: '0.75rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #d6d6d6',
                     borderRadius: '8px',
                     fontSize: '0.875rem',
                     fontFamily: 'inherit',
@@ -4835,19 +4835,19 @@ const ProjectDetail: React.FC = () => {
                 }}>
                   <label style={{ 
                     fontWeight: 500, 
-                    color: '#1e293b',
+                    color: '#2c2c2c',
                     fontSize: '0.875rem',
                     margin: 0
                   }}>
-                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea' }} />
+                    <FaLink style={{ marginRight: '0.5rem', color: '#111111' }} />
                     Links (Optional)
                   </label>
                   <button
                     type="button"
                     onClick={addEmailLink}
                     style={{
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: '#ffffff',
+                      border: '1px solid #d6d6d6',
                       padding: '0.375rem 0.75rem',
                       borderRadius: '6px',
                       fontSize: '0.75rem',
@@ -4855,14 +4855,14 @@ const ProjectDetail: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.25rem',
-                      color: '#374151',
+                      color: '#444444',
                       fontWeight: 500,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e5e7eb';
+                      e.currentTarget.style.background = '#e8e8e8';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f3f4f6';
+                      e.currentTarget.style.background = '#f4f4f4';
                     }}
                   >
                     <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
@@ -4883,7 +4883,7 @@ const ProjectDetail: React.FC = () => {
                       style={{
                         flex: 1,
                         padding: '0.75rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid #d6d6d6',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontFamily: 'inherit',
@@ -4919,7 +4919,7 @@ const ProjectDetail: React.FC = () => {
                 ))}
                 <p style={{ 
                   fontSize: '0.75rem', 
-                  color: '#64748b', 
+                  color: '#787878', 
                   marginTop: '0.5rem',
                   marginBottom: 0
                 }}>
@@ -4978,8 +4978,8 @@ const ProjectDetail: React.FC = () => {
                 <button
                   onClick={() => addFormBlock('paragraph')}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
@@ -4991,8 +4991,8 @@ const ProjectDetail: React.FC = () => {
                 <button
                   onClick={() => addFormBlock('heading')}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
@@ -5004,8 +5004,8 @@ const ProjectDetail: React.FC = () => {
                 <button
                   onClick={() => addFormBlock('image')}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
@@ -5017,8 +5017,8 @@ const ProjectDetail: React.FC = () => {
                 <button
                   onClick={() => addFormBlock('text_with_image')}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
@@ -5030,8 +5030,8 @@ const ProjectDetail: React.FC = () => {
                 <button
                   onClick={() => addFormBlock('layout')}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
@@ -5047,14 +5047,14 @@ const ProjectDetail: React.FC = () => {
                   <div
                     key={block.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid #e8e8e8',
                       borderRadius: '8px',
                       padding: '1rem',
                       background: 'white',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.75rem', color: '#787878', fontWeight: 500 }}>
                         {block.type.replace('_', ' ').toUpperCase()}
                       </span>
                       <button
@@ -5081,7 +5081,7 @@ const ProjectDetail: React.FC = () => {
                             width: '100%',
                             minHeight: '100px',
                             padding: '0.75rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             fontSize: '0.875rem',
                             fontFamily: 'inherit',
@@ -5107,7 +5107,7 @@ const ProjectDetail: React.FC = () => {
                         style={{
                           width: '100%',
                           padding: '0.75rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid #d6d6d6',
                           borderRadius: '6px',
                           fontSize: '1.125rem',
                           fontWeight: 600,
@@ -5149,7 +5149,7 @@ const ProjectDetail: React.FC = () => {
                           style={{
                             width: '100%',
                             padding: '0.5rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             fontSize: '0.875rem',
                             marginTop: '0.5rem',
@@ -5169,7 +5169,7 @@ const ProjectDetail: React.FC = () => {
                             width: '100%',
                             minHeight: '80px',
                             padding: '0.75rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid #d6d6d6',
                             borderRadius: '6px',
                             fontSize: '0.875rem',
                             fontFamily: 'inherit',
@@ -5202,7 +5202,7 @@ const ProjectDetail: React.FC = () => {
 
                     {block.type === 'layout' && (
                       <div>
-                        <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                        <p style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>
                           Layout blocks are complex. For now, use individual blocks.
                         </p>
                       </div>
@@ -5212,7 +5212,7 @@ const ProjectDetail: React.FC = () => {
               </div>
 
               {formBlocks.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#a6a6a6' }}>
                   <p>No blocks yet. Add blocks using the buttons above.</p>
                 </div>
               )}
@@ -5300,9 +5300,9 @@ const ProjectDetail: React.FC = () => {
               <div style={{ 
                 marginBottom: '1.5rem', 
                 padding: '0.875rem 1rem', 
-                background: 'linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)', 
+                background: 'linear-gradient(135deg, #f8f8f8 0%, #f0f0f0 100%)', 
                 borderRadius: '8px', 
-                border: '1px solid #c7d2fe',
+                border: '1px solid #e2e2e2',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem'
@@ -5311,7 +5311,7 @@ const ProjectDetail: React.FC = () => {
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: '#667eea',
+                  background: '#111111',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -5320,8 +5320,8 @@ const ProjectDetail: React.FC = () => {
                   <FaClipboard style={{ color: 'white', fontSize: '0.875rem' }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: '#6366f1', fontWeight: 500, marginBottom: '0.125rem' }}>Task</div>
-                  <div style={{ fontSize: '0.9375rem', color: '#1e293b', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#111111', fontWeight: 500, marginBottom: '0.125rem' }}>Task</div>
+                  <div style={{ fontSize: '0.9375rem', color: '#2c2c2c', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {taskToAssign.title}
                   </div>
                 </div>
@@ -5333,7 +5333,7 @@ const ProjectDetail: React.FC = () => {
                   display: 'block', 
                   fontSize: '0.8125rem', 
                   fontWeight: 500, 
-                  color: '#475569', 
+                  color: '#585858', 
                   marginBottom: '0.75rem' 
                 }}>
                   Choose an option
@@ -5341,10 +5341,10 @@ const ProjectDetail: React.FC = () => {
                 <div style={{ 
                   display: 'flex', 
                   gap: '0.5rem',
-                  background: '#f8fafc',
+                  background: '#ffffff',
                   padding: '0.25rem',
                   borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
+                  border: '1px solid #e9e9e9'
                 }}>
                   <button
                     type="button"
@@ -5358,7 +5358,7 @@ const ProjectDetail: React.FC = () => {
                       borderRadius: '6px',
                       border: 'none',
                       background: !useCustomDeliverable ? 'white' : 'transparent',
-                      color: !useCustomDeliverable ? '#1e293b' : '#64748b',
+                      color: !useCustomDeliverable ? '#2c2c2c' : '#787878',
                       fontSize: '0.875rem',
                       fontWeight: !useCustomDeliverable ? 600 : 500,
                       cursor: 'pointer',
@@ -5380,7 +5380,7 @@ const ProjectDetail: React.FC = () => {
                       borderRadius: '6px',
                       border: 'none',
                       background: useCustomDeliverable ? 'white' : 'transparent',
-                      color: useCustomDeliverable ? '#1e293b' : '#64748b',
+                      color: useCustomDeliverable ? '#2c2c2c' : '#787878',
                       fontSize: '0.875rem',
                       fontWeight: useCustomDeliverable ? 600 : 500,
                       cursor: 'pointer',
@@ -5400,7 +5400,7 @@ const ProjectDetail: React.FC = () => {
                     display: 'block', 
                     fontSize: '0.8125rem', 
                     fontWeight: 500, 
-                    color: '#475569', 
+                    color: '#585858', 
                     marginBottom: '0.5rem' 
                   }}>
                     Select Deliverable
@@ -5413,18 +5413,18 @@ const ProjectDetail: React.FC = () => {
                       width: '100%', 
                       padding: '0.75rem', 
                       fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #d6d6d6',
                       borderRadius: '8px',
                       background: 'white',
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                      e.target.style.borderColor = '#111111';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(17, 17, 17, 0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.borderColor = '#d6d6d6';
                       e.target.style.boxShadow = 'none';
                     }}
                   >
@@ -5438,7 +5438,7 @@ const ProjectDetail: React.FC = () => {
                   {project.deliverables?.length === 0 && (
                     <p style={{ 
                       fontSize: '0.75rem', 
-                      color: '#94a3b8', 
+                      color: '#a6a6a6', 
                       marginTop: '0.5rem', 
                       marginBottom: 0,
                       fontStyle: 'italic'
@@ -5458,7 +5458,7 @@ const ProjectDetail: React.FC = () => {
                     display: 'block', 
                     fontSize: '0.8125rem', 
                     fontWeight: 500, 
-                    color: '#475569', 
+                    color: '#585858', 
                     marginBottom: '0.5rem' 
                   }}>
                     Deliverable Name
@@ -5473,23 +5473,23 @@ const ProjectDetail: React.FC = () => {
                       width: '100%', 
                       padding: '0.75rem', 
                       fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #d6d6d6',
                       borderRadius: '8px',
                       transition: 'all 0.2s'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                      e.target.style.borderColor = '#111111';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(17, 17, 17, 0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.borderColor = '#d6d6d6';
                       e.target.style.boxShadow = 'none';
                     }}
                     autoFocus
                   />
                   <p style={{ 
                     fontSize: '0.75rem', 
-                    color: '#94a3b8', 
+                    color: '#a6a6a6', 
                     marginTop: '0.5rem', 
                     marginBottom: 0 
                   }}>
@@ -5500,11 +5500,11 @@ const ProjectDetail: React.FC = () => {
             </div>
             <div className="modal-footer" style={{ 
               padding: '1rem 1.5rem',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid #e8e8e8',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '0.75rem',
-              background: '#fafbfc'
+              background: '#ffffff'
             }}>
               <button
                 type="button"
@@ -5534,7 +5534,7 @@ const ProjectDetail: React.FC = () => {
                   padding: '0.625rem 1.25rem',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  background: (!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim()) ? '#cbd5e1' : '#667eea',
+                  background: (!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim()) ? '#d6d6d6' : '#111111',
                   cursor: ((!useCustomDeliverable && !selectedDeliverableId) || (useCustomDeliverable && !newCustomDeliverableName.trim())) ? 'not-allowed' : 'pointer'
                 }}
               >
@@ -5553,13 +5553,13 @@ const ProjectDetail: React.FC = () => {
           setFilesLinksFilter('all');
         }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #e8e8e8', padding: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                 <div style={{
                   width: '40px',
                   height: '40px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -5567,8 +5567,8 @@ const ProjectDetail: React.FC = () => {
                   <FaLink style={{ color: 'white', fontSize: '1rem' }} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#1e293b' }}>Files & Links</h2>
-                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#2c2c2c' }}>Files & Links</h2>
+                  <p style={{ fontSize: '0.875rem', color: '#787878', margin: '0.25rem 0 0 0' }}>
                     All shared files and links for this project
                   </p>
                 </div>
@@ -5591,7 +5591,7 @@ const ProjectDetail: React.FC = () => {
                     left: '0.75rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: '#94a3b8',
+                    color: '#a6a6a6',
                     fontSize: '0.875rem'
                   }} />
                   <input
@@ -5602,17 +5602,17 @@ const ProjectDetail: React.FC = () => {
                     style={{
                       width: '100%',
                       padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #d6d6d6',
                       borderRadius: '8px',
                       fontSize: '0.875rem',
                       transition: 'all 0.2s'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                      e.target.style.borderColor = '#111111';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(17, 17, 17, 0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.borderColor = '#d6d6d6';
                       e.target.style.boxShadow = 'none';
                     }}
                   />
@@ -5624,8 +5624,8 @@ const ProjectDetail: React.FC = () => {
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
                       border: 'none',
-                      background: filesLinksFilter === 'all' ? '#667eea' : '#f3f4f6',
-                      color: filesLinksFilter === 'all' ? 'white' : '#64748b',
+                      background: filesLinksFilter === 'all' ? '#111111' : '#f4f4f4',
+                      color: filesLinksFilter === 'all' ? 'white' : '#787878',
                       fontSize: '0.875rem',
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -5640,8 +5640,8 @@ const ProjectDetail: React.FC = () => {
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
                       border: 'none',
-                      background: filesLinksFilter === 'task' ? '#3b82f6' : '#f3f4f6',
-                      color: filesLinksFilter === 'task' ? 'white' : '#64748b',
+                      background: filesLinksFilter === 'task' ? '#111111' : '#f4f4f4',
+                      color: filesLinksFilter === 'task' ? 'white' : '#787878',
                       fontSize: '0.875rem',
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -5660,8 +5660,8 @@ const ProjectDetail: React.FC = () => {
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
                       border: 'none',
-                      background: filesLinksFilter === 'email' ? '#f59e0b' : '#f3f4f6',
-                      color: filesLinksFilter === 'email' ? 'white' : '#64748b',
+                      background: filesLinksFilter === 'email' ? '#f59e0b' : '#f4f4f4',
+                      color: filesLinksFilter === 'email' ? 'white' : '#787878',
                       fontSize: '0.875rem',
                       fontWeight: 500,
                       cursor: 'pointer',
@@ -5709,15 +5709,15 @@ const ProjectDetail: React.FC = () => {
                       <div style={{
                         padding: '3rem',
                         textAlign: 'center',
-                        background: '#f9fafb',
+                        background: '#ffffff',
                         borderRadius: '12px',
-                        border: '1px solid #e5e7eb'
+                        border: '1px solid #e8e8e8'
                       }}>
-                        <FaLink style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem', opacity: 0.5 }} />
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
+                        <FaLink style={{ fontSize: '3rem', color: '#a6a6a6', marginBottom: '1rem', opacity: 0.5 }} />
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#2c2c2c', marginBottom: '0.5rem' }}>
                           No links found
                         </h3>
-                        <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                        <p style={{ fontSize: '0.875rem', color: '#787878' }}>
                           {filesLinksSearchQuery.trim() || filesLinksFilter !== 'all'
                             ? 'Try adjusting your search or filters'
                             : 'No files or links have been shared yet'}
@@ -5890,18 +5890,18 @@ const ProjectDetail: React.FC = () => {
                             style={{
                               background: 'white',
                               borderRadius: '12px',
-                              border: '1px solid #e5e7eb',
+                              border: '1px solid #e8e8e8',
                               padding: '1.25rem',
                               transition: 'all 0.2s',
                               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                              e.currentTarget.style.borderColor = '#c7d2fe';
+                              e.currentTarget.style.borderColor = '#e2e2e2';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                              e.currentTarget.style.borderColor = '#e5e7eb';
+                              e.currentTarget.style.borderColor = '#e8e8e8';
                             }}
                           >
                             <div style={{ display: 'flex', gap: '1rem' }}>
@@ -5912,17 +5912,17 @@ const ProjectDetail: React.FC = () => {
                                   height: '56px',
                                   borderRadius: '12px',
                                   background: link.sourceType === 'Task' 
-                                    ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                                    ? 'linear-gradient(135deg, #ececec 0%, #dedede 100%)'
                                     : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   fontSize: '1.5rem',
-                                  border: `2px solid ${link.sourceType === 'Task' ? '#3b82f6' : '#f59e0b'}`,
-                                  boxShadow: `0 2px 8px ${link.sourceType === 'Task' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`
+                                  border: `2px solid ${link.sourceType === 'Task' ? '#111111' : '#f59e0b'}`,
+                                  boxShadow: `0 2px 8px ${link.sourceType === 'Task' ? 'rgba(17, 17, 17, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`
                                 }}>
                                   {link.sourceType === 'Task' ? (
-                                    <FaClipboard style={{ color: '#3b82f6', fontSize: '1.25rem' }} />
+                                    <FaClipboard style={{ color: '#111111', fontSize: '1.25rem' }} />
                                   ) : (
                                     <FaEnvelope style={{ color: '#f59e0b', fontSize: '1.25rem' }} />
                                   )}
@@ -5931,7 +5931,7 @@ const ProjectDetail: React.FC = () => {
                                   marginTop: '0.5rem',
                                   textAlign: 'center',
                                   fontSize: '0.625rem',
-                                  color: '#94a3b8',
+                                  color: '#a6a6a6',
                                   fontWeight: 500
                                 }}>
                                   {linkType.label}
@@ -5950,7 +5950,7 @@ const ProjectDetail: React.FC = () => {
                                       display: 'block',
                                       fontSize: '1rem',
                                       fontWeight: 600,
-                                      color: '#667eea',
+                                      color: '#111111',
                                       textDecoration: 'none',
                                       marginBottom: '0.25rem',
                                       wordBreak: 'break-all',
@@ -5967,7 +5967,7 @@ const ProjectDetail: React.FC = () => {
                                   </a>
                                   <div style={{
                                     fontSize: '0.8125rem',
-                                    color: '#64748b',
+                                    color: '#787878',
                                     wordBreak: 'break-all',
                                     fontFamily: 'monospace',
                                     marginTop: '0.25rem'
@@ -5983,20 +5983,20 @@ const ProjectDetail: React.FC = () => {
                                   gap: '0.75rem',
                                   marginTop: '0.75rem',
                                   padding: '0.75rem',
-                                  background: '#f9fafb',
+                                  background: '#ffffff',
                                   borderRadius: '8px'
                                 }}>
                                   <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Source</div>
-                                    <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Source</div>
+                                    <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500 }}>
                                       {link.sourceType}
                                     </div>
                                   </div>
                                   
                                   {link.taskTitle && (
                                     <div>
-                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Task</div>
-                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                      <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Task</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500 }}>
                                         {link.taskTitle}
                                       </div>
                                     </div>
@@ -6004,9 +6004,9 @@ const ProjectDetail: React.FC = () => {
                                   
                                   {link.assignedTo && (
                                     <div>
-                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Assigned To</div>
-                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                        <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                      <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Assigned To</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <FaUser style={{ fontSize: '0.75rem', color: '#787878' }} />
                                         {link.assignedTo.name}
                                       </div>
                                     </div>
@@ -6014,9 +6014,9 @@ const ProjectDetail: React.FC = () => {
                                   
                                   {link.pmName && (
                                     <div>
-                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Shared By</div>
-                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                        <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                      <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Shared By</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <FaUser style={{ fontSize: '0.75rem', color: '#787878' }} />
                                         {link.pmName}
                                       </div>
                                     </div>
@@ -6024,17 +6024,17 @@ const ProjectDetail: React.FC = () => {
                                   
                                   {link.taskType && (
                                     <div>
-                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Type</div>
-                                      <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500 }}>
+                                      <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Type</div>
+                                      <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500 }}>
                                         {link.taskType}
                                       </div>
                                     </div>
                                   )}
                                   
                                   <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginBottom: '0.25rem' }}>Date</div>
-                                    <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                      <FaClock style={{ fontSize: '0.75rem', color: '#64748b' }} />
+                                    <div style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500, marginBottom: '0.25rem' }}>Date</div>
+                                    <div style={{ fontSize: '0.875rem', color: '#2c2c2c', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                      <FaClock style={{ fontSize: '0.75rem', color: '#787878' }} />
                                       {formatDateTime(link.date)}
                                     </div>
                                   </div>
@@ -6077,7 +6077,7 @@ const ProjectDetail: React.FC = () => {
                                   style={{
                                     padding: '0.75rem 1.25rem',
                                     borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                                     color: 'white',
                                     textDecoration: 'none',
                                     fontSize: '0.875rem',
@@ -6087,15 +6087,15 @@ const ProjectDetail: React.FC = () => {
                                     justifyContent: 'center',
                                     gap: '0.5rem',
                                     transition: 'all 0.2s',
-                                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                                    boxShadow: '0 2px 8px rgba(17, 17, 17, 0.3)'
                                   }}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 17, 17, 0.4)';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(17, 17, 17, 0.3)';
                                   }}
                                 >
                                   <FaLink style={{ fontSize: '0.75rem' }} />
@@ -6110,8 +6110,8 @@ const ProjectDetail: React.FC = () => {
                                     padding: '0.625rem 1rem',
                                     borderRadius: '8px',
                                     background: 'white',
-                                    border: '1px solid #e5e7eb',
-                                    color: '#64748b',
+                                    border: '1px solid #e8e8e8',
+                                    color: '#787878',
                                     fontSize: '0.8125rem',
                                     fontWeight: 500,
                                     cursor: 'pointer',
@@ -6122,12 +6122,12 @@ const ProjectDetail: React.FC = () => {
                                     transition: 'all 0.2s'
                                   }}
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f3f4f6';
-                                    e.currentTarget.style.borderColor = '#d1d5db';
+                                    e.currentTarget.style.background = '#f4f4f4';
+                                    e.currentTarget.style.borderColor = '#d6d6d6';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'white';
-                                    e.currentTarget.style.borderColor = '#e5e7eb';
+                                    e.currentTarget.style.borderColor = '#e8e8e8';
                                   }}
                                 >
                                   <FaCopy style={{ fontSize: '0.75rem' }} />
@@ -6203,11 +6203,11 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
 
   const clientTypes = [
     { value: 'ICON', label: 'ICON', color: '#fbbf24' },
-    { value: 'STAR', label: 'STAR', color: '#94a3b8' },
-    { value: 'Katalyst', label: 'Katalyst', color: '#667eea' },
-    { value: 'Private', label: 'Private', color: '#64748b' },
-    { value: 'Premium', label: 'Premium', color: '#8b5cf6' },
-    { value: 'Powered-Up', label: 'Powered-Up', color: '#a855f7' },
+    { value: 'STAR', label: 'STAR', color: '#a6a6a6' },
+    { value: 'Katalyst', label: 'Katalyst', color: '#111111' },
+    { value: 'Private', label: 'Private', color: '#787878' },
+    { value: 'Premium', label: 'Premium', color: '#111111' },
+    { value: 'Powered-Up', label: 'Powered-Up', color: '#111111' },
   ];
 
   const toggleClientType = (clientType: string) => {
@@ -6291,7 +6291,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
                     left: '0.95rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: '#94a3b8',
+                    color: '#a6a6a6',
                     fontSize: '0.85rem',
                     pointerEvents: 'none',
                   }}
@@ -6306,14 +6306,14 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
                   style={{ paddingLeft: '2.4rem' }}
                 />
               </div>
-              <p style={{ margin: '0.45rem 0 0', color: '#94a3b8', fontSize: '0.78rem' }}>
+              <p style={{ margin: '0.45rem 0 0', color: '#a6a6a6', fontSize: '0.78rem' }}>
                 This shows under the project name as a quick link.
               </p>
             </div>
 
             <div className="form-group" style={{ padding: '0' }}>
-              <label id="editClientTypeLabel" style={{ color: '#475569', fontWeight: 600 }}>
-                Client Type {selectedClientTypes.length > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Select up to 2)</span>}
+              <label id="editClientTypeLabel" style={{ color: '#585858', fontWeight: 600 }}>
+                Client Type {selectedClientTypes.length > 0 && <span style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 'normal' }}>(Select up to 2)</span>}
               </label>
               <div className="client-type-grid" role="group" aria-labelledby="editClientTypeLabel" style={{ marginTop: '0.5rem' }}>
                 {clientTypes.map((type) => {
@@ -6327,11 +6327,11 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
                       className={`client-type-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => toggleClientType(type.value)}
                       style={{
-                        borderColor: isSelected ? type.color : '#e2e8f0',
+                        borderColor: isSelected ? type.color : '#e9e9e9',
                         borderWidth: isSelected ? '2px' : '1.5px',
                         opacity: canSelect ? 1 : 0.4,
                         cursor: canSelect ? 'pointer' : 'not-allowed',
-                        backgroundColor: isSelected ? '#f8fafc' : 'white',
+                        backgroundColor: isSelected ? '#fafafa' : 'white',
                         boxShadow: isSelected ? `0 0 0 3px ${type.color}15` : 'none'
                       }}
                       title={isSelected ? `Selected: ${type.label}` : canSelect ? `Click to select ${type.label}` : 'You can only select up to 2 client types'}
@@ -6356,14 +6356,14 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
                 <div style={{
                   marginTop: '0.75rem',
                   fontSize: '0.8125rem',
-                  color: '#64748b',
+                  color: '#787878',
                   fontWeight: 400,
                   padding: '0.625rem 0.875rem',
                   borderRadius: '8px',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #f1f5f9'
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #f5f5f5'
                 }}>
-                  Selected ({selectedClientTypes.length}/2): <span style={{ fontWeight: 500, color: '#475569' }}>{selectedClientTypes.join(', ')}</span>
+                  Selected ({selectedClientTypes.length}/2): <span style={{ fontWeight: 500, color: '#585858' }}>{selectedClientTypes.join(', ')}</span>
                 </div>
               )}
             </div>

@@ -81,8 +81,8 @@ const Login: React.FC = () => {
           display: flex;
           min-height: 100vh;
           font-family: 'DM Sans', sans-serif;
-          background: #0a0a0f;
-          color: #f0eff4;
+          background: #0c0c0c;
+          color: #f2f2f2;
         }
 
         /* ── LEFT PANEL ── */
@@ -109,9 +109,9 @@ const Login: React.FC = () => {
           position: absolute;
           inset: 0;
           background: linear-gradient(135deg,
-            rgba(10,10,20,0.7) 0%,
-            rgba(30,20,60,0.5) 60%,
-            rgba(10,10,20,0.8) 100%
+            rgba(15, 15, 15,0.7) 0%,
+            rgba(40, 40, 40,0.5) 60%,
+            rgba(15, 15, 15,0.8) 100%
           );
         }
 
@@ -151,7 +151,7 @@ const Login: React.FC = () => {
           border-radius: 2px;
           background: rgba(255,255,255,0.2);
         }
-        .kp-panel-dots span:first-child { background: #7c6af7; width: 48px; }
+        .kp-panel-dots span:first-child { background: #111111; width: 48px; }
 
         /* ── RIGHT PANEL ── */
         .kp-panel-right {
@@ -161,7 +161,7 @@ const Login: React.FC = () => {
           justify-content: center;
           align-items: center;
           padding: 2.5rem 1.5rem;
-          background: #0d0d18;
+          background: #121212;
           position: relative;
         }
         @media (min-width: 900px) {
@@ -174,8 +174,8 @@ const Login: React.FC = () => {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+            linear-gradient(rgba(17, 17, 17,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(17, 17, 17,0.04) 1px, transparent 1px);
           background-size: 48px 48px;
           pointer-events: none;
         }
@@ -215,7 +215,7 @@ const Login: React.FC = () => {
         }
         .kp-logo-name em {
           font-style: normal;
-          color: #7c6af7;
+          color: #111111;
         }
 
         .kp-heading {
@@ -304,9 +304,9 @@ const Login: React.FC = () => {
         }
         .kp-input::placeholder { color: rgba(255,255,255,0.2); }
         .kp-input:focus {
-          border-color: #7c6af7;
-          background: rgba(124,106,247,0.06);
-          box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+          border-color: #111111;
+          background: rgba(17, 17, 17,0.06);
+          box-shadow: 0 0 0 3px rgba(17, 17, 17,0.15);
         }
         .kp-input-pass { padding-right: 3rem; }
 
@@ -356,7 +356,7 @@ const Login: React.FC = () => {
           margin-top: 0.5rem;
           width: 100%;
           padding: 0.85rem 1rem;
-          background: #7c6af7;
+          background: #111111;
           border: none;
           border-radius: 10px;
           font-family: inherit;
@@ -377,8 +377,8 @@ const Login: React.FC = () => {
           pointer-events: none;
         }
         .kp-btn-submit:hover:not(:disabled) {
-          background: #6a58e8;
-          box-shadow: 0 4px 24px rgba(124,106,247,0.4);
+          background: #111111;
+          box-shadow: 0 4px 24px rgba(17, 17, 17,0.4);
           transform: translateY(-1px);
         }
         .kp-btn-submit:active:not(:disabled) { transform: translateY(0); }
@@ -419,7 +419,7 @@ const Login: React.FC = () => {
           transition: color 0.2s;
           letter-spacing: 0.01em;
         }
-        .kp-forgot:hover { color: #7c6af7; }
+        .kp-forgot:hover { color: #111111; }
 
         .kp-divider {
           width: 100%;
@@ -432,7 +432,7 @@ const Login: React.FC = () => {
           color: rgba(255,255,255,0.35);
         }
         .kp-signup a {
-          color: #7c6af7;
+          color: #111111;
           text-decoration: none;
           font-weight: 500;
           transition: opacity 0.2s;
@@ -569,15 +569,7 @@ const Login: React.FC = () => {
                 Forgot password?
               </button>
               <div className="kp-divider" />
-              <p className="kp-signup">
-                No account yet?{' '}
-                <a
-                  href="/signup"
-                  onClick={(e) => { e.preventDefault(); navigate('/signup'); }}
-                >
-                  Create one
-                </a>
-              </p>
+              <p className="kp-signup">No account yet? Ask your Head PM or Founder to add you.</p>
             </div>
           </div>
         </div>

@@ -289,7 +289,7 @@ const TasksDueTodayView: React.FC = () => {
   };
 
   return (
-    <div className="dashboard-container premium-dashboard" style={{ minHeight: '100vh', background: '#f5f6fa' }}>
+    <div className="dashboard-container premium-dashboard" style={{ minHeight: '100vh', background: '#ffffff' }}>
       {/* Header - match PM Dashboard style */}
       <header className="dashboard-header premium-header" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
         <div className="header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: '1600px', margin: '0 auto', padding: '0 2rem' }}>
@@ -302,24 +302,24 @@ const TasksDueTodayView: React.FC = () => {
                 gap: '0.5rem',
                 background: 'transparent',
                 border: 'none',
-                color: '#64748b',
+                color: '#787878',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 500,
                 padding: '0.5rem 0'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#1e293b';
+                e.currentTarget.style.color = '#2c2c2c';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = '#787878';
               }}
             >
               <FaArrowLeft />
               Back to Dashboard
             </button>
-            <span style={{ color: '#cbd5e1', fontSize: '0.875rem' }}>|</span>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+            <span style={{ color: '#d6d6d6', fontSize: '0.875rem' }}>|</span>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2c2c2c', margin: 0 }}>
               Tasks Due Today
             </h1>
           </div>
@@ -332,7 +332,7 @@ const TasksDueTodayView: React.FC = () => {
                 border: 'none',
                 padding: '0.5rem',
                 cursor: 'pointer',
-                color: '#64748b',
+                color: '#787878',
                 borderRadius: '8px'
               }}
               title="Live Chat"
@@ -369,7 +369,7 @@ const TasksDueTodayView: React.FC = () => {
                 border: 'none',
                 padding: '0.5rem',
                 cursor: 'pointer',
-                color: '#64748b',
+                color: '#787878',
                 borderRadius: '8px'
               }}
             >
@@ -404,7 +404,7 @@ const TasksDueTodayView: React.FC = () => {
                   width: '36px',
                   height: '36px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                   border: 'none',
                   color: 'white',
                   fontSize: '0.875rem',
@@ -432,14 +432,14 @@ const TasksDueTodayView: React.FC = () => {
                       background: 'white',
                       borderRadius: '12px',
                       boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid #e8e8e8',
                       zIndex: 9999,
                       overflow: 'hidden'
                     }}
                   >
                     <button
                       onClick={() => { navigate('/profile'); setShowAvatarDropdown(false); }}
-                      style={{ width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#374151', textAlign: 'left' }}
+                      style={{ width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#444444', textAlign: 'left' }}
                     >
                       <FaCog /> Profile
                     </button>
@@ -485,7 +485,7 @@ const TasksDueTodayView: React.FC = () => {
         />
 
         {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '4rem', textAlign: 'center', color: '#787878' }}>
             Loading tasks...
           </div>
         ) : tasksDueToday.length === 0 ? (
@@ -496,14 +496,14 @@ const TasksDueTodayView: React.FC = () => {
               padding: '4rem 2rem',
               textAlign: 'center',
               boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-              border: '1px solid #e5e7eb'
+              border: '1px solid #e8e8e8'
             }}
           >
-            <FaClock style={{ fontSize: '4rem', color: '#cbd5e1', marginBottom: '1.5rem' }} />
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
+            <FaClock style={{ fontSize: '4rem', color: '#d6d6d6', marginBottom: '1.5rem' }} />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#2c2c2c', marginBottom: '0.5rem' }}>
               No tasks due today
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.9375rem' }}>
+            <p style={{ color: '#787878', fontSize: '0.9375rem' }}>
               You're all caught up! Check back tomorrow or view your dashboard for other tasks.
             </p>
             <button
@@ -511,7 +511,7 @@ const TasksDueTodayView: React.FC = () => {
               style={{
                 marginTop: '1.5rem',
                 padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -529,24 +529,24 @@ const TasksDueTodayView: React.FC = () => {
               background: 'white',
               borderRadius: '16px',
               boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-              border: '1px solid #e5e7eb',
+              border: '1px solid #e8e8e8',
               overflow: 'hidden'
             }}
           >
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid #e5e7eb',
-                background: '#fafbfc',
+                borderBottom: '1px solid #e8e8e8',
+                background: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}
             >
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#2c2c2c', margin: 0 }}>
                 {tasksDueToday.length} {tasksDueToday.length === 1 ? 'task' : 'tasks'} due today
               </h2>
-              <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+              <span style={{ fontSize: '0.875rem', color: '#787878' }}>
                 {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
@@ -557,7 +557,7 @@ const TasksDueTodayView: React.FC = () => {
                   onClick={() => navigate(`/project/${task.projectId}`)}
                   style={{
                     padding: '1.25rem 1.5rem',
-                    borderBottom: '1px solid #f1f5f9',
+                    borderBottom: '1px solid #f5f5f5',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1rem',
@@ -565,7 +565,7 @@ const TasksDueTodayView: React.FC = () => {
                     transition: 'background 0.15s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f8fafc';
+                    e.currentTarget.style.background = '#fafafa';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'white';
@@ -587,10 +587,10 @@ const TasksDueTodayView: React.FC = () => {
                     <FaClock />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#2c2c2c', marginBottom: '0.25rem' }}>
                       {task.title}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: '#64748b' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: '#787878' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <FaFolder style={{ fontSize: '0.75rem' }} />
                         {getProjectName(task.projectId)}
@@ -605,15 +605,15 @@ const TasksDueTodayView: React.FC = () => {
                           borderRadius: '6px',
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          background: task.status === 'In Review' ? '#fef3c7' : task.status === 'In Progress' ? '#dbeafe' : '#f3f4f6',
-                          color: task.status === 'In Review' ? '#92400e' : task.status === 'In Progress' ? '#1e40af' : '#6b7280'
+                          background: task.status === 'In Review' ? '#fef3c7' : task.status === 'In Progress' ? '#ececec' : '#f4f4f4',
+                          color: task.status === 'In Review' ? '#92400e' : task.status === 'In Progress' ? '#111111' : '#6b7280'
                         }}
                       >
                         {task.status || 'Todo'}
                       </span>
                     </div>
                   </div>
-                  <FaChevronRight style={{ color: '#cbd5e1', fontSize: '0.875rem', flexShrink: 0 }} />
+                  <FaChevronRight style={{ color: '#d6d6d6', fontSize: '0.875rem', flexShrink: 0 }} />
                 </div>
               ))}
             </div>
@@ -627,7 +627,7 @@ const TasksDueTodayView: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
       {showNotificationsModal && (
         <NotificationsModal

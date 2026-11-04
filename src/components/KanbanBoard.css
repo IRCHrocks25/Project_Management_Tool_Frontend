@@ -10,12 +10,12 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  border: 1px solid #dedede;
   border-radius: 8px;
   margin-bottom: 1rem;
   font-size: 0.875rem;
-  color: #1e40af;
+  color: #111111;
   font-weight: 500;
 }
 
@@ -24,7 +24,7 @@
 }
 
 .kanban-card-tooltip {
-  background: #1f2937;
+  background: #2b2b2b;
   color: white;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
@@ -42,7 +42,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1f2937;
+  border-top-color: #2b2b2b;
 }
 
 .kanban-scroll-button {
@@ -51,7 +51,7 @@
   transform: translateY(-50%);
   z-index: 20;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e8e8;
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -61,13 +61,13 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-  color: #667eea;
+  color: #111111;
 }
 
 .kanban-scroll-button:hover {
-  background: #667eea;
+  background: #111111;
   color: white;
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 6px 16px rgba(17, 17, 17, 0.3);
   transform: translateY(-50%) scale(1.1);
 }
 
@@ -87,7 +87,7 @@
   position: relative;
   /* Show scrollbar for better accessibility */
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #c7d2fe #f3f4f6; /* Firefox */
+  scrollbar-color: #e2e2e2 #f4f4f4; /* Firefox */
   -ms-overflow-style: auto; /* IE/Edge */
   /* Add fade gradients to indicate scrollable content */
   background: linear-gradient(to right, 
@@ -143,17 +143,17 @@
 }
 
 .premium-kanban::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: #f4f4f4;
   border-radius: 4px;
 }
 
 .premium-kanban::-webkit-scrollbar-thumb {
-  background: #c7d2fe;
+  background: #e2e2e2;
   border-radius: 4px;
 }
 
 .premium-kanban::-webkit-scrollbar-thumb:hover {
-  background: #a5b4fc;
+  background: #d0d0d0;
 }
 
 .premium-stages {
@@ -167,7 +167,7 @@
 .premium-column {
   min-width: 280px;
   max-width: 280px;
-  background: #f9fafb;
+  background: #ffffff;
   border-radius: 12px;
   padding: 1rem;
   flex-shrink: 0;
@@ -175,8 +175,8 @@
 }
 
 .premium-column.drag-over {
-  background: #eef2ff;
-  border: 2px dashed #667eea;
+  background: #f6f6f6;
+  border: 2px dashed #111111;
   transform: scale(1.02);
 }
 
@@ -187,7 +187,7 @@
 .premium-column-header {
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .column-title-row {
@@ -201,7 +201,7 @@
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #374151;
+  color: #444444;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -212,8 +212,8 @@
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #667eea;
-  border: 1px solid #e5e7eb;
+  color: #111111;
+  border: 1px solid #e8e8e8;
 }
 
 .sla-warning {
@@ -262,7 +262,7 @@
 .premium-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  border-left-color: #667eea;
+  border-left-color: #111111;
   cursor: pointer;
 }
 
@@ -272,9 +272,9 @@
   bottom: 0.5rem;
   right: 0.5rem;
   font-size: 0.6875rem;
-  color: #667eea;
+  color: #111111;
   font-weight: 600;
-  background: rgba(102, 126, 234, 0.1);
+  background: rgba(17, 17, 17, 0.1);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   pointer-events: none;
@@ -305,7 +305,7 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
   line-height: 1.4;
   flex: 1;
 }
@@ -336,8 +336,8 @@
 }
 
 .package-badge {
-  background: #e5e7eb;
-  color: #374151;
+  background: #e8e8e8;
+  color: #444444;
 }
 
 .card-meta-row {
@@ -367,7 +367,7 @@
   gap: 0.5rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid #f4f4f4;
 }
 
 .signal-badge {
@@ -400,8 +400,8 @@
 }
 
 .premium-revision {
-  background: #f3f4f6;
-  color: #374151;
+  background: #ffffff;
+  color: #444444;
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.25rem 0.625rem;
@@ -422,11 +422,11 @@
 .empty-column-hint {
   display: none;
   text-align: center;
-  color: #667eea;
+  color: #111111;
   font-size: 0.8125rem;
   padding: 2rem 1rem;
   font-weight: 500;
-  border: 2px dashed #c7d2fe;
+  border: 2px dashed #e2e2e2;
   border-radius: 8px;
   margin-top: 0.5rem;
 }

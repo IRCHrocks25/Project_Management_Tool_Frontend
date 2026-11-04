@@ -13,7 +13,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  accentColor = '#8b5cf6',
+  accentColor = '#111111',
 }) => {
   const [type, setType] = useState<'bug' | 'improvement'>('bug');
   const [title, setTitle] = useState('');
@@ -89,7 +89,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
         <div
           style={{
             padding: '1.5rem 2rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid #e8e8e8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -101,7 +101,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               fontSize: '1.25rem',
               fontWeight: 700,
               margin: 0,
-              color: '#111827',
+              color: '#1c1c1c',
             }}
           >
             Submit Ticket
@@ -133,7 +133,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               style={{
                 display: 'block',
                 fontWeight: 600,
-                color: '#374151',
+                color: '#444444',
                 marginBottom: '0.5rem',
                 fontSize: '0.875rem',
               }}
@@ -147,7 +147,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
                 style={{
                   flex: 1,
                   padding: '0.75rem 1rem',
-                  border: `2px solid ${type === 'bug' ? accentColor : '#e5e7eb'}`,
+                  border: `2px solid ${type === 'bug' ? accentColor : '#e8e8e8'}`,
                   borderRadius: '10px',
                   background: type === 'bug' ? `${accentColor}15` : 'white',
                   color: type === 'bug' ? accentColor : '#6b7280',
@@ -168,7 +168,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
                 style={{
                   flex: 1,
                   padding: '0.75rem 1rem',
-                  border: `2px solid ${type === 'improvement' ? accentColor : '#e5e7eb'}`,
+                  border: `2px solid ${type === 'improvement' ? accentColor : '#e8e8e8'}`,
                   borderRadius: '10px',
                   background: type === 'improvement' ? `${accentColor}15` : 'white',
                   color: type === 'improvement' ? accentColor : '#6b7280',
@@ -191,7 +191,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               style={{
                 display: 'block',
                 fontWeight: 600,
-                color: '#374151',
+                color: '#444444',
                 marginBottom: '0.5rem',
                 fontSize: '0.875rem',
               }}
@@ -207,7 +207,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #e8e8e8',
                 borderRadius: '10px',
                 fontSize: '0.9375rem',
                 outline: 'none',
@@ -216,7 +216,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
                 e.target.style.borderColor = accentColor;
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.borderColor = '#e8e8e8';
               }}
             />
           </div>
@@ -226,7 +226,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               style={{
                 display: 'block',
                 fontWeight: 600,
-                color: '#374151',
+                color: '#444444',
                 marginBottom: '0.5rem',
                 fontSize: '0.875rem',
               }}
@@ -241,7 +241,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #e8e8e8',
                 borderRadius: '10px',
                 fontSize: '0.9375rem',
                 fontFamily: 'inherit',
@@ -252,7 +252,7 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
                 e.target.style.borderColor = accentColor;
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.borderColor = '#e8e8e8';
               }}
             />
           </div>
@@ -280,10 +280,10 @@ const SubmitTicketModal: React.FC<SubmitTicketModalProps> = ({
               disabled={submitting}
               style={{
                 padding: '0.75rem 1.5rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #e8e8e8',
                 borderRadius: '8px',
                 background: 'white',
-                color: '#374151',
+                color: '#444444',
                 fontWeight: 600,
                 cursor: submitting ? 'not-allowed' : 'pointer',
               }}

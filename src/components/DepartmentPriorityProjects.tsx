@@ -31,14 +31,14 @@ const COLUMN_OPTIONS = [
 const COLUMN_LABEL_BY_ID: Record<string,string> = Object.fromEntries(COLUMN_OPTIONS.map(c => [c.id, c.label]));
 
 const STATUS_STYLE: Record<string,{ bg:string; text:string; dot:string }> = {
-  not_started:        { bg:'#f1f5f9', text:'#64748b', dot:'#94a3b8' },
-  owned_in_progress:  { bg:'#dbeafe', text:'#1e40af', dot:'#3b82f6' },
+  not_started:        { bg:'#f5f5f5', text:'#787878', dot:'#a6a6a6' },
+  owned_in_progress:  { bg:'#ececec', text:'#111111', dot:'#111111' },
   for_approval:       { bg:'#fef3c7', text:'#92400e', dot:'#f59e0b' },
   revision:           { bg:'#fee2e2', text:'#991b1b', dot:'#ef4444' },
   elliot_review:      { bg:'#d1fae5', text:'#065f46', dot:'#10b981' },
   approved_completed: { bg:'#dcfce7', text:'#166534', dot:'#22c55e' },
-  qa_before_client:   { bg:'#e0f2fe', text:'#0c4a6e', dot:'#0ea5e9' },
-  client_validation:  { bg:'#f3e8ff', text:'#6b21a8', dot:'#a855f7' },
+  qa_before_client:   { bg:'#efefef', text:'#111111', dot:'#111111' },
+  client_validation:  { bg:'#f3f3f3', text:'#111111', dot:'#111111' },
 };
 
 function getTaskColumnId(task: any): string {
@@ -284,9 +284,9 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
 
     return (
       <li key={row.id} className={`dpp-row ${isPm ? '' : 'dpp-row--team'}`}>
-        <span className="dpp-row-stripe" style={{ background: isPm ? color : '#8b5cf6' }} />
+        <span className="dpp-row-stripe" style={{ background: isPm ? color : '#111111' }} />
 
-        <span className="dpp-rank" style={{ color: isPm ? color : '#7c3aed', background: isPm ? `${color}14` : '#ede9fe' }}>
+        <span className="dpp-rank" style={{ color: isPm ? color : '#111111', background: isPm ? `${color}14` : '#f3f3f3' }}>
           {idx + 1}
         </span>
 
@@ -415,8 +415,8 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
           font-family: 'DM Sans', system-ui, sans-serif;
           margin-bottom: 2rem;
           border-radius: 16px;
-          background: #f5f6f8;
-          border: 1px solid #e3e6eb;
+          background: #ffffff;
+          border: 1px solid #e7e7e7;
           box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.05);
           overflow: hidden;
         }
@@ -427,7 +427,7 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
           flex-wrap: wrap; gap: 0.75rem;
           padding: 1rem 1.4rem;
           background: #ffffff;
-          border-bottom: 1px solid #eaecf0;
+          border-bottom: 1px solid #ededed;
         }
         .dpp-topbar-left { display: flex; align-items: center; gap: 0.6rem; }
         .dpp-flag-dot {
@@ -436,12 +436,12 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         }
         .dpp-flag-dot svg { font-size: 0.78rem; color: #fff; }
         .dpp-title {
-          margin: 0; font-size: 0.95rem; font-weight: 700; color: #111827; letter-spacing: -0.01em;
+          margin: 0; font-size: 0.95rem; font-weight: 700; color: #1c1c1c; letter-spacing: -0.01em;
           display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
         }
         .dpp-dept-tag {
           font-size: 0.69rem; font-weight: 600; color: #6b7280;
-          background: #f3f4f6; padding: 0.15rem 0.5rem; border-radius: 20px;
+          background: #f4f4f4; padding: 0.15rem 0.5rem; border-radius: 20px;
         }
         .dpp-topbar-right { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
         .dpp-date-wrap {
@@ -450,19 +450,19 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         }
         .dpp-date-input {
           padding: 0.32rem 0.5rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fafafa;
-          color: #374151; font-size: 0.77rem; font-family: inherit; outline: none;
+          border: 1px solid #e8e8e8; background: #ffffff;
+          color: #444444; font-size: 0.77rem; font-family: inherit; outline: none;
           transition: border-color 0.15s;
         }
-        .dpp-date-input:focus { border-color: #6366f1; background: #fff; }
+        .dpp-date-input:focus { border-color: #111111; background: #fff; }
         .dpp-refresh-btn {
           display: flex; align-items: center; gap: 0.3rem;
           padding: 0.35rem 0.72rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fff; color: #374151;
+          border: 1px solid #e8e8e8; background: #fff; color: #444444;
           font-size: 0.74rem; font-weight: 600; cursor: pointer; font-family: inherit;
           transition: background 0.15s, border-color 0.15s;
         }
-        .dpp-refresh-btn:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
+        .dpp-refresh-btn:hover:not(:disabled) { background: #fafafa; border-color: #d6d6d6; }
         .dpp-refresh-btn:disabled { opacity: 0.5; cursor: wait; }
         .dpp-spin { animation: dpp-spin 0.9s linear infinite; }
         @keyframes dpp-spin { to { transform: rotate(360deg); } }
@@ -477,9 +477,9 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         /* ── Desc ── */
         .dpp-desc {
           padding: 0.6rem 1.4rem; font-size: 0.77rem; color: #6b7280; line-height: 1.7;
-          background: #fafbfc; border-bottom: 1px solid #eaecf0;
+          background: #ffffff; border-bottom: 1px solid #ededed;
         }
-        .dpp-desc strong { color: #374151; }
+        .dpp-desc strong { color: #444444; }
 
         /* ── Error ── */
         .dpp-error {
@@ -497,13 +497,13 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
           font-size: 0.66rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
           padding: 0.18rem 0.58rem; border-radius: 20px; flex-shrink: 0;
         }
-        .dpp-section-label--pm   { background: #eff6ff; color: #1d4ed8; }
-        .dpp-section-label--team { background: #f5f3ff; color: #6d28d9; }
+        .dpp-section-label--pm   { background: #ffffff; color: #111111; }
+        .dpp-section-label--team { background: #ffffff; color: #111111; }
         .dpp-section-count {
           font-size: 0.69rem; font-weight: 700; color: #9ca3af;
-          background: #f3f4f6; border-radius: 20px; padding: 0.08rem 0.45rem; flex-shrink: 0;
+          background: #f4f4f4; border-radius: 20px; padding: 0.08rem 0.45rem; flex-shrink: 0;
         }
-        .dpp-section-line { flex: 1; height: 1px; background: #e9ebee; }
+        .dpp-section-line { flex: 1; height: 1px; background: #ececec; }
         .dpp-empty { margin: 0; padding: 0.3rem 0; font-size: 0.79rem; color: #9ca3af; font-style: italic; }
 
         /* ── List ── */
@@ -515,13 +515,13 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
           padding: 0.85rem 1rem 0.85rem 0;
           border-radius: 12px;
           background: #fff;
-          border: 1px solid #eaecf0;
+          border: 1px solid #ededed;
           position: relative; overflow: hidden; flex-wrap: wrap;
           transition: box-shadow 0.18s, border-color 0.18s, transform 0.12s;
         }
-        .dpp-row:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-color: #d1d5db; transform: translateY(-1px); }
-        .dpp-row--team { background: #fdfcff; border-color: #ede9fe; }
-        .dpp-row--team:hover { border-color: #c4b5fd; box-shadow: 0 2px 12px rgba(139,92,246,0.1); }
+        .dpp-row:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-color: #d6d6d6; transform: translateY(-1px); }
+        .dpp-row--team { background: #ffffff; border-color: #f3f3f3; }
+        .dpp-row--team:hover { border-color: #d9d9d9; box-shadow: 0 2px 12px rgba(17, 17, 17,0.1); }
 
         .dpp-row-stripe {
           position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
@@ -535,21 +535,21 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         }
         .dpp-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.22rem; }
         .dpp-row-name {
-          font-size: 0.9rem; font-weight: 700; color: #111827;
+          font-size: 0.9rem; font-weight: 700; color: #1c1c1c;
           display: flex; align-items: center; gap: 0.38rem; flex-wrap: wrap;
         }
         .dpp-badge {
           font-size: 0.57rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
           padding: 0.1rem 0.38rem; border-radius: 4px;
         }
-        .dpp-badge--pm   { background: #dbeafe; color: #1e40af; }
-        .dpp-badge--team { background: #ede9fe; color: #5b21b6; }
+        .dpp-badge--pm   { background: #ececec; color: #111111; }
+        .dpp-badge--team { background: #f3f3f3; color: #111111; }
         .dpp-row-meta {
           display: flex; align-items: center; flex-wrap: wrap;
           font-size: 0.74rem; color: #6b7280;
         }
-        .dpp-meta-item b { color: #374151; font-weight: 600; }
-        .dpp-meta-sep { margin: 0 0.32rem; color: #d1d5db; }
+        .dpp-meta-item b { color: #444444; font-weight: 600; }
+        .dpp-meta-sep { margin: 0 0.32rem; color: #d6d6d6; }
         .dpp-row-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.08rem; }
         .dpp-status-chip {
           display: inline-flex; align-items: center; gap: 0.26rem;
@@ -569,43 +569,43 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         }
         .dpp-select {
           padding: 0.36rem 0.48rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fafafa; color: #374151;
+          border: 1px solid #e8e8e8; background: #ffffff; color: #444444;
           font-size: 0.73rem; font-family: inherit; min-width: 128px; outline: none;
           transition: border-color 0.15s, background 0.15s;
         }
-        .dpp-select:focus { border-color: #6366f1; background: #fff; }
+        .dpp-select:focus { border-color: #111111; background: #fff; }
         .dpp-select-xs { min-width: 0; max-width: 148px; }
         .dpp-pill-btn {
           padding: 0.36rem 0.72rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fff; color: #4b5563;
+          border: 1px solid #e8e8e8; background: #fff; color: #575757;
           font-size: 0.73rem; font-weight: 600; font-family: inherit; cursor: pointer;
           transition: background 0.15s, border-color 0.15s; white-space: nowrap;
         }
-        .dpp-pill-btn:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
+        .dpp-pill-btn:hover:not(:disabled) { background: #fafafa; border-color: #d6d6d6; }
         .dpp-pill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .dpp-pill-btn--noted { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
         .dpp-pill-btn--noted:hover:not(:disabled) { background: #ffedd5; }
         .dpp-action-btn {
           display: inline-flex; align-items: center; gap: 0.26rem;
           padding: 0.36rem 0.7rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fff; color: #374151;
+          border: 1px solid #e8e8e8; background: #fff; color: #444444;
           font-size: 0.73rem; font-weight: 600; font-family: inherit; cursor: pointer;
           transition: background 0.15s, border-color 0.15s; white-space: nowrap;
         }
-        .dpp-action-btn:hover { background: #f9fafb; border-color: #d1d5db; }
+        .dpp-action-btn:hover { background: #fafafa; border-color: #d6d6d6; }
         .dpp-icon-btn {
           display: inline-flex; align-items: center; justify-content: center;
           width: 1.9rem; height: 1.9rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fff; color: #6b7280; font-size: 0.78rem;
+          border: 1px solid #e8e8e8; background: #fff; color: #6b7280; font-size: 0.78rem;
           cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
-        .dpp-icon-btn:hover { background: #f3f4f6; color: #111827; border-color: #d1d5db; }
+        .dpp-icon-btn:hover { background: #f4f4f4; color: #1c1c1c; border-color: #d6d6d6; }
         .dpp-project-btn {
           display: inline-flex; align-items: center; gap: 0.26rem;
           padding: 0.36rem 0.72rem; border-radius: 8px; border: none; color: #fff;
           font-size: 0.73rem; font-weight: 700; font-family: inherit; cursor: pointer;
           transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
-          background: var(--c, #6366f1);
+          background: var(--c, #111111);
         }
         .dpp-project-btn:hover { opacity: 0.88; transform: translateY(-1px); }
 
@@ -618,7 +618,7 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         /* ── Modal ── */
         .dpp-overlay {
           position: fixed; inset: 0;
-          background: rgba(2, 6, 23, 0.45);
+          background: rgba(12, 12, 12, 0.45);
           backdrop-filter: blur(5px);
           display: flex; align-items: center; justify-content: center;
           z-index: 2000; padding: 1.5rem;
@@ -638,50 +638,50 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         }
         .dpp-modal-hd {
           padding: 1.25rem 1.5rem 0.95rem;
-          border-bottom: 1px solid #f3f4f6;
+          border-bottom: 1px solid #f4f4f4;
           display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
         }
-        .dpp-modal-title { margin: 0; font-size: 0.98rem; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
+        .dpp-modal-title { margin: 0; font-size: 0.98rem; font-weight: 700; color: #1c1c1c; letter-spacing: -0.01em; }
         .dpp-modal-sub { margin: 0.22rem 0 0; font-size: 0.76rem; color: #6b7280; line-height: 1.6; }
         .dpp-modal-task-tag {
           display: inline-flex; align-items: center; gap: 0.28rem; margin-top: 0.45rem;
-          font-size: 0.72rem; font-weight: 600; color: #374151;
-          background: #f3f4f6; padding: 0.2rem 0.55rem; border-radius: 6px;
+          font-size: 0.72rem; font-weight: 600; color: #444444;
+          background: #f4f4f4; padding: 0.2rem 0.55rem; border-radius: 6px;
         }
         .dpp-close-btn {
           width: 1.85rem; height: 1.85rem; border-radius: 8px;
-          border: 1px solid #e5e7eb; background: #fafafa; color: #6b7280;
+          border: 1px solid #e8e8e8; background: #ffffff; color: #6b7280;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; flex-shrink: 0; font-size: 0.78rem;
           transition: background 0.15s, color 0.15s;
         }
-        .dpp-close-btn:hover { background: #f3f4f6; color: #111827; }
+        .dpp-close-btn:hover { background: #f4f4f4; color: #1c1c1c; }
         .dpp-close-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .dpp-modal-body {
           padding: 1rem 1.5rem; overflow-y: auto; flex: 1;
           display: flex; flex-direction: column; gap: 0.9rem;
         }
         .dpp-modal-ft {
-          padding: 0.85rem 1.5rem; border-top: 1px solid #f3f4f6;
+          padding: 0.85rem 1.5rem; border-top: 1px solid #f4f4f4;
           display: flex; justify-content: flex-end; gap: 0.5rem;
         }
-        .dpp-field-lbl { display: block; margin-bottom: 0.36rem; font-size: 0.76rem; font-weight: 700; color: #374151; }
+        .dpp-field-lbl { display: block; margin-bottom: 0.36rem; font-size: 0.76rem; font-weight: 700; color: #444444; }
         .dpp-textarea {
           width: 100%; box-sizing: border-box; border-radius: 10px;
-          border: 1.5px solid #e5e7eb; padding: 0.65rem 0.8rem;
-          font-size: 0.84rem; color: #1f2937; line-height: 1.65;
-          resize: vertical; font-family: inherit; outline: none; background: #fafafa;
+          border: 1.5px solid #e8e8e8; padding: 0.65rem 0.8rem;
+          font-size: 0.84rem; color: #2b2b2b; line-height: 1.65;
+          resize: vertical; font-family: inherit; outline: none; background: #ffffff;
           transition: border-color 0.15s;
         }
-        .dpp-textarea:focus { border-color: #6366f1; background: #fff; }
+        .dpp-textarea:focus { border-color: #111111; background: #fff; }
         .dpp-link-row { display: flex; align-items: center; gap: 0.4rem; }
-        .dpp-link-icon { color: #d1d5db; font-size: 0.78rem; flex-shrink: 0; }
+        .dpp-link-icon { color: #d6d6d6; font-size: 0.78rem; flex-shrink: 0; }
         .dpp-link-input {
-          flex: 1; border-radius: 8px; border: 1.5px solid #e5e7eb;
+          flex: 1; border-radius: 8px; border: 1.5px solid #e8e8e8;
           padding: 0.42rem 0.62rem; font-size: 0.8rem; font-family: inherit;
-          outline: none; background: #fafafa; transition: border-color 0.15s;
+          outline: none; background: #ffffff; transition: border-color 0.15s;
         }
-        .dpp-link-input:focus { border-color: #6366f1; background: #fff; }
+        .dpp-link-input:focus { border-color: #111111; background: #fff; }
         .dpp-link-remove {
           width: 1.65rem; height: 1.65rem; border-radius: 7px; border: none;
           background: transparent; color: #ef4444; cursor: pointer;
@@ -692,18 +692,18 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
           margin-top: 0.38rem;
           display: inline-flex; align-items: center; gap: 0.26rem;
           padding: 0.3rem 0.62rem; border-radius: 7px;
-          border: 1px dashed #d1d5db; background: transparent;
+          border: 1px dashed #d6d6d6; background: transparent;
           color: #6b7280; font-size: 0.72rem; font-weight: 600; font-family: inherit;
           cursor: pointer; transition: background 0.15s, border-color 0.15s;
         }
-        .dpp-add-link:hover { background: #f9fafb; border-color: #9ca3af; }
+        .dpp-add-link:hover { background: #fafafa; border-color: #9ca3af; }
         .dpp-modal-cancel {
           padding: 0.48rem 1rem; border-radius: 9px;
-          border: 1px solid #e5e7eb; background: #fff; color: #374151;
+          border: 1px solid #e8e8e8; background: #fff; color: #444444;
           font-size: 0.8rem; font-weight: 600; font-family: inherit; cursor: pointer;
           transition: background 0.15s;
         }
-        .dpp-modal-cancel:hover:not(:disabled) { background: #f9fafb; }
+        .dpp-modal-cancel:hover:not(:disabled) { background: #fafafa; }
         .dpp-modal-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
         .dpp-modal-save {
           padding: 0.48rem 1.1rem; border-radius: 9px; border: none; color: #fff;
@@ -716,11 +716,11 @@ const DepartmentPriorityProjects: React.FC<DepartmentPriorityProjectsProps> = ({
         .dpp-check-item {
           display: flex; align-items: center; gap: 0.6rem;
           padding: 0.52rem 0.72rem; border-radius: 10px;
-          border: 1px solid #f3f4f6; cursor: pointer; font-family: inherit;
+          border: 1px solid #f4f4f4; cursor: pointer; font-family: inherit;
           transition: background 0.12s, border-color 0.12s;
         }
-        .dpp-check-item:hover { background: #f9fafb; border-color: #e5e7eb; }
-        .dpp-check-name { font-size: 0.84rem; font-weight: 600; color: #1e293b; }
+        .dpp-check-item:hover { background: #fafafa; border-color: #e8e8e8; }
+        .dpp-check-name { font-size: 0.84rem; font-weight: 600; color: #2c2c2c; }
         .dpp-check-proj { font-size: 0.73rem; color: #9ca3af; margin-left: auto; }
       `}</style>
 

@@ -35,15 +35,15 @@ import {
 import './Dashboard.css';
 
 const DEPT_KEYS: { key: string; label: string; color: string }[] = [
-  { key: 'Copy',         label: 'Copy',         color: '#7c3aed' },
-  { key: 'Design',       label: 'Design',       color: '#0ea5e9' },
+  { key: 'Copy',         label: 'Copy',         color: '#111111' },
+  { key: 'Design',       label: 'Design',       color: '#111111' },
   { key: 'Dev',          label: 'Dev',          color: '#10b981' },
   { key: 'AI',           label: 'AI',           color: '#f59e0b' },
   { key: 'Social Media', label: 'Social',       color: '#ec4899' },
-  { key: 'CRM',          label: 'CRM',          color: '#6366f1' },
+  { key: 'CRM',          label: 'CRM',          color: '#111111' },
   { key: 'SEO/GEO',      label: 'SEO/GEO',      color: '#14b8a6' },
   { key: 'Onboarding',   label: 'Onboarding',   color: '#f97316' },
-  { key: 'General',      label: 'General',      color: '#64748b' },
+  { key: 'General',      label: 'General',      color: '#787878' },
 ];
 
 const DEPT_TO_TASK_TYPE: Record<string, string> = {
@@ -221,7 +221,7 @@ const css = `
     position: sticky; top: 0; z-index: 100;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f5f5f5;
     padding: 0 2rem;
     height: 60px;
     display: flex; align-items: center;
@@ -232,18 +232,18 @@ const css = `
   }
   .dfe-back-btn {
     display: flex; align-items: center; gap: 6px;
-    font-size: 0.8125rem; font-weight: 500; color: #64748b;
+    font-size: 0.8125rem; font-weight: 500; color: #787878;
     background: none; border: none; cursor: pointer; padding: 4px 0;
     transition: color 0.15s;
   }
-  .dfe-back-btn:hover { color: #1e293b; }
+  .dfe-back-btn:hover { color: #2c2c2c; }
   .dfe-logo {
     display: flex; align-items: center; gap: 8px;
-    font-size: 1rem; font-weight: 700; color: #0f172a;
+    font-size: 1rem; font-weight: 700; color: #1c1c1c;
   }
   .dfe-logo-dot {
     width: 28px; height: 28px; border-radius: 8px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #111111, #111111);
     display: flex; align-items: center; justify-content: center;
     color: white; font-size: 0.75rem;
   }
@@ -251,23 +251,23 @@ const css = `
     display: flex; align-items: center; gap: 10px;
   }
   .dfe-user-badge {
-    font-size: 0.8125rem; color: #475569; font-weight: 500;
-    background: #f8fafc; border: 1px solid #e2e8f0;
+    font-size: 0.8125rem; color: #585858; font-weight: 500;
+    background: #fafafa; border: 1px solid #e9e9e9;
     padding: 4px 10px; border-radius: 20px;
   }
   .dfe-signout-btn {
     display: flex; align-items: center; gap: 6px;
-    font-size: 0.8125rem; font-weight: 500; color: #64748b;
-    background: none; border: 1px solid #e2e8f0;
+    font-size: 0.8125rem; font-weight: 500; color: #787878;
+    background: none; border: 1px solid #e9e9e9;
     border-radius: 8px; padding: 5px 12px; cursor: pointer;
     transition: all 0.15s;
   }
-  .dfe-signout-btn:hover { border-color: #cbd5e1; color: #1e293b; background: #f8fafc; }
+  .dfe-signout-btn:hover { border-color: #d6d6d6; color: #2c2c2c; background: #fafafa; }
 
   .dfe-main {
     max-width: 1100px; margin: 0 auto;
     padding: 2rem 2rem 4rem;
-    background: #f8fafc; min-height: calc(100vh - 60px);
+    background: #ffffff; min-height: calc(100vh - 60px);
   }
 
   /* Toast */
@@ -289,19 +289,19 @@ const css = `
   /* Tab switcher */
   .dfe-tabs {
     display: flex; gap: 4px; margin-bottom: 1.75rem;
-    background: #f1f5f9; border-radius: 12px; padding: 4px;
+    background: #ffffff; border-radius: 12px; padding: 4px;
     width: fit-content;
   }
   .dfe-tab {
     padding: 7px 20px; border-radius: 9px; border: none;
     font-size: 0.875rem; font-weight: 600; cursor: pointer;
-    transition: all 0.18s; color: #64748b; background: transparent;
+    transition: all 0.18s; color: #787878; background: transparent;
   }
   .dfe-tab.active {
-    background: white; color: #0f172a;
+    background: white; color: #1c1c1c;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   }
-  .dfe-tab:hover:not(.active) { color: #334155; }
+  .dfe-tab:hover:not(.active) { color: #444444; }
 
   /* Toolbar row */
   .dfe-toolbar {
@@ -311,15 +311,15 @@ const css = `
   .dfe-date-group {
     display: flex; align-items: center; gap: 8px;
   }
-  .dfe-date-label { font-size: 0.8125rem; font-weight: 600; color: #475569; }
+  .dfe-date-label { font-size: 0.8125rem; font-weight: 600; color: #585858; }
   .dfe-date-input {
     padding: 6px 10px; border-radius: 8px;
-    border: 1px solid #e2e8f0; font-size: 0.875rem;
+    border: 1px solid #e9e9e9; font-size: 0.875rem;
     font-family: 'JetBrains Mono', monospace;
-    background: white; color: #1e293b;
+    background: white; color: #2c2c2c;
     transition: border-color 0.15s;
   }
-  .dfe-date-input:focus { outline: none; border-color: #6366f1; }
+  .dfe-date-input:focus { outline: none; border-color: #111111; }
   .dfe-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 7px 14px; border-radius: 8px; font-size: 0.8125rem;
@@ -328,12 +328,12 @@ const css = `
     font-family: 'DM Sans', sans-serif;
   }
   .dfe-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .dfe-btn-ghost { background: white; border: 1px solid #e2e8f0; color: #334155; }
-  .dfe-btn-ghost:hover:not(:disabled) { border-color: #cbd5e1; background: #f8fafc; }
-  .dfe-btn-primary { background: #6366f1; color: white; }
-  .dfe-btn-primary:hover:not(:disabled) { background: #4f46e5; }
-  .dfe-btn-dark { background: #0f172a; color: white; }
-  .dfe-btn-dark:hover:not(:disabled) { background: #1e293b; }
+  .dfe-btn-ghost { background: white; border: 1px solid #e9e9e9; color: #444444; }
+  .dfe-btn-ghost:hover:not(:disabled) { border-color: #d6d6d6; background: #fafafa; }
+  .dfe-btn-primary { background: #111111; color: white; }
+  .dfe-btn-primary:hover:not(:disabled) { background: #111111; }
+  .dfe-btn-dark { background: #1c1c1c; color: white; }
+  .dfe-btn-dark:hover:not(:disabled) { background: #2c2c2c; }
 
   /* Dept tabs */
   .dfe-dept-bar {
@@ -344,10 +344,10 @@ const css = `
     display: flex; align-items: center; gap: 6px;
     padding: 5px 14px; border-radius: 8px; border: 1.5px solid transparent;
     font-size: 0.8125rem; font-weight: 600; cursor: pointer;
-    background: white; color: #475569;
+    background: white; color: #585858;
     transition: all 0.15s;
   }
-  .dfe-dept-tab:hover:not(.active) { background: #f8fafc; border-color: #e2e8f0; }
+  .dfe-dept-tab:hover:not(.active) { background: #fafafa; border-color: #e9e9e9; }
   .dfe-dept-tab.active { color: white; border-color: transparent; }
   .dfe-dept-dot {
     width: 8px; height: 8px; border-radius: 50%;
@@ -358,22 +358,22 @@ const css = `
     line-height: 1.4;
   }
   .dfe-dept-filled-count.inactive {
-    background: #f1f5f9; color: #94a3b8;
+    background: #f5f5f5; color: #a6a6a6;
   }
 
   /* Focus panel */
   .dfe-panel {
     background: white; border-radius: 14px;
-    border: 1px solid #e8edf4;
+    border: 1px solid #eeeeee;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     overflow: hidden;
   }
   .dfe-panel-header {
-    padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+    padding: 16px 20px; border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: center; justify-content: space-between;
   }
   .dfe-panel-title {
-    font-size: 0.875rem; font-weight: 700; color: #0f172a;
+    font-size: 0.875rem; font-weight: 700; color: #1c1c1c;
     display: flex; align-items: center; gap: 8px;
   }
   .dfe-panel-body { padding: 16px 20px; }
@@ -381,26 +381,26 @@ const css = `
   /* Priority row */
   .dfe-priority-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 0; border-bottom: 1px solid #f8fafc;
+    padding: 8px 0; border-bottom: 1px solid #fafafa;
     transition: background 0.1s;
   }
   .dfe-priority-row:last-of-type { border-bottom: none; }
   .dfe-priority-num {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.6875rem; font-weight: 700;
-    color: #94a3b8; min-width: 22px; text-align: right;
+    color: #a6a6a6; min-width: 22px; text-align: right;
     flex-shrink: 0;
   }
   .dfe-priority-select {
     flex: 1; min-width: 0;
     padding: 7px 10px; border-radius: 8px;
-    border: 1px solid #e8edf4; font-size: 0.875rem;
-    font-family: 'DM Sans', sans-serif; color: #1e293b;
-    background: #fafbfc; transition: all 0.15s;
+    border: 1px solid #eeeeee; font-size: 0.875rem;
+    font-family: 'DM Sans', sans-serif; color: #2c2c2c;
+    background: #fbfbfb; transition: all 0.15s;
     cursor: pointer;
   }
-  .dfe-priority-select:focus { outline: none; border-color: #6366f1; background: white; }
-  .dfe-priority-select.filled { background: white; border-color: #c7d2fe; color: #1e293b; }
+  .dfe-priority-select:focus { outline: none; border-color: #111111; background: white; }
+  .dfe-priority-select.filled { background: white; border-color: #e2e2e2; color: #2c2c2c; }
   .dfe-task-btn {
     padding: 5px 10px; border-radius: 7px; font-size: 0.75rem;
     font-weight: 700; cursor: pointer; border: 1.5px solid;
@@ -408,59 +408,59 @@ const css = `
     font-family: 'DM Sans', sans-serif;
     display: flex; align-items: center; gap: 4px;
   }
-  .dfe-task-btn:hover { background: #6366f1; border-color: #6366f1; color: white; }
+  .dfe-task-btn:hover { background: #111111; border-color: #111111; color: white; }
   .dfe-task-btn-icon {
     width: 28px; height: 28px; border-radius: 7px;
-    border: 1.5px solid #e2e8f0; background: white;
-    color: #64748b; cursor: pointer;
+    border: 1.5px solid #e9e9e9; background: white;
+    color: #787878; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: all 0.15s; font-size: 0.75rem;
   }
-  .dfe-task-btn-icon:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+  .dfe-task-btn-icon:hover { border-color: #111111; color: #111111; background: #f6f6f6; }
   .dfe-slot-actions {
     display: flex; gap: 8px; margin-top: 12px; padding-top: 12px;
-    border-top: 1px dashed #e8edf4;
+    border-top: 1px dashed #eeeeee;
   }
   .dfe-empty-dept {
     text-align: center; padding: 2rem 1rem;
-    color: #94a3b8; font-size: 0.875rem;
+    color: #a6a6a6; font-size: 0.875rem;
   }
 
   /* EOD */
   .dfe-eod-meta {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 14px; border-radius: 8px;
-    background: #f8fafc; border: 1px solid #e8edf4;
-    font-size: 0.8125rem; color: #475569;
+    background: #ffffff; border: 1px solid #eeeeee;
+    font-size: 0.8125rem; color: #585858;
     margin-bottom: 1.5rem; width: fit-content;
   }
   .dfe-eod-section { margin-bottom: 1.75rem; }
   .dfe-eod-section-title {
-    font-size: 0.9375rem; font-weight: 700; color: #0f172a;
+    font-size: 0.9375rem; font-weight: 700; color: #1c1c1c;
     margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;
   }
   .dfe-table-wrap {
     background: white; border-radius: 12px;
-    border: 1px solid #e8edf4; overflow: hidden;
+    border: 1px solid #eeeeee; overflow: hidden;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
   .dfe-table {
     width: 100%; border-collapse: collapse; font-size: 0.875rem;
   }
   .dfe-table thead tr {
-    background: #f8fafc;
+    background: #ffffff;
   }
   .dfe-table th {
     padding: 10px 14px; text-align: left;
     font-size: 0.75rem; font-weight: 700;
-    color: #64748b; letter-spacing: 0.04em;
+    color: #787878; letter-spacing: 0.04em;
     text-transform: uppercase;
   }
   .dfe-table td {
-    padding: 10px 14px; color: #334155;
-    border-top: 1px solid #f1f5f9;
+    padding: 10px 14px; color: #444444;
+    border-top: 1px solid #f5f5f5;
   }
-  .dfe-table tr:hover td { background: #fafbff; }
+  .dfe-table tr:hover td { background: #fcfcfc; }
   .dfe-done-badge {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 0.75rem; font-weight: 700;
@@ -477,23 +477,23 @@ const css = `
   }
   .dfe-not-done-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 14px; border-bottom: 1px solid #f1f5f9;
-    background: white; font-size: 0.875rem; color: #334155;
+    padding: 9px 14px; border-bottom: 1px solid #f5f5f5;
+    background: white; font-size: 0.875rem; color: #444444;
   }
   .dfe-not-done-item:first-child { border-radius: 12px 12px 0 0; }
   .dfe-not-done-item:last-child { border-radius: 0 0 12px 12px; border-bottom: none; }
   .dfe-not-done-wrap {
-    border-radius: 12px; border: 1px solid #e8edf4; overflow: hidden;
+    border-radius: 12px; border: 1px solid #eeeeee; overflow: hidden;
   }
   .dfe-empty-table {
-    padding: 2rem; text-align: center; color: #94a3b8;
+    padding: 2rem; text-align: center; color: #a6a6a6;
     font-size: 0.875rem;
   }
 
   /* Modal */
   .dfe-modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(28, 28, 28, 0.5);
     display: flex; align-items: center; justify-content: center;
     z-index: 1300; padding: 1.5rem;
     backdrop-filter: blur(4px);
@@ -508,54 +508,54 @@ const css = `
   @keyframes modalIn { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   .dfe-modal-header {
     padding: 20px 24px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: center; justify-content: space-between;
     position: sticky; top: 0; background: white; z-index: 1;
   }
-  .dfe-modal-title { font-size: 1.125rem; font-weight: 700; color: #0f172a; }
+  .dfe-modal-title { font-size: 1.125rem; font-weight: 700; color: #1c1c1c; }
   .dfe-modal-close {
     width: 32px; height: 32px; border-radius: 8px;
-    border: 1px solid #e2e8f0; background: white;
-    color: #64748b; cursor: pointer;
+    border: 1px solid #e9e9e9; background: white;
+    color: #787878; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; flex-shrink: 0;
   }
-  .dfe-modal-close:hover { border-color: #cbd5e1; background: #f8fafc; color: #1e293b; }
+  .dfe-modal-close:hover { border-color: #d6d6d6; background: #fafafa; color: #2c2c2c; }
   .dfe-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
   .dfe-modal-footer {
-    padding: 16px 24px; border-top: 1px solid #f1f5f9;
+    padding: 16px 24px; border-top: 1px solid #f5f5f5;
     display: flex; justify-content: flex-end; gap: 10px;
     position: sticky; bottom: 0; background: white; z-index: 1;
   }
   .dfe-field-label {
     display: block; font-size: 0.8125rem; font-weight: 700;
-    color: #374151; margin-bottom: 6px;
+    color: #444444; margin-bottom: 6px;
   }
   .dfe-field-input, .dfe-field-textarea, .dfe-field-select {
     width: 100%; padding: 9px 12px;
-    border: 1px solid #e5e7eb; border-radius: 8px;
+    border: 1px solid #e8e8e8; border-radius: 8px;
     font-size: 0.875rem; font-family: 'DM Sans', sans-serif;
-    color: #1e293b; transition: border-color 0.15s;
+    color: #2c2c2c; transition: border-color 0.15s;
     background: white;
   }
   .dfe-field-input:focus, .dfe-field-textarea:focus, .dfe-field-select:focus {
-    outline: none; border-color: #6366f1;
+    outline: none; border-color: #111111;
   }
   .dfe-field-textarea { resize: vertical; min-height: 88px; }
   .dfe-spinner { animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .dfe-hint {
-    background: #f8fafc; border: 1px solid #e8edf4;
+    background: #ffffff; border: 1px solid #eeeeee;
     border-radius: 10px; padding: 12px 14px;
-    font-size: 0.8125rem; color: #64748b; line-height: 1.6;
+    font-size: 0.8125rem; color: #787878; line-height: 1.6;
     margin-bottom: 1rem;
   }
-  .dfe-hint strong { color: #475569; }
+  .dfe-hint strong { color: #585858; }
 `;
 
 function getDeptColor(key: string) {
-  return DEPT_KEYS.find((d) => d.key === key)?.color || '#64748b';
+  return DEPT_KEYS.find((d) => d.key === key)?.color || '#787878';
 }
 
 function taskMatchesActiveDept(taskType: string | undefined, activeDept: string): boolean {
@@ -951,7 +951,7 @@ const DailyFocusAndEodView: React.FC = () => {
     try {
       setGeneratingPdf(true);
       const canvas = await html2canvas(eodPrintableRef.current, {
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false,
@@ -1324,7 +1324,7 @@ const DailyFocusAndEodView: React.FC = () => {
   }, []);
 
   return (
-    <div className="dfe-root" style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div className="dfe-root" style={{ minHeight: '100vh', background: '#ffffff' }}>
       <style>{css}</style>
 
       {/* ── Header ── */}
@@ -1334,7 +1334,7 @@ const DailyFocusAndEodView: React.FC = () => {
             <button type="button" className="dfe-back-btn" onClick={() => navigate('/pm-dashboard')}>
               <FaArrowLeft style={{ fontSize: '0.75rem' }} /> PM Dashboard
             </button>
-            <span style={{ color: '#e2e8f0' }}>|</span>
+            <span style={{ color: '#e9e9e9' }}>|</span>
             <div className="dfe-logo">
               <div className="dfe-logo-dot"><FaBullseye /></div>
               Daily Focus & EOD
@@ -1440,7 +1440,7 @@ const DailyFocusAndEodView: React.FC = () => {
                 {isDebouncing && (
                   <span style={{
                     position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    color: '#6366f1', fontSize: '0.75rem', display: 'flex', alignItems: 'center',
+                    color: '#111111', fontSize: '0.75rem', display: 'flex', alignItems: 'center',
                   }}>
                     <FaSpinner className="dfe-spinner" />
                   </span>
@@ -1448,8 +1448,8 @@ const DailyFocusAndEodView: React.FC = () => {
               </div>
               {debouncedSearch && !isDebouncing && (
                 <span style={{
-                  fontSize: '0.78rem', fontWeight: 700, color: '#6366f1',
-                  background: '#eef2ff', border: '1px solid #c7d2fe',
+                  fontSize: '0.78rem', fontWeight: 700, color: '#111111',
+                  background: '#ffffff', border: '1px solid #e2e2e2',
                   borderRadius: 99, padding: '3px 10px',
                   animation: 'slideIn 0.18s ease',
                 }}>
@@ -1468,7 +1468,7 @@ const DailyFocusAndEodView: React.FC = () => {
 
             {connectedProjectsForActiveDept.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: '-0.45rem', marginBottom: '0.9rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Quick project filter:</span>
+                <span style={{ fontSize: '0.75rem', color: '#787878', fontWeight: 600 }}>Quick project filter:</span>
                 {connectedProjectsForActiveDept.slice(0, 6).map((p) => (
                   <button
                     key={`quick-project-${p.id}`}
@@ -1528,7 +1528,7 @@ const DailyFocusAndEodView: React.FC = () => {
                   {deptInfo?.label} priorities
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
+                  <span style={{ fontSize: '0.75rem', color: '#a6a6a6', fontWeight: 500 }}>
                     {slots[activeDept].filter(Boolean).length} / {slots[activeDept].length} filled
                   </span>
                   <button
@@ -1544,7 +1544,7 @@ const DailyFocusAndEodView: React.FC = () => {
               </div>
               <div className="dfe-panel-body">
                 {loadingTasks ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', padding: '1rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#a6a6a6', padding: '1rem 0' }}>
                     <FaSpinner className="dfe-spinner" /> Loading tasks…
                   </div>
                 ) : (
@@ -1642,7 +1642,7 @@ const DailyFocusAndEodView: React.FC = () => {
                         className="dfe-btn dfe-btn-ghost"
                         onClick={removeLastPrioritySlot}
                         disabled={slots[activeDept].length <= MIN_SLOTS_PER_DEPT}
-                        style={{ fontSize: '0.8125rem', color: '#94a3b8' }}
+                        style={{ fontSize: '0.8125rem', color: '#a6a6a6' }}
                       >
                         <FaMinus style={{ fontSize: '0.625rem' }} /> Remove last
                       </button>
@@ -1702,7 +1702,7 @@ const DailyFocusAndEodView: React.FC = () => {
             </div>
 
             {loadingEod && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', padding: '2rem 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#a6a6a6', padding: '2rem 0' }}>
                 <FaSpinner className="dfe-spinner" /> Loading report…
               </div>
             )}
@@ -1710,7 +1710,7 @@ const DailyFocusAndEodView: React.FC = () => {
             {eodReport && !loadingEod && (
               <div ref={eodPrintableRef}>
                 <div className="dfe-eod-meta">
-                  🕐 Day boundaries in timezone: <strong style={{ color: '#334155' }}>{eodReport.timezone}</strong>
+                  🕐 Day boundaries in timezone: <strong style={{ color: '#444444' }}>{eodReport.timezone}</strong>
                   &nbsp;·&nbsp; Planned <strong>Done</strong> = marked Completed within that day, or <strong>For approval</strong> (work submitted; archived projects excluded).
                 </div>
 
@@ -1723,7 +1723,7 @@ const DailyFocusAndEodView: React.FC = () => {
                     className="dfe-table-wrap"
                     style={{ padding: '1rem 1.1rem', display: 'grid', gridTemplateColumns: '220px 1fr', gap: '1rem' }}
                   >
-                    <div style={{ borderRight: '1px solid #eef2f7', paddingRight: '1rem' }}>
+                    <div style={{ borderRight: '1px solid #f2f2f2', paddingRight: '1rem' }}>
                       {departmentAnalytics.length > 0 && totalCompletedForAnalytics > 0 ? (
                         <>
                           <div
@@ -1759,11 +1759,11 @@ const DailyFocusAndEodView: React.FC = () => {
                                 lineHeight: 1.1,
                               }}
                             >
-                              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Completed</span>
-                              <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{totalCompletedForAnalytics}</strong>
+                              <span style={{ fontSize: '0.72rem', color: '#787878' }}>Completed</span>
+                              <strong style={{ fontSize: '1.15rem', color: '#1c1c1c' }}>{totalCompletedForAnalytics}</strong>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#334155' }}>
+                          <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#444444' }}>
                             Top dept:{' '}
                             <strong style={{ color: departmentAnalytics[0]?.color }}>
                               {departmentAnalytics[0]?.deptKey}
@@ -1772,7 +1772,7 @@ const DailyFocusAndEodView: React.FC = () => {
                           </div>
                         </>
                       ) : (
-                        <div style={{ color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center', paddingTop: '2.4rem' }}>
+                        <div style={{ color: '#a6a6a6', fontSize: '0.82rem', textAlign: 'center', paddingTop: '2.4rem' }}>
                           No completed tasks for this day yet.
                         </div>
                       )}
@@ -1780,7 +1780,7 @@ const DailyFocusAndEodView: React.FC = () => {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                       {departmentAnalytics.length === 0 ? (
-                        <div style={{ color: '#94a3b8', fontSize: '0.82rem' }}>No department data yet.</div>
+                        <div style={{ color: '#a6a6a6', fontSize: '0.82rem' }}>No department data yet.</div>
                       ) : (
                         departmentAnalytics.map((row) => {
                           const widthPct = totalCompletedForAnalytics > 0
@@ -1789,16 +1789,16 @@ const DailyFocusAndEodView: React.FC = () => {
                           return (
                             <div key={`analytics-${row.deptKey}`}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: '#334155' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: '#444444' }}>
                                   <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: row.color }} />
                                   <strong>{row.deptKey}</strong>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#787878' }}>
                                   {row.completed} done
                                   {row.planned > 0 ? ` · ${row.completedPlanned}/${row.planned} planned (${row.completionRate}%)` : ''}
                                 </div>
                               </div>
-                              <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{ width: '100%', height: '8px', background: '#ffffff', borderRadius: '999px', overflow: 'hidden' }}>
                                 <div
                                   style={{
                                     width: `${widthPct}%`,
@@ -1819,7 +1819,7 @@ const DailyFocusAndEodView: React.FC = () => {
                 {/* Planned */}
                 <div className="dfe-eod-section">
                   <div className="dfe-eod-section-title">
-                    <FaBullseye style={{ color: '#6366f1' }} /> Planned (morning pins)
+                    <FaBullseye style={{ color: '#111111' }} /> Planned (morning pins)
                   </div>
                   <div className="dfe-table-wrap">
                     {eodReport.planned.length === 0 ? (
@@ -1847,10 +1847,10 @@ const DailyFocusAndEodView: React.FC = () => {
                                     {p.departmentKey}
                                   </span>
                                 </td>
-                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#94a3b8' }}>{p.rank}</td>
+                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a6a6a6' }}>{p.rank}</td>
                                 <td style={{ fontWeight: 500 }}>{p.taskTitle}</td>
-                                <td style={{ color: '#64748b' }}>{p.projectName}</td>
-                                <td style={{ color: '#64748b' }}>{p.assigneeName}</td>
+                                <td style={{ color: '#787878' }}>{p.projectName}</td>
+                                <td style={{ color: '#787878' }}>{p.assigneeName}</td>
                                 <td>
                                   <span className={`dfe-done-badge ${done ? 'yes' : 'no'}`}>
                                     {done ? <FaCheckCircle /> : <FaCircle style={{ fontSize: '0.5rem' }} />}
@@ -1896,9 +1896,9 @@ const DailyFocusAndEodView: React.FC = () => {
                                   </span>
                                 </td>
                                 <td style={{ fontWeight: 500 }}>{c.taskTitle}</td>
-                                <td style={{ color: '#64748b' }}>{c.projectName}</td>
-                                <td style={{ color: '#64748b' }}>{c.assigneeName}</td>
-                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#64748b' }}>{c.completedAt}</td>
+                                <td style={{ color: '#787878' }}>{c.projectName}</td>
+                                <td style={{ color: '#787878' }}>{c.assigneeName}</td>
+                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#787878' }}>{c.completedAt}</td>
                               </tr>
                             );
                           })}
@@ -1941,12 +1941,12 @@ const DailyFocusAndEodView: React.FC = () => {
                                     {p.departmentKey}
                                   </span>
                                 </td>
-                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#94a3b8' }}>
+                                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', color: '#a6a6a6' }}>
                                   #{p.rank}
                                 </td>
                                 <td style={{ fontWeight: 500 }}>{p.taskTitle}</td>
-                                <td style={{ color: '#64748b' }}>{p.projectName}</td>
-                                <td style={{ color: '#64748b' }}>{p.assigneeName || 'Unassigned'}</td>
+                                <td style={{ color: '#787878' }}>{p.projectName}</td>
+                                <td style={{ color: '#787878' }}>{p.assigneeName || 'Unassigned'}</td>
                                 <td>
                                   {hasProgress ? (
                                     <button
@@ -1958,9 +1958,9 @@ const DailyFocusAndEodView: React.FC = () => {
                                       style={{
                                         padding: '0.3rem 0.55rem',
                                         borderRadius: '6px',
-                                        border: '1px solid #c7d2fe',
-                                        background: '#eef2ff',
-                                        color: '#4338ca',
+                                        border: '1px solid #e2e2e2',
+                                        background: '#ffffff',
+                                        color: '#333333',
                                         fontSize: '0.75rem',
                                         fontWeight: 700,
                                         cursor: 'pointer',
@@ -1969,7 +1969,7 @@ const DailyFocusAndEodView: React.FC = () => {
                                       View note
                                     </button>
                                   ) : (
-                                    <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>No update</span>
+                                    <span style={{ color: '#a6a6a6', fontSize: '0.78rem' }}>No update</span>
                                   )}
                                 </td>
                               </tr>
@@ -1997,7 +1997,7 @@ const DailyFocusAndEodView: React.FC = () => {
               </button>
             </div>
             <div className="dfe-modal-body">
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.8rem', color: '#787878' }}>
                 Department will be set to <strong>{activeDeptTaskType}</strong>. Connected projects appear first for convenience, but you can pick any active project.
               </div>
               <div>
@@ -2025,7 +2025,7 @@ const DailyFocusAndEodView: React.FC = () => {
                   ))}
                 </select>
                 {modalProjectOptions.length === 0 && (
-                  <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#64748b' }}>
+                  <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#787878' }}>
                     No projects found yet. Create a new project first.
                   </div>
                 )}
@@ -2103,16 +2103,16 @@ const DailyFocusAndEodView: React.FC = () => {
               </button>
             </div>
             <div className="dfe-modal-body">
-              <div style={{ fontSize: '0.85rem', color: '#334155' }}>
+              <div style={{ fontSize: '0.85rem', color: '#444444' }}>
                 <strong>Task:</strong> {selectedNotDoneRow.taskTitle}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.8rem', color: '#787878' }}>
                 <strong>Assignee:</strong> {selectedNotDoneRow.assigneeName || 'Unassigned'}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.8rem', color: '#787878' }}>
                 <strong>Updated by:</strong> {selectedNotDoneRow.latestProgressUpdate?.authorName || 'Unknown'}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.8rem', color: '#787878' }}>
                 <strong>Updated at:</strong> {selectedNotDoneRow.latestProgressUpdate?.createdAt || '—'}
               </div>
               <div>
@@ -2121,9 +2121,9 @@ const DailyFocusAndEodView: React.FC = () => {
                   style={{
                     whiteSpace: 'pre-wrap',
                     fontSize: '0.86rem',
-                    color: '#1f2937',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
+                    color: '#2b2b2b',
+                    background: '#ffffff',
+                    border: '1px solid #e9e9e9',
                     borderRadius: '8px',
                     padding: '0.7rem 0.8rem',
                     lineHeight: 1.5,
@@ -2144,7 +2144,7 @@ const DailyFocusAndEodView: React.FC = () => {
                         rel="noreferrer"
                         style={{
                           fontSize: '0.82rem',
-                          color: '#2563eb',
+                          color: '#111111',
                           textDecoration: 'none',
                           wordBreak: 'break-all',
                         }}
@@ -2244,7 +2244,7 @@ const DailyFocusAndEodView: React.FC = () => {
               </button>
             </div>
             <div className="dfe-modal-body">
-              <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.55 }}>
+              <div style={{ fontSize: '0.9rem', color: '#444444', lineHeight: 1.55 }}>
                 You have unsaved priority pins for this day. Would you like to save them before switching tabs?
               </div>
             </div>

@@ -128,13 +128,13 @@ const StatusChangeNotesModal: React.FC<Props> = ({
         <div
           style={{
             padding: '1.5rem 2rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid #e8e8e8',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#111827' }}>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1c1c1c' }}>
             Update Status – {targetColumnLabel}
           </h2>
           <button
@@ -165,7 +165,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="status-change-notes"
-              style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+              style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#444444' }}
             >
               Notes ({notesRequired ? 'Required' : 'Optional'})
             </label>
@@ -180,7 +180,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
                 fontFamily: 'inherit',
                 fontSize: '0.9rem',
                 borderRadius: '8px',
-                border: '1px solid #d1d5db',
+                border: '1px solid #d6d6d6',
               }}
               placeholder="Add context about this status change..."
               disabled={busy}
@@ -196,7 +196,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             <div>
               <label
                 htmlFor="status-change-attachment"
-                style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}
+                style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#444444' }}
               >
                 Attachment/Link (Optional)
               </label>
@@ -211,7 +211,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
                     flex: 1,
                     padding: '0.75rem',
                     borderRadius: '8px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #d6d6d6',
                     fontSize: '0.9rem',
                   }}
                   placeholder="https://example.com or Google Drive/Figma link..."
@@ -224,7 +224,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             </div>
           ) : (
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#444444' }}>
                 Links / Attachments (Optional)
               </label>
               {multiLinks.map((link, index) => (
@@ -245,7 +245,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
                       flex: 1,
                       padding: '0.75rem',
                       borderRadius: '8px',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid #d6d6d6',
                       fontSize: '0.9rem',
                     }}
                     placeholder="https://example.com or Google Drive/Figma link..."
@@ -280,9 +280,9 @@ const StatusChangeNotesModal: React.FC<Props> = ({
                 style={{
                   marginTop: '0.5rem',
                   padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid #d6d6d6',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   cursor: busy ? 'not-allowed' : 'pointer',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
@@ -305,7 +305,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
         <div
           style={{
             padding: '1.25rem 2rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid #e8e8e8',
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '0.75rem',
@@ -317,8 +317,8 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             disabled={busy}
             style={{
               background: '#ffffff',
-              border: '1px solid #e5e7eb',
-              color: '#374151',
+              border: '1px solid #e8e8e8',
+              color: '#444444',
               padding: '0.6rem 1.2rem',
               borderRadius: '8px',
               fontSize: '0.875rem',
@@ -333,7 +333,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             onClick={handleSave}
             disabled={!canSave}
             style={{
-              background: !canSave ? '#9ca3af' : '#667eea',
+              background: !canSave ? '#9ca3af' : '#111111',
               border: 'none',
               color: 'white',
               padding: '0.6rem 1.4rem',

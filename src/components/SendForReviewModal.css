@@ -47,14 +47,14 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .send-review-modal-header h2 {
   margin: 0 0 0.25rem 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: #1c1c1c;
   letter-spacing: -0.02em;
 }
 
@@ -82,8 +82,8 @@
 }
 
 .close-button:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: #f4f4f4;
+  color: #1c1c1c;
 }
 
 .send-review-form {
@@ -103,14 +103,14 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: #444444;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .label-icon {
   font-size: 0.875rem;
-  color: #667eea;
+  color: #111111;
 }
 
 .input-wrapper {
@@ -130,38 +130,38 @@
 .deliverable-select {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.2s ease;
   background: white;
-  color: #111827;
+  color: #1c1c1c;
   cursor: pointer;
 }
 
 .deliverable-select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
 }
 
 .drive-link-input {
   width: 100%;
   padding: 0.875rem 1rem 0.875rem 2.75rem;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.2s ease;
   background: white;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .drive-link-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
 }
 
 .input-hint {
@@ -189,8 +189,8 @@
 .btn-cancel {
   padding: 0.875rem 1.5rem;
   background: white;
-  color: #374151;
-  border: 1.5px solid #e5e7eb;
+  color: #444444;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
@@ -200,13 +200,13 @@
 }
 
 .btn-cancel:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: #fafafa;
+  border-color: #d6d6d6;
 }
 
 .btn-submit-review {
   padding: 0.875rem 1.5rem;
-  background: #667eea;
+  background: #111111;
   color: white;
   border: none;
   border-radius: 8px;
@@ -218,9 +218,9 @@
 }
 
 .btn-submit-review:hover:not(:disabled) {
-  background: #5568d3;
+  background: #333333;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.25);
 }
 
 .btn-submit-review:disabled {
@@ -241,10 +241,10 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   background: white;
-  color: #374151;
+  color: #444444;
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
@@ -253,18 +253,18 @@
 }
 
 .link-type-btn:hover {
-  border-color: #c084fc;
-  background: #faf5ff;
+  border-color: #111111;
+  background: #fafafa;
 }
 
 .link-type-btn.active {
-  border-color: #8b5cf6;
-  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-  color: #7c3aed;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+  border-color: #111111;
+  background: linear-gradient(135deg, #f3f3f3 0%, #eaeaea 100%);
+  color: #111111;
+  box-shadow: 0 2px 8px rgba(17, 17, 17, 0.15);
 }
 
 .link-type-btn.active svg {
-  color: #8b5cf6;
+  color: #111111;
 }
 

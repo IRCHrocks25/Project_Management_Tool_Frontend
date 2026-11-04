@@ -13,7 +13,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   name,
   avatarUrl,
   size = 36,
-  color = '#8b5cf6',
+  color = '#111111',
   className = '',
   style = {},
 }) => {

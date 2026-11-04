@@ -20,10 +20,10 @@ type SortOrder = 'newest' | 'oldest';
 const VIEW_STORAGE_KEY = 'projectTimelineView';
 
 const DEPARTMENT_COLORS: Record<string, string> = {
-  'Design': '#8b5cf6',
-  'Copy Writing': '#3b82f6',
+  'Design': '#111111',
+  'Copy Writing': '#111111',
   'Development': '#10b981',
-  'Project Management': '#6366f1',
+  'Project Management': '#111111',
   'Onboarding': '#f59e0b',
   'General': '#6b7280',
 };
@@ -34,9 +34,9 @@ const getActionIcon = (action: string) => {
   if (action.includes('Created')) return <FaCheckCircle style={{ color: '#10b981' }} />;
   if (action.includes('Approved')) return <FaCheck style={{ color: '#10b981' }} />;
   if (action.includes('Revision')) return <FaExclamationTriangle style={{ color: '#f59e0b' }} />;
-  if (action.includes('Submitted')) return <FaPaperPlane style={{ color: '#3b82f6' }} />;
-  if (action.includes('Updated')) return <FaEdit style={{ color: '#8b5cf6' }} />;
-  if (action.includes('Email')) return <FaEnvelope style={{ color: '#6366f1' }} />;
+  if (action.includes('Submitted')) return <FaPaperPlane style={{ color: '#111111' }} />;
+  if (action.includes('Updated')) return <FaEdit style={{ color: '#111111' }} />;
+  if (action.includes('Email')) return <FaEnvelope style={{ color: '#111111' }} />;
   return <FaHistory style={{ color: '#6b7280' }} />;
 };
 

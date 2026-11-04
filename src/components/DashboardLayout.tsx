@@ -4,7 +4,7 @@ import AppSidebar from './AppSidebar';
 
 const DashboardLayout: React.FC = () => {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#ffffff' }}>
       <AppSidebar />
       <main
         style={{

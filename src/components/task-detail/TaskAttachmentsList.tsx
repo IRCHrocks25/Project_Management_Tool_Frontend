@@ -199,8 +199,8 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
           <div style={{ marginBottom: '10px' }}>
             <div style={{
               padding: '10px 12px',
-              background: 'rgba(76, 110, 245, 0.05)',
-              border: '1px solid rgba(76, 110, 245, 0.2)',
+              background: 'rgba(17, 17, 17, 0.05)',
+              border: '1px solid rgba(17, 17, 17, 0.2)',
               borderRadius: 'var(--td-radius-md)',
               marginBottom: '8px',
             }}>

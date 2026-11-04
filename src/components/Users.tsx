@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUsers, FaArrowLeft, FaEnvelope, FaUser, FaCalendarAlt } from 'react-icons/fa';
+import { FaUsers, FaArrowLeft, FaEnvelope, FaUser, FaCalendarAlt, FaPlus } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import '../components/Dashboard.css';
 
@@ -28,6 +28,40 @@ const Users: React.FC = () => {
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<string, string>>({});
   const [passwordDraftByUserId, setPasswordDraftByUserId] = useState<Record<string, string>>({});
   const canManageUsers = currentUser?.isHeadPM || currentUser?.role === 'FOUNDER/CEO';
+  const emptyNewUser = { name: '', email: '', role: 'Copy Writing', password: '' };
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState(emptyNewUser);
+  const [addingUser, setAddingUser] = useState(false);
+  const [addUserError, setAddUserError] = useState('');
+  const [addedUser, setAddedUser] = useState<{ name: string; email: string; password: string } | null>(null);
+
+  const closeAddUser = () => {
+    setShowAddUser(false);
+    setNewUser(emptyNewUser);
+    setAddUserError('');
+    setAddedUser(null);
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddUserError('');
+    if (newUser.password.length < 8) {
+      setAddUserError('The temporary password must be at least 8 characters.');
+      return;
+    }
+    try {
+      setAddingUser(true);
+      await authService.createUser(newUser);
+      setAddedUser({ name: newUser.name, email: newUser.email, password: newUser.password });
+      setNewUser(emptyNewUser);
+      await loadUsers();
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      setAddUserError(Array.isArray(message) ? message.join(', ') : message || 'Could not add this person. Please try again.');
+    } finally {
+      setAddingUser(false);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -127,7 +161,7 @@ const Users: React.FC = () => {
               gap: '0.5rem',
               background: 'none',
               border: 'none',
-              color: '#667eea',
+              color: '#111111',
               cursor: 'pointer',
               fontSize: '0.875rem',
               fontWeight: 500,
@@ -145,7 +179,7 @@ const Users: React.FC = () => {
                 width: '48px',
                 height: '48px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -156,7 +190,7 @@ const Users: React.FC = () => {
               <FaUsers />
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.875rem', fontWeight: 700, color: '#111827' }}>
+              <h1 style={{ margin: 0, fontSize: '1.875rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Registered Users
               </h1>
               <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -164,7 +198,77 @@ const Users: React.FC = () => {
               </p>
             </div>
           </div>
+          {canManageUsers && (
+            <button
+              type="button"
+              onClick={() => setShowAddUser(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minHeight: 44, padding: '0.625rem 1rem', border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer' }}
+            >
+              <FaPlus aria-hidden="true" /> Add teammate
+            </button>
+          )}
         </div>
+
+        {showAddUser && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) closeAddUser(); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.35)' }}
+          >
+            <div role="dialog" aria-modal="true" aria-label="Add teammate" style={{ width: '100%', maxWidth: 440, padding: 24, borderRadius: 14, background: '#fff', boxShadow: '0 24px 70px rgba(0,0,0,0.25)' }}>
+              <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 720, color: '#111111' }}>{addedUser ? 'Teammate added' : 'Add teammate'}</h2>
+              {addedUser ? (
+                <>
+                  <p style={{ margin: '0 0 14px', color: '#555', lineHeight: 1.5 }}>
+                    Send {addedUser.name} these details privately. This password won't be shown again, and they can change it with "Forgot password".
+                  </p>
+                  <div style={{ padding: 12, marginBottom: 16, borderRadius: 9, background: '#f4f4f4', color: '#111111', overflowWrap: 'anywhere', lineHeight: 1.6 }}>
+                    Email: {addedUser.email}<br />Temporary password: {addedUser.password}
+                  </div>
+                  <button type="button" onClick={closeAddUser} style={{ minHeight: 44, width: '100%', border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer' }}>Done</button>
+                </>
+              ) : (
+                <form onSubmit={handleAddUser}>
+                  <p style={{ margin: '0 0 14px', color: '#555', lineHeight: 1.5 }}>They can log in straight away with the temporary password you set.</p>
+                  {[
+                    { key: 'name', label: 'Full name', type: 'text', auto: 'off' },
+                    { key: 'email', label: 'Work email', type: 'email', auto: 'off' },
+                    { key: 'password', label: 'Temporary password', type: 'text', auto: 'new-password' },
+                  ].map((field) => (
+                    <label key={field.key} style={{ display: 'block', marginBottom: 12, fontSize: 13, fontWeight: 600, color: '#333' }}>
+                      {field.label}
+                      <input
+                        required
+                        type={field.type}
+                        autoComplete={field.auto}
+                        name={`new-user-${field.key}`}
+                        value={(newUser as any)[field.key]}
+                        onChange={(e) => setNewUser((current) => ({ ...current, [field.key]: e.target.value }))}
+                        style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.625rem 0.75rem', border: '1px solid #d4d4d4', borderRadius: 8, fontSize: 16, boxSizing: 'border-box' }}
+                      />
+                    </label>
+                  ))}
+                  <label style={{ display: 'block', marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#333' }}>
+                    Department
+                    <select
+                      name="new-user-role"
+                      value={newUser.role}
+                      onChange={(e) => setNewUser((current) => ({ ...current, role: e.target.value }))}
+                      style={{ display: 'block', width: '100%', marginTop: 5, padding: '0.625rem 0.75rem', border: '1px solid #d4d4d4', borderRadius: 8, fontSize: 16, background: '#fff' }}
+                    >
+                      {DEPARTMENT_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
+                      {currentUser?.role === 'FOUNDER/CEO' && <option value="FOUNDER/CEO">FOUNDER/CEO</option>}
+                    </select>
+                  </label>
+                  {addUserError && <p role="alert" style={{ margin: '0 0 12px', color: '#b84436', fontSize: 13 }}>{addUserError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={closeAddUser} style={{ flex: 1, minHeight: 44, border: '1px solid #d4d4d4', borderRadius: 9, background: '#fff', color: '#111111', fontWeight: 650, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={addingUser} style={{ flex: 1, minHeight: 44, border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer', opacity: addingUser ? 0.6 : 1 }}>{addingUser ? 'Adding…' : 'Add teammate'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div
@@ -190,14 +294,14 @@ const Users: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #e8e8e8',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 outline: 'none',
                 transition: 'border-color 0.2s',
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#667eea')}
-              onBlur={(e) => (e.target.style.borderColor = '#e5e7eb')}
+              onFocus={(e) => (e.target.style.borderColor = '#111111')}
+              onBlur={(e) => (e.target.style.borderColor = '#e8e8e8')}
             />
           </div>
           <div style={{ minWidth: '200px' }}>
@@ -207,7 +311,7 @@ const Users: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #e8e8e8',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 outline: 'none',
@@ -215,8 +319,8 @@ const Users: React.FC = () => {
                 cursor: 'pointer',
                 transition: 'border-color 0.2s',
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#667eea')}
-              onBlur={(e) => (e.target.style.borderColor = '#e5e7eb')}
+              onFocus={(e) => (e.target.style.borderColor = '#111111')}
+              onBlur={(e) => (e.target.style.borderColor = '#e8e8e8')}
             >
               <option>All Roles</option>
               {uniqueRoles.map((role) => (
@@ -256,14 +360,14 @@ const Users: React.FC = () => {
               }}
             >
               <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                <tr style={{ background: '#ffffff', borderBottom: '2px solid #e8e8e8' }}>
                   <th
                     style={{
                       padding: '1rem 1.5rem',
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -276,7 +380,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -289,7 +393,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -302,7 +406,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -315,7 +419,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -328,7 +432,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -341,7 +445,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -354,7 +458,7 @@ const Users: React.FC = () => {
                       textAlign: 'left',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: '#444444',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                     }}
@@ -371,7 +475,7 @@ const Users: React.FC = () => {
                       style={{
                         padding: '3rem',
                         textAlign: 'center',
-                        color: '#94a3b8',
+                        color: '#a6a6a6',
                         fontSize: '0.875rem',
                       }}
                     >
@@ -385,11 +489,11 @@ const Users: React.FC = () => {
                       <tr
                         key={userItem.id}
                         style={{
-                          borderBottom: index < filteredUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          borderBottom: index < filteredUsers.length - 1 ? '1px solid #f4f4f4' : 'none',
                           transition: 'background 0.2s',
                           opacity: isActive ? 1 : 0.65,
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f9fafb')}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
                         onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
                       >
                         <td style={{ padding: '1rem 1.5rem' }}>
@@ -399,7 +503,7 @@ const Users: React.FC = () => {
                                 width: '40px',
                                 height: '40px',
                                 borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
                                 color: 'white',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -412,13 +516,13 @@ const Users: React.FC = () => {
                               {userItem.name?.charAt(0).toUpperCase() || 'U'}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9375rem' }}>
+                              <div style={{ fontWeight: 600, color: '#1c1c1c', fontSize: '0.9375rem' }}>
                                 {userItem.name}
                               </div>
                               <div
                                 style={{
                                   fontSize: '0.75rem',
-                                  color: '#94a3b8',
+                                  color: '#a6a6a6',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '0.25rem',
@@ -437,7 +541,7 @@ const Users: React.FC = () => {
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
-                              color: '#374151',
+                              color: '#444444',
                               fontSize: '0.875rem',
                             }}
                           >
@@ -472,7 +576,7 @@ const Users: React.FC = () => {
                               padding: '0.375rem 0.75rem',
                               borderRadius: '999px',
                               border: '1px solid',
-                              borderColor: userItem.isTeamLead ? '#10b981' : '#e5e7eb',
+                              borderColor: userItem.isTeamLead ? '#10b981' : '#e8e8e8',
                               background: userItem.isTeamLead ? '#ecfdf3' : 'white',
                               color: userItem.isTeamLead ? '#047857' : '#6b7280',
                               fontSize: '0.75rem',
@@ -515,9 +619,9 @@ const Users: React.FC = () => {
                                 padding: '0.375rem 0.75rem',
                                 borderRadius: '999px',
                                 border: '1px solid',
-                                borderColor: userItem.isHeadPM ? '#6366f1' : '#e5e7eb',
-                                background: userItem.isHeadPM ? '#eef2ff' : 'white',
-                                color: userItem.isHeadPM ? '#4338ca' : '#6b7280',
+                                borderColor: userItem.isHeadPM ? '#111111' : '#e8e8e8',
+                                background: userItem.isHeadPM ? '#f6f6f6' : 'white',
+                                color: userItem.isHeadPM ? '#333333' : '#6b7280',
                                 fontSize: '0.75rem',
                                 fontWeight: 600,
                                 cursor: updatingUserId === userItem.id || !canManageUsers ? 'not-allowed' : 'pointer',
@@ -540,7 +644,7 @@ const Users: React.FC = () => {
                               disabled={!canManageUsers || updatingUserId === userItem.id}
                               style={{
                                 padding: '0.38rem 0.45rem',
-                                border: '1px solid #e5e7eb',
+                                border: '1px solid #e8e8e8',
                                 borderRadius: 8,
                                 fontSize: '0.76rem',
                                 background: 'white',
@@ -575,12 +679,12 @@ const Users: React.FC = () => {
                               }}
                               style={{
                                 padding: '0.35rem 0.5rem',
-                                border: '1px solid #0284c7',
+                                border: '1px solid #111111',
                                 borderRadius: 8,
                                 fontSize: '0.74rem',
                                 fontWeight: 700,
-                                color: '#0369a1',
-                                background: '#e0f2fe',
+                                color: '#111111',
+                                background: '#efefef',
                                 cursor: 'pointer',
                               }}
                             >
@@ -631,7 +735,7 @@ const Users: React.FC = () => {
                               style={{
                                 width: 130,
                                 padding: '0.38rem 0.45rem',
-                                border: '1px solid #e5e7eb',
+                                border: '1px solid #e8e8e8',
                                 borderRadius: 8,
                                 fontSize: '0.74rem',
                               }}
@@ -661,12 +765,12 @@ const Users: React.FC = () => {
                               }}
                               style={{
                                 padding: '0.35rem 0.5rem',
-                                border: '1px solid #7c3aed',
+                                border: '1px solid #111111',
                                 borderRadius: 8,
                                 fontSize: '0.74rem',
                                 fontWeight: 700,
-                                color: '#6d28d9',
-                                background: '#f3e8ff',
+                                color: '#111111',
+                                background: '#f3f3f3',
                                 cursor: 'pointer',
                               }}
                             >

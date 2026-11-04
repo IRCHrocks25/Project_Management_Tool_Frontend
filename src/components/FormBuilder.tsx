@@ -310,17 +310,17 @@ const FormBuilder: React.FC = () => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: '#ffffff'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#64748b' }}>Loading form builder...</p>
+          <p style={{ color: '#787878' }}>Loading form builder...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+    <div style={{ minHeight: '100vh', background: '#ffffff' }}>
       {/* Top Header Bar - Google Forms Style */}
       <div style={{
         background: 'white',
@@ -348,7 +348,7 @@ const FormBuilder: React.FC = () => {
               borderRadius: '50%',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -386,7 +386,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -408,7 +408,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -432,7 +432,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -454,7 +454,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -478,7 +478,7 @@ const FormBuilder: React.FC = () => {
             }}
             onMouseEnter={(e) => {
               if (historyIndex > 0) {
-                e.currentTarget.style.background = '#f1f3f4';
+                e.currentTarget.style.background = '#f2f2f2';
               }
             }}
             onMouseLeave={(e) => {
@@ -503,7 +503,7 @@ const FormBuilder: React.FC = () => {
             }}
             onMouseEnter={(e) => {
               if (historyIndex < formHistory.length - 1) {
-                e.currentTarget.style.background = '#f1f3f4';
+                e.currentTarget.style.background = '#f2f2f2';
               }
             }}
             onMouseLeave={(e) => {
@@ -526,7 +526,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -548,7 +548,7 @@ const FormBuilder: React.FC = () => {
               alignItems: 'center',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f1f3f4';
+              e.currentTarget.style.background = '#f2f2f2';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -560,7 +560,7 @@ const FormBuilder: React.FC = () => {
           {form?.isPublished ? (
             <button
               style={{
-                background: '#673ab7',
+                background: '#111111',
                 color: 'white',
                 border: 'none',
                 padding: '0.5rem 1rem',
@@ -580,7 +580,7 @@ const FormBuilder: React.FC = () => {
               onClick={handlePublish}
               disabled={publishing || formBlocks.length === 0}
               style={{
-                background: '#673ab7',
+                background: '#111111',
                 color: 'white',
                 border: 'none',
                 padding: '0.5rem 1rem',
@@ -611,7 +611,7 @@ const FormBuilder: React.FC = () => {
                 alignItems: 'center',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f1f3f4';
+                e.currentTarget.style.background = '#f2f2f2';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
@@ -650,7 +650,7 @@ const FormBuilder: React.FC = () => {
                     color: '#202124',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f1f3f4';
+                    e.currentTarget.style.background = '#f2f2f2';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
@@ -707,11 +707,11 @@ const FormBuilder: React.FC = () => {
           style={{
             background: 'transparent',
             border: 'none',
-            borderBottom: '3px solid #673ab7',
+            borderBottom: '3px solid #111111',
             padding: '0.75rem 0.5rem',
             fontSize: '0.875rem',
             fontWeight: 500,
-            color: '#673ab7',
+            color: '#111111',
             cursor: 'pointer',
           }}
         >
@@ -748,7 +748,7 @@ const FormBuilder: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 96px)', background: '#f8f9fa' }}>
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 96px)', background: '#ffffff' }}>
         {/* Right Sidebar - Google Forms Style */}
         <div style={{
           width: '64px',
@@ -796,7 +796,7 @@ const FormBuilder: React.FC = () => {
                   transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f1f3f4';
+                  e.currentTarget.style.background = '#f2f2f2';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -864,7 +864,7 @@ const FormBuilder: React.FC = () => {
                       marginBottom: '1rem',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#673ab7';
+                      e.currentTarget.style.borderColor = '#111111';
                       e.currentTarget.style.boxShadow = '0 2px 4px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15)';
                     }}
                     onMouseLeave={(e) => {
@@ -893,7 +893,7 @@ const FormBuilder: React.FC = () => {
                           cursor: index === 0 ? 'not-allowed' : 'pointer',
                           padding: '0.25rem 0.5rem',
                           opacity: index === 0 ? 0.3 : 1,
-                          color: '#64748b',
+                          color: '#787878',
                           display: 'flex',
                           alignItems: 'center',
                         }}
@@ -910,7 +910,7 @@ const FormBuilder: React.FC = () => {
                           cursor: index === formBlocks.length - 1 ? 'not-allowed' : 'pointer',
                           padding: '0.25rem 0.5rem',
                           opacity: index === formBlocks.length - 1 ? 0.3 : 1,
-                          color: '#64748b',
+                          color: '#787878',
                           display: 'flex',
                           alignItems: 'center',
                         }}
@@ -955,7 +955,7 @@ const FormBuilder: React.FC = () => {
                               background: 'transparent',
                             }}
                             onFocus={(e) => {
-                              e.target.style.borderBottomColor = '#673ab7';
+                              e.target.style.borderBottomColor = '#111111';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderBottomColor = '#dadce0';
@@ -992,7 +992,7 @@ const FormBuilder: React.FC = () => {
                             background: 'transparent',
                           }}
                           onFocus={(e) => {
-                            e.target.style.borderBottomColor = '#673ab7';
+                            e.target.style.borderBottomColor = '#111111';
                           }}
                           onBlur={(e) => {
                             e.target.style.borderBottomColor = '#dadce0';
@@ -1008,14 +1008,14 @@ const FormBuilder: React.FC = () => {
                             onDragLeave={handleDragLeave}
                             style={{
                               border: dragOverBlockId === block.id 
-                                ? '2px dashed #673ab7' 
+                                ? '2px dashed #111111' 
                                 : '2px dashed #dadce0',
                               borderRadius: '4px',
                               padding: '2rem',
                               textAlign: 'center',
                               background: dragOverBlockId === block.id 
-                                ? '#f3e5f5' 
-                                : block.imageUrl ? 'transparent' : '#f8f9fa',
+                                ? '#ededed' 
+                                : block.imageUrl ? 'transparent' : '#f9f9f9',
                               marginBottom: '0.75rem',
                               transition: 'all 0.2s ease',
                               cursor: 'pointer',
@@ -1033,14 +1033,14 @@ const FormBuilder: React.FC = () => {
                                     marginBottom: '0.75rem',
                                   }}
                                 />
-                                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                <div style={{ fontSize: '0.875rem', color: '#787878' }}>
                                   Drag a new image here to replace, or click to browse
                                 </div>
                               </div>
                             ) : (
                               <div>
-                                <FaImage style={{ fontSize: '2rem', color: '#94a3b8', marginBottom: '0.5rem' }} />
-                                <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                                <FaImage style={{ fontSize: '2rem', color: '#a6a6a6', marginBottom: '0.5rem' }} />
+                                <p style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>
                                   {dragOverBlockId === block.id 
                                     ? 'Drop image here' 
                                     : 'Drag & drop an image here, or click to browse'}
@@ -1074,7 +1074,7 @@ const FormBuilder: React.FC = () => {
                             />
                           </div>
                           {uploadingImage && (
-                            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                            <p style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>
                               Uploading...
                             </p>
                           )}
@@ -1095,7 +1095,7 @@ const FormBuilder: React.FC = () => {
                               background: 'transparent',
                             }}
                             onFocus={(e) => {
-                              e.target.style.borderBottomColor = '#673ab7';
+                              e.target.style.borderBottomColor = '#111111';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderBottomColor = '#dadce0';
@@ -1124,7 +1124,7 @@ const FormBuilder: React.FC = () => {
                               background: 'transparent',
                             }}
                             onFocus={(e) => {
-                              e.target.style.borderBottomColor = '#673ab7';
+                              e.target.style.borderBottomColor = '#111111';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderBottomColor = '#dadce0';
@@ -1136,14 +1136,14 @@ const FormBuilder: React.FC = () => {
                             onDragLeave={handleDragLeave}
                             style={{
                               border: dragOverBlockId === block.id 
-                                ? '2px dashed #673ab7' 
+                                ? '2px dashed #111111' 
                                 : '2px dashed #dadce0',
                               borderRadius: '4px',
                               padding: block.imageUrl ? '0.5rem' : '2rem',
                               textAlign: 'center',
                               background: dragOverBlockId === block.id 
-                                ? '#f3e5f5' 
-                                : block.imageUrl ? 'transparent' : '#f8f9fa',
+                                ? '#ededed' 
+                                : block.imageUrl ? 'transparent' : '#f9f9f9',
                               transition: 'all 0.2s ease',
                               cursor: 'pointer',
                               position: 'relative',
@@ -1161,14 +1161,14 @@ const FormBuilder: React.FC = () => {
                                     marginBottom: '0.5rem',
                                   }}
                                 />
-                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#787878' }}>
                                   Drag a new image here to replace, or click to browse
                                 </div>
                               </div>
                             ) : (
                               <div>
-                                <FaImage style={{ fontSize: '1.5rem', color: '#94a3b8', marginBottom: '0.5rem' }} />
-                                <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                <FaImage style={{ fontSize: '1.5rem', color: '#a6a6a6', marginBottom: '0.5rem' }} />
+                                <p style={{ fontSize: '0.875rem', color: '#787878' }}>
                                   {dragOverBlockId === block.id 
                                     ? 'Drop image here' 
                                     : 'Drag & drop an image here, or click to browse'}
@@ -1256,7 +1256,7 @@ const FormBuilder: React.FC = () => {
               Your form has been published and the URL has been copied to your clipboard.
             </p>
             <div style={{
-              background: '#f8f9fa',
+              background: '#ffffff',
               border: '1px solid #dadce0',
               borderRadius: '4px',
               padding: '1rem',
@@ -1291,7 +1291,7 @@ const FormBuilder: React.FC = () => {
                   alert('URL copied to clipboard!');
                 }}
                 style={{
-                  background: '#f1f3f4',
+                  background: '#f2f2f2',
                   border: '1px solid #dadce0',
                   padding: '0.625rem 1.25rem',
                   borderRadius: '4px',
@@ -1301,10 +1301,10 @@ const FormBuilder: React.FC = () => {
                   color: '#202124',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#e8eaed';
+                  e.currentTarget.style.background = '#ebebeb';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#f1f3f4';
+                  e.currentTarget.style.background = '#f2f2f2';
                 }}
               >
                 Copy URL Again
@@ -1312,7 +1312,7 @@ const FormBuilder: React.FC = () => {
               <button
                 onClick={() => setShowPublishModal(false)}
                 style={{
-                  background: '#673ab7',
+                  background: '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.625rem 1.25rem',
@@ -1322,10 +1322,10 @@ const FormBuilder: React.FC = () => {
                   cursor: 'pointer',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#5e35b1';
+                  e.currentTarget.style.background = '#111111';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#673ab7';
+                  e.currentTarget.style.background = '#111111';
                 }}
               >
                 OK
@@ -1379,7 +1379,7 @@ const FormBuilder: React.FC = () => {
               Share this link with your client. The link has been copied to your clipboard.
             </p>
             <div style={{
-              background: '#f8f9fa',
+              background: '#ffffff',
               border: '1px solid #dadce0',
               borderRadius: '4px',
               padding: '1rem',
@@ -1406,7 +1406,7 @@ const FormBuilder: React.FC = () => {
                   alert('URL copied to clipboard!');
                 }}
                 style={{
-                  background: '#f1f3f4',
+                  background: '#f2f2f2',
                   border: '1px solid #dadce0',
                   padding: '0.625rem 1.25rem',
                   borderRadius: '4px',
@@ -1421,7 +1421,7 @@ const FormBuilder: React.FC = () => {
               <button
                 onClick={() => setShowLinkModal(false)}
                 style={{
-                  background: '#673ab7',
+                  background: '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.625rem 1.25rem',
@@ -1484,7 +1484,7 @@ const FormBuilder: React.FC = () => {
             <button
               onClick={() => setShowThemeModal(false)}
               style={{
-                background: '#673ab7',
+                background: '#111111',
                 color: 'white',
                 border: 'none',
                 padding: '0.625rem 1.25rem',
@@ -1547,7 +1547,7 @@ const FormBuilder: React.FC = () => {
             <button
               onClick={() => setShowCollaboratorsModal(false)}
               style={{
-                background: '#673ab7',
+                background: '#111111',
                 color: 'white',
                 border: 'none',
                 padding: '0.625rem 1.25rem',

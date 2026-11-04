@@ -10,7 +10,7 @@ const authAxios = axios.create({
   },
 });
 
-export interface SignupData {
+export interface NewUserData {
   name: string;
   email: string;
   password: string;
@@ -38,34 +38,6 @@ export interface AuthResponse {
 }
 
 export const authService = {
-  async signup(data: SignupData): Promise<AuthResponse> {
-    // Clear any existing tokens before signup to avoid 431 errors
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    try {
-      // Use clean axios instance without any Authorization headers
-      const response = await authAxios.post('/auth/signup', data);
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-      return response.data;
-    } catch (error: any) {
-      // If 431 error, clear localStorage completely and retry
-      if (error.response?.status === 431) {
-        localStorage.clear();
-        const retryResponse = await authAxios.post('/auth/signup', data);
-        if (retryResponse.data.token) {
-          localStorage.setItem('token', retryResponse.data.token);
-          localStorage.setItem('user', JSON.stringify(retryResponse.data.user));
-        }
-        return retryResponse.data;
-      }
-      throw error;
-    }
-  },
-
   async login(data: LoginData): Promise<AuthResponse> {
     // Clear any existing tokens before login to avoid 431 errors
     localStorage.removeItem('token');
@@ -138,6 +110,13 @@ export const authService = {
     if (currentUser && currentUser.id === userId) {
       localStorage.setItem('user', JSON.stringify(response.data));
     }
+    return response.data;
+  },
+
+  async createUser(data: NewUserData): Promise<any> {
+    const response = await axios.post(`${API_URL}/auth/users`, data, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
     return response.data;
   },
 

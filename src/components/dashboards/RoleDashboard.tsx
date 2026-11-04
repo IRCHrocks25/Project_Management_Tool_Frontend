@@ -55,6 +55,19 @@ import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import DepartmentPriorityProjects from '../DepartmentPriorityProjects';
 import '../Dashboard.css';
 import './RoleDashboard.css';
+import { useProductTour } from '../tours/useProductTour';
+import { DEPARTMENT_TOUR_STEPS } from '../tours/tourSteps';
+import {
+  BOARD_COLUMNS,
+  COLUMN_LABEL,
+  ColumnId,
+  NEXT_STEP,
+  getAssigneeIds,
+  getDueInfo,
+  getTaskColumn,
+  mapColumnToStatus,
+  moveTaskToColumn,
+} from './taskColumns';
 
 // Role configuration mapping
 const ROLE_CONFIG: Record<string, {
@@ -69,7 +82,7 @@ const ROLE_CONFIG: Record<string, {
     stages: ['Copy', 'Copy Revision'],
     departmentName: 'Copy Writing Team',
     icon: FaCopy,
-    color: '#667eea',
+    color: '#111111',
   },
   'Designer': {
     taskType: 'Design',
@@ -90,7 +103,7 @@ const ROLE_CONFIG: Record<string, {
     stages: ['AI Development', 'Development'],
     departmentName: 'AI Development Team',
     icon: FaRobot,
-    color: '#8b5cf6',
+    color: '#111111',
   },
   'Social Media': {
     taskType: 'Social Media',
@@ -104,7 +117,7 @@ const ROLE_CONFIG: Record<string, {
     stages: [],
     departmentName: 'CRM Team',
     icon: FaDatabase,
-    color: '#3b82f6',
+    color: '#111111',
   },
   'SEO/GEO': {
     taskType: 'SEO/GEO',
@@ -115,91 +128,14 @@ const ROLE_CONFIG: Record<string, {
   },
 };
 
-type ColumnId =
-  | 'not_started'
-  | 'owned_in_progress'
-  | 'for_approval'
-  | 'revision'
-  | 'elliot_review'
-  | 'qa_before_client'
-  | 'client_validation'
-  | 'approved_completed';
 type Section = 'overview' | 'my' | 'board' | 'approvals' | 'team';
 type TaskAction = { key: string; label: string; run: () => void };
 
-const COLUMN_LABEL: Record<ColumnId, string> = {
-  not_started: 'Not started',
-  owned_in_progress: 'In progress',
-  for_approval: 'Awaiting approval',
-  revision: 'Changes requested',
-  elliot_review: 'Elliot review',
-  qa_before_client: 'QA review',
-  client_validation: 'Client validation',
-  approved_completed: 'Completed',
-};
-const BOARD_COLUMNS: ColumnId[] = ['not_started', 'owned_in_progress', 'for_approval', 'revision', 'qa_before_client', 'client_validation', 'approved_completed'];
 const CHIP_COLUMNS: ColumnId[] = ['for_approval', 'revision', 'owned_in_progress', 'not_started', 'qa_before_client', 'client_validation', 'approved_completed'];
 const HEALTH_COLUMNS: ColumnId[] = ['not_started', 'owned_in_progress', 'for_approval', 'revision', 'qa_before_client', 'client_validation'];
-const NEXT_STEP: Record<ColumnId, string> = {
-  not_started: 'Claim this task or assign an owner, then start work.',
-  owned_in_progress: 'Finish the work, then send it for review.',
-  for_approval: 'A reviewer completes it or requests specific changes.',
-  revision: 'Apply the requested changes, then send it back for review.',
-  elliot_review: 'Waiting on Elliot. Move it forward once it is reviewed.',
-  qa_before_client: 'QA checks the work before it goes to the client.',
-  client_validation: 'Waiting on client feedback. Complete it once the client approves.',
-  approved_completed: 'This task is complete. No further action is needed.',
-};
-const PROJECT_DOT_COLORS = ['#8c80ed', '#58b7c5', '#efad72', '#85c5a5', '#e58fa8', '#7ba4ed'];
+const PROJECT_DOT_COLORS = ['#9a9a9a'];
 const QUEUE_PAGE_SIZE = 30;
 const VIEW_STORAGE_KEY = 'roleDashboard.viewMode';
-
-const getAssigneeIds = (task: any): string[] => {
-  const assignees = task?.assignees || [];
-  if (assignees.length > 0) return assignees.map((a: any) => a.userId || a.user?.id);
-  return task?.assignedToId ? [task.assignedToId] : [];
-};
-
-/** Which workflow stage a task is in, including the In Review sub-states kept as description markers. */
-const getTaskColumn = (task: any): ColumnId => {
-  if (task.status === 'Completed' || task.isCompleted) return 'approved_completed';
-
-  const desc: string = task.description || '';
-  if (desc.includes('--- Column: Revision ---')) return 'revision';
-  if (desc.includes('--- Column: Elliot Review ---')) return 'elliot_review';
-  if (desc.includes('--- Column: QA Review ---')) return 'qa_before_client';
-  if (desc.includes('--- Column: Client Validation ---')) return 'client_validation';
-  if (desc.includes('--- Column: Client Review ---')) return 'client_validation';
-  if (desc.includes('--- Column: For Approval ---')) return 'for_approval';
-
-  if (task.assignedToId) {
-    if (task.status === 'In Progress') return 'owned_in_progress';
-    if (task.status === 'In Review') return 'for_approval';
-    if (task.status === 'Revision' || task.status === 'Needs Revision') return 'revision';
-    if (task.status === 'Elliot Review') return 'elliot_review';
-    if (task.status === 'QA Review' || task.status === 'QA') return 'qa_before_client';
-    if (task.status === 'Client Review' || task.status === 'Client Validation') return 'client_validation';
-    return 'owned_in_progress';
-  }
-  return 'not_started';
-};
-
-const getDueInfo = (task: any): { text: string; className: string } => {
-  if (!task?.dueDate) return { text: 'No date', className: 'rd-unassigned' };
-  const due = new Date(task.dueDate);
-  if (Number.isNaN(due.getTime())) return { text: 'No date', className: 'rd-unassigned' };
-  const text = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  if (getTaskColumn(task) === 'approved_completed') return { text, className: '' };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const day = new Date(due);
-  day.setHours(0, 0, 0, 0);
-  const days = Math.round((day.getTime() - today.getTime()) / 86400000);
-  if (days < 0) return { text, className: 'rd-overdue' };
-  if (days === 0) return { text: 'Today', className: 'rd-duesoon' };
-  if (days <= 2) return { text, className: 'rd-duesoon' };
-  return { text, className: '' };
-};
 
 type KanbanColumnSortOrder = 'newest' | 'oldest';
 
@@ -361,12 +297,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   // Department menu items
   const departmentMenuItems = [
-    { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
+    { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#111111' },
     { id: 'Designer', name: 'Design', icon: FaPalette, color: '#ec4899' },
     { id: 'Developer', name: 'Development', icon: FaCode, color: '#10b981' },
-    { id: 'AI Developer', name: 'AI Development', icon: FaRobot, color: '#8b5cf6' },
+    { id: 'AI Developer', name: 'AI Development', icon: FaRobot, color: '#111111' },
     { id: 'Social Media', name: 'Social Media', icon: FaShareAlt, color: '#f59e0b' },
-    { id: 'CRM', name: 'CRM', icon: FaDatabase, color: '#3b82f6' },
+    { id: 'CRM', name: 'CRM', icon: FaDatabase, color: '#111111' },
     { id: 'SEO/GEO', name: 'SEO/GEO', icon: FaSearch, color: '#06b6d4' },
   ];
 
@@ -459,6 +395,21 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useProductTour({
+    tourKey: 'department-v1',
+    userId: user?.id,
+    // PMs and Founders opening a department board have their own tour
+    ready: !loading && user?.role === role,
+    steps: DEPARTMENT_TOUR_STEPS,
+    beforeStart: () => {
+      setSection('overview');
+      setProjectFilter(null);
+      setAssigneeFilter(null);
+      setStatusFilter('all');
+      setViewMode('list');
+    },
+  });
 
   // Define close handler early so it can be used across handlers
   const handleCloseTaskDetail = useCallback(() => {
@@ -1111,7 +1062,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   }
 
   const { departmentName } = config;
-  const color = '#6555e9';
+  const color = '#111111';
 
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -1301,30 +1252,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     };
   };
 
-  // Map column ID to backend status and column marker
-  const mapColumnToStatus = (columnId: string): { status: string; columnMarker?: string; isCompleted: boolean } => {
-    switch (columnId) {
-      case 'not_started':
-        return { status: 'Todo', isCompleted: false };
-      case 'owned_in_progress':
-        return { status: 'In Progress', isCompleted: false };
-      case 'for_approval':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: For Approval ---', isCompleted: false };
-      case 'revision':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: Revision ---', isCompleted: false };
-      case 'elliot_review':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: Elliot Review ---', isCompleted: false };
-      case 'qa_before_client':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: QA Review ---', isCompleted: false };
-      case 'client_validation':
-        return { status: 'In Review', columnMarker: '\n\n--- Column: Client Validation ---', isCompleted: false };
-      case 'approved_completed':
-        return { status: 'Completed', isCompleted: true };
-      default:
-        return { status: 'Todo', isCompleted: false };
-    }
-  };
-
   // Quick move helper used by priority panel column selector.
   const handleQuickMoveTaskToColumn = async (taskId: string, columnId: string) => {
     const task = tasks.find((t: any) => t.id === taskId);
@@ -1382,69 +1309,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       const task = tasks.find((t: any) => t.id === statusChangeContext.taskId);
       if (!task) return;
 
-      const { status, columnMarker, isCompleted } = mapColumnToStatus(statusChangeContext.targetColumnId);
-      const reviewIntent =
-        status === 'In Review'
-          ? (statusChangeContext.targetColumnId === 'revision'
-            ? 'revision'
-            : statusChangeContext.targetColumnId === 'for_approval'
-              ? 'for_approval'
-              : undefined)
-          : undefined;
-
-      // Update task status
-      await taskService.updateStatus(
-        statusChangeContext.taskId,
-        status,
-        isCompleted,
-        undefined,
-        undefined,
-        undefined,
-        reviewIntent,
+      await moveTaskToColumn(
+        task,
+        statusChangeContext.targetColumnId,
+        statusChangeContext.targetColumnLabel,
+        notes,
+        links,
+        user?.name,
       );
-
-      // Persist each provided link as a real attachment so it appears in
-      // task side modal. Iteration matches the existing pattern at the
-      // pre-migration L1334-1348 byte-for-byte.
-      const validLinks = links.map((link) => link.trim()).filter(Boolean);
-      if (validLinks.length > 0) {
-        await Promise.all(
-          validLinks.map((link) =>
-            taskService.addLinkAttachment(
-              statusChangeContext.taskId,
-              link,
-              undefined,
-              notes.trim() || undefined,
-            ),
-          ),
-        ).catch((attachmentError) => {
-          console.warn('Failed to add one or more status-change attachment links:', attachmentError);
-        });
-      }
-
-      // Build a single description update so marker + log stay in sync.
-      const baseDesc = (task.description || '').replace(/\n\n--- Column: [^-]+ ---/g, '');
-      const descWithMarker = columnMarker ? `${baseDesc}${columnMarker}` : baseDesc;
-      const timestamp = new Date().toLocaleString();
-      let logBlock = `\n\n--- Status Change ---\nNew Column: ${statusChangeContext.targetColumnLabel}\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
-
-      if (notes && notes.trim()) {
-        logBlock += `\nNotes: ${notes.trim()}`;
-      }
-
-      // Hybrid format: singular for length 1, plural+bullets for length >= 2.
-      if (validLinks.length === 1) {
-        logBlock += `\nAttachment: ${validLinks[0]}`;
-      } else if (validLinks.length > 1) {
-        logBlock += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
-      }
-
-      const updatedDesc = descWithMarker + logBlock;
-      try {
-        await taskService.update(task.id, { description: updatedDesc });
-      } catch (descError) {
-        console.warn('Failed to update task description with status change log:', descError);
-      }
 
       // Reload data
       await loadData();
@@ -1529,7 +1401,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         <AppSidebar />
         <main className="rd-main rd-loading" aria-live="polite">
           <div style={{ textAlign: 'center' }}>
-            <FaSpinner className="rd-spin" style={{ fontSize: 22, color: '#6555e9', marginBottom: 12 }} />
+            <FaSpinner className="rd-spin" style={{ fontSize: 22, color: '#111111', marginBottom: 12 }} />
             <div>Loading {departmentName}…</div>
           </div>
         </main>
@@ -1651,7 +1523,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (task.status === 'In Review' && !revisionPending && !linkedTarget) {
         actions.push({ key: 'mark-complete', label: 'Mark complete', run: close(() => { handleTaskStatusUpdate(task.id, 'Completed', true); }) });
         actions.push({ key: 'request-changes', label: 'Request changes', run: close(() => openStatusChange(task.id, 'revision')) });
-        actions.push({ key: 'back', label: 'Back to in progress', run: close(() => { handleTaskStatusUpdate(task.id, 'In Progress'); }) });
+        actions.push({
+          key: 'back',
+          label: 'Back to in progress',
+          // Clears the review marker too, otherwise the task stays in its review stage
+          run: close(() => { moveTaskToColumn(task, 'owned_in_progress', COLUMN_LABEL.owned_in_progress, '', [], user?.name).then(loadData); }),
+        });
       }
       if (linkedTarget && task.status === 'In Review') {
         actions.push({
@@ -1674,7 +1551,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     const name = getUserName(ids[0]);
     return (
       <span className="rd-owner">
-        <UserAvatar name={name} avatarUrl={first?.avatarUrl} size={25} color="#6555e9" />
+        <UserAvatar name={name} avatarUrl={first?.avatarUrl} size={25} color="#111111" />
         <span className="rd-owner-name">{name}{ids.length > 1 ? ` +${ids.length - 1}` : ''}</span>
       </span>
     );
@@ -1784,6 +1661,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               type="button"
               className="rd-btn rd-btn-primary"
               aria-label="New task"
+              data-tour="new-task"
               onClick={() => {
                 setTaskProjectScope('department');
                 setShowAddTaskModal(true);
@@ -1799,7 +1677,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 aria-label="Account menu"
                 aria-expanded={showAvatarDropdown}
               >
-                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#6555e9" />
+                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#111111" />
               </button>
               {showAvatarDropdown && (
                 <div className="rd-menu">
@@ -1899,7 +1777,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                       onClick={() => setAssigneeFilter(assigneeFilter === row.id ? null : row.id)}
                     >
                       <span className="rd-owner">
-                        <UserAvatar name={row.name} avatarUrl={row.avatarUrl} size={25} color="#6555e9" />
+                        <UserAvatar name={row.name} avatarUrl={row.avatarUrl} size={25} color="#111111" />
                         <span className="rd-owner-name">{row.name}</span>
                       </span>
                       <span className="rd-team-num">{row.active}</span>
@@ -1924,13 +1802,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 </section>
               )}
 
-              <section className="rd-panel">
+              <section className="rd-panel" data-tour="queue">
                 <div className="rd-panel-head">
                   <div>
                     <h2 className="rd-panel-title">{copy.queue}</h2>
                     <p className="rd-panel-sub">{copy.sub}</p>
                   </div>
-                  <div className="rd-segmented" role="group" aria-label="Queue layout">
+                  <div className="rd-segmented" role="group" aria-label="Queue layout" data-tour="view-switch">
                     <button type="button" className={`rd-segment${viewMode === 'list' ? ' active' : ''}`} aria-pressed={viewMode === 'list'} onClick={() => switchViewMode('list')}>List</button>
                     <button type="button" className={`rd-segment${viewMode === 'kanban' ? ' active' : ''}`} aria-pressed={viewMode === 'kanban'} onClick={() => switchViewMode('kanban')}>Board</button>
                   </div>
@@ -2289,8 +2167,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e5e7eb' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e8e8e8' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Test notification webhook
               </h2>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -2298,7 +2176,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </p>
             </div>
             <div style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+              <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                 Send test to
               </label>
               <select
@@ -2308,7 +2186,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 style={{
                   padding: '0.75rem 1rem',
                   borderRadius: '10px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   fontSize: '0.9375rem',
                   background: 'white',
                   cursor: testWebhookSending ? 'not-allowed' : 'pointer'
@@ -2337,7 +2215,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 </div>
               )}
             </div>
-            <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e8e8e8', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -2349,9 +2227,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 style={{
                   padding: '0.75rem 1.25rem',
                   borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   fontWeight: 600,
                   fontSize: '0.875rem',
                   cursor: testWebhookSending ? 'not-allowed' : 'pointer'
@@ -2423,7 +2301,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(28, 28, 28, 0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2447,7 +2325,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              boxShadow: '0 24px 80px rgba(28, 28, 28, 0.35)',
               overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -2455,7 +2333,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid #e8e8e8',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
@@ -2467,7 +2345,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                     fontSize: '1.25rem',
                     fontWeight: 700,
                     margin: 0,
-                    color: '#111827'
+                    color: '#1c1c1c'
                   }}
                 >
                   Return Task to Origin Department
@@ -2516,11 +2394,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <div
                 style={{
                   padding: '0.75rem 1rem',
-                  background: '#eff6ff',
+                  background: '#ffffff',
                   borderRadius: '10px',
-                  border: '1px solid #bfdbfe',
+                  border: '1px solid #dedede',
                   fontSize: '0.875rem',
-                  color: '#1d4ed8'
+                  color: '#111111'
                 }}
               >
                 <strong>Task:</strong> {returningTask.title}
@@ -2530,7 +2408,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
@@ -2550,7 +2428,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     fontSize: '0.9375rem',
                     resize: 'vertical',
                     fontFamily: 'inherit'
@@ -2562,7 +2440,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
@@ -2582,7 +2460,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     fontSize: '0.9375rem',
                     resize: 'vertical',
                     fontFamily: 'inherit'
@@ -2594,7 +2472,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid #e8e8e8',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem'
@@ -2611,9 +2489,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 style={{
                   padding: '0.75rem 1.5rem',
                   borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   fontWeight: 600,
                   fontSize: '0.875rem',
                   cursor: returning ? 'not-allowed' : 'pointer'
@@ -2659,7 +2537,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(28, 28, 28, 0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -2682,7 +2560,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              boxShadow: '0 24px 80px rgba(28, 28, 28, 0.35)',
               overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -2690,7 +2568,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid #e8e8e8',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
@@ -2702,7 +2580,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                     fontSize: '1.25rem',
                     fontWeight: 700,
                     margin: 0,
-                    color: '#111827'
+                    color: '#1c1c1c'
                   }}
                 >
                   Forward Task to Another Department
@@ -2750,11 +2628,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <div
                 style={{
                   padding: '0.75rem 1rem',
-                  background: '#eff6ff',
+                  background: '#ffffff',
                   borderRadius: '10px',
-                  border: '1px solid #bfdbfe',
+                  border: '1px solid #dedede',
                   fontSize: '0.875rem',
-                  color: '#1d4ed8'
+                  color: '#111111'
                 }}
               >
                 <strong>Task:</strong> {forwardingTask.title}
@@ -2764,7 +2642,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
@@ -2782,7 +2660,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     fontSize: '0.9375rem',
                     background: '#ffffff',
                     cursor: 'pointer'
@@ -2803,7 +2681,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
@@ -2823,7 +2701,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     fontSize: '0.9375rem',
                     resize: 'vertical',
                     fontFamily: 'inherit'
@@ -2835,7 +2713,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
@@ -2855,7 +2733,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     fontSize: '0.9375rem',
                     resize: 'vertical',
                     fontFamily: 'inherit'
@@ -2867,7 +2745,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid #e8e8e8',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem'
@@ -2883,9 +2761,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 style={{
                   padding: '0.75rem 1.5rem',
                   borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   fontWeight: 600,
                   fontSize: '0.875rem',
                   cursor: forwarding ? 'not-allowed' : 'pointer'
@@ -2955,7 +2833,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           }}>
             <div style={{
               padding: '2rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6',
+              borderBottom: '1px solid #f4f4f4',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -2963,7 +2841,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <h2 style={{
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: '#111827',
+                color: '#1c1c1c',
                 margin: 0
               }}>
                 Create New Task
@@ -2993,8 +2871,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   transition: 'all 0.2s'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#f4f4f4';
+                  e.currentTarget.style.color = '#1c1c1c';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -3012,11 +2890,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               gap: '1.5rem'
             }}>
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Project *
                 </label>
                 {canCreateTasksForAllProjects && (
-                  <div style={{ display: 'inline-flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.2rem', borderRadius: '8px', marginBottom: '0.6rem' }}>
+                  <div style={{ display: 'inline-flex', gap: '0.25rem', background: '#ffffff', padding: '0.2rem', borderRadius: '8px', marginBottom: '0.6rem' }}>
                     <button
                       type="button"
                       onClick={() => setTaskProjectScope('department')}
@@ -3025,7 +2903,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                         border: 'none',
                         borderRadius: '6px',
                         background: taskProjectScope === 'department' ? color : 'transparent',
-                        color: taskProjectScope === 'department' ? 'white' : '#4b5563',
+                        color: taskProjectScope === 'department' ? 'white' : '#575757',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         cursor: 'pointer'
@@ -3041,7 +2919,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                         border: 'none',
                         borderRadius: '6px',
                         background: taskProjectScope === 'all' ? color : 'transparent',
-                        color: taskProjectScope === 'all' ? 'white' : '#4b5563',
+                        color: taskProjectScope === 'all' ? 'white' : '#575757',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         cursor: 'pointer'
@@ -3057,7 +2935,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     background: 'white',
@@ -3079,7 +2957,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Task Title *
                 </label>
                 <input
@@ -3090,7 +2968,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem'
                   }}
@@ -3098,7 +2976,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Description
                 </label>
                 <textarea
@@ -3109,7 +2987,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     fontFamily: 'inherit',
@@ -3119,7 +2997,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Due Date
                 </label>
                 <input
@@ -3129,7 +3007,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem'
                   }}
@@ -3137,7 +3015,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Assign To
                 </label>
                 <select
@@ -3146,7 +3024,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     background: 'white',
@@ -3163,7 +3041,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
             <div style={{
               padding: '1.5rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '0.75rem'
@@ -3185,10 +3063,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   borderRadius: '8px',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   cursor: 'pointer',
                   fontWeight: 600,
                   fontSize: '0.9375rem'
@@ -3267,7 +3145,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           }}>
             <div style={{
               padding: '2rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6',
+              borderBottom: '1px solid #f4f4f4',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -3275,7 +3153,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <h2 style={{
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: '#111827',
+                color: '#1c1c1c',
                 margin: 0
               }}>
                 Edit Task
@@ -3314,7 +3192,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               gap: '1.5rem'
             }}>
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Task Title *
                 </label>
                 <input
@@ -3325,7 +3203,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem'
                   }}
@@ -3333,7 +3211,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Description
                 </label>
                 <textarea
@@ -3344,7 +3222,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     fontFamily: 'inherit',
@@ -3354,7 +3232,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Due Date
                 </label>
                 <input
@@ -3364,7 +3242,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem'
                   }}
@@ -3372,7 +3250,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem', display: 'block' }}>
                   Assign To
                 </label>
                 <select
@@ -3381,7 +3259,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     background: 'white',
@@ -3398,7 +3276,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
             <div style={{
               padding: '1.5rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '0.75rem'
@@ -3419,10 +3297,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 }}
                 style={{
                   padding: '0.75rem 1.5rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   borderRadius: '8px',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   cursor: 'pointer',
                   fontWeight: 600,
                   fontSize: '0.9375rem'
@@ -3470,7 +3348,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(28, 28, 28, 0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -3494,7 +3372,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+              boxShadow: '0 24px 80px rgba(28, 28, 28, 0.35)',
               overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -3502,7 +3380,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid #e8e8e8',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
@@ -3514,7 +3392,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                     fontSize: '1.25rem',
                     fontWeight: 700,
                     margin: 0,
-                    color: '#111827'
+                    color: '#1c1c1c'
                   }}
                 >
                   {assigningTask.assignees?.length > 0 || assigningTask.assignedToId
@@ -3564,11 +3442,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <div
                 style={{
                   padding: '0.75rem 1rem',
-                  background: '#eff6ff',
+                  background: '#ffffff',
                   borderRadius: '10px',
-                  border: '1px solid #bfdbfe',
+                  border: '1px solid #dedede',
                   fontSize: '0.875rem',
-                  color: '#1d4ed8'
+                  color: '#111111'
                 }}
               >
                 <strong>Task:</strong> {assigningTask.title}
@@ -3578,14 +3456,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 <label
                   style={{
                     fontWeight: 600,
-                    color: '#374151',
+                    color: '#444444',
                     fontSize: '0.9375rem'
                   }}
                 >
                   Assign to Team Members * (Select multiple)
                 </label>
                 <div style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   borderRadius: '10px',
                   padding: '0.75rem',
                   maxHeight: '300px',
@@ -3612,7 +3490,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                         }}
                         onMouseEnter={(e) => {
                           if (!assigning) {
-                            e.currentTarget.style.background = '#f9fafb';
+                            e.currentTarget.style.background = '#fafafa';
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -3631,7 +3509,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                             accentColor: color
                           }}
                         />
-                        <span style={{ fontSize: '0.9375rem', color: '#374151', flex: 1 }}>
+                        <span style={{ fontSize: '0.9375rem', color: '#444444', flex: 1 }}>
                           {teamMember.name} {teamMember.id === user?.id && <span style={{ color: '#6b7280' }}>(You)</span>}
                         </span>
                       </label>
@@ -3649,7 +3527,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <div
               style={{
                 padding: '1.5rem 2rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid #e8e8e8',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem'
@@ -3666,9 +3544,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                 style={{
                   padding: '0.75rem 1.5rem',
                   borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   background: 'white',
-                  color: '#374151',
+                  color: '#444444',
                   fontWeight: 600,
                   fontSize: '0.875rem',
                   cursor: assigning ? 'not-allowed' : 'pointer'

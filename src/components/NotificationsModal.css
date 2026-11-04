@@ -50,7 +50,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .header-content {
@@ -63,13 +63,13 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: #1c1c1c;
   letter-spacing: -0.02em;
 }
 
 .unread-badge {
   padding: 0.375rem 0.875rem;
-  background: #667eea;
+  background: #111111;
   color: white;
   border-radius: 12px;
   font-size: 0.8125rem;
@@ -93,8 +93,8 @@
 }
 
 .close-button:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: #f4f4f4;
+  color: #1c1c1c;
 }
 
 .notifications-modal-content {
@@ -104,7 +104,7 @@
 
 .notifications-actions {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
   display: flex;
   justify-content: flex-end;
 }
@@ -112,7 +112,7 @@
 .mark-all-read-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: #111111;
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 600;
@@ -123,7 +123,7 @@
 }
 
 .mark-all-read-btn:hover {
-  background: #f3f4f6;
+  background: #f4f4f4;
 }
 
 .notifications-list {
@@ -135,7 +135,7 @@
   display: flex;
   gap: 1rem;
   padding: 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f4f4f4;
   transition: background 0.2s ease;
   cursor: pointer;
 }
@@ -145,15 +145,15 @@
 }
 
 .notification-item:hover {
-  background: #f9fafb;
+  background: #fafafa;
 }
 
 .notification-item.unread {
-  background: #f0f4ff;
+  background: #ffffff;
 }
 
 .notification-item.unread:hover {
-  background: #eef2ff;
+  background: #f6f6f6;
 }
 
 .notification-icon-wrapper {
@@ -164,7 +164,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #f3f4f6;
+  background: #f4f4f4;
 }
 
 .notification-icon {
@@ -173,11 +173,11 @@
 }
 
 .notification-icon.task {
-  color: #3b82f6;
+  color: #111111;
 }
 
 .notification-icon.email {
-  color: #667eea;
+  color: #111111;
 }
 
 .notification-icon.alert {
@@ -201,14 +201,14 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .unread-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #667eea;
+  background: #111111;
   flex-shrink: 0;
 }
 
@@ -231,7 +231,7 @@
 
 .empty-icon {
   font-size: 3rem;
-  color: #d1d5db;
+  color: #d6d6d6;
   margin-bottom: 1rem;
 }
 
@@ -239,7 +239,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .empty-notifications p {
@@ -253,11 +253,11 @@
 }
 
 .notifications-modal-content::-webkit-scrollbar-track {
-  background: #f9fafb;
+  background: #fafafa;
 }
 
 .notifications-modal-content::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #d6d6d6;
   border-radius: 4px;
 }
 

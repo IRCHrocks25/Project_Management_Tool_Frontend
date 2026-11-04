@@ -1,12 +1,12 @@
 .profile-page {
   min-height: 100vh;
-  background: #fafbfc;
+  background: #ffffff;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .profile-header {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
   padding: 1.5rem 2rem;
 }
 
@@ -16,7 +16,7 @@
   gap: 0.5rem;
   background: none;
   border: none;
-  color: #667eea;
+  color: #111111;
   cursor: pointer;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -27,7 +27,7 @@
 }
 
 .back-button-profile:hover {
-  color: #5568d3;
+  color: #333333;
   transform: translateX(-2px);
 }
 
@@ -35,7 +35,7 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 700;
-  color: #111827;
+  color: #1c1c1c;
   letter-spacing: -0.02em;
 }
 
@@ -49,7 +49,7 @@
   background: white;
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e8e8;
   padding: 3rem;
 }
 
@@ -57,7 +57,7 @@
   text-align: center;
   margin-bottom: 3rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f4f4f4;
 }
 
 .profile-avatar-wrapper {
@@ -75,7 +75,7 @@
   width: 100px;
   height: 100px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #111111 0%, #767676 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -117,7 +117,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .profile-email {
@@ -144,27 +144,27 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: #444444;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .label-icon {
   font-size: 0.875rem;
-  color: #667eea;
+  color: #111111;
 }
 
 .form-group-profile input,
 .form-group-profile select,
 .form-group-profile textarea {
   padding: 0.875rem 1rem;
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.2s ease;
   background: white;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .form-group-profile textarea {
@@ -176,12 +176,12 @@
 .form-group-profile select:focus,
 .form-group-profile textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
 }
 
 .profile-role-readonly {
-  background: #f9fafb !important;
+  background: #ffffff !important;
   cursor: default;
   color: #6b7280;
 }
@@ -199,7 +199,7 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.875rem 1.5rem;
-  background: #667eea;
+  background: #111111;
   color: white;
   border: none;
   border-radius: 8px;
@@ -212,9 +212,9 @@
 }
 
 .btn-primary-profile:hover:not(:disabled) {
-  background: #5568d3;
+  background: #333333;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.25);
 }
 
 .btn-primary-profile:disabled {
@@ -244,7 +244,7 @@
 .profile-password-section {
   margin-top: 2.5rem;
   padding-top: 2rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #e8e8e8;
 }
 
 .profile-password-toggle {
@@ -252,8 +252,8 @@
   align-items: center;
   gap: 0.5rem;
   background: none;
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  border: 1px solid #e8e8e8;
+  color: #444444;
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-size: 0.9375rem;
@@ -264,15 +264,15 @@
 }
 
 .profile-password-toggle:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #111111;
+  color: #111111;
 }
 
 .profile-password-form h3 {
   margin: 0 0 1rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: #1c1c1c;
 }
 
 .profile-password-form .form-group-profile {
@@ -288,8 +288,8 @@
 .btn-secondary-profile {
   padding: 0.875rem 1.5rem;
   background: white;
-  color: #374151;
-  border: 1.5px solid #e5e7eb;
+  color: #444444;
+  border: 1.5px solid #e8e8e8;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
@@ -299,8 +299,8 @@
 }
 
 .btn-secondary-profile:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
+  border-color: #d6d6d6;
+  background: #fafafa;
 }
 
 @media (max-width: 768px) {

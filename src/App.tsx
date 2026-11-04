@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
-import Signup from './components/Signup';
 import RoleBasedDashboard from './components/RoleBasedDashboard';
 import PMDashboard from './components/dashboards/PMDashboard';
 import ProjectDetail from './components/ProjectDetail';
@@ -28,7 +27,7 @@ import TuesdayView from './components/tuesday/TuesdayView';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
-import FAQHelpButton from './components/FAQHelpButton';
+import AssistantWidget from './components/AssistantWidget';
 import MBTIAssessment from './components/MBTIAssessment';
 import HubRoot from './components/hub/HubRoot';
 import AllProducts from './components/hub/AllProducts';
@@ -137,10 +136,11 @@ const DepartmentBoardRoute: React.FC = () => {
   return <RoleDashboard role={mappedRole} pmPreviewMode={user?.role === 'Project Manager'} />;
 };
 
-/** Public client pages (/share/:token, /f/:token) show no app chrome. */
-const FAQHelpButtonExceptSharePage: React.FC = () => {
+/** Signed-in pages only: public client pages (/share/:token, /f/:token) show no app chrome. */
+const AssistantOnAppPages: React.FC = () => {
   const { pathname } = useLocation();
-  return pathname.startsWith('/share/') || pathname.startsWith('/f/') ? null : <FAQHelpButton />;
+  const isPublic = pathname.startsWith('/share/') || pathname.startsWith('/f/');
+  return authService.isAuthenticated() && !isPublic ? <AssistantWidget /> : null;
 };
 
 const App: React.FC = () => {
@@ -149,7 +149,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/signup" element={<Navigate to="/login" replace />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/rapid-prospect-onboarding" element={<RapidProspectOnboardingEntry />} />
         <Route
@@ -286,7 +286,7 @@ const App: React.FC = () => {
         {/* Fallback route - redirect to Home Page if route not found */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {authService.isAuthenticated() && <FAQHelpButtonExceptSharePage />}
+      <AssistantOnAppPages />
     </Router>
   );
 };

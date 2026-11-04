@@ -17,9 +17,9 @@ const css = `
 
   .dal-root {
     font-family: 'DM Sans', sans-serif;
-    background: #f5f6fa;
+    background: #ffffff;
     min-height: 100vh;
-    color: #1e293b;
+    color: #2c2c2c;
   }
 
   /* ── NAV ── */
@@ -28,28 +28,28 @@ const css = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 2rem; height: 58px;
     background: #ffffff;
-    border-bottom: 1px solid #e8ecf0;
+    border-bottom: 1px solid #ececec;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
   .dal-nav-back {
     display: flex; align-items: center; gap: 0.5rem;
-    background: transparent; border: none; color: #94a3b8;
+    background: transparent; border: none; color: #a6a6a6;
     cursor: pointer; font-family: 'DM Sans', sans-serif;
     font-size: 0.875rem; font-weight: 500;
     padding: 0.375rem 0.625rem; border-radius: 6px; transition: all 0.15s;
   }
-  .dal-nav-back:hover { background: #f1f5f9; color: #475569; }
+  .dal-nav-back:hover { background: #f5f5f5; color: #585858; }
   .dal-nav-title {
     font-size: 0.8125rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8;
+    letter-spacing: 0.08em; text-transform: uppercase; color: #a6a6a6;
   }
   .dal-nav-right { display: flex; align-items: center; gap: 0.625rem; }
   .dal-icon-btn {
-    position: relative; background: transparent; border: none; color: #94a3b8;
+    position: relative; background: transparent; border: none; color: #a6a6a6;
     cursor: pointer; width: 34px; height: 34px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
-  .dal-icon-btn:hover { background: #f1f5f9; color: #475569; }
+  .dal-icon-btn:hover { background: #f5f5f5; color: #585858; }
   .dal-badge {
     position: absolute; top: 2px; right: 2px;
     min-width: 16px; height: 16px; border-radius: 8px;
@@ -61,7 +61,7 @@ const css = `
   /* ── AVATAR DROPDOWN ── */
   .dal-avatar {
     width: 30px; height: 30px; border-radius: 8px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #111111, #111111);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.75rem; font-weight: 700; color: white;
     cursor: pointer; border: none; transition: opacity 0.15s;
@@ -69,7 +69,7 @@ const css = `
   .dal-avatar:hover { opacity: 0.85; }
   .dal-dropdown {
     position: absolute; top: calc(100% + 8px); right: 0; width: 210px;
-    background: #fff; border: 1px solid #e8ecf0; border-radius: 12px;
+    background: #fff; border: 1px solid #ececec; border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.1); z-index: 9999; overflow: hidden;
     animation: fadeDown 0.15s ease;
   }
@@ -78,22 +78,22 @@ const css = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .dal-dropdown-header {
-    padding: 0.875rem 1rem; border-bottom: 1px solid #f1f5f9;
+    padding: 0.875rem 1rem; border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: center; gap: 0.625rem;
   }
-  .dal-dropdown-name { font-size: 0.875rem; font-weight: 600; color: #1e293b; }
-  .dal-dropdown-email { font-size: 0.75rem; color: #94a3b8; margin-top: 1px; }
+  .dal-dropdown-name { font-size: 0.875rem; font-weight: 600; color: #2c2c2c; }
+  .dal-dropdown-email { font-size: 0.75rem; color: #a6a6a6; margin-top: 1px; }
   .dal-dropdown-item {
     display: flex; align-items: center; gap: 0.625rem;
     width: 100%; background: transparent; border: none;
     padding: 0.5625rem 1rem; font-family: 'DM Sans', sans-serif;
-    font-size: 0.8125rem; color: #475569; cursor: pointer;
+    font-size: 0.8125rem; color: #585858; cursor: pointer;
     transition: all 0.12s; text-align: left;
   }
-  .dal-dropdown-item:hover { background: #f8fafc; color: #1e293b; }
+  .dal-dropdown-item:hover { background: #fafafa; color: #2c2c2c; }
   .dal-dropdown-item.danger { color: #ef4444; }
   .dal-dropdown-item.danger:hover { background: #fef2f2; }
-  .dal-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+  .dal-divider { height: 1px; background: #ffffff; margin: 4px 0; }
 
   /* ── MAIN ── */
   .dal-main { max-width: 1280px; margin: 0 auto; padding: 2rem 2rem 3rem; }
@@ -104,30 +104,30 @@ const css = `
     margin-bottom: 1.75rem; gap: 1rem; flex-wrap: wrap;
   }
   .dal-page-heading {
-    font-size: 1.5rem; font-weight: 600; color: #0f172a;
+    font-size: 1.5rem; font-weight: 600; color: #1c1c1c;
     margin: 0 0 0.25rem; letter-spacing: -0.02em;
   }
-  .dal-page-sub { font-size: 0.875rem; color: #94a3b8; margin: 0; }
+  .dal-page-sub { font-size: 0.875rem; color: #a6a6a6; margin: 0; }
 
   /* ── SEARCH ── */
   .dal-search-wrap { position: relative; }
   .dal-search-wrap svg {
     position: absolute; left: 0.75rem; top: 50%;
-    transform: translateY(-50%); color: #cbd5e1; font-size: 0.75rem; pointer-events: none;
+    transform: translateY(-50%); color: #d6d6d6; font-size: 0.75rem; pointer-events: none;
   }
   .dal-search {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
-    color: #1e293b; font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+    background: #fff; border: 1px solid #e9e9e9; border-radius: 8px;
+    color: #2c2c2c; font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
     padding: 0.5rem 0.875rem 0.5rem 2.125rem; width: 210px;
     transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
-  .dal-search::placeholder { color: #cbd5e1; }
-  .dal-search:focus { outline: none; border-color: #6366f1; width: 250px; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  .dal-search::placeholder { color: #d6d6d6; }
+  .dal-search:focus { outline: none; border-color: #111111; width: 250px; box-shadow: 0 0 0 3px rgba(17, 17, 17,0.08); }
 
   /* ── STATS ── */
   .dal-stats {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 1px; background: #e8ecf0; border: 1px solid #e8ecf0;
+    gap: 1px; background: #ececec; border: 1px solid #ececec;
     border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
@@ -137,18 +137,18 @@ const css = `
   }
   .dal-stat-label {
     font-size: 0.6875rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.07em; color: #a6a6a6;
   }
   .dal-stat-value {
     font-family: 'DM Mono', monospace; font-size: 1.5rem;
-    font-weight: 500; color: #0f172a; line-height: 1;
+    font-weight: 500; color: #1c1c1c; line-height: 1;
   }
   .dal-stat-dot { width: 6px; height: 6px; border-radius: 50%; margin-bottom: 0.125rem; }
 
   /* ── TABS ── */
   .dal-tabs-row {
     display: flex; align-items: stretch;
-    background: #fff; border: 1px solid #e2e8f0;
+    background: #fff; border: 1px solid #e9e9e9;
     border-radius: 12px 12px 0 0; overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
@@ -157,33 +157,33 @@ const css = `
     background: transparent; border: none;
     padding: 0.875rem 1.25rem;
     font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
-    color: #94a3b8; cursor: pointer;
-    border-right: 1px solid #f1f5f9;
+    color: #a6a6a6; cursor: pointer;
+    border-right: 1px solid #f5f5f5;
     transition: all 0.15s; position: relative;
     justify-content: center; white-space: nowrap;
   }
   .dal-tab:last-child { border-right: none; }
-  .dal-tab:hover { background: #f8fafc; color: #475569; }
-  .dal-tab.active { color: #1e293b; font-weight: 600; background: #fff; }
+  .dal-tab:hover { background: #fafafa; color: #585858; }
+  .dal-tab.active { color: #2c2c2c; font-weight: 600; background: #fff; }
   .dal-tab.active::after {
     content: ''; position: absolute; bottom: 0; left: 0; right: 0;
     height: 2.5px; border-radius: 2px 2px 0 0;
-    background: var(--tab-color, #6366f1);
+    background: var(--tab-color, #111111);
   }
   .dal-tab-count {
     font-family: 'DM Mono', monospace; font-size: 0.6875rem;
     padding: 0.125rem 0.4375rem; border-radius: 20px;
-    background: #f1f5f9; color: #94a3b8; font-weight: 500; transition: all 0.15s;
+    background: #f5f5f5; color: #a6a6a6; font-weight: 500; transition: all 0.15s;
   }
   .dal-tab.active .dal-tab-count {
-    background: var(--tab-bg, #eef2ff);
-    color: var(--tab-color, #6366f1);
+    background: var(--tab-bg, #f6f6f6);
+    color: var(--tab-color, #111111);
   }
   .dal-tab-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
   /* ── TAB PANEL ── */
   .dal-tab-panel {
-    background: #fff; border: 1px solid #e2e8f0; border-top: none;
+    background: #fff; border: 1px solid #e9e9e9; border-top: none;
     border-radius: 0 0 12px 12px; overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-height: 300px;
     animation: fadeTab 0.18s ease;
@@ -197,23 +197,23 @@ const css = `
   .dal-tasks-scroll { max-height: 560px; overflow-y: auto; }
   .dal-tasks-scroll::-webkit-scrollbar { width: 4px; }
   .dal-tasks-scroll::-webkit-scrollbar-track { background: transparent; }
-  .dal-tasks-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+  .dal-tasks-scroll::-webkit-scrollbar-thumb { background: #e9e9e9; border-radius: 2px; }
 
   .dal-task {
-    padding: 1rem 1.5rem; border-bottom: 1px solid #f8fafc;
+    padding: 1rem 1.5rem; border-bottom: 1px solid #fafafa;
     display: grid; grid-template-columns: 1fr auto;
     gap: 1.25rem; align-items: center; transition: background 0.1s;
   }
   .dal-task:last-child { border-bottom: none; }
-  .dal-task:hover { background: #fafbfc; }
+  .dal-task:hover { background: #fbfbfb; }
 
   .dal-task-title {
-    font-size: 0.9375rem; font-weight: 500; color: #1e293b;
+    font-size: 0.9375rem; font-weight: 500; color: #2c2c2c;
     margin-bottom: 0.375rem; line-height: 1.35;
   }
   .dal-task-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-  .dal-task-project { font-size: 0.8125rem; color: #94a3b8; }
-  .dal-task-sep { color: #e2e8f0; font-size: 0.75rem; }
+  .dal-task-project { font-size: 0.8125rem; color: #a6a6a6; }
+  .dal-task-sep { color: #e9e9e9; font-size: 0.75rem; }
 
   .dal-chip {
     display: inline-flex; align-items: center;
@@ -228,34 +228,34 @@ const css = `
   }
   .dal-task-time {
     font-family: 'DM Mono', monospace; font-size: 0.6875rem;
-    color: #cbd5e1; white-space: nowrap;
+    color: #d6d6d6; white-space: nowrap;
   }
   .dal-user-btn {
     background: transparent; border: none; cursor: pointer;
     display: flex; align-items: center; gap: 0.375rem;
     padding: 0.25rem 0.5rem; border-radius: 20px; transition: background 0.12s;
   }
-  .dal-user-btn:hover { background: #f1f5f9; }
+  .dal-user-btn:hover { background: #f5f5f5; }
   .dal-user-mini {
     width: 20px; height: 20px; border-radius: 5px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #111111, #111111);
     display: flex; align-items: center; justify-content: center;
     font-size: 0.5625rem; font-weight: 700; color: white; flex-shrink: 0;
   }
-  .dal-user-name { font-size: 0.8125rem; font-weight: 500; color: #6366f1; }
+  .dal-user-name { font-size: 0.8125rem; font-weight: 500; color: #111111; }
 
   /* ── EMPTY ── */
   .dal-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 4rem 2rem; text-align: center; color: #cbd5e1;
+    padding: 4rem 2rem; text-align: center; color: #d6d6d6;
   }
   .dal-empty-icon { font-size: 2.25rem; margin-bottom: 1rem; opacity: 0.4; }
-  .dal-empty-head { font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.375rem; }
+  .dal-empty-head { font-size: 1rem; font-weight: 600; color: #a6a6a6; margin-bottom: 0.375rem; }
   .dal-empty-sub { font-size: 0.875rem; }
 
   /* ── USER PANEL ── */
   .dal-overlay {
-    position: fixed; inset: 0; background: rgba(15,23,42,0.4); z-index: 10001;
+    position: fixed; inset: 0; background: rgba(28, 28, 28,0.4); z-index: 10001;
     display: flex; align-items: stretch; justify-content: flex-end;
     animation: fadein 0.2s ease;
   }
@@ -263,7 +263,7 @@ const css = `
   .dal-panel {
     background: #fff; width: 100%; max-width: 540px; height: 100%;
     display: flex; flex-direction: column;
-    border-left: 1px solid #e8ecf0; box-shadow: -8px 0 40px rgba(0,0,0,0.08);
+    border-left: 1px solid #ececec; box-shadow: -8px 0 40px rgba(0,0,0,0.08);
     animation: slideIn 0.25s cubic-bezier(0.22,1,0.36,1);
   }
   @keyframes slideIn {
@@ -271,66 +271,66 @@ const css = `
     to   { transform: translateX(0); opacity: 1; }
   }
   .dal-panel-header {
-    padding: 1.375rem 1.75rem; border-bottom: 1px solid #f1f5f9;
+    padding: 1.375rem 1.75rem; border-bottom: 1px solid #f5f5f5;
     display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-shrink: 0;
   }
-  .dal-panel-title { font-size: 1.0625rem; font-weight: 600; color: #0f172a; margin: 0 0 0.25rem; }
-  .dal-panel-sub { font-size: 0.8125rem; color: #94a3b8; margin: 0; }
+  .dal-panel-title { font-size: 1.0625rem; font-weight: 600; color: #1c1c1c; margin: 0 0 0.25rem; }
+  .dal-panel-sub { font-size: 0.8125rem; color: #a6a6a6; margin: 0; }
   .dal-panel-close {
-    background: #f8fafc; border: 1px solid #e8ecf0; color: #94a3b8; cursor: pointer;
+    background: #ffffff; border: 1px solid #ececec; color: #a6a6a6; cursor: pointer;
     width: 30px; height: 30px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
   }
-  .dal-panel-close:hover { background: #f1f5f9; color: #475569; }
+  .dal-panel-close:hover { background: #f5f5f5; color: #585858; }
   .dal-panel-body { flex: 1; overflow-y: auto; padding: 1.375rem 1.75rem; }
   .dal-panel-body::-webkit-scrollbar { width: 4px; }
-  .dal-panel-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+  .dal-panel-body::-webkit-scrollbar-thumb { background: #e9e9e9; border-radius: 2px; }
   .dal-panel-card {
-    background: #fafbfc; border: 1px solid #f1f5f9; border-radius: 10px;
+    background: #ffffff; border: 1px solid #f5f5f5; border-radius: 10px;
     padding: 1.0625rem; margin-bottom: 0.625rem; transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .dal-panel-card:hover { border-color: #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-  .dal-panel-card-title { font-size: 0.9375rem; font-weight: 600; color: #1e293b; margin-bottom: 0.3125rem; }
-  .dal-panel-card-project { font-size: 0.8125rem; color: #94a3b8; margin-bottom: 0.625rem; }
+  .dal-panel-card:hover { border-color: #e9e9e9; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .dal-panel-card-title { font-size: 0.9375rem; font-weight: 600; color: #2c2c2c; margin-bottom: 0.3125rem; }
+  .dal-panel-card-project { font-size: 0.8125rem; color: #a6a6a6; margin-bottom: 0.625rem; }
   .dal-panel-card-chips { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .dal-panel-card-footer {
     display: flex; align-items: center; gap: 0.375rem;
-    margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;
-    font-family: 'DM Mono', monospace; font-size: 0.6875rem; color: #cbd5e1;
+    margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f5f5f5;
+    font-family: 'DM Mono', monospace; font-size: 0.6875rem; color: #d6d6d6;
   }
 
   /* ── LOADING ── */
   .dal-loading {
     display: flex; align-items: center; justify-content: center;
-    height: 100vh; background: #f5f6fa;
-    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; color: #94a3b8; gap: 0.625rem;
+    height: 100vh; background: #ffffff;
+    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; color: #a6a6a6; gap: 0.625rem;
   }
   .dal-spinner {
-    width: 16px; height: 16px; border: 2px solid #e2e8f0;
-    border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite;
+    width: 16px; height: 16px; border: 2px solid #e9e9e9;
+    border-top-color: #111111; border-radius: 50%; animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .dal-no-results {
-    padding: 2.5rem 1.5rem; text-align: center; font-size: 0.875rem; color: #94a3b8;
+    padding: 2.5rem 1.5rem; text-align: center; font-size: 0.875rem; color: #a6a6a6;
   }
 `;
 
 const DEPT_CONFIG: Record<string, { color: string; bg: string }> = {
-  'Onboarding':      { color: '#7c3aed', bg: '#f5f3ff' },
-  'Copy Writing':    { color: '#6366f1', bg: '#eef2ff' },
+  'Onboarding':      { color: '#111111', bg: '#f9f9f9' },
+  'Copy Writing':    { color: '#111111', bg: '#f6f6f6' },
   'Design':          { color: '#d97706', bg: '#fffbeb' },
   'Development':     { color: '#059669', bg: '#ecfdf5' },
   'AI Team':         { color: '#ec4899', bg: '#fdf2f8' },
   'Social Media Team': { color: '#06b6d4', bg: '#ecfeff' },
-  'CRM':             { color: '#8b5cf6', bg: '#f5f3ff' },
+  'CRM':             { color: '#111111', bg: '#f9f9f9' },
   'SEO/GEO Team':    { color: '#14b8a6', bg: '#f0fdfa' },
 };
 
 const statusStyle = (s: string) => {
   if (s === 'Completed')   return { background: '#ecfdf5', color: '#059669' };
-  if (s === 'In Progress') return { background: '#eff6ff', color: '#2563eb' };
-  return                          { background: '#f8fafc',  color: '#64748b' };
+  if (s === 'In Progress') return { background: '#ffffff', color: '#111111' };
+  return                          { background: '#ffffff',  color: '#787878' };
 };
 
 const fmt = (d: Date) =>
@@ -555,8 +555,8 @@ const DepartmentActivityLog: React.FC = () => {
           {/* Stat strip */}
           <div className="dal-stats">
             {[
-              { label: 'Total Tasks', value: totalTasks,      dot: '#6366f1' },
-              { label: 'In Progress', value: inProgressTasks, dot: '#2563eb' },
+              { label: 'Total Tasks', value: totalTasks,      dot: '#111111' },
+              { label: 'In Progress', value: inProgressTasks, dot: '#111111' },
               { label: 'Completed',   value: completedTasks,  dot: '#059669' },
               { label: 'Departments', value: depts.length,    dot: '#d97706' },
             ].map(s => (
@@ -571,7 +571,7 @@ const DepartmentActivityLog: React.FC = () => {
           {/* Empty */}
           {depts.length === 0 ? (
             <div className="dal-empty" style={{
-              background: '#fff', border: '1px solid #e2e8f0',
+              background: '#fff', border: '1px solid #e9e9e9',
               borderRadius: 12, padding: '5rem 2rem'
             }}>
               <div className="dal-empty-icon"><FaUsers /></div>
@@ -583,7 +583,7 @@ const DepartmentActivityLog: React.FC = () => {
               {/* Tabs */}
               <div className="dal-tabs-row">
                 {depts.map(dept => {
-                  const cfg    = DEPT_CONFIG[dept] || { color: '#64748b', bg: '#f8fafc' };
+                  const cfg    = DEPT_CONFIG[dept] || { color: '#787878', bg: '#fafafa' };
                   const count  = filteredRows(dept).length;
                   const active = dept === currentTab;
                   return (
@@ -629,7 +629,7 @@ const DepartmentActivityLog: React.FC = () => {
                               <span className="dal-user-name">{t.userName}</span>
                             </button>
                           ) : (
-                            <span style={{ fontSize: '0.8125rem', color: '#cbd5e1' }}>Unassigned</span>
+                            <span style={{ fontSize: '0.8125rem', color: '#d6d6d6' }}>Unassigned</span>
                           )}
                           <span className="dal-task-time">{fmt(t.updatedAt)}</span>
                         </div>
@@ -677,7 +677,7 @@ const DepartmentActivityLog: React.FC = () => {
                   return userTasks.map((t: any) => {
                     const deptEntry = Object.entries(DEPT_MAP).find(([, types]) => types.includes(t.type));
                     const deptName  = deptEntry ? deptEntry[0] : null;
-                    const cfg       = deptName ? DEPT_CONFIG[deptName] : { color: '#64748b', bg: '#f8fafc' };
+                    const cfg       = deptName ? DEPT_CONFIG[deptName] : { color: '#787878', bg: '#fafafa' };
                     return (
                       <div className="dal-panel-card" key={t.id}>
                         <div className="dal-panel-card-title">{t.title || 'Untitled'}</div>
@@ -706,7 +706,7 @@ const DepartmentActivityLog: React.FC = () => {
             setShowLiveChat(false);
             refreshUnreadChat();
           }}
-          accentColor="#667eea"
+          accentColor="#111111"
         />
         {/* ── NOTIFS ── */}
         <NotificationsModal

@@ -153,7 +153,7 @@ const CompletedProjects: React.FC = () => {
               }}
               title="Live Chat"
             >
-              <FaComments style={{ fontSize: '1.25rem', color: '#475569' }} />
+              <FaComments style={{ fontSize: '1.25rem', color: '#585858' }} />
               {unreadChatCount > 0 && (
                 <span
                   style={{
@@ -191,7 +191,7 @@ const CompletedProjects: React.FC = () => {
                 marginRight: '1rem'
               }}
             >
-              <FaBell style={{ fontSize: '1.25rem', color: '#475569' }} />
+              <FaBell style={{ fontSize: '1.25rem', color: '#585858' }} />
               {unreadNotifications > 0 && (
                 <span
                   style={{
@@ -409,7 +409,7 @@ const CompletedProjects: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
       <NotificationsModal
         isOpen={showNotificationsModal}

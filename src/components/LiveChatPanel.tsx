@@ -80,15 +80,15 @@ const STYLES = `
 
   .lcp-panel {
     --bg: #ffffff;
-    --surface: #f8f9fb;
-    --surface2: #f1f4f8;
-    --border: #e8ecf0;
-    --border-strong: #d0d7de;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --sent-bg: var(--accent, #2563eb);
-    --received-bg: #f1f4f8;
+    --surface: #fafafa;
+    --surface2: #f4f4f4;
+    --border: #ececec;
+    --border-strong: #d7d7d7;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --sent-bg: var(--accent, #111111);
+    --received-bg: #f4f4f4;
 
     pointer-events: all;
     font-family: 'Instrument Sans', sans-serif;
@@ -176,9 +176,9 @@ const STYLES = `
     gap: 6px;
   }
   .lcp-new-btn:hover {
-    border-color: var(--accent, #2563eb);
-    color: var(--accent, #2563eb);
-    background: rgba(37,99,235,0.05);
+    border-color: var(--accent, #111111);
+    color: var(--accent, #111111);
+    background: rgba(17, 17, 17,0.05);
   }
 
   /* Room list */
@@ -194,7 +194,7 @@ const STYLES = `
   }
   .lcp-room-item:last-child { border-bottom: none; }
   .lcp-room-item:hover { background: var(--surface2); }
-  .lcp-room-item.selected { background: white; border-right: 2px solid var(--accent, #2563eb); }
+  .lcp-room-item.selected { background: white; border-right: 2px solid var(--accent, #111111); }
   .lcp-room-name {
     font-size: 13px;
     font-weight: 600;
@@ -442,9 +442,9 @@ const STYLES = `
     border-radius: 20px;
     font-size: 11.5px;
     font-weight: 500;
-    background: var(--accent-light, #eff6ff);
-    border: 1px solid var(--accent-border, #bfdbfe);
-    color: var(--accent, #2563eb);
+    background: var(--accent-light, #f7f7f7);
+    border: 1px solid var(--accent-border, #dedede);
+    color: var(--accent, #111111);
   }
   .lcp-chip-remove {
     background: none; border: none;
@@ -475,8 +475,8 @@ const STYLES = `
     transition: border-color 0.13s, box-shadow 0.13s;
   }
   .lcp-input-row:focus-within {
-    border-color: var(--accent, #2563eb);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+    border-color: var(--accent, #111111);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.08);
   }
   .lcp-icon-btn {
     width: 28px; height: 28px;
@@ -550,7 +550,7 @@ const STYLES = `
     color: var(--text-primary);
     transition: border-color 0.12s;
   }
-  .lcp-link-input:focus { border-color: var(--accent, #2563eb); }
+  .lcp-link-input:focus { border-color: var(--accent, #111111); }
   .lcp-link-add-btn {
     padding: 6px 12px;
     border-radius: 7px;
@@ -587,7 +587,7 @@ const STYLES = `
   /* Task picker overlay */
   .lcp-picker-overlay {
     position: fixed; inset: 0;
-    background: rgba(15,25,35,0.35);
+    background: rgba(25, 25, 25,0.35);
     backdrop-filter: blur(3px);
     z-index: 1100;
     display: flex; align-items: center; justify-content: center;
@@ -597,7 +597,7 @@ const STYLES = `
     font-family: 'Instrument Sans', sans-serif;
     background: white;
     border-radius: 14px;
-    border: 1px solid var(--border, #e8ecf0);
+    border: 1px solid var(--border, #ececec);
     box-shadow: 0 24px 64px rgba(0,0,0,0.14);
     width: 420px;
     max-height: 500px;
@@ -608,24 +608,24 @@ const STYLES = `
   .lcp-picker-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--border, #e8ecf0);
+    border-bottom: 1px solid var(--border, #ececec);
     flex-shrink: 0;
   }
   .lcp-picker-title {
     font-size: 14px; font-weight: 700;
-    color: #0f1923; margin: 0;
+    color: #191919; margin: 0;
   }
   .lcp-task-list { overflow-y: auto; flex: 1; }
   .lcp-task-item {
     padding: 10px 16px;
     cursor: pointer;
-    border-bottom: 1px solid var(--border, #e8ecf0);
+    border-bottom: 1px solid var(--border, #ececec);
     transition: background 0.1s;
   }
-  .lcp-task-item:hover { background: #f8f9fb; }
+  .lcp-task-item:hover { background: #fafafa; }
   .lcp-task-item:last-child { border-bottom: none; }
-  .lcp-task-name { font-size: 13px; font-weight: 500; color: #0f1923; }
-  .lcp-task-project { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+  .lcp-task-name { font-size: 13px; font-weight: 500; color: #191919; }
+  .lcp-task-project { font-size: 11.5px; color: #a6a6a6; margin-top: 2px; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 0.8s linear infinite; }
@@ -640,7 +640,7 @@ interface LiveChatPanelProps {
   initialUserId?: string | null;
 }
 
-const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentColor = '#2563eb', initialUserId }) => {
+const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentColor = '#111111', initialUserId }) => {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -860,7 +860,7 @@ const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentCo
   // Avatar color from name hash
   const avatarColor = (name?: string) => {
     if (!name) return accentColor;
-    const colors = ['#2563eb', '#7c3aed', '#db2777', '#d97706', '#16a34a', '#0891b2'];
+    const colors = ['#111111', '#111111', '#db2777', '#d97706', '#16a34a', '#111111'];
     return colors[name.charCodeAt(0) % colors.length];
   };
 
@@ -912,8 +912,8 @@ const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentCo
               ) : rooms.length === 0 ? (
                 <div className="lcp-empty-state">
                   <div className="lcp-empty-icon">💬</div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#4a5568' }}>No conversations yet</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>Start a new chat above</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#595959' }}>No conversations yet</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#a6a6a6' }}>Start a new chat above</p>
                 </div>
               ) : (
                 <div className="lcp-room-list">
@@ -939,8 +939,8 @@ const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentCo
               {!selectedRoom ? (
                 <div className="lcp-empty-state">
                   <div className="lcp-empty-icon">💬</div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#4a5568' }}>Select a conversation</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>or start a new chat</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#595959' }}>Select a conversation</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#a6a6a6' }}>or start a new chat</p>
                 </div>
               ) : (
                 <>
@@ -1065,7 +1065,7 @@ const LiveChatPanel: React.FC<LiveChatPanelProps> = ({ isOpen, onClose, accentCo
                         disabled={sending}
                       />
                       <button className="lcp-send-btn" onClick={handleSendMessage} disabled={!hasContent || sending}
-                        style={{ background: hasContent && !sending ? accentColor : '#d1d5db' }}>
+                        style={{ background: hasContent && !sending ? accentColor : '#d6d6d6' }}>
                         {sending ? <FaSpinner className="spin" /> : <FaPaperPlane />}
                       </button>
                     </div>

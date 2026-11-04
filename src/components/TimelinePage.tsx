@@ -43,27 +43,27 @@ function groupByDate(items: TimelineItem[]): { label: string; items: TimelineIte
 /* ─── Design tokens ─────────────────────────────────── */
 const T = {
   // Surfaces
-  pageBg: '#f6f7f9',
+  pageBg: '#f8f8f8',
   surface: '#ffffff',
-  surfaceHover: '#fafbfc',
+  surfaceHover: '#fbfbfb',
   // Borders
-  border: '#eaecf0',
-  borderHover: '#d0d5dd',
+  border: '#ededed',
+  borderHover: '#d6d6d6',
   // Text
-  textPrimary: '#0f172a',
-  textSecondary: '#475569',
-  textTertiary: '#94a3b8',
+  textPrimary: '#1c1c1c',
+  textSecondary: '#585858',
+  textTertiary: '#a6a6a6',
   // Accent — indigo
-  accent: '#5b5bd6',
-  accentBg: '#eeeeff',
-  accentText: '#3b3ba0',
+  accent: '#111111',
+  accentBg: '#f6f6f6',
+  accentText: '#111111',
   // Status
   doneBg: '#ecfdf5',
   doneText: '#166534',
   convBg: '#fffbeb',
   convText: '#92400e',
   // Spine
-  spine: '#e2e8f0',
+  spine: '#e9e9e9',
 };
 
 /* ─── Inline CSS injected once ──────────────────────── */
@@ -92,7 +92,7 @@ const GLOBAL_CSS = `
     flex: 1; padding: 7px 12px; margin-bottom: 1px;
     border-left: none;
     border-radius: 0 8px 8px 0;
-    background: #fafbfc;
+    background: #fbfbfb;
     cursor: pointer;
     transition: background 0.13s;
   }
@@ -109,7 +109,7 @@ const GLOBAL_CSS = `
     transition: background 0.15s, transform 0.1s;
     letter-spacing: 0.01em;
   }
-  .tl-btn-msg:hover { background: #4a4ab8; transform: translateY(-1px); }
+  .tl-btn-msg:hover { background: #111111; transform: translateY(-1px); }
   .tl-btn-msg:active { transform: translateY(0); }
 
   .tl-back-btn {
@@ -439,7 +439,7 @@ const TS = {
   title: {
     fontSize: '13.5px',
     fontWeight: 500,
-    color: '#0f172a',
+    color: '#1c1c1c',
     lineHeight: 1.4,
     letterSpacing: '-0.05px',
   } as React.CSSProperties,
@@ -449,19 +449,19 @@ const TS = {
     gap: '5px',
     flexWrap: 'wrap',
     fontSize: '12px',
-    color: '#94a3b8',
+    color: '#a6a6a6',
     marginTop: '3px',
   } as React.CSSProperties,
   snippet: {
     fontSize: '13px',
-    color: '#475569',
+    color: '#585858',
     marginTop: '6px',
     lineHeight: 1.55,
   } as React.CSSProperties,
 };
 
 const MidDot = () => (
-  <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#cbd5e1', display: 'inline-block', flexShrink: 0 }} />
+  <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#d6d6d6', display: 'inline-block', flexShrink: 0 }} />
 );
 
 const YouPill = () => (
@@ -488,7 +488,7 @@ const StatusPill = ({ isDone, label }: { isDone: boolean; label: string }) => (
 
 /* Icon badges for each type */
 const TYPE_ICON_MAP = {
-  task: { bg: '#eeeeff', color: '#5b5bd6', path: 'M4 8h8M4 4h8M4 12h5' }, // lines
+  task: { bg: '#f6f6f6', color: '#111111', path: 'M4 8h8M4 4h8M4 12h5' }, // lines
   conv: { bg: '#fffbeb', color: '#b45309', path: 'M2 3h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-4 4V4a1 1 0 0 1 1-1z' },
   done: { bg: '#ecfdf5', color: '#16a34a', path: 'M2 8l4 4 8-8' },
 };
@@ -509,7 +509,7 @@ const TypeIcon = ({ variant }: { variant: 'task' | 'conv' | 'done' }) => {
 
 /* Spine (vertical thread line) */
 const DOT_COLORS: Record<string, { border: string; bg: string }> = {
-  task: { border: '#5b5bd6', bg: '#eeeeff' },
+  task: { border: '#111111', bg: '#f6f6f6' },
   conv: { border: '#b45309', bg: '#fffbeb' },
   done: { border: '#16a34a', bg: '#ecfdf5' },
 };
@@ -543,7 +543,7 @@ const SpineRow = ({
 const ReplySpineRow = ({ children, isLast }: { children: React.ReactNode; isLast: boolean }) => (
   <div style={{ display: 'flex', gap: 0 }}>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '22px', flexShrink: 0 }}>
-      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#cbd5e1', marginTop: '13px', flexShrink: 0 }} />
+      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#d6d6d6', marginTop: '13px', flexShrink: 0 }} />
       {!isLast && <div style={{ width: '1px', flex: 1, background: T.spine }} />}
     </div>
     {children}

@@ -11,7 +11,7 @@ interface TicketsModalProps {
 const TicketsModal: React.FC<TicketsModalProps> = ({
   isOpen,
   onClose,
-  accentColor = '#8b5cf6',
+  accentColor = '#111111',
 }) => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ const TicketsModal: React.FC<TicketsModalProps> = ({
         <div
           style={{
             padding: '1.5rem 2rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid #e8e8e8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -121,9 +121,9 @@ const TicketsModal: React.FC<TicketsModalProps> = ({
                   key={t.id}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '12px',
-                    background: t.status === 'resolved' ? '#f9fafb' : 'white',
+                    background: t.status === 'resolved' ? '#fafafa' : 'white',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
@@ -135,8 +135,8 @@ const TicketsModal: React.FC<TicketsModalProps> = ({
                             borderRadius: '6px',
                             fontSize: '0.7rem',
                             fontWeight: 600,
-                            background: t.type === 'bug' ? '#fef2f2' : '#eff6ff',
-                            color: t.type === 'bug' ? '#b91c1c' : '#1d4ed8',
+                            background: t.type === 'bug' ? '#fef2f2' : '#f7f7f7',
+                            color: t.type === 'bug' ? '#b91c1c' : '#111111',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.25rem',
@@ -150,14 +150,14 @@ const TicketsModal: React.FC<TicketsModalProps> = ({
                             borderRadius: '6px',
                             fontSize: '0.7rem',
                             fontWeight: 500,
-                            background: t.status === 'resolved' ? '#d1fae5' : t.status === 'in_progress' ? '#fef3c7' : '#f3f4f6',
-                            color: t.status === 'resolved' ? '#065f46' : t.status === 'in_progress' ? '#92400e' : '#374151',
+                            background: t.status === 'resolved' ? '#d1fae5' : t.status === 'in_progress' ? '#fef3c7' : '#f4f4f4',
+                            color: t.status === 'resolved' ? '#065f46' : t.status === 'in_progress' ? '#92400e' : '#444444',
                           }}
                         >
                           {t.status.replace('_', ' ')}
                         </span>
                       </div>
-                      <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
+                      <div style={{ fontWeight: 600, color: '#1c1c1c', marginBottom: '0.25rem' }}>
                         {t.title}
                       </div>
                       {t.description && (

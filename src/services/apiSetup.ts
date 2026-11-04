@@ -12,8 +12,8 @@ axios.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || '';
 
-    // Don't intercept 401 on auth endpoints (login/signup return 401 for bad credentials)
-    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/signup');
+    // Don't intercept 401 on auth endpoints (login returns 401 for bad credentials)
+    const isAuthEndpoint = url.includes('/auth/login');
     if (status === 401 && !isAuthEndpoint) {
       authService.logout();
       window.location.href = '/login?session=expired';

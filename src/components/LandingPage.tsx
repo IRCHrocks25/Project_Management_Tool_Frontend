@@ -6,11 +6,11 @@ const css = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --blue:        #0055FF;
-    --blue-lt:     #2d7aff;
-    --blue-dim:    rgba(0,85,255,0.12);
-    --blue-glow:   rgba(0,85,255,0.3);
-    --blue-border: rgba(0,85,255,0.45);
+    --blue:        #111111;
+    --blue-lt:     #111111;
+    --blue-dim:    rgba(17, 17, 17,0.12);
+    --blue-glow:   rgba(17, 17, 17,0.3);
+    --blue-border: rgba(17, 17, 17,0.45);
     --black:       #000;
     --off:         #070707;
     --s1:          #0e0e0e;
@@ -75,7 +75,7 @@ const css = `
     padding: .54rem 1.35rem;
     box-shadow: 0 0 20px var(--blue-glow);
   }
-  .btn-blue:hover { background: var(--blue-lt); box-shadow: 0 0 32px rgba(0,85,255,0.5); transform: translateY(-1px); }
+  .btn-blue:hover { background: var(--blue-lt); box-shadow: 0 0 32px rgba(17, 17, 17,0.5); transform: translateY(-1px); }
   .btn-lg  { padding: .82rem 2rem;   font-size: .72rem; }
   .btn-xl  { padding: .92rem 2.25rem; font-size: .74rem; }
 
@@ -111,7 +111,7 @@ const css = `
     background: linear-gradient(
       105deg,
       transparent 40%,
-      rgba(0,55,180,0.12) 100%
+      rgba(17, 17, 17,0.12) 100%
     );
   }
   /* Scan lines */
@@ -119,13 +119,13 @@ const css = `
     position: absolute; inset: 0; z-index: 3; pointer-events: none;
     background: repeating-linear-gradient(
       0deg, transparent, transparent 3px,
-      rgba(0,85,255,0.018) 3px, rgba(0,85,255,0.018) 4px
+      rgba(17, 17, 17,0.018) 3px, rgba(17, 17, 17,0.018) 4px
     );
   }
   /* Animated beam */
   .hero-beam {
     position: absolute; left: 0; right: 0; height: 1px; z-index: 4; pointer-events: none;
-    background: linear-gradient(90deg, transparent 0%, rgba(0,85,255,0.55) 40%, rgba(0,85,255,0.55) 60%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(17, 17, 17,0.55) 40%, rgba(17, 17, 17,0.55) 60%, transparent 100%);
     animation: beam 5s linear infinite;
   }
   @keyframes beam { 0%{top:58px;opacity:0} 3%{opacity:1} 97%{opacity:1} 100%{top:100%;opacity:0} }
@@ -133,7 +133,7 @@ const css = `
   /* Dot grid fading in from right */
   .hero-dots {
     position: absolute; inset: 0; z-index: 3; pointer-events: none;
-    background-image: radial-gradient(circle, rgba(0,85,255,0.22) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(17, 17, 17,0.22) 1px, transparent 1px);
     background-size: 38px 38px;
     mask-image: linear-gradient(90deg, transparent 30%, rgba(0,0,0,0.5) 60%, black 100%);
   }
@@ -167,7 +167,7 @@ const css = `
   }
   .hero-h1 .blue { color: var(--blue); font-weight: 300; }
 
-  .hero-rule { width: 40px; height: 1px; background: rgba(0,85,255,0.5); margin: 2.25rem 0; }
+  .hero-rule { width: 40px; height: 1px; background: rgba(17, 17, 17,0.5); margin: 2.25rem 0; }
 
   .hero-sub {
     font-size: 1rem; font-weight: 300; line-height: 1.75;
@@ -361,11 +361,11 @@ const css = `
   .cmsg    { display:flex; gap:.45rem; }
   .cmsg.me { flex-direction:row-reverse; }
   .cav { width:20px; height:20px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.5rem; font-weight:500; font-family:var(--mono); }
-  .cav-t{background:rgba(0,85,255,.18);color:var(--blue);}
+  .cav-t{background:rgba(17, 17, 17,.18);color:var(--blue);}
   .cav-m{background:var(--w06);color:var(--w50);}
   .cbub { max-width:80%; padding:.45rem .72rem; font-size:.75rem; font-weight:300; line-height:1.55; }
   .cmsg.them .cbub { background:var(--s2); color:var(--w80); border:1px solid var(--w06); }
-  .cmsg.me   .cbub { background:rgba(0,85,255,.12); color:var(--w80); border:1px solid var(--blue-border); }
+  .cmsg.me   .cbub { background:rgba(17, 17, 17,.12); color:var(--w80); border:1px solid var(--blue-border); }
   .ch-input { display:flex; align-items:center; gap:.4rem; padding:.78rem 1.35rem; border-top:1px solid var(--w06); background:var(--s1); }
   .chi-f { flex:1; font-family:var(--mono); font-size:.64rem; color:var(--w30); letter-spacing:.04em; }
   .chi-s { font-family:var(--mono); font-size:.58rem; color:var(--blue); letter-spacing:.06em; }
@@ -397,12 +397,12 @@ const css = `
 
   /* ── CTA ── */
   .cta { padding:130px 0; text-align:center; position:relative; overflow:hidden; border-top:1px solid var(--w06); }
-  .cta-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 50% at 50% 80%,rgba(0,85,255,.1),transparent); }
+  .cta-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 50% at 50% 80%,rgba(17, 17, 17,.1),transparent); }
   .cta-wm {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     font-family:var(--display); font-weight:200;
     font-size:clamp(6rem,16vw,18rem); color:transparent;
-    -webkit-text-stroke:1px rgba(0,85,255,.05);
+    -webkit-text-stroke:1px rgba(17, 17, 17,.05);
     letter-spacing:-.04em; pointer-events:none; white-space:nowrap; user-select:none;
   }
   .cta h2 { font-family:var(--display); font-weight:200; font-size:clamp(2.8rem,5.5vw,5.8rem); line-height:.96; letter-spacing:-.04em; color:var(--w); margin-bottom:1.1rem; position:relative; z-index:1; }
@@ -511,7 +511,6 @@ export default function KatalystLanding() {
             </ul>
             <div className="nav-right">
               <a href="/rapid-prospect-onboarding" className="btn btn-ghost">Onboarding</a>
-              <a href="/signup" className="btn btn-ghost">Sign Up</a>
               <a href="/login"  className="btn btn-blue">Log In</a>
             </div>
           </div>
@@ -829,7 +828,6 @@ export default function KatalystLanding() {
               <p className="cta-sub">Every task. Every client. Every team member. One platform that actually works.</p>
               <div className="cta-acts">
                 <a href="/login"  className="btn btn-blue btn-xl">Open Dashboard →</a>
-                <a href="/signup" className="btn btn-ghost btn-lg">Create New Project</a>
               </div>
             </FU>
           </div>

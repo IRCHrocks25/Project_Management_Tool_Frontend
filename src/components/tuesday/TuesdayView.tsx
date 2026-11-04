@@ -492,24 +492,24 @@ const TuesdayView: React.FC = () => {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.5rem 0.75rem',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid #e9e9e9',
                   borderRadius: '8px',
                   background: 'white',
-                  color: '#64748b',
+                  color: '#787878',
                   fontSize: '0.875rem',
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f8fafc';
-                  e.currentTarget.style.borderColor = '#667eea';
-                  e.currentTarget.style.color = '#667eea';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.borderColor = '#111111';
+                  e.currentTarget.style.color = '#111111';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'white';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.borderColor = '#e9e9e9';
+                  e.currentTarget.style.color = '#787878';
                 }}
               >
                 ← My Department
@@ -564,15 +564,15 @@ const TuesdayView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '1.25rem',
                 transition: 'color 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#667eea';
+                e.currentTarget.style.color = '#111111';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = '#787878';
               }}
               title="Live Chat"
             >
@@ -616,15 +616,15 @@ const TuesdayView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '1.25rem',
                 transition: 'color 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#667eea';
+                e.currentTarget.style.color = '#111111';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = '#787878';
               }}
             >
               <FaBell />
@@ -1104,13 +1104,13 @@ const TuesdayView: React.FC = () => {
           setShowLiveChatPanel(false);
           refreshUnreadChat();
         }}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
 
       <SubmitTicketModal
         isOpen={showSubmitTicketModal}
         onClose={() => setShowSubmitTicketModal(false)}
-        accentColor="#667eea"
+        accentColor="#111111"
       />
 
       <NotificationsModal

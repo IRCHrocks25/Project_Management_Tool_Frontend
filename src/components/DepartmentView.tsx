@@ -1817,14 +1817,14 @@ const DepartmentView: React.FC = () => {
 
   // Department menu items with icons
   const departmentMenuItems = [
-    { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#667eea' },
+    { id: 'Copy Writing', name: 'Copy Writing', icon: FaCopy, color: '#111111' },
     { id: 'Design', name: 'Design', icon: FaPalette, color: '#f59e0b' },
     { id: 'Development', name: 'Development', icon: FaCode, color: '#10b981' },
-    { id: 'AI Team', name: 'AI Team', icon: FaRobot, color: '#8b5cf6' },
+    { id: 'AI Team', name: 'AI Team', icon: FaRobot, color: '#111111' },
     { id: 'Social Media Team', name: 'Social Media', icon: FaShareAlt, color: '#ec4899' },
     { id: 'CRM', name: 'CRM', icon: FaDatabase, color: '#06b6d4' },
     { id: 'SEO/GEO Team', name: 'SEO/GEO', icon: FaSearch, color: '#14b8a6' },
-    { id: 'Onboarding', name: 'Onboarding', icon: FaClipboardList, color: '#6366f1' },
+    { id: 'Onboarding', name: 'Onboarding', icon: FaClipboardList, color: '#111111' },
   ];
 
   if (loading) {
@@ -1835,7 +1835,7 @@ const DepartmentView: React.FC = () => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #111111 0%, #767676 100%)',
         padding: '2rem'
       }}>
         <div style={{
@@ -1887,7 +1887,7 @@ const DepartmentView: React.FC = () => {
       {/* Sidebar Menu */}
       <div style={{
         width: '280px',
-        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+        background: 'linear-gradient(180deg, #2c2c2c 0%, #1c1c1c 100%)',
         borderRight: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         flexDirection: 'column',
@@ -1902,7 +1902,7 @@ const DepartmentView: React.FC = () => {
         <div style={{
           padding: '2rem 1.5rem',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
+          background: 'linear-gradient(135deg, rgba(17, 17, 17, 0.1) 0%, rgba(118, 118, 118, 0.1) 100%)'
         }}>
           <h2 style={{
             fontSize: '1.25rem',
@@ -2030,9 +2030,9 @@ const DepartmentView: React.FC = () => {
             style={{
               width: '100%',
               padding: '0.875rem 1rem',
-              border: '1px solid rgba(102, 126, 234, 0.6)',
+              border: '1px solid rgba(17, 17, 17, 0.6)',
               borderRadius: '10px',
-              background: 'rgba(102, 126, 234, 0.15)',
+              background: 'rgba(17, 17, 17, 0.15)',
               color: 'rgba(255, 255, 255, 0.95)',
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -2044,12 +2044,12 @@ const DepartmentView: React.FC = () => {
               gap: '0.5rem'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(102, 126, 234, 0.3)';
-              e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.8)';
+              e.currentTarget.style.background = 'rgba(17, 17, 17, 0.3)';
+              e.currentTarget.style.borderColor = 'rgba(17, 17, 17, 0.8)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(102, 126, 234, 0.15)';
-              e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
+              e.currentTarget.style.background = 'rgba(17, 17, 17, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(17, 17, 17, 0.6)';
             }}
           >
             <FaStickyNote style={{ fontSize: '0.875rem' }} />
@@ -2112,14 +2112,14 @@ const DepartmentView: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', background: '#f8fafc' }}>
+      <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', background: '#ffffff' }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {(() => {
             const currentDept = departmentMenuItems.find(d => d.id === department);
             const Icon = currentDept?.icon || FaClipboardList;
-            const color = currentDept?.color || '#667eea';
+            const color = currentDept?.color || '#111111';
             
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -2136,10 +2136,10 @@ const DepartmentView: React.FC = () => {
                   <Icon style={{ fontSize: '1.5rem', color: 'white' }} />
                 </div>
                 <div>
-                  <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: '-0.02em' }}>
+                  <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c', margin: 0, letterSpacing: '-0.02em' }}>
                     {department} Department
                   </h1>
-                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#787878', margin: '0.25rem 0 0 0' }}>
                     Manage tasks and projects for this department
                   </p>
                 </div>
@@ -2152,10 +2152,10 @@ const DepartmentView: React.FC = () => {
             onClick={() => setShowExcelImportModal(true)}
             style={{
               padding: '0.75rem 1.5rem',
-              border: '1px solid #667eea',
+              border: '1px solid #111111',
               borderRadius: '0.5rem',
               background: 'white',
-              color: '#667eea',
+              color: '#111111',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -2165,7 +2165,7 @@ const DepartmentView: React.FC = () => {
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f0f4ff';
+              e.currentTarget.style.background = '#f8f8f8';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
@@ -2181,7 +2181,7 @@ const DepartmentView: React.FC = () => {
               padding: '0.75rem 1.5rem',
               border: 'none',
               borderRadius: '0.5rem',
-              background: '#667eea',
+              background: '#111111',
               color: 'white',
               cursor: 'pointer',
               display: 'flex',
@@ -2192,11 +2192,11 @@ const DepartmentView: React.FC = () => {
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#5568d3';
+              e.currentTarget.style.background = '#333333';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#667eea';
+              e.currentTarget.style.background = '#111111';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
@@ -2217,30 +2217,30 @@ const DepartmentView: React.FC = () => {
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>Projects</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{projects.length}</div>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>Projects</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>{projects.length}</div>
         </div>
         <div style={{
           background: 'white',
           padding: '1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e9e9e9'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>Active Tasks</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>{tasks.length}</div>
+          <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>Active Tasks</div>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>{tasks.length}</div>
         </div>
         <div style={{
         background: 'white',
         padding: '1.5rem',
         borderRadius: '0.5rem',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        border: '1px solid #e2e8f0'
+        border: '1px solid #e9e9e9'
         }}>
-        <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>Unassigned Tasks</div>
-        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b' }}>
+        <div style={{ fontSize: '0.875rem', color: '#787878', marginBottom: '0.5rem' }}>Unassigned Tasks</div>
+        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2c2c2c' }}>
           {tasks.filter((t: any) => {
             const assignees = t.assignees || [];
             const assigneeIds = assignees.length > 0
@@ -2259,7 +2259,7 @@ const DepartmentView: React.FC = () => {
           padding: '1rem 1.5rem',
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0',
+          border: '1px solid #e9e9e9',
           marginBottom: '2rem',
           display: 'flex',
           alignItems: 'center',
@@ -2271,7 +2271,7 @@ const DepartmentView: React.FC = () => {
               onClick={handleSelectAll}
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #e2e8f0',
+                border: '1px solid #e9e9e9',
                 borderRadius: '0.375rem',
                 background: 'white',
                 cursor: 'pointer'
@@ -2280,7 +2280,7 @@ const DepartmentView: React.FC = () => {
               {selectedTasks.size === tasks.length ? 'Deselect All' : 'Select All'}
             </button>
             {selectedTasks.size > 0 && (
-              <span style={{ color: '#64748b' }}>
+              <span style={{ color: '#787878' }}>
                 {selectedTasks.size} task(s) selected
               </span>
             )}
@@ -2292,7 +2292,7 @@ const DepartmentView: React.FC = () => {
                 onChange={(e) => setBulkAssignUserId(e.target.value)}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid #e9e9e9',
                   borderRadius: '0.375rem',
                   minWidth: '200px'
                 }}
@@ -2309,7 +2309,7 @@ const DepartmentView: React.FC = () => {
                   padding: '0.5rem 1.5rem',
                   border: 'none',
                   borderRadius: '0.375rem',
-                  background: bulkAssignUserId && !assigning ? '#667eea' : '#cbd5e1',
+                  background: bulkAssignUserId && !assigning ? '#111111' : '#d6d6d6',
                   color: 'white',
                   cursor: bulkAssignUserId && !assigning ? 'pointer' : 'not-allowed',
                   fontWeight: 500
@@ -2324,11 +2324,11 @@ const DepartmentView: React.FC = () => {
 
       {/* View Toggle + Search */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', margin: 0, flex: 1 }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#2c2c2c', margin: 0, flex: 1 }}>
           Tasks by Project
         </h2>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', background: '#ffffff', padding: '0.25rem', borderRadius: '0.5rem' }}>
             <button
               onClick={() => setViewMode('kanban')}
               style={{
@@ -2336,7 +2336,7 @@ const DepartmentView: React.FC = () => {
                 border: 'none',
                 borderRadius: '0.375rem',
                 background: viewMode === 'kanban' ? 'white' : 'transparent',
-                color: viewMode === 'kanban' ? '#1e293b' : '#64748b',
+                color: viewMode === 'kanban' ? '#2c2c2c' : '#787878',
                 cursor: 'pointer',
                 fontWeight: viewMode === 'kanban' ? 600 : 400,
                 boxShadow: viewMode === 'kanban' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
@@ -2352,7 +2352,7 @@ const DepartmentView: React.FC = () => {
                 border: 'none',
                 borderRadius: '0.375rem',
                 background: viewMode === 'list' ? 'white' : 'transparent',
-                color: viewMode === 'list' ? '#1e293b' : '#64748b',
+                color: viewMode === 'list' ? '#2c2c2c' : '#787878',
                 cursor: 'pointer',
                 fontWeight: viewMode === 'list' ? 600 : 400,
                 boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
@@ -2369,7 +2369,7 @@ const DepartmentView: React.FC = () => {
                 left: '0.75rem', 
                 top: '50%', 
                 transform: 'translateY(-50%)', 
-                color: '#94a3b8', 
+                color: '#a6a6a6', 
                 fontSize: '0.875rem' 
               }} 
             />
@@ -2381,7 +2381,7 @@ const DepartmentView: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem 0.5rem 2.25rem',
-                border: '1px solid #e2e8f0',
+                border: '1px solid #e9e9e9',
                 borderRadius: '0.375rem',
                 fontSize: '0.875rem',
                 outline: 'none'
@@ -2399,9 +2399,9 @@ const DepartmentView: React.FC = () => {
             padding: '3rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0',
+            border: '1px solid #e9e9e9',
             textAlign: 'center',
-            color: '#64748b'
+            color: '#787878'
           }}>
             No active tasks in this department
           </div>
@@ -2411,11 +2411,11 @@ const DepartmentView: React.FC = () => {
             <div style={{
               marginBottom: '1rem',
               padding: '0.75rem 1rem',
-              background: '#f0f4ff',
-              border: '1px solid #c7d2fe',
+              background: '#ffffff',
+              border: '1px solid #e2e2e2',
               borderRadius: '8px',
               fontSize: '0.875rem',
-              color: '#4c51bf',
+              color: '#111111',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem'
@@ -2464,8 +2464,8 @@ const DepartmentView: React.FC = () => {
                       maxWidth: '100%',
                       background: 'white',
                       borderRadius: '0.5rem',
-                      boxShadow: isDragOver ? '0 4px 12px rgba(102, 126, 234, 0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
-                      border: isDragOver ? '2px solid #667eea' : '2px solid #e2e8f0',
+                      boxShadow: isDragOver ? '0 4px 12px rgba(17, 17, 17, 0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
+                      border: isDragOver ? '2px solid #111111' : '2px solid #e9e9e9',
                       display: 'flex',
                       flexDirection: 'column',
                       transition: 'all 0.2s',
@@ -2731,8 +2731,8 @@ const DepartmentView: React.FC = () => {
                     <div
                       style={{
                         padding: '1rem',
-                        background: '#f8fafc',
-                        borderBottom: '1px solid #e2e8f0',
+                        background: '#ffffff',
+                        borderBottom: '1px solid #e9e9e9',
                         borderRadius: '0.5rem 0.5rem 0 0',
                         minWidth: 0,
                         width: '100%',
@@ -2742,7 +2742,7 @@ const DepartmentView: React.FC = () => {
                       <h3 style={{ 
                         fontSize: '1rem', 
                         fontWeight: 600, 
-                        color: '#1e293b', 
+                        color: '#2c2c2c', 
                         margin: '0 0 0.25rem 0',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -2758,7 +2758,7 @@ const DepartmentView: React.FC = () => {
                         flexWrap: 'wrap',
                         marginTop: '0.35rem',
                       }}>
-                        <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                        <span style={{ color: '#787878', fontSize: '0.875rem' }}>
                           {columnTasks.length} task(s)
                         </span>
                         <label style={{
@@ -2766,7 +2766,7 @@ const DepartmentView: React.FC = () => {
                           alignItems: 'center',
                           gap: '0.35rem',
                           fontSize: '0.75rem',
-                          color: '#64748b',
+                          color: '#787878',
                           fontWeight: 500,
                           margin: 0,
                           cursor: 'pointer',
@@ -2782,9 +2782,9 @@ const DepartmentView: React.FC = () => {
                             style={{
                               padding: '0.2rem 0.4rem',
                               borderRadius: '6px',
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid #e9e9e9',
                               fontSize: '0.75rem',
-                              color: '#334155',
+                              color: '#444444',
                               background: 'white',
                               cursor: 'pointer',
                               maxWidth: '140px',
@@ -2832,9 +2832,9 @@ const DepartmentView: React.FC = () => {
                           style={{
                             padding: '0.75rem',
                             marginBottom: '0.75rem',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid #e9e9e9',
                             borderRadius: '0.5rem',
-                            background: selectedTasks.has(task.id) ? '#f0f4ff' : 'white',
+                            background: selectedTasks.has(task.id) ? '#f8f8f8' : 'white',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             position: 'relative',
@@ -2860,16 +2860,16 @@ const DepartmentView: React.FC = () => {
                           }}
                           onMouseEnter={(e) => {
                             if (!selectedTasks.has(task.id)) {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.borderColor = '#667eea';
-                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.15)';
+                              e.currentTarget.style.background = '#fafafa';
+                              e.currentTarget.style.borderColor = '#111111';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(17, 17, 17, 0.15)';
                               e.currentTarget.style.transform = 'translateY(-2px)';
                             }
                           }}
                           onMouseLeave={(e) => {
                             if (!selectedTasks.has(task.id)) {
                               e.currentTarget.style.background = 'white';
-                              e.currentTarget.style.borderColor = '#e2e8f0';
+                              e.currentTarget.style.borderColor = '#e9e9e9';
                               e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
                               e.currentTarget.style.transform = 'translateY(0)';
                             }
@@ -2895,7 +2895,7 @@ const DepartmentView: React.FC = () => {
                               }}>
                                 <div style={{
                                   fontSize: '0.75rem',
-                                  color: '#667eea',
+                                  color: '#111111',
                                   fontWeight: 500
                                 }}>
                                   {projectName}
@@ -2908,7 +2908,7 @@ const DepartmentView: React.FC = () => {
                                   style={{
                                     background: 'transparent',
                                     border: 'none',
-                                    color: '#667eea',
+                                    color: '#111111',
                                     cursor: 'pointer',
                                     padding: '0.25rem',
                                     display: 'flex',
@@ -2918,12 +2918,12 @@ const DepartmentView: React.FC = () => {
                                     transition: 'all 0.2s'
                                   }}
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f0f4ff';
-                                    e.currentTarget.style.color = '#5568d3';
+                                    e.currentTarget.style.background = '#f8f8f8';
+                                    e.currentTarget.style.color = '#333333';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = '#667eea';
+                                    e.currentTarget.style.color = '#111111';
                                   }}
                                   title="Edit Task"
                                 >
@@ -2940,7 +2940,7 @@ const DepartmentView: React.FC = () => {
                                 <h4 style={{
                                   fontSize: '0.875rem',
                                   fontWeight: 600,
-                                  color: '#1e293b',
+                                  color: '#2c2c2c',
                                   margin: 0,
                                   flex: 1,
                                   minWidth: 0
@@ -2961,7 +2961,7 @@ const DepartmentView: React.FC = () => {
                               </div>
                               {task.description && (
                                 <p style={{
-                                  color: '#64748b',
+                                  color: '#787878',
                                   fontSize: '0.75rem',
                                   margin: '0 0 0.5rem 0',
                                   overflow: 'hidden',
@@ -2978,7 +2978,7 @@ const DepartmentView: React.FC = () => {
                                 alignItems: 'center',
                                 gap: '1rem',
                                 fontSize: '0.75rem',
-                                color: '#64748b',
+                                color: '#787878',
                                 marginBottom: '0.5rem'
                               }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -3050,7 +3050,7 @@ const DepartmentView: React.FC = () => {
                                 style={{
                                   width: '100%',
                                   padding: '0.375rem',
-                                  border: '1px solid #e2e8f0',
+                                  border: '1px solid #e9e9e9',
                                   borderRadius: '0.375rem',
                                   fontSize: '0.75rem',
                                   marginBottom: '0.5rem'
@@ -3070,7 +3070,7 @@ const DepartmentView: React.FC = () => {
                               }}>
                                 <label style={{
                                   fontSize: '0.7rem',
-                                  color: '#64748b',
+                                  color: '#787878',
                                   fontWeight: 500
                                 }}>
                                   Status:
@@ -3123,7 +3123,7 @@ const DepartmentView: React.FC = () => {
                                   style={{
                                     width: '100%',
                                     padding: '0.375rem',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid #e9e9e9',
                                     borderRadius: '0.375rem',
                                     fontSize: '0.75rem',
                                     background: 'white',
@@ -3170,7 +3170,7 @@ const DepartmentView: React.FC = () => {
             background: 'white',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0',
+            border: '1px solid #e9e9e9',
             overflow: 'hidden'
           }}>
             <div style={{
@@ -3184,14 +3184,14 @@ const DepartmentView: React.FC = () => {
               }}>
                 <thead>
                   <tr style={{
-                    background: '#f8fafc',
-                    borderBottom: '2px solid #e2e8f0'
+                    background: '#ffffff',
+                    borderBottom: '2px solid #e9e9e9'
                   }}>
                     <th style={{
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
@@ -3208,7 +3208,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
@@ -3219,7 +3219,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
@@ -3231,7 +3231,7 @@ const DepartmentView: React.FC = () => {
                         padding: '1rem',
                         textAlign: 'left',
                         fontWeight: 600,
-                        color: '#374151',
+                        color: '#444444',
                         fontSize: '0.75rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
@@ -3244,7 +3244,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
@@ -3255,7 +3255,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
@@ -3266,7 +3266,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
@@ -3277,7 +3277,7 @@ const DepartmentView: React.FC = () => {
                       padding: '1rem',
                       textAlign: 'left',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: '#444444',
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
@@ -3307,7 +3307,7 @@ const DepartmentView: React.FC = () => {
                           <td colSpan={department === 'CRM' ? 8 : 7} style={{
                             padding: '3rem',
                             textAlign: 'center',
-                            color: '#64748b',
+                            color: '#787878',
                             fontSize: '0.875rem'
                           }}>
                             {hasSearch ? 'No tasks match your search' : 'No active tasks in this department'}
@@ -3337,14 +3337,14 @@ const DepartmentView: React.FC = () => {
                             handleOpenTaskDetail(task);
                           }}
                           style={{
-                            background: isSelected ? '#f0f4ff' : 'white',
-                            borderBottom: '1px solid #e2e8f0',
+                            background: isSelected ? '#f8f8f8' : 'white',
+                            borderBottom: '1px solid #e9e9e9',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={(e) => {
                             if (!isSelected) {
-                              e.currentTarget.style.background = '#f8fafc';
+                              e.currentTarget.style.background = '#fafafa';
                             }
                           }}
                           onMouseLeave={(e) => {
@@ -3368,7 +3368,7 @@ const DepartmentView: React.FC = () => {
                           <td style={{ padding: '1rem' }}>
                             <div style={{
                               fontWeight: 600,
-                              color: '#1e293b',
+                              color: '#2c2c2c',
                               fontSize: '0.875rem',
                               marginBottom: '0.25rem'
                             }}>
@@ -3376,7 +3376,7 @@ const DepartmentView: React.FC = () => {
                             </div>
                             {task.description && (
                               <div style={{
-                                color: '#64748b',
+                                color: '#787878',
                                 fontSize: '0.75rem',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -3389,7 +3389,7 @@ const DepartmentView: React.FC = () => {
                           </td>
                           <td style={{ padding: '1rem' }}>
                             <div style={{
-                              color: '#667eea',
+                              color: '#111111',
                               fontWeight: 500,
                               fontSize: '0.875rem'
                             }}>
@@ -3419,13 +3419,13 @@ const DepartmentView: React.FC = () => {
                               fontSize: '0.75rem',
                               fontWeight: 500,
                               background: task.status === 'Completed' ? '#d1fae5' : 
-                                         task.status === 'In Progress' ? '#dbeafe' :
+                                         task.status === 'In Progress' ? '#ececec' :
                                          task.status === 'In Review' ? '#fef3c7' :
-                                         task.status === 'Blocked' ? '#fee2e2' : '#f3f4f6',
+                                         task.status === 'Blocked' ? '#fee2e2' : '#f4f4f4',
                               color: task.status === 'Completed' ? '#065f46' : 
-                                    task.status === 'In Progress' ? '#1e40af' :
+                                    task.status === 'In Progress' ? '#111111' :
                                     task.status === 'In Review' ? '#92400e' :
-                                    task.status === 'Blocked' ? '#991b1b' : '#374151',
+                                    task.status === 'Blocked' ? '#991b1b' : '#444444',
                               whiteSpace: 'nowrap'
                             }}>
                               {task.status}
@@ -3502,21 +3502,21 @@ const DepartmentView: React.FC = () => {
                                   onClick={(e) => e.stopPropagation()}
                                   style={{
                                     padding: '0.5rem 0.75rem',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid #e9e9e9',
                                     borderRadius: '0.375rem',
                                     fontSize: '0.875rem',
                                     background: 'white',
-                                    color: '#1e293b',
+                                    color: '#2c2c2c',
                                     cursor: 'pointer',
                                     minWidth: '150px',
                                     maxWidth: '200px'
                                   }}
                                   onFocus={(e) => {
-                                    e.target.style.borderColor = '#667eea';
-                                    e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                                    e.target.style.borderColor = '#111111';
+                                    e.target.style.boxShadow = '0 0 0 3px rgba(17, 17, 17, 0.1)';
                                   }}
                                   onBlur={(e) => {
-                                    e.target.style.borderColor = '#e2e8f0';
+                                    e.target.style.borderColor = '#e9e9e9';
                                     e.target.style.boxShadow = 'none';
                                   }}
                                 >
@@ -3534,7 +3534,7 @@ const DepartmentView: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.5rem',
-                                color: '#64748b',
+                                color: '#787878',
                                 fontSize: '0.875rem'
                               }}>
                                 <FaClock style={{ fontSize: '0.75rem' }} />
@@ -3552,8 +3552,8 @@ const DepartmentView: React.FC = () => {
                               }}
                               style={{
                                 background: 'transparent',
-                                border: '1px solid #e2e8f0',
-                                color: '#667eea',
+                                border: '1px solid #e9e9e9',
+                                color: '#111111',
                                 cursor: 'pointer',
                                 padding: '0.5rem',
                                 borderRadius: '0.375rem',
@@ -3565,14 +3565,14 @@ const DepartmentView: React.FC = () => {
                                 height: '36px'
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f0f4ff';
-                                e.currentTarget.style.borderColor = '#667eea';
-                                e.currentTarget.style.color = '#5568d3';
+                                e.currentTarget.style.background = '#f8f8f8';
+                                e.currentTarget.style.borderColor = '#111111';
+                                e.currentTarget.style.color = '#333333';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.color = '#667eea';
+                                e.currentTarget.style.borderColor = '#e9e9e9';
+                                e.currentTarget.style.color = '#111111';
                               }}
                               title="Edit Task"
                             >
@@ -3645,10 +3645,10 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '2rem 2.5rem 1.5rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6'
+              borderBottom: '1px solid #f4f4f4'
             }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+                <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#1c1c1c' }}>
                   Add New Task - {department}
                 </h2>
                 {taskTemplates.length > 0 && (
@@ -3658,8 +3658,8 @@ const DepartmentView: React.FC = () => {
                       marginTop: '0.5rem',
                       padding: '0.5rem 1rem',
                       background: 'transparent',
-                      border: '1px solid #667eea',
-                      color: '#667eea',
+                      border: '1px solid #111111',
+                      color: '#111111',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
@@ -3704,8 +3704,8 @@ const DepartmentView: React.FC = () => {
                   height: '36px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f9fafb';
-                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.color = '#1c1c1c';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'none';
@@ -3725,7 +3725,7 @@ const DepartmentView: React.FC = () => {
               flex: 1
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative' }} className="client-searchable-dropdown">
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Select Client (Project) *
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -3747,26 +3747,26 @@ const DepartmentView: React.FC = () => {
                       width: '100%',
                       padding: '1rem 1.25rem',
                       paddingRight: '3rem',
-                      border: '1.5px solid #e5e7eb',
+                      border: '1.5px solid #e8e8e8',
                       borderRadius: '10px',
                       fontSize: '1rem',
                       transition: 'all 0.2s',
                       background: '#ffffff',
-                      color: '#111827',
+                      color: '#1c1c1c',
                       fontFamily: 'inherit',
                       boxSizing: 'border-box',
                       outline: 'none'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                      e.target.style.borderColor = '#111111';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                       setShowClientDropdown(true);
                       if (!newTaskData.projectId) {
                         setClientSearchQuery('');
                       }
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#e5e7eb';
+                      e.target.style.borderColor = '#e8e8e8';
                       e.target.style.boxShadow = 'none';
                     }}
                     onKeyDown={(e) => {
@@ -3796,7 +3796,7 @@ const DepartmentView: React.FC = () => {
                         right: 0,
                         marginTop: '0.25rem',
                         background: 'white',
-                        border: '1.5px solid #e5e7eb',
+                        border: '1.5px solid #e8e8e8',
                         borderRadius: '10px',
                         boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                         maxHeight: '300px',
@@ -3809,7 +3809,7 @@ const DepartmentView: React.FC = () => {
                         <div style={{
                           padding: '1rem',
                           textAlign: 'center',
-                          color: '#64748b',
+                          color: '#787878',
                           fontSize: '0.875rem'
                         }}>
                           No clients found
@@ -3828,13 +3828,13 @@ const DepartmentView: React.FC = () => {
                             style={{
                               padding: '0.875rem 1.25rem',
                               cursor: 'pointer',
-                              borderBottom: '1px solid #f3f4f6',
+                              borderBottom: '1px solid #f4f4f4',
                               transition: 'background 0.15s',
-                              color: '#111827',
+                              color: '#1c1c1c',
                               fontSize: '0.9375rem'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f9fafb';
+                              e.currentTarget.style.background = '#fafafa';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = 'white';
@@ -3850,7 +3850,7 @@ const DepartmentView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Task Title *
                 </label>
                 <input
@@ -3861,28 +3861,28 @@ const DepartmentView: React.FC = () => {
                   placeholder="Enter task title"
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit'
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Description
                 </label>
                 <textarea
@@ -3892,12 +3892,12 @@ const DepartmentView: React.FC = () => {
                   placeholder="Enter task description"
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                     resize: 'vertical',
                     minHeight: '120px',
@@ -3905,18 +3905,18 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Due Date
                 </label>
                 <input
@@ -3925,21 +3925,21 @@ const DepartmentView: React.FC = () => {
                   onChange={(e) => setNewTaskData({ ...newTaskData, dueDate: e.target.value })}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit'
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
@@ -3947,7 +3947,7 @@ const DepartmentView: React.FC = () => {
 
               {newTaskData.projectId && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                  <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                     Associate with Deliverable (Optional)
                   </label>
                   <select
@@ -3964,12 +3964,12 @@ const DepartmentView: React.FC = () => {
                     }}
                     style={{
                       padding: '1rem 1.25rem',
-                      border: '1.5px solid #e5e7eb',
+                      border: '1.5px solid #e8e8e8',
                       borderRadius: '10px',
                       fontSize: '1rem',
                       transition: 'all 0.2s',
                       background: '#ffffff',
-                      color: '#111827',
+                      color: '#1c1c1c',
                       cursor: 'pointer',
                       appearance: 'none',
                       backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -3980,11 +3980,11 @@ const DepartmentView: React.FC = () => {
                     }}
                     onFocus={(e) => {
                       e.target.style.outline = 'none';
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                      e.target.style.borderColor = '#111111';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = '#e5e7eb';
+                      e.target.style.borderColor = '#e8e8e8';
                       e.target.style.boxShadow = 'none';
                     }}
                   >
@@ -4007,21 +4007,21 @@ const DepartmentView: React.FC = () => {
                         style={{
                           flex: 1,
                           padding: '1rem 1.25rem',
-                          border: '1.5px solid #667eea',
+                          border: '1.5px solid #111111',
                           borderRadius: '10px',
                           fontSize: '1rem',
                           transition: 'all 0.2s',
                           background: '#ffffff',
-                          color: '#111827',
+                          color: '#1c1c1c',
                           fontFamily: 'inherit'
                         }}
                         onFocus={(e) => {
                           e.target.style.outline = 'none';
-                          e.target.style.borderColor = '#667eea';
-                          e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                          e.target.style.borderColor = '#111111';
+                          e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                         }}
                         onBlur={(e) => {
-                          e.target.style.borderColor = '#667eea';
+                          e.target.style.borderColor = '#111111';
                           e.target.style.boxShadow = 'none';
                         }}
                       />
@@ -4033,8 +4033,8 @@ const DepartmentView: React.FC = () => {
                           setNewTaskData({ ...newTaskData, deliverableId: '' });
                         }}
                         style={{
-                          background: '#f3f4f6',
-                          border: '1.5px solid #e5e7eb',
+                          background: '#ffffff',
+                          border: '1.5px solid #e8e8e8',
                           color: '#6b7280',
                           cursor: 'pointer',
                           padding: '1rem',
@@ -4048,14 +4048,14 @@ const DepartmentView: React.FC = () => {
                           flexShrink: 0
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#e5e7eb';
-                          e.currentTarget.style.color = '#374151';
-                          e.currentTarget.style.borderColor = '#d1d5db';
+                          e.currentTarget.style.background = '#e8e8e8';
+                          e.currentTarget.style.color = '#444444';
+                          e.currentTarget.style.borderColor = '#d6d6d6';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#f3f4f6';
+                          e.currentTarget.style.background = '#f4f4f4';
                           e.currentTarget.style.color = '#6b7280';
-                          e.currentTarget.style.borderColor = '#e5e7eb';
+                          e.currentTarget.style.borderColor = '#e8e8e8';
                         }}
                       >
                         <FaTimes />
@@ -4066,7 +4066,7 @@ const DepartmentView: React.FC = () => {
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Assign To (Optional)
                 </label>
                 <select
@@ -4074,12 +4074,12 @@ const DepartmentView: React.FC = () => {
                   onChange={(e) => setNewTaskData({ ...newTaskData, assignedToId: e.target.value })}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -4090,11 +4090,11 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 >
@@ -4111,7 +4111,7 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'flex-end',
               alignItems: 'center',
               padding: '2rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               marginTop: 'auto',
               gap: '0.875rem'
             }}>
@@ -4136,8 +4136,8 @@ const DepartmentView: React.FC = () => {
                 disabled={creatingTask}
                 style={{
                   background: '#ffffff',
-                  color: '#374151',
-                  border: '1.5px solid #e5e7eb',
+                  color: '#444444',
+                  border: '1.5px solid #e8e8e8',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -4151,15 +4151,15 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!creatingTask) {
-                    e.currentTarget.style.background = '#f9fafb';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.background = '#fafafa';
+                    e.currentTarget.style.borderColor = '#d6d6d6';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!creatingTask) {
                     e.currentTarget.style.background = '#ffffff';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.borderColor = '#e8e8e8';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
@@ -4171,7 +4171,7 @@ const DepartmentView: React.FC = () => {
                 onClick={handleCreateTask}
                 disabled={creatingTask || !newTaskData.projectId || !newTaskData.title.trim()}
                 style={{
-                  background: creatingTask || !newTaskData.projectId || !newTaskData.title.trim() ? '#cbd5e1' : '#667eea',
+                  background: creatingTask || !newTaskData.projectId || !newTaskData.title.trim() ? '#d6d6d6' : '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
@@ -4187,14 +4187,14 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!creatingTask && newTaskData.projectId && newTaskData.title.trim()) {
-                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.background = '#333333';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 17, 17, 0.3)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!creatingTask && newTaskData.projectId && newTaskData.title.trim()) {
-                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.background = '#111111';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                   }
@@ -4251,9 +4251,9 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '2rem 2.5rem 1.5rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6'
+              borderBottom: '1px solid #f4f4f4'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Import Tasks from Excel
               </h2>
               <button 
@@ -4278,8 +4278,8 @@ const DepartmentView: React.FC = () => {
                   height: '36px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f9fafb';
-                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.color = '#1c1c1c';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'none';
@@ -4300,11 +4300,11 @@ const DepartmentView: React.FC = () => {
             }}>
               <div style={{
                 padding: '1rem',
-                background: '#f0f4ff',
-                border: '1px solid #c7d2fe',
+                background: '#ffffff',
+                border: '1px solid #e2e2e2',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
-                color: '#4c51bf'
+                color: '#111111'
               }}>
                 <strong>Instructions:</strong> Upload an Excel file with "Client" and "Status" columns. 
                 The system will match client names to existing projects and create tasks with the appropriate status.
@@ -4314,7 +4314,7 @@ const DepartmentView: React.FC = () => {
                 <label style={{ 
                   display: 'block', 
                   fontWeight: 600, 
-                  color: '#374151', 
+                  color: '#444444', 
                   fontSize: '0.9375rem',
                   marginBottom: '0.5rem'
                 }}>
@@ -4327,7 +4327,7 @@ const DepartmentView: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '0.75rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '8px',
                     fontSize: '0.9375rem',
                     cursor: 'pointer'
@@ -4357,29 +4357,29 @@ const DepartmentView: React.FC = () => {
                     alignItems: 'center',
                     marginBottom: '1rem'
                   }}>
-                    <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#1c1c1c' }}>
                       Preview ({excelPreview.length} rows)
                     </h3>
-                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#787878' }}>
                       {excelPreview.filter((r: any) => r.matched).length} matched, {excelPreview.filter((r: any) => !r.matched).length} not found
                     </div>
                   </div>
                   <div style={{
                     maxHeight: '400px',
                     overflowY: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #e8e8e8',
                     borderRadius: '8px'
                   }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Row</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Client</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Status</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Task Title</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Task Status</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Project</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Match</th>
+                        <tr style={{ background: '#ffffff', borderBottom: '2px solid #e8e8e8' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Row</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Client</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Task Title</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Task Status</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Project</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#444444' }}>Match</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4387,28 +4387,28 @@ const DepartmentView: React.FC = () => {
                           <tr 
                             key={index}
                             style={{
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid #e8e8e8',
                               background: row.matched ? 'white' : '#fef2f2'
                             }}
                           >
                             <td style={{ padding: '0.75rem', color: '#6b7280' }}>{row.rowIndex}</td>
-                            <td style={{ padding: '0.75rem', color: '#111827' }}>{row.client}</td>
-                            <td style={{ padding: '0.75rem', color: '#111827' }}>{row.status}</td>
-                            <td style={{ padding: '0.75rem', color: '#111827', fontWeight: 500 }}>
+                            <td style={{ padding: '0.75rem', color: '#1c1c1c' }}>{row.client}</td>
+                            <td style={{ padding: '0.75rem', color: '#1c1c1c' }}>{row.status}</td>
+                            <td style={{ padding: '0.75rem', color: '#1c1c1c', fontWeight: 500 }}>
                               {row.taskTitle || '-'}
                             </td>
-                            <td style={{ padding: '0.75rem', color: '#111827' }}>
+                            <td style={{ padding: '0.75rem', color: '#1c1c1c' }}>
                               <span style={{
                                 padding: '0.25rem 0.5rem',
                                 borderRadius: '4px',
-                                background: '#f3f4f6',
+                                background: '#ffffff',
                                 fontSize: '0.75rem',
                                 fontWeight: 500
                               }}>
                                 {row.taskStatus}
                               </span>
                             </td>
-                            <td style={{ padding: '0.75rem', color: '#111827' }}>
+                            <td style={{ padding: '0.75rem', color: '#1c1c1c' }}>
                               {row.project ? row.project.name : '-'}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
@@ -4432,7 +4432,7 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'flex-end',
               alignItems: 'center',
               padding: '2rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               gap: '0.875rem'
             }}>
               <button
@@ -4445,8 +4445,8 @@ const DepartmentView: React.FC = () => {
                 disabled={uploadingTasks}
                 style={{
                   background: '#ffffff',
-                  color: '#374151',
-                  border: '1.5px solid #e5e7eb',
+                  color: '#444444',
+                  border: '1.5px solid #e8e8e8',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -4471,8 +4471,8 @@ const DepartmentView: React.FC = () => {
             uploadingTasks ||
             excelPreview.length === 0 ||
             excelPreview.filter((r: any) => !!r.client).length === 0
-              ? '#cbd5e1'
-              : '#667eea',
+              ? '#d6d6d6'
+              : '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
@@ -4556,9 +4556,9 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '2rem 2.5rem 1.5rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6'
+              borderBottom: '1px solid #f4f4f4'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Task Templates
               </h2>
               <button 
@@ -4602,7 +4602,7 @@ const DepartmentView: React.FC = () => {
             }}>
               {taskTemplates.length > 0 && (
                 <div>
-                  <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#374151' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#444444' }}>
                     Existing Templates
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
@@ -4611,7 +4611,7 @@ const DepartmentView: React.FC = () => {
                         key={template.id}
                         style={{
                           padding: '1rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid #e8e8e8',
                           borderRadius: '8px',
                           display: 'flex',
                           justifyContent: 'space-between',
@@ -4619,7 +4619,7 @@ const DepartmentView: React.FC = () => {
                         }}
                       >
                         <div>
-                          <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
+                          <div style={{ fontWeight: 600, color: '#1c1c1c', marginBottom: '0.25rem' }}>
                             {template.name}
                           </div>
                           <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
@@ -4633,7 +4633,7 @@ const DepartmentView: React.FC = () => {
                           }}
                           style={{
                             padding: '0.5rem 1rem',
-                            background: '#667eea',
+                            background: '#111111',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
@@ -4650,13 +4650,13 @@ const DepartmentView: React.FC = () => {
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#374151' }}>
+              <div style={{ borderTop: '1px solid #e8e8e8', paddingTop: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#444444' }}>
                   Create New Template
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
                       Template Name *
                     </label>
                     <input
@@ -4667,14 +4667,14 @@ const DepartmentView: React.FC = () => {
                       style={{
                         width: '100%',
                         padding: '0.75rem',
-                        border: '1.5px solid #e5e7eb',
+                        border: '1.5px solid #e8e8e8',
                         borderRadius: '8px',
                         fontSize: '0.9375rem'
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
                       Task Title *
                     </label>
                     <input
@@ -4685,14 +4685,14 @@ const DepartmentView: React.FC = () => {
                       style={{
                         width: '100%',
                         padding: '0.75rem',
-                        border: '1.5px solid #e5e7eb',
+                        border: '1.5px solid #e8e8e8',
                         borderRadius: '8px',
                         fontSize: '0.9375rem'
                       }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
                       Description
                     </label>
                     <textarea
@@ -4703,7 +4703,7 @@ const DepartmentView: React.FC = () => {
                       style={{
                         width: '100%',
                         padding: '0.75rem',
-                        border: '1.5px solid #e5e7eb',
+                        border: '1.5px solid #e8e8e8',
                         borderRadius: '8px',
                         fontSize: '0.9375rem',
                         resize: 'vertical'
@@ -4711,7 +4711,7 @@ const DepartmentView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, color: '#444444', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
                       Default Status
                     </label>
                     <select
@@ -4720,7 +4720,7 @@ const DepartmentView: React.FC = () => {
                       style={{
                         width: '100%',
                         padding: '0.75rem',
-                        border: '1.5px solid #e5e7eb',
+                        border: '1.5px solid #e8e8e8',
                         borderRadius: '8px',
                         fontSize: '0.9375rem'
                       }}
@@ -4740,7 +4740,7 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'flex-end',
               alignItems: 'center',
               padding: '2rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               gap: '0.875rem'
             }}>
               <button
@@ -4757,8 +4757,8 @@ const DepartmentView: React.FC = () => {
                 }}
                 style={{
                   background: '#ffffff',
-                  color: '#374151',
-                  border: '1.5px solid #e5e7eb',
+                  color: '#444444',
+                  border: '1.5px solid #e8e8e8',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -4774,7 +4774,7 @@ const DepartmentView: React.FC = () => {
                 onClick={handleSaveTemplate}
                 disabled={!templateData.name.trim() || !templateData.title.trim()}
                 style={{
-                  background: !templateData.name.trim() || !templateData.title.trim() ? '#cbd5e1' : '#667eea',
+                  background: !templateData.name.trim() || !templateData.title.trim() ? '#d6d6d6' : '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
@@ -4848,9 +4848,9 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '2rem 2.5rem 1.5rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6'
+              borderBottom: '1px solid #f4f4f4'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Edit Task - {getProjectName(editingTask.projectId)}
               </h2>
               <button 
@@ -4883,8 +4883,8 @@ const DepartmentView: React.FC = () => {
                   height: '36px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f9fafb';
-                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.color = '#1c1c1c';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'none';
@@ -4904,7 +4904,7 @@ const DepartmentView: React.FC = () => {
               flex: 1
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Task Title *
                 </label>
                 <input
@@ -4915,28 +4915,28 @@ const DepartmentView: React.FC = () => {
                   placeholder="Enter task title"
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit'
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Description
                 </label>
                 <textarea
@@ -4946,12 +4946,12 @@ const DepartmentView: React.FC = () => {
                   placeholder="Enter task description"
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                     resize: 'vertical',
                     minHeight: '120px',
@@ -4959,18 +4959,18 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Due Date
                 </label>
                 <input
@@ -4979,28 +4979,28 @@ const DepartmentView: React.FC = () => {
                   onChange={(e) => setEditTaskData({ ...editTaskData, dueDate: e.target.value })}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit'
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Associate with Deliverable (Optional)
                 </label>
                 <select
@@ -5017,12 +5017,12 @@ const DepartmentView: React.FC = () => {
                   }}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -5033,11 +5033,11 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 >
@@ -5060,21 +5060,21 @@ const DepartmentView: React.FC = () => {
                       style={{
                         flex: 1,
                         padding: '1rem 1.25rem',
-                        border: '1.5px solid #667eea',
+                        border: '1.5px solid #111111',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         transition: 'all 0.2s',
                         background: '#ffffff',
-                        color: '#111827',
+                        color: '#1c1c1c',
                         fontFamily: 'inherit'
                       }}
                       onFocus={(e) => {
                         e.target.style.outline = 'none';
-                        e.target.style.borderColor = '#667eea';
-                        e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                        e.target.style.borderColor = '#111111';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = '#667eea';
+                        e.target.style.borderColor = '#111111';
                         e.target.style.boxShadow = 'none';
                       }}
                     />
@@ -5086,8 +5086,8 @@ const DepartmentView: React.FC = () => {
                         setEditTaskData({ ...editTaskData, deliverableId: '' });
                       }}
                       style={{
-                        background: '#f3f4f6',
-                        border: '1.5px solid #e5e7eb',
+                        background: '#ffffff',
+                        border: '1.5px solid #e8e8e8',
                         color: '#6b7280',
                         cursor: 'pointer',
                         padding: '1rem',
@@ -5101,14 +5101,14 @@ const DepartmentView: React.FC = () => {
                         flexShrink: 0
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#e5e7eb';
-                        e.currentTarget.style.color = '#374151';
-                        e.currentTarget.style.borderColor = '#d1d5db';
+                        e.currentTarget.style.background = '#e8e8e8';
+                        e.currentTarget.style.color = '#444444';
+                        e.currentTarget.style.borderColor = '#d6d6d6';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#f3f4f6';
+                        e.currentTarget.style.background = '#f4f4f4';
                         e.currentTarget.style.color = '#6b7280';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.borderColor = '#e8e8e8';
                       }}
                     >
                       <FaTimes />
@@ -5123,9 +5123,9 @@ const DepartmentView: React.FC = () => {
                 alignItems: 'center', 
                 gap: '0.75rem',
                 padding: '1rem',
-                background: '#f9fafb',
+                background: '#ffffff',
                 borderRadius: '10px',
-                border: '1px solid #e5e7eb'
+                border: '1px solid #e8e8e8'
               }}>
                 <input
                   type="checkbox"
@@ -5136,14 +5136,14 @@ const DepartmentView: React.FC = () => {
                     width: '18px',
                     height: '18px',
                     cursor: 'pointer',
-                    accentColor: '#667eea'
+                    accentColor: '#111111'
                   }}
                 />
                 <label 
                   htmlFor="markCompleteCheckbox"
                   style={{ 
                     fontWeight: 500, 
-                    color: '#374151', 
+                    color: '#444444', 
                     fontSize: '0.9375rem',
                     cursor: 'pointer',
                     userSelect: 'none'
@@ -5154,7 +5154,7 @@ const DepartmentView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Assign To (Optional)
                 </label>
                 <select
@@ -5162,12 +5162,12 @@ const DepartmentView: React.FC = () => {
                   onChange={(e) => setEditTaskData({ ...editTaskData, assignedToId: e.target.value })}
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -5178,11 +5178,11 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 >
@@ -5199,7 +5199,7 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'flex-end',
               alignItems: 'center',
               padding: '2rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               marginTop: 'auto',
               gap: '0.875rem'
             }}>
@@ -5221,8 +5221,8 @@ const DepartmentView: React.FC = () => {
                 disabled={updatingTask}
                 style={{
                   background: '#ffffff',
-                  color: '#374151',
-                  border: '1.5px solid #e5e7eb',
+                  color: '#444444',
+                  border: '1.5px solid #e8e8e8',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -5236,15 +5236,15 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!updatingTask) {
-                    e.currentTarget.style.background = '#f9fafb';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.background = '#fafafa';
+                    e.currentTarget.style.borderColor = '#d6d6d6';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!updatingTask) {
                     e.currentTarget.style.background = '#ffffff';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.borderColor = '#e8e8e8';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
@@ -5256,7 +5256,7 @@ const DepartmentView: React.FC = () => {
                 onClick={handleUpdateTask}
                 disabled={updatingTask || !editTaskData.title.trim()}
                 style={{
-                  background: updatingTask || !editTaskData.title.trim() ? '#cbd5e1' : '#667eea',
+                  background: updatingTask || !editTaskData.title.trim() ? '#d6d6d6' : '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
@@ -5272,14 +5272,14 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!updatingTask && editTaskData.title.trim()) {
-                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.background = '#333333';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 17, 17, 0.3)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!updatingTask && editTaskData.title.trim()) {
-                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.background = '#111111';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                   }
@@ -5340,9 +5340,9 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '2rem 2.5rem 1.5rem 2.5rem',
-              borderBottom: '1px solid #f3f4f6'
+              borderBottom: '1px solid #f4f4f4'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#111827' }}>
+              <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: '#1c1c1c' }}>
                 Forward Task - {getProjectName(forwardingTask.projectId)}
               </h2>
               <button 
@@ -5371,8 +5371,8 @@ const DepartmentView: React.FC = () => {
                   height: '36px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f9fafb';
-                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.color = '#1c1c1c';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'none';
@@ -5393,17 +5393,17 @@ const DepartmentView: React.FC = () => {
             }}>
               <div style={{
                 padding: '1rem',
-                background: '#f0f4ff',
-                border: '1px solid #c7d2fe',
+                background: '#ffffff',
+                border: '1px solid #e2e2e2',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
-                color: '#4c51bf'
+                color: '#111111'
               }}>
                 <strong>Task:</strong> {forwardingTask.title}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Forward to Department *
                 </label>
                 <select
@@ -5412,12 +5412,12 @@ const DepartmentView: React.FC = () => {
                   required
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     cursor: 'pointer',
                     appearance: 'none',
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")",
@@ -5428,11 +5428,11 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 >
@@ -5446,7 +5446,7 @@ const DepartmentView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Notes (Optional)
                 </label>
                 <textarea
@@ -5456,12 +5456,12 @@ const DepartmentView: React.FC = () => {
                   placeholder="Add any notes about forwarding this task..."
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                     resize: 'vertical',
                     minHeight: '120px',
@@ -5469,18 +5469,18 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontWeight: 600, color: '#374151', fontSize: '0.9375rem' }}>
+                <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
                   Links (Optional)
                 </label>
                 <textarea
@@ -5490,12 +5490,12 @@ const DepartmentView: React.FC = () => {
                   placeholder="Add any relevant links (one per line or comma-separated)..."
                   style={{
                     padding: '1rem 1.25rem',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid #e8e8e8',
                     borderRadius: '10px',
                     fontSize: '1rem',
                     transition: 'all 0.2s',
                     background: '#ffffff',
-                    color: '#111827',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                     resize: 'vertical',
                     minHeight: '90px',
@@ -5503,11 +5503,11 @@ const DepartmentView: React.FC = () => {
                   }}
                   onFocus={(e) => {
                     e.target.style.outline = 'none';
-                    e.target.style.borderColor = '#667eea';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
+                    e.target.style.borderColor = '#111111';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(17, 17, 17, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.borderColor = '#e8e8e8';
                     e.target.style.boxShadow = 'none';
                   }}
                 />
@@ -5519,7 +5519,7 @@ const DepartmentView: React.FC = () => {
               justifyContent: 'flex-end',
               alignItems: 'center',
               padding: '2rem 2.5rem',
-              borderTop: '1px solid #f3f4f6',
+              borderTop: '1px solid #f4f4f4',
               marginTop: 'auto',
               gap: '0.875rem'
             }}>
@@ -5537,8 +5537,8 @@ const DepartmentView: React.FC = () => {
                 disabled={forwarding}
                 style={{
                   background: '#ffffff',
-                  color: '#374151',
-                  border: '1.5px solid #e5e7eb',
+                  color: '#444444',
+                  border: '1.5px solid #e8e8e8',
                   padding: '0.875rem 1.75rem',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -5552,15 +5552,15 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!forwarding) {
-                    e.currentTarget.style.background = '#f9fafb';
-                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.background = '#fafafa';
+                    e.currentTarget.style.borderColor = '#d6d6d6';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!forwarding) {
                     e.currentTarget.style.background = '#ffffff';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.borderColor = '#e8e8e8';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
@@ -5572,7 +5572,7 @@ const DepartmentView: React.FC = () => {
                 onClick={handleForwardTask}
                 disabled={forwarding || !forwardData.targetDepartment}
                 style={{
-                  background: forwarding || !forwardData.targetDepartment ? '#cbd5e1' : '#667eea',
+                  background: forwarding || !forwardData.targetDepartment ? '#d6d6d6' : '#111111',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.75rem',
@@ -5588,14 +5588,14 @@ const DepartmentView: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (!forwarding && forwardData.targetDepartment) {
-                    e.currentTarget.style.background = '#5568d3';
+                    e.currentTarget.style.background = '#333333';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(17, 17, 17, 0.3)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!forwarding && forwardData.targetDepartment) {
-                    e.currentTarget.style.background = '#667eea';
+                    e.currentTarget.style.background = '#111111';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                   }
@@ -5652,16 +5652,16 @@ const DepartmentView: React.FC = () => {
             {/* Header */}
             <div style={{
               padding: '1.5rem',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid #e8e8e8',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#2c2c2c' }}>
                   Client Validation Logs
                 </h2>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#787878' }}>
                   {projectForClientValidation.clientName} - {taskForClientValidation.title}
                 </p>
               </div>
@@ -5685,10 +5685,10 @@ const DepartmentView: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#64748b',
+                  color: '#787878',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.background = '#f4f4f4';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -5701,7 +5701,7 @@ const DepartmentView: React.FC = () => {
             {/* Tabs */}
             <div style={{
               display: 'flex',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid #e8e8e8',
               padding: '0 1.5rem',
             }}>
               <button
@@ -5710,8 +5710,8 @@ const DepartmentView: React.FC = () => {
                   padding: '0.75rem 1rem',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: clientValidationTab === 'logs' ? '2px solid #667eea' : '2px solid transparent',
-                  color: clientValidationTab === 'logs' ? '#667eea' : '#64748b',
+                  borderBottom: clientValidationTab === 'logs' ? '2px solid #111111' : '2px solid transparent',
+                  color: clientValidationTab === 'logs' ? '#111111' : '#787878',
                   fontWeight: clientValidationTab === 'logs' ? 600 : 500,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
@@ -5725,8 +5725,8 @@ const DepartmentView: React.FC = () => {
                   padding: '0.75rem 1rem',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: clientValidationTab === 'new' ? '2px solid #667eea' : '2px solid transparent',
-                  color: clientValidationTab === 'new' ? '#667eea' : '#64748b',
+                  borderBottom: clientValidationTab === 'new' ? '2px solid #111111' : '2px solid transparent',
+                  color: clientValidationTab === 'new' ? '#111111' : '#787878',
                   fontWeight: clientValidationTab === 'new' ? 600 : 500,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
@@ -5745,11 +5745,11 @@ const DepartmentView: React.FC = () => {
               {clientValidationTab === 'logs' ? (
                 /* Existing Logs Tab */
                 loadingClientValidationUpdates ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#787878' }}>
                     Loading logs...
                   </div>
                 ) : clientValidationUpdates.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#787878' }}>
                     <FaEnvelope style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '1rem' }} />
                     <p>No client validation logs yet. Click "New Log" to create one.</p>
                   </div>
@@ -5759,7 +5759,7 @@ const DepartmentView: React.FC = () => {
                       <div
                         key={update.id}
                         style={{
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid #e8e8e8',
                           borderRadius: '8px',
                           padding: '1.5rem',
                           background: 'white',
@@ -5774,12 +5774,12 @@ const DepartmentView: React.FC = () => {
                         }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                              <FaUser style={{ fontSize: '0.875rem', color: '#64748b' }} />
-                              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
+                              <FaUser style={{ fontSize: '0.875rem', color: '#787878' }} />
+                              <span style={{ fontWeight: 600, color: '#2c2c2c', fontSize: '0.875rem' }}>
                                 {update.pm?.name || 'User'}
                               </span>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#787878' }}>
                               {new Date(update.emailSentAt).toLocaleString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -5794,8 +5794,8 @@ const DepartmentView: React.FC = () => {
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 500,
-                            background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#dbeafe' : '#f3f4f6',
-                            color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#1e40af' : '#374151',
+                            background: update.status === 'responded' ? '#d1fae5' : update.status === 'published' ? '#ececec' : '#f4f4f4',
+                            color: update.status === 'responded' ? '#065f46' : update.status === 'published' ? '#111111' : '#444444',
                           }}>
                             {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
                           </span>
@@ -5807,10 +5807,10 @@ const DepartmentView: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
                               <FaStickyNote style={{ color: '#f59e0b', fontSize: '0.875rem', marginTop: '0.125rem', flexShrink: 0 }} />
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.25rem' }}>
                                   Note:
                                 </div>
-                                <div style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                <div style={{ color: '#444444', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                                   {update.notes}
                                 </div>
                               </div>
@@ -5822,8 +5822,8 @@ const DepartmentView: React.FC = () => {
                         {update.links && update.links.length > 0 && (
                           <div style={{ marginBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <FaLink style={{ color: '#667eea', fontSize: '0.875rem', flexShrink: 0 }} />
-                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
+                              <FaLink style={{ color: '#111111', fontSize: '0.875rem', flexShrink: 0 }} />
+                              <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878' }}>
                                 Links:
                               </div>
                             </div>
@@ -5835,7 +5835,7 @@ const DepartmentView: React.FC = () => {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{
-                                    color: '#667eea',
+                                    color: '#111111',
                                     fontSize: '0.875rem',
                                     textDecoration: 'none',
                                     wordBreak: 'break-all',
@@ -5859,9 +5859,9 @@ const DepartmentView: React.FC = () => {
                           <div style={{
                             marginTop: '1rem',
                             paddingTop: '1rem',
-                            borderTop: '1px solid #e5e7eb',
+                            borderTop: '1px solid #e8e8e8',
                           }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.75rem' }}>
                               Comments ({clientValidationComments[update.id].length}):
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -5869,20 +5869,20 @@ const DepartmentView: React.FC = () => {
                                 <div
                                   key={comment.id}
                                   style={{
-                                    background: '#f9fafb',
+                                    background: '#ffffff',
                                     borderRadius: '6px',
                                     padding: '0.75rem',
-                                    border: '1px solid #e5e7eb',
+                                    border: '1px solid #e8e8e8',
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      <FaUser style={{ fontSize: '0.75rem', color: '#64748b' }} />
-                                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1e293b' }}>
+                                      <FaUser style={{ fontSize: '0.75rem', color: '#787878' }} />
+                                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#2c2c2c' }}>
                                         {comment.user?.name || 'User'}
                                       </span>
                                     </div>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    <span style={{ fontSize: '0.75rem', color: '#787878' }}>
                                       {new Date(comment.createdAt).toLocaleString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
@@ -5891,11 +5891,11 @@ const DepartmentView: React.FC = () => {
                                       })}
                                     </span>
                                   </div>
-                                  <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                  <div style={{ fontSize: '0.875rem', color: '#444444', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                                     {comment.text}
                                   </div>
                                   {comment.mentionedUserIds && comment.mentionedUserIds.length > 0 && (
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#667eea' }}>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#111111' }}>
                                       Mentioned: {comment.mentionedUserIds.length} user(s)
                                     </div>
                                   )}
@@ -5909,10 +5909,10 @@ const DepartmentView: React.FC = () => {
                         <div style={{
                           marginTop: '1rem',
                           paddingTop: '1rem',
-                          borderTop: '1px solid #e5e7eb',
+                          borderTop: '1px solid #e8e8e8',
                           position: 'relative',
                         }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.75rem' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#787878', marginBottom: '0.75rem' }}>
                             Add Comment (use @ to mention users):
                           </div>
                           <textarea
@@ -5926,7 +5926,7 @@ const DepartmentView: React.FC = () => {
                               width: '100%',
                               minHeight: '80px',
                               padding: '0.75rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid #d6d6d6',
                               borderRadius: '6px',
                               fontSize: '0.875rem',
                               fontFamily: 'inherit',
@@ -5938,7 +5938,7 @@ const DepartmentView: React.FC = () => {
                             <div style={{
                               position: 'absolute',
                               background: 'white',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid #d6d6d6',
                               borderRadius: '6px',
                               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                               maxHeight: '200px',
@@ -5951,7 +5951,7 @@ const DepartmentView: React.FC = () => {
                               minWidth: '200px',
                             }}>
                               {users.length === 0 ? (
-                                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#787878' }}>
                                   Loading users...
                                 </div>
                               ) : (
@@ -5980,7 +5980,7 @@ const DepartmentView: React.FC = () => {
                                     fontSize: '0.875rem',
                                   }}
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f3f4f6';
+                                    e.currentTarget.style.background = '#f4f4f4';
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'white';
@@ -5996,7 +5996,7 @@ const DepartmentView: React.FC = () => {
                             onClick={() => handleAddClientValidationComment(update.id)}
                             disabled={!clientValidationCommentTexts[update.id]?.trim() || submittingClientValidationComment[update.id]}
                             style={{
-                              background: submittingClientValidationComment[update.id] ? '#9ca3af' : '#667eea',
+                              background: submittingClientValidationComment[update.id] ? '#9ca3af' : '#111111',
                               border: 'none',
                               color: 'white',
                               padding: '0.5rem 1rem',
@@ -6021,7 +6021,7 @@ const DepartmentView: React.FC = () => {
                   display: 'block', 
                   marginBottom: '0.5rem', 
                   fontWeight: 500, 
-                  color: '#1e293b',
+                  color: '#2c2c2c',
                   fontSize: '0.875rem'
                 }}>
                   <FaStickyNote style={{ marginRight: '0.5rem', color: '#f59e0b', display: 'inline' }} />
@@ -6035,7 +6035,7 @@ const DepartmentView: React.FC = () => {
                     width: '100%',
                     minHeight: '150px',
                     padding: '0.75rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #d6d6d6',
                     borderRadius: '8px',
                     fontSize: '0.875rem',
                     fontFamily: 'inherit',
@@ -6054,19 +6054,19 @@ const DepartmentView: React.FC = () => {
                 }}>
                   <label style={{ 
                     fontWeight: 500, 
-                    color: '#1e293b',
+                    color: '#2c2c2c',
                     fontSize: '0.875rem',
                     margin: 0
                   }}>
-                    <FaLink style={{ marginRight: '0.5rem', color: '#667eea', display: 'inline' }} />
+                    <FaLink style={{ marginRight: '0.5rem', color: '#111111', display: 'inline' }} />
                     Links (Optional)
                   </label>
                   <button
                     type="button"
                     onClick={addClientValidationLink}
                     style={{
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: '#ffffff',
+                      border: '1px solid #d6d6d6',
                       padding: '0.375rem 0.75rem',
                       borderRadius: '6px',
                       fontSize: '0.75rem',
@@ -6074,14 +6074,14 @@ const DepartmentView: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.25rem',
-                      color: '#374151',
+                      color: '#444444',
                       fontWeight: 500,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e5e7eb';
+                      e.currentTarget.style.background = '#e8e8e8';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f3f4f6';
+                      e.currentTarget.style.background = '#f4f4f4';
                     }}
                   >
                     <FaPlus style={{ fontSize: '0.625rem' }} /> Add Link
@@ -6102,7 +6102,7 @@ const DepartmentView: React.FC = () => {
                       style={{
                         flex: 1,
                         padding: '0.75rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid #d6d6d6',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontFamily: 'inherit',
@@ -6138,7 +6138,7 @@ const DepartmentView: React.FC = () => {
                 ))}
                 <p style={{ 
                   fontSize: '0.75rem', 
-                  color: '#64748b', 
+                  color: '#787878', 
                   marginTop: '0.5rem',
                   marginBottom: 0
                 }}>
@@ -6153,7 +6153,7 @@ const DepartmentView: React.FC = () => {
             {clientValidationTab === 'new' && (
               <div style={{
                 padding: '1.5rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid #e8e8e8',
                 display: 'flex',
                 gap: '0.75rem',
                 justifyContent: 'flex-end',
@@ -6165,9 +6165,9 @@ const DepartmentView: React.FC = () => {
                     setClientValidationLinks(['']);
                   }}
                   style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    color: '#374151',
+                    background: '#ffffff',
+                    border: '1px solid #d6d6d6',
+                    color: '#444444',
                     padding: '0.625rem 1.25rem',
                     borderRadius: '8px',
                     fontSize: '0.875rem',
@@ -6175,10 +6175,10 @@ const DepartmentView: React.FC = () => {
                     cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#e5e7eb';
+                    e.currentTarget.style.background = '#e8e8e8';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#f3f4f6';
+                    e.currentTarget.style.background = '#f4f4f4';
                   }}
                 >
                   Cancel
@@ -6187,7 +6187,7 @@ const DepartmentView: React.FC = () => {
                   onClick={handleClientValidationLogSubmit}
                   disabled={loggingClientValidation}
                   style={{
-                    background: loggingClientValidation ? '#9ca3af' : '#667eea',
+                    background: loggingClientValidation ? '#9ca3af' : '#111111',
                     border: 'none',
                     color: 'white',
                     padding: '0.625rem 1.25rem',
@@ -6201,12 +6201,12 @@ const DepartmentView: React.FC = () => {
                   }}
                   onMouseEnter={(e) => {
                     if (!loggingClientValidation) {
-                      e.currentTarget.style.background = '#5568d3';
+                      e.currentTarget.style.background = '#333333';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!loggingClientValidation) {
-                      e.currentTarget.style.background = '#667eea';
+                      e.currentTarget.style.background = '#111111';
                     }
                   }}
                 >
@@ -6323,7 +6323,7 @@ const DepartmentView: React.FC = () => {
               <p style={{
                 margin: 0,
                 fontSize: '1rem',
-                color: '#374151',
+                color: '#444444',
                 lineHeight: '1.6'
               }}>
                 {notificationMessage}

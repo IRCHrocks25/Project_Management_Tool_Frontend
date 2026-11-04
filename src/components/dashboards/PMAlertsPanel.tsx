@@ -167,9 +167,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
         margin: '0 2rem 1rem',
         borderRadius: '16px',
         background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        border: '1px solid #e9e9e9',
         boxShadow:
-          '0 1px 3px rgba(15, 23, 42, 0.04), 0 10px 30px -12px rgba(220, 38, 38, 0.22)',
+          '0 1px 3px rgba(28, 28, 28, 0.04), 0 10px 30px -12px rgba(220, 38, 38, 0.22)',
         overflow: 'hidden',
         position: 'relative',
         fontFamily:
@@ -199,10 +199,10 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
         }
         .pm-alert-item:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 18px -8px rgba(15, 23, 42, 0.25) !important;
+          box-shadow: 0 6px 18px -8px rgba(28, 28, 28, 0.25) !important;
         }
         .pm-ghost-btn:hover {
-          background: #f1f5f9 !important;
+          background: #f5f5f5 !important;
         }
       `}</style>
 
@@ -223,7 +223,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
           justifyContent: 'space-between',
           gap: '1rem',
           padding: '1rem 1.25rem 0.85rem',
-          borderBottom: '1px solid #f1f5f9',
+          borderBottom: '1px solid #f5f5f5',
           flexWrap: 'wrap',
         }}
       >
@@ -270,7 +270,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               style={{
                 fontSize: '0.95rem',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: '#1c1c1c',
                 letterSpacing: '-0.01em',
                 lineHeight: 1.1,
               }}
@@ -280,7 +280,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             <div
               style={{
                 fontSize: '0.74rem',
-                color: '#64748b',
+                color: '#787878',
                 marginTop: '2px',
                 fontWeight: 500,
               }}
@@ -345,8 +345,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
           display: 'flex',
           gap: '0',
           padding: '0 1.25rem',
-          borderBottom: '1px solid #f1f5f9',
-          background: '#fafbfc',
+          borderBottom: '1px solid #f5f5f5',
+          background: '#ffffff',
         }}
       >
         <button
@@ -355,7 +355,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
           style={{
             border: 'none',
             background: 'transparent',
-            color: alertsTab === 'due' ? '#0f172a' : '#64748b',
+            color: alertsTab === 'due' ? '#1c1c1c' : '#787878',
             padding: '0.7rem 0.1rem',
             marginRight: '1.4rem',
             fontSize: '0.82rem',
@@ -376,8 +376,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             style={{
               fontSize: '0.68rem',
               fontWeight: 800,
-              background: alertsTab === 'due' ? '#dc2626' : '#e2e8f0',
-              color: alertsTab === 'due' ? '#fff' : '#475569',
+              background: alertsTab === 'due' ? '#dc2626' : '#e9e9e9',
+              color: alertsTab === 'due' ? '#fff' : '#585858',
               borderRadius: '999px',
               padding: '0.1rem 0.45rem',
               minWidth: '18px',
@@ -394,7 +394,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
           style={{
             border: 'none',
             background: 'transparent',
-            color: alertsTab === 'overdue' ? '#0f172a' : '#64748b',
+            color: alertsTab === 'overdue' ? '#1c1c1c' : '#787878',
             padding: '0.7rem 0.1rem',
             marginRight: '1.4rem',
             fontSize: '0.82rem',
@@ -415,8 +415,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             style={{
               fontSize: '0.68rem',
               fontWeight: 800,
-              background: alertsTab === 'overdue' ? '#dc2626' : '#e2e8f0',
-              color: alertsTab === 'overdue' ? '#fff' : '#475569',
+              background: alertsTab === 'overdue' ? '#dc2626' : '#e9e9e9',
+              color: alertsTab === 'overdue' ? '#fff' : '#585858',
               borderRadius: '999px',
               padding: '0.1rem 0.45rem',
               minWidth: '18px',
@@ -434,7 +434,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
             style={{
               border: 'none',
               background: 'transparent',
-              color: alertsTab === 'monthly' ? '#0f172a' : '#64748b',
+              color: alertsTab === 'monthly' ? '#1c1c1c' : '#787878',
               padding: '0.7rem 0.1rem',
               fontSize: '0.82rem',
               fontWeight: 700,
@@ -443,7 +443,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               alignItems: 'center',
               gap: '0.45rem',
               borderBottom:
-                alertsTab === 'monthly' ? '2px solid #2563eb' : '2px solid transparent',
+                alertsTab === 'monthly' ? '2px solid #111111' : '2px solid transparent',
               marginBottom: '-1px',
               transition: 'color 0.15s ease',
             }}
@@ -454,8 +454,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               style={{
                 fontSize: '0.68rem',
                 fontWeight: 800,
-                background: alertsTab === 'monthly' ? '#2563eb' : '#e2e8f0',
-                color: alertsTab === 'monthly' ? '#fff' : '#475569',
+                background: alertsTab === 'monthly' ? '#111111' : '#e9e9e9',
+                color: alertsTab === 'monthly' ? '#fff' : '#585858',
                 borderRadius: '999px',
                 padding: '0.1rem 0.45rem',
                 minWidth: '18px',
@@ -476,7 +476,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               style={{
                 textAlign: 'center',
                 padding: '1.5rem 1rem',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '0.85rem',
                 fontWeight: 500,
               }}
@@ -494,7 +494,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   flexWrap: 'wrap',
                   gap: '0.65rem 1rem',
                   fontSize: '0.7rem',
-                  color: '#64748b',
+                  color: '#787878',
                   marginBottom: '0.75rem',
                   fontWeight: 600,
                   letterSpacing: '0.02em',
@@ -525,17 +525,17 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   </span>
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#475569' }}>Sort</span>
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#585858' }}>Sort</span>
                   <select
                     value={dueSort}
                     onChange={(e) => setDueSort(e.target.value as typeof dueSort)}
                     style={{
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid #d6d6d6',
                       borderRadius: 6,
                       padding: '0.2rem 0.45rem',
                       fontSize: '0.72rem',
                       fontWeight: 700,
-                      color: '#334155',
+                      color: '#444444',
                       background: '#fff',
                       fontFamily: 'inherit',
                     }}
@@ -582,7 +582,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           textAlign: 'left',
                           transition:
                             'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-                          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                          boxShadow: '0 1px 2px rgba(28, 28, 28, 0.04)',
                           fontFamily: 'inherit',
                         }}
                       >
@@ -631,7 +631,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             style={{
                               fontSize: '0.82rem',
                               fontWeight: 700,
-                              color: '#0f172a',
+                              color: '#1c1c1c',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
@@ -643,7 +643,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           <div
                             style={{
                               fontSize: '0.72rem',
-                              color: '#64748b',
+                              color: '#787878',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
@@ -662,9 +662,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                                     alignItems: 'center',
                                     fontSize: '0.65rem',
                                     fontWeight: 700,
-                                    color: '#1e3a8a',
-                                    background: '#eff6ff',
-                                    border: '1px solid #bfdbfe',
+                                    color: '#111111',
+                                    background: '#ffffff',
+                                    border: '1px solid #dedede',
                                     borderRadius: '999px',
                                     padding: '0.08rem 0.38rem',
                                     textTransform: 'uppercase',
@@ -681,9 +681,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                                     alignItems: 'center',
                                     fontSize: '0.65rem',
                                     fontWeight: 700,
-                                    color: '#475569',
-                                    background: '#f8fafc',
-                                    border: '1px solid #e2e8f0',
+                                    color: '#585858',
+                                    background: '#ffffff',
+                                    border: '1px solid #e9e9e9',
                                     borderRadius: '999px',
                                     padding: '0.08rem 0.38rem',
                                     textTransform: 'uppercase',
@@ -711,11 +711,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     onClick={() => setShowAllTaskDueAlerts(!showAllTaskDueAlerts)}
                     style={{
                       fontSize: '0.76rem',
-                      color: '#475569',
+                      color: '#585858',
                       fontWeight: 700,
                       padding: '0.4rem 0.85rem',
                       borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid #e9e9e9',
                       background: '#fff',
                       cursor: 'pointer',
                       transition: 'background 0.15s ease',
@@ -740,7 +740,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               style={{
                 textAlign: 'center',
                 padding: '1.5rem 1rem',
-                color: '#64748b',
+                color: '#787878',
                 fontSize: '0.85rem',
                 fontWeight: 500,
               }}
@@ -757,7 +757,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   flexWrap: 'wrap',
                   gap: '0.65rem 1rem',
                   fontSize: '0.7rem',
-                  color: '#64748b',
+                  color: '#787878',
                   marginBottom: '0.75rem',
                   fontWeight: 600,
                   letterSpacing: '0.02em',
@@ -775,17 +775,17 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   ALL OVERDUE TASKS
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#475569' }}>Sort</span>
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#585858' }}>Sort</span>
                   <select
                     value={dueSort}
                     onChange={(e) => setDueSort(e.target.value as typeof dueSort)}
                     style={{
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid #d6d6d6',
                       borderRadius: 6,
                       padding: '0.2rem 0.45rem',
                       fontSize: '0.72rem',
                       fontWeight: 700,
-                      color: '#334155',
+                      color: '#444444',
                       background: '#fff',
                       fontFamily: 'inherit',
                     }}
@@ -830,7 +830,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         textAlign: 'left',
                         transition:
                           'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        boxShadow: '0 1px 2px rgba(28, 28, 28, 0.04)',
                         fontFamily: 'inherit',
                       }}
                     >
@@ -877,7 +877,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           style={{
                             fontSize: '0.82rem',
                             fontWeight: 700,
-                            color: '#0f172a',
+                            color: '#1c1c1c',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -889,7 +889,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         <div
                           style={{
                             fontSize: '0.72rem',
-                            color: '#64748b',
+                            color: '#787878',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -908,9 +908,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                                   alignItems: 'center',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
-                                  color: '#1e3a8a',
-                                  background: '#eff6ff',
-                                  border: '1px solid #bfdbfe',
+                                  color: '#111111',
+                                  background: '#ffffff',
+                                  border: '1px solid #dedede',
                                   borderRadius: '999px',
                                   padding: '0.08rem 0.38rem',
                                   textTransform: 'uppercase',
@@ -927,9 +927,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                                   alignItems: 'center',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
-                                  color: '#475569',
-                                  background: '#f8fafc',
-                                  border: '1px solid #e2e8f0',
+                                  color: '#585858',
+                                  background: '#ffffff',
+                                  border: '1px solid #e9e9e9',
                                   borderRadius: '999px',
                                   padding: '0.08rem 0.38rem',
                                   textTransform: 'uppercase',
@@ -955,11 +955,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     onClick={() => setShowAllTaskDueAlerts(!showAllTaskDueAlerts)}
                     style={{
                       fontSize: '0.76rem',
-                      color: '#475569',
+                      color: '#585858',
                       fontWeight: 700,
                       padding: '0.4rem 0.85rem',
                       borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid #e9e9e9',
                       background: '#fff',
                       cursor: 'pointer',
                       transition: 'background 0.15s ease',
@@ -982,8 +982,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
           {/* Form */}
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: '#ffffff',
+              border: '1px solid #e9e9e9',
               borderRadius: '10px',
               padding: '0.9rem',
               marginBottom: '1rem',
@@ -993,7 +993,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               style={{
                 fontSize: '0.72rem',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: '#1c1c1c',
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
                 marginBottom: '0.7rem',
@@ -1015,7 +1015,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#585858',
                     marginBottom: '0.3rem',
                     display: 'block',
                     letterSpacing: '0.02em',
@@ -1032,11 +1032,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     width: '100%',
                     borderRadius: 7,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem',
                     background: '#fff',
-                    color: '#0f172a',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                   }}
                 >
@@ -1054,9 +1054,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     onClick={onCreateProjectClick}
                     style={{
                       borderRadius: 6,
-                      border: '1px dashed #93c5fd',
-                      background: '#f8fbff',
-                      color: '#1d4ed8',
+                      border: '1px dashed #111111',
+                      background: '#ffffff',
+                      color: '#111111',
                       fontSize: '0.72rem',
                       fontWeight: 700,
                       padding: '0.36rem 0.62rem',
@@ -1073,7 +1073,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#585858',
                     marginBottom: '0.3rem',
                     display: 'block',
                     letterSpacing: '0.02em',
@@ -1096,11 +1096,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     width: '100%',
                     borderRadius: 7,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem',
                     background: '#fff',
-                    color: '#0f172a',
+                    color: '#1c1c1c',
                     fontVariantNumeric: 'tabular-nums',
                     fontFamily: 'inherit',
                   }}
@@ -1112,7 +1112,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     fontSize: '0.7rem',
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#585858',
                     marginBottom: '0.3rem',
                     display: 'block',
                     letterSpacing: '0.02em',
@@ -1123,7 +1123,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                 </label>
                 <div
                   style={{
-                    border: '1px solid #dbe4ef',
+                    border: '1px solid #e5e5e5',
                     borderRadius: 8,
                     padding: '0.45rem',
                     background: '#ffffff',
@@ -1143,11 +1143,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     style={{
                       width: '100%',
                       borderRadius: 7,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid #d6d6d6',
                       padding: '0.5rem 0.6rem',
                       fontSize: '0.82rem',
-                      background: '#f8fafc',
-                      color: '#0f172a',
+                      background: '#ffffff',
+                      color: '#1c1c1c',
                       marginBottom: '0.4rem',
                       fontFamily: 'inherit',
                     }}
@@ -1163,13 +1163,13 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     width: '100%',
                     borderRadius: 7,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem',
                     resize: 'vertical',
                     minHeight: '64px',
-                    background: '#f8fafc',
-                    color: '#0f172a',
+                    background: '#ffffff',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                   }}
                 />
@@ -1177,7 +1177,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     fontSize: '0.64rem',
                     fontWeight: 700,
-                    color: '#64748b',
+                    color: '#787878',
                     marginTop: '0.45rem',
                     marginBottom: '0.3rem',
                     textTransform: 'uppercase',
@@ -1196,11 +1196,11 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     width: '100%',
                     borderRadius: 7,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #d6d6d6',
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem',
-                    background: '#f8fafc',
-                    color: '#0f172a',
+                    background: '#ffffff',
+                    color: '#1c1c1c',
                     fontFamily: 'inherit',
                   }}
                 />
@@ -1215,7 +1215,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                   style={{
                     borderRadius: 7,
                     border: 'none',
-                    background: savingMonthlyReminder ? '#93c5fd' : '#2563eb',
+                    background: savingMonthlyReminder ? '#111111' : '#111111',
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: '0.78rem',
@@ -1238,9 +1238,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                     onClick={resetMonthlyReminderForm}
                     style={{
                       borderRadius: 7,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid #d6d6d6',
                       background: '#fff',
-                      color: '#475569',
+                      color: '#585858',
                       fontWeight: 700,
                       fontSize: '0.78rem',
                       padding: '0.62rem 0.8rem',
@@ -1262,7 +1262,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               <div
                 style={{
                   fontSize: '0.82rem',
-                  color: '#2563eb',
+                  color: '#111111',
                   fontWeight: 600,
                   padding: '0.6rem',
                   textAlign: 'center',
@@ -1276,9 +1276,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
               <div
                 style={{
                   fontSize: '0.82rem',
-                  color: '#64748b',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
+                  color: '#787878',
+                  background: '#ffffff',
+                  border: '1px dashed #d6d6d6',
                   padding: '1rem',
                   borderRadius: 8,
                   textAlign: 'center',
@@ -1333,12 +1333,12 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         alignItems: 'center',
                         gap: '0.7rem',
                         padding: '0.6rem 0.75rem',
-                        border: '1px solid #e2e8f0',
-                        borderLeft: '3px solid #2563eb',
+                        border: '1px solid #e9e9e9',
+                        borderLeft: '3px solid #111111',
                         background: '#fff',
                         borderRadius: '8px',
                         transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        boxShadow: '0 1px 2px rgba(28, 28, 28, 0.04)',
                       }}
                     >
                       {/* Day block */}
@@ -1348,8 +1348,8 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: '#eff6ff',
-                          border: '1px solid #bfdbfe',
+                          background: '#ffffff',
+                          border: '1px solid #dedede',
                           borderRadius: '6px',
                           padding: '0.3rem 0.5rem',
                           minWidth: '42px',
@@ -1360,7 +1360,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           style={{
                             fontSize: '0.58rem',
                             fontWeight: 700,
-                            color: '#1d4ed8',
+                            color: '#111111',
                             letterSpacing: '0.06em',
                           }}
                         >
@@ -1370,7 +1370,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           style={{
                             fontSize: '1.05rem',
                             fontWeight: 900,
-                            color: '#2563eb',
+                            color: '#111111',
                             lineHeight: 1,
                             fontVariantNumeric: 'tabular-nums',
                           }}
@@ -1384,7 +1384,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                           style={{
                             fontSize: '0.85rem',
                             fontWeight: 800,
-                            color: '#0f172a',
+                            color: '#1c1c1c',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -1396,7 +1396,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         <div
                           style={{
                             fontSize: '0.75rem',
-                            color: '#64748b',
+                            color: '#787878',
                             marginTop: '2px',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1415,7 +1415,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                               display: 'inline-block',
                               marginTop: '0.2rem',
                               fontSize: '0.72rem',
-                              color: '#1d4ed8',
+                              color: '#111111',
                               textDecoration: 'underline',
                               maxWidth: '100%',
                               overflow: 'hidden',
@@ -1445,7 +1445,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                               {stalePendingLabel}
                             </span>
                           )}
-                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#334155' }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#444444' }}>
                             CM {monthLabel(effectiveCMKey)}
                           </span>
                           <button
@@ -1471,7 +1471,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.28rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: nmEnabled ? '#334155' : '#94a3b8' }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: nmEnabled ? '#444444' : '#a6a6a6' }}>
                             NM {monthLabel(effectiveNMKey)}
                           </span>
                           <button
@@ -1479,7 +1479,7 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             onClick={() => setNMStatus('done')}
                             disabled={!nmEnabled}
                             style={{
-                              borderRadius: 6, border: '1px solid #86efac', background: effectiveNMStatus === 'done' ? '#22c55e' : '#f8fafc',
+                              borderRadius: 6, border: '1px solid #86efac', background: effectiveNMStatus === 'done' ? '#22c55e' : '#fafafa',
                               color: effectiveNMStatus === 'done' ? '#fff' : '#166534', fontSize: '0.68rem', fontWeight: 800, padding: '0.28rem 0.5rem',
                               cursor: nmEnabled ? 'pointer' : 'not-allowed', opacity: nmEnabled ? 1 : 0.45,
                             }}
@@ -1507,9 +1507,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                               onClick={() => openProject(item.projectId as string)}
                               style={{
                                 borderRadius: 6,
-                                border: '1px solid #bfdbfe',
-                                background: '#eff6ff',
-                                color: '#1d4ed8',
+                                border: '1px solid #dedede',
+                                background: '#ffffff',
+                                color: '#111111',
                                 fontSize: '0.72rem',
                                 fontWeight: 700,
                                 padding: '0.38rem 0.6rem',
@@ -1543,9 +1543,9 @@ const PMAlertsPanel: React.FC<PMAlertsPanelProps> = ({
                             onClick={() => handleEditMonthlyReminder(item)}
                             style={{
                               borderRadius: 6,
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid #e9e9e9',
                               background: '#fff',
-                              color: '#475569',
+                              color: '#585858',
                               fontSize: '0.72rem',
                               fontWeight: 700,
                               padding: '0.38rem 0.6rem',

@@ -10,15 +10,15 @@ const STYLES = `
 
   .pml-wrap {
     --bg: #ffffff;
-    --surface: #f8f9fb;
-    --surface-hover: #f1f4f8;
-    --border: #e8ecf0;
-    --border-strong: #d0d7de;
-    --text-primary: #0f1923;
-    --text-secondary: #4a5568;
-    --text-muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --surface: #fafafa;
+    --surface-hover: #f4f4f4;
+    --border: #ececec;
+    --border-strong: #d7d7d7;
+    --text-primary: #191919;
+    --text-secondary: #595959;
+    --text-muted: #a6a6a6;
+    --accent: #111111;
+    --accent-light: #f7f7f7;
     --danger: #dc2626;
     --danger-light: #fff1f2;
     --success: #16a34a;
@@ -38,7 +38,7 @@ const STYLES = `
     justify-content: space-between;
     padding: 10px 20px;
     background: var(--accent-light);
-    border-bottom: 1px solid #bfdbfe;
+    border-bottom: 1px solid #dedede;
     border-radius: 12px 12px 0 0;
   }
   .pml-bulk-label {
@@ -61,7 +61,7 @@ const STYLES = `
     cursor: pointer;
     transition: background 0.13s;
   }
-  .pml-bulk-btn:hover { background: #1d4ed8; }
+  .pml-bulk-btn:hover { background: #111111; }
 
   /* ── Header ── */
   .pml-head {
@@ -115,7 +115,7 @@ const STYLES = `
   .pml-date-filter:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17,0.1);
   }
 
   .pml-clear-btn {
@@ -193,7 +193,7 @@ const STYLES = `
     white-space: nowrap;
   }
   .pml-badge-retainer  { background: #f0fdf4; color: #14532d; border-color: #bbf7d0; }
-  .pml-badge-one-time  { background: #eff6ff; color: #1e3a5f; border-color: #bfdbfe; }
+  .pml-badge-one-time  { background: #f7f7f7; color: #111111; border-color: #dedede; }
   .pml-badge-default   { background: var(--surface); color: var(--text-secondary); border-color: var(--border); }
 
   .pml-priority-high   { background: #fff1f2; color: #881337; border-color: #fecdd3; }
@@ -248,7 +248,7 @@ const STYLES = `
   .pml-pm-select:hover { border-color: var(--border-strong); }
   .pml-pm-select:focus { outline: none; border-color: var(--accent); }
   .pml-pm-select:disabled { opacity: 0.5; cursor: wait; }
-  .pml-pm-select option { background: #fff; color: #0f1923; }
+  .pml-pm-select option { background: #fff; color: #191919; }
 
   /* Email log */
   .pml-email-date {
@@ -668,10 +668,10 @@ const PMListView: React.FC<PMListViewProps> = ({
                     {actionMenuOpen === project.id && (
                       <div className="pml-menu" onClick={(e) => e.stopPropagation()}>
                         <button className="pml-menu-item" onClick={(e) => { setActionMenuOpen(null); navigate(`/project/${project.id}`); }}>
-                          <FaEye style={{ fontSize: 12, color: '#3b82f6' }} /> View
+                          <FaEye style={{ fontSize: 12, color: '#111111' }} /> View
                         </button>
                         <button className="pml-menu-item" onClick={(e) => { setActionMenuOpen(null); onLogEmail(project, e); }}>
-                          <FaEnvelope style={{ fontSize: 12, color: '#6366f1' }} /> Log Email
+                          <FaEnvelope style={{ fontSize: 12, color: '#111111' }} /> Log Email
                         </button>
                         <button className="pml-menu-item" onClick={(e) => { setActionMenuOpen(null); onComplete(project.id, e); }}>
                           <FaCheckCircle style={{ fontSize: 12, color: '#16a34a' }} /> Mark Complete

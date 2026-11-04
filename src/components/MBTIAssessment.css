@@ -1,7 +1,7 @@
 .mbti-page {
   min-height: 100%;
   padding: 24px 16px;
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .mbti-wrap {
@@ -17,9 +17,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d6d6d6;
   background: #fff;
-  color: #111827;
+  color: #1c1c1c;
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -27,7 +27,7 @@
 
 .mbti-screen {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e8e8;
   border-radius: 12px;
   padding: 24px;
 }
@@ -43,26 +43,26 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #111111;
 }
 
 .mbti-brand-label {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #787878;
 }
 
 .mbti-hero-title {
   font-size: 28px;
   line-height: 1.25;
-  color: #0f172a;
+  color: #1c1c1c;
   margin-bottom: 10px;
 }
 
 .mbti-hero-sub {
   font-size: 15px;
-  color: #64748b;
+  color: #787878;
   line-height: 1.6;
   margin-bottom: 20px;
 }
@@ -82,8 +82,8 @@
 .mbti-pillar,
 .mbti-score-card,
 .mbti-trait-pill {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #fafafa;
+  border: 1px solid #e9e9e9;
   border-radius: 10px;
 }
 
@@ -102,13 +102,13 @@
 }
 
 .mbti-pillar-dim {
-  color: #0f172a;
+  color: #1c1c1c;
   font-size: 13px;
   font-weight: 500;
 }
 
 .mbti-pillar-pair {
-  color: #64748b;
+  color: #787878;
   font-size: 12px;
 }
 
@@ -117,7 +117,7 @@
 .mbti-score-track {
   margin-top: 6px;
   height: 4px;
-  background: #e2e8f0;
+  background: #e9e9e9;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -126,7 +126,7 @@
 .mbti-progress-fill,
 .mbti-score-fill {
   height: 100%;
-  background: #2563eb;
+  background: #111111;
 }
 
 .mbti-pillar-fill {
@@ -140,7 +140,7 @@
 .mbti-name-label {
   display: block;
   margin-bottom: 6px;
-  color: #64748b;
+  color: #787878;
   font-size: 13px;
 }
 
@@ -148,7 +148,7 @@
   width: 100%;
   max-width: 340px;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d6d6d6;
   border-radius: 8px;
 }
 
@@ -162,7 +162,7 @@
 
 .mbti-btn-primary {
   border: none;
-  background: #2563eb;
+  background: #111111;
   color: #fff;
 }
 
@@ -172,20 +172,20 @@
 }
 
 .mbti-btn-outline {
-  border: 1px solid #d1d5db;
+  border: 1px solid #d6d6d6;
   background: #fff;
-  color: #0f172a;
+  color: #1c1c1c;
 }
 
 .mbti-q-meta {
   margin-bottom: 12px;
-  color: #64748b;
+  color: #787878;
   font-size: 13px;
 }
 
 .mbti-q-badge {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #ececec;
+  color: #111111;
   border-radius: 999px;
   font-size: 11px;
   padding: 4px 10px;
@@ -200,7 +200,7 @@
 }
 
 .mbti-q-text {
-  color: #0f172a;
+  color: #1c1c1c;
   line-height: 1.5;
   margin-bottom: 16px;
   font-size: 17px;
@@ -213,7 +213,7 @@
 }
 
 .mbti-scale-opt {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9e9e9;
   background: #fff;
   border-radius: 10px;
   padding: 12px;
@@ -225,43 +225,43 @@
 }
 
 .mbti-scale-opt.selected {
-  border-color: #2563eb;
-  background: #eff6ff;
+  border-color: #111111;
+  background: #f7f7f7;
 }
 
 .mbti-scale-dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid #94a3b8;
+  border: 2px solid #a6a6a6;
   flex-shrink: 0;
 }
 
 .mbti-scale-opt.selected .mbti-scale-dot {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: #111111;
+  background: #111111;
 }
 
 .mbti-scale-label {
-  color: #0f172a;
+  color: #1c1c1c;
   font-size: 14px;
 }
 
 .mbti-scale-hint {
   margin-left: auto;
-  color: #64748b;
+  color: #787878;
   font-size: 12px;
 }
 
 .mbti-result-header {
   text-align: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e9e9e9;
   padding-bottom: 18px;
   margin-bottom: 18px;
 }
 
 .mbti-result-name {
-  color: #64748b;
+  color: #787878;
   font-size: 13px;
   margin-bottom: 8px;
 }
@@ -270,12 +270,12 @@
   font-size: 46px;
   line-height: 1;
   letter-spacing: 0.08em;
-  color: #2563eb;
+  color: #111111;
   margin-bottom: 8px;
 }
 
 .mbti-title {
-  color: #0f172a;
+  color: #1c1c1c;
   font-size: 22px;
   margin-bottom: 4px;
 }
@@ -283,7 +283,7 @@
 .mbti-tagline,
 .mbti-desc,
 .mbti-compat-note {
-  color: #64748b;
+  color: #787878;
   line-height: 1.6;
 }
 
@@ -296,14 +296,14 @@
 }
 
 .mbti-score-dim {
-  color: #64748b;
+  color: #787878;
   font-size: 12px;
   margin-bottom: 6px;
 }
 
 .mbti-section-title {
   margin: 14px 0 8px;
-  color: #0f172a;
+  color: #1c1c1c;
   font-size: 16px;
 }
 
@@ -317,7 +317,7 @@
 
 .mbti-trait-pill {
   padding: 8px 10px;
-  color: #0f172a;
+  color: #1c1c1c;
   font-size: 13px;
 }
 
@@ -328,7 +328,7 @@
 }
 
 .mbti-compat-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9e9e9;
   border-radius: 10px;
   padding: 10px 12px;
 }
@@ -339,8 +339,8 @@
 }
 
 .mbti-compat-card.good {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: #ffffff;
+  border-color: #111111;
 }
 
 .mbti-compat-card.challenging {
@@ -360,8 +360,8 @@
 }
 
 .mbti-compat-badge.good {
-  color: #1e40af;
-  background: #dbeafe;
+  color: #111111;
+  background: #ececec;
 }
 
 .mbti-compat-badge.challenging {
@@ -373,7 +373,7 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e9e9e9;
   padding-top: 14px;
 }
 

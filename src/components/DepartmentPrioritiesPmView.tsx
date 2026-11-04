@@ -117,7 +117,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
   }
 
   return (
-    <div className="dashboard-container premium-dashboard" style={{ minHeight: '100vh', background: '#f5f6fa' }}>
+    <div className="dashboard-container premium-dashboard" style={{ minHeight: '100vh', background: '#ffffff' }}>
       <header className="dashboard-header premium-header" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
         <div
           className="header-content"
@@ -141,7 +141,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                 gap: '0.5rem',
                 background: 'transparent',
                 border: 'none',
-                color: '#64748b',
+                color: '#787878',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -149,11 +149,11 @@ const DepartmentPrioritiesPmView: React.FC = () => {
               <FaArrowLeft /> PM Dashboard
             </button>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FaFlag color="#6366f1" /> Department priorities
+              <FaFlag color="#111111" /> Department priorities
             </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{user?.name}</span>
+            <span style={{ fontSize: '0.875rem', color: '#787878' }}>{user?.name}</span>
             <button
               type="button"
               onClick={handleSignOut}
@@ -162,7 +162,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                 alignItems: 'center',
                 gap: '0.35rem',
                 background: 'transparent',
-                border: '1px solid #e2e8f0',
+                border: '1px solid #e9e9e9',
                 borderRadius: 8,
                 padding: '0.4rem 0.75rem',
                 cursor: 'pointer',
@@ -176,19 +176,19 @@ const DepartmentPrioritiesPmView: React.FC = () => {
       </header>
 
       <main style={{ maxWidth: '960px', margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
-        <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1.25rem', lineHeight: 1.55 }}>
+        <p style={{ fontSize: '0.9rem', color: '#787878', marginBottom: '1.25rem', lineHeight: 1.55 }}>
           Set the <strong>canonical</strong> client priorities each department sees on their dashboard for the selected day.
           Department <strong>team leads</strong> can add optional &quot;team add-ons&quot; on their own dashboard — those never replace your list here.
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-          <label style={{ fontSize: '0.875rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.875rem', color: '#585858', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Date
             <input
               type="date"
               value={focusDate}
               onChange={(e) => setFocusDate(e.target.value)}
-              style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #cbd5e1' }}
+              style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #d6d6d6' }}
             />
           </label>
           <button
@@ -198,7 +198,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
             style={{
               padding: '0.4rem 0.9rem',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              border: '1px solid #d6d6d6',
               background: 'white',
               cursor: loadingPins ? 'wait' : 'pointer',
             }}
@@ -216,7 +216,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
               padding: '0.4rem 1rem',
               borderRadius: 8,
               border: 'none',
-              background: '#6366f1',
+              background: '#111111',
               color: 'white',
               fontWeight: 600,
               cursor: loadingTasks ? 'not-allowed' : 'pointer',
@@ -235,8 +235,8 @@ const DepartmentPrioritiesPmView: React.FC = () => {
               style={{
                 padding: '0.35rem 0.75rem',
                 borderRadius: 999,
-                border: activeDept === d.key ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                background: activeDept === d.key ? '#eef2ff' : 'white',
+                border: activeDept === d.key ? '2px solid #111111' : '1px solid #e9e9e9',
+                background: activeDept === d.key ? '#f6f6f6' : 'white',
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
                 fontWeight: activeDept === d.key ? 600 : 500,
@@ -248,34 +248,34 @@ const DepartmentPrioritiesPmView: React.FC = () => {
         </div>
 
         {loadingPins ? (
-          <p style={{ color: '#94a3b8' }}>Loading…</p>
+          <p style={{ color: '#a6a6a6' }}>Loading…</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <section>
-              <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem', color: '#334155' }}>PM priorities ({activeDept})</h2>
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem', color: '#444444' }}>PM priorities ({activeDept})</h2>
               {pmRows.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>None for this date. Use Edit PM priorities.</p>
+                <p style={{ color: '#a6a6a6', fontSize: '0.875rem' }}>None for this date. Use Edit PM priorities.</p>
               ) : (
-                <ol style={{ margin: 0, paddingLeft: '1.25rem', color: '#334155', fontSize: '0.875rem' }}>
+                <ol style={{ margin: 0, paddingLeft: '1.25rem', color: '#444444', fontSize: '0.875rem' }}>
                   {pmRows.map((r) => (
                     <li key={r.id} style={{ marginBottom: '0.35rem' }}>
-                      {r.taskTitle || 'Task'} <span style={{ color: '#94a3b8' }}>({r.clientName || 'Project'})</span>
+                      {r.taskTitle || 'Task'} <span style={{ color: '#a6a6a6' }}>({r.clientName || 'Project'})</span>
                     </li>
                   ))}
                 </ol>
               )}
             </section>
             <section>
-              <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem', color: '#334155' }}>
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem', color: '#444444' }}>
                 Team add-ons (set by team lead on dept dashboard)
               </h2>
               {overrideRows.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>None.</p>
+                <p style={{ color: '#a6a6a6', fontSize: '0.875rem' }}>None.</p>
               ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#334155', fontSize: '0.875rem' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#444444', fontSize: '0.875rem' }}>
                   {overrideRows.map((r) => (
                     <li key={r.id} style={{ marginBottom: '0.35rem' }}>
-                      {r.taskTitle || 'Task'} <span style={{ color: '#94a3b8' }}>({r.clientName || 'Project'})</span>
+                      {r.taskTitle || 'Task'} <span style={{ color: '#a6a6a6' }}>({r.clientName || 'Project'})</span>
                     </li>
                   ))}
                 </ul>
@@ -290,7 +290,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.55)',
+            background: 'rgba(28, 28, 28, 0.55)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -315,15 +315,15 @@ const DepartmentPrioritiesPmView: React.FC = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e8e8e8' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>PM priorities — {activeDept}</h2>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#787878' }}>
                 Date {focusDate}. Choose exact tasks for this department. Team add-ons are managed separately by each team lead.
               </p>
             </div>
             <div style={{ padding: '1rem 1.5rem', overflowY: 'auto', flex: 1 }}>
               {tasksForModal.length === 0 ? (
-                <p style={{ color: '#94a3b8' }}>No tasks loaded for this department.</p>
+                <p style={{ color: '#a6a6a6' }}>No tasks loaded for this department.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   {tasksForModal.map((t: any) => (
@@ -335,7 +335,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                         gap: '0.65rem',
                         padding: '0.5rem 0.65rem',
                         borderRadius: 8,
-                        border: '1px solid #f1f5f9',
+                        border: '1px solid #f5f5f5',
                         cursor: 'pointer',
                         fontSize: '0.875rem',
                       }}
@@ -348,10 +348,10 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                             prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                           )
                         }
-                        style={{ accentColor: '#6366f1' }}
+                        style={{ accentColor: '#111111' }}
                       />
-                      <span style={{ fontWeight: 600, color: '#1e293b' }}>{t.title || 'Untitled task'}</span>
-                      <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                      <span style={{ fontWeight: 600, color: '#2c2c2c' }}>{t.title || 'Untitled task'}</span>
+                      <span style={{ color: '#a6a6a6', fontSize: '0.75rem' }}>
                         ({t.project?.clientName || 'Project'})
                       </span>
                     </label>
@@ -359,7 +359,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                 </div>
               )}
             </div>
-            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e8e8e8', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
                 type="button"
                 disabled={saving}
@@ -367,7 +367,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                 style={{
                   padding: '0.6rem 1.1rem',
                   borderRadius: 8,
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #e8e8e8',
                   background: 'white',
                   fontWeight: 600,
                   cursor: saving ? 'not-allowed' : 'pointer',
@@ -383,7 +383,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
                   padding: '0.6rem 1.1rem',
                   borderRadius: 8,
                   border: 'none',
-                  background: saving ? '#9ca3af' : '#6366f1',
+                  background: saving ? '#9ca3af' : '#111111',
                   color: 'white',
                   fontWeight: 600,
                   cursor: saving ? 'not-allowed' : 'pointer',

@@ -93,16 +93,16 @@ const Clients: React.FC = () => {
   const getStageColor = (stage: string) => {
     const colors: Record<string, string> = {
       'Onboarding': '#f59e0b',
-      'Copy': '#3b82f6',
-      'Copy Revision': '#3b82f6',
-      'Design': '#8b5cf6',
-      'Design Revision': '#8b5cf6',
+      'Copy': '#111111',
+      'Copy Revision': '#111111',
+      'Design': '#111111',
+      'Design Revision': '#111111',
       'Dev': '#10b981',
       'AI Team': '#06b6d4',
       'Social Media Team': '#ec4899',
       'CRM': '#f97316',
       'SEO/GEO Team': '#14b8a6',
-      'Ready to Close': '#6366f1',
+      'Ready to Close': '#111111',
       'Closed': '#6b7280',
     };
     return colors[stage] || '#6b7280';
@@ -111,14 +111,14 @@ const Clients: React.FC = () => {
   const getClientTypeColor = (clientType: string) => {
     const colors: Record<string, { bg: string; color: string }> = {
       'ICON': { bg: '#fef3c7', color: '#92400e' },
-      'STAR': { bg: '#dbeafe', color: '#1e40af' },
-      'Katalyst': { bg: '#f3e8ff', color: '#6b21a8' },
-      'Private': { bg: '#e5e7eb', color: '#374151' },
-      'Premium': { bg: '#ede9fe', color: '#6b21a8' },
-      'Powered-Up': { bg: '#f3e8ff', color: '#7c3aed' },
-      'Rapid Prospect': { bg: '#ecfeff', color: '#155e75' },
+      'STAR': { bg: '#ececec', color: '#111111' },
+      'Katalyst': { bg: '#f3f3f3', color: '#111111' },
+      'Private': { bg: '#e8e8e8', color: '#444444' },
+      'Premium': { bg: '#f3f3f3', color: '#111111' },
+      'Powered-Up': { bg: '#f3f3f3', color: '#111111' },
+      'Rapid Prospect': { bg: '#ecfeff', color: '#111111' },
     };
-    return colors[clientType] || { bg: '#e5e7eb', color: '#374151' };
+    return colors[clientType] || { bg: '#e8e8e8', color: '#444444' };
   };
 
   const formatDate = (date: string | Date) => {
@@ -170,13 +170,13 @@ const Clients: React.FC = () => {
 
   const getProcessColor = (process: string) => {
     const colors: Record<string, string> = {
-      'Not yet started': '#94a3b8',
-      'Owned/In Progress': '#3b82f6',
-      'For Approval': '#8b5cf6',
+      'Not yet started': '#a6a6a6',
+      'Owned/In Progress': '#111111',
+      'For Approval': '#111111',
       'Elliot Review': '#f59e0b',
       'Approved/Completed': '#10b981',
       'QA Before Sending to Client': '#06b6d4',
-      'Client Validation': '#6366f1',
+      'Client Validation': '#111111',
     };
     return colors[process] || '#6b7280';
   };
@@ -185,7 +185,7 @@ const Clients: React.FC = () => {
     if (loading) {
       return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-          <FaSpinner className="spinner" style={{ fontSize: '2rem', color: '#6366f1' }} />
+          <FaSpinner className="spinner" style={{ fontSize: '2rem', color: '#111111' }} />
         </div>
       );
     }
@@ -217,14 +217,14 @@ const Clients: React.FC = () => {
         <div style={{ 
           padding: '4rem', 
           textAlign: 'center', 
-          color: '#64748b',
+          color: '#787878',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '1rem'
         }}>
           {emptyIcon}
-          <h3 style={{ margin: 0, color: '#94a3b8' }}>{emptyMessage}</h3>
+          <h3 style={{ margin: 0, color: '#a6a6a6' }}>{emptyMessage}</h3>
         </div>
       );
     }
@@ -242,14 +242,14 @@ const Clients: React.FC = () => {
         }}>
           <thead>
             <tr style={{
-              backgroundColor: '#f8fafc',
-              borderBottom: '2px solid #e2e8f0'
+              backgroundColor: '#ffffff',
+              borderBottom: '2px solid #e9e9e9'
             }}>
               <th style={{
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -258,7 +258,7 @@ const Clients: React.FC = () => {
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -267,7 +267,7 @@ const Clients: React.FC = () => {
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -276,7 +276,7 @@ const Clients: React.FC = () => {
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -285,7 +285,7 @@ const Clients: React.FC = () => {
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -294,7 +294,7 @@ const Clients: React.FC = () => {
                 padding: '1rem',
                 textAlign: 'left',
                 fontWeight: '600',
-                color: '#475569',
+                color: '#585858',
                 fontSize: '0.875rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
@@ -304,7 +304,7 @@ const Clients: React.FC = () => {
                   padding: '1rem',
                   textAlign: 'left',
                   fontWeight: '600',
-                  color: '#475569',
+                  color: '#585858',
                   fontSize: '0.875rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
@@ -315,7 +315,7 @@ const Clients: React.FC = () => {
                   padding: '1rem',
                   textAlign: 'left',
                   fontWeight: '600',
-                  color: '#475569',
+                  color: '#585858',
                   fontSize: '0.875rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
@@ -336,11 +336,11 @@ const Clients: React.FC = () => {
                   onClick={() => navigate(`/project/${project.id}`)}
                   style={{
                     cursor: 'pointer',
-                    borderBottom: index < projectsToShow.length - 1 ? '1px solid #e2e8f0' : 'none',
+                    borderBottom: index < projectsToShow.length - 1 ? '1px solid #e9e9e9' : 'none',
                     transition: 'background-color 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.backgroundColor = '#fafafa';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = '#ffffff';
@@ -348,7 +348,7 @@ const Clients: React.FC = () => {
                 >
                   <td style={{
                     padding: '1rem',
-                    color: '#1e293b',
+                    color: '#2c2c2c',
                     fontWeight: '500',
                     fontSize: '0.9375rem'
                   }}>
@@ -403,7 +403,7 @@ const Clients: React.FC = () => {
                   </td>
                   <td style={{
                     padding: '1rem',
-                    color: '#64748b',
+                    color: '#787878',
                     fontSize: '0.875rem'
                   }}>
                     {project.package}
@@ -418,10 +418,10 @@ const Clients: React.FC = () => {
                         fontWeight: '500',
                         backgroundColor: project.priority === 'Urgent' ? '#fee2e2' :
                                         project.priority === 'High' ? '#fef3c7' :
-                                        project.priority === 'Medium' ? '#dbeafe' : '#e5e7eb',
+                                        project.priority === 'Medium' ? '#ececec' : '#e8e8e8',
                         color: project.priority === 'Urgent' ? '#991b1b' :
                                project.priority === 'High' ? '#92400e' :
-                               project.priority === 'Medium' ? '#1e40af' : '#374151'
+                               project.priority === 'Medium' ? '#111111' : '#444444'
                       }}
                     >
                       {project.priority}
@@ -430,7 +430,7 @@ const Clients: React.FC = () => {
                   {activeTab === 'archive' && (
                     <td style={{
                       padding: '1rem',
-                      color: '#64748b',
+                      color: '#787878',
                       fontSize: '0.875rem'
                     }}>
                       {formatDate(project.archivedAt)}
@@ -439,7 +439,7 @@ const Clients: React.FC = () => {
                   {activeTab === 'done' && (
                     <td style={{
                       padding: '1rem',
-                      color: '#64748b',
+                      color: '#787878',
                       fontSize: '0.875rem'
                     }}>
                       {formatDate(project.updatedAt)}
@@ -475,9 +475,9 @@ const Clients: React.FC = () => {
               onClick={() => navigate('/clients')}
               style={{ 
                 marginRight: '0.75rem',
-                backgroundColor: '#6366f1',
+                backgroundColor: '#111111',
                 color: '#ffffff',
-                borderColor: '#6366f1'
+                borderColor: '#111111'
               }}
             >
               <FaFolder className="btn-icon" />
@@ -536,10 +536,10 @@ const Clients: React.FC = () => {
       <div className="dashboard-content premium-content">
         <div className="container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
           <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1e293b' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: '600', marginBottom: '0.5rem', color: '#2c2c2c' }}>
               Clients
             </h1>
-            <p style={{ color: '#64748b', fontSize: '1rem' }}>
+            <p style={{ color: '#787878', fontSize: '1rem' }}>
               Manage your active, completed, and archived client projects
             </p>
           </div>
@@ -548,7 +548,7 @@ const Clients: React.FC = () => {
           <div style={{ 
             display: 'flex', 
             gap: '0.5rem', 
-            borderBottom: '2px solid #e2e8f0',
+            borderBottom: '2px solid #e9e9e9',
             marginBottom: '2rem'
           }}>
             <button
@@ -557,8 +557,8 @@ const Clients: React.FC = () => {
                 padding: '0.75rem 1.5rem',
                 border: 'none',
                 background: 'transparent',
-                color: activeTab === 'active' ? '#6366f1' : '#64748b',
-                borderBottom: activeTab === 'active' ? '2px solid #6366f1' : '2px solid transparent',
+                color: activeTab === 'active' ? '#111111' : '#787878',
+                borderBottom: activeTab === 'active' ? '2px solid #111111' : '2px solid transparent',
                 cursor: 'pointer',
                 fontWeight: activeTab === 'active' ? '600' : '400',
                 marginBottom: '-2px',
@@ -573,8 +573,8 @@ const Clients: React.FC = () => {
                 padding: '0.75rem 1.5rem',
                 border: 'none',
                 background: 'transparent',
-                color: activeTab === 'done' ? '#6366f1' : '#64748b',
-                borderBottom: activeTab === 'done' ? '2px solid #6366f1' : '2px solid transparent',
+                color: activeTab === 'done' ? '#111111' : '#787878',
+                borderBottom: activeTab === 'done' ? '2px solid #111111' : '2px solid transparent',
                 cursor: 'pointer',
                 fontWeight: activeTab === 'done' ? '600' : '400',
                 marginBottom: '-2px',
@@ -589,8 +589,8 @@ const Clients: React.FC = () => {
                 padding: '0.75rem 1.5rem',
                 border: 'none',
                 background: 'transparent',
-                color: activeTab === 'archive' ? '#6366f1' : '#64748b',
-                borderBottom: activeTab === 'archive' ? '2px solid #6366f1' : '2px solid transparent',
+                color: activeTab === 'archive' ? '#111111' : '#787878',
+                borderBottom: activeTab === 'archive' ? '2px solid #111111' : '2px solid transparent',
                 cursor: 'pointer',
                 fontWeight: activeTab === 'archive' ? '600' : '400',
                 marginBottom: '-2px',

@@ -100,7 +100,7 @@ const ProjectDeliverablesTab = (props: any) => {
                 </div>
                 <div className="team-members-list">
                   {teamMembers.length === 0 ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#a6a6a6' }}>
                       No team members assigned yet. Click "Add Team Member" to assign someone.
                     </div>
                   ) : (
@@ -110,19 +110,19 @@ const ProjectDeliverablesTab = (props: any) => {
                           key={member.id}
                           className="team-member-card"
                           style={{
-                            background: '#f9fafb',
+                            background: '#ffffff',
                             padding: '1rem',
                             borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid #e8e8e8',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                           }}
                         >
                           <div>
-                            <div style={{ fontWeight: 600, color: '#111827' }}>{member.user?.name}</div>
+                            <div style={{ fontWeight: 600, color: '#1c1c1c' }}>{member.user?.name}</div>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{member.user?.role}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#a6a6a6', marginTop: '0.25rem' }}>
                               Added {new Date(member.assignedAt).toLocaleDateString()}
                             </div>
                           </div>
@@ -184,7 +184,7 @@ const ProjectDeliverablesTab = (props: any) => {
                             alignItems: 'center',
                             gap: '0.25rem',
                             background: 'white',
-                            border: '2px solid #667eea',
+                            border: '2px solid #111111',
                             borderRadius: '8px',
                             padding: '0.25rem 0.5rem'
                           }}>
@@ -282,19 +282,19 @@ const ProjectDeliverablesTab = (props: any) => {
                                     setEditingDeliverableName(deliverable.customType || deliverable.type);
                                   }}
                                   style={{
-                                    background: '#f3f4f6',
+                                    background: '#ffffff',
                                     border: 'none',
                                     borderRadius: '4px',
                                     padding: '0.25rem 0.375rem',
                                     cursor: 'pointer',
-                                    color: '#667eea',
+                                    color: '#111111',
                                     fontSize: '0.75rem',
                                     display: 'flex',
                                     alignItems: 'center',
                                     transition: 'background 0.2s'
                                   }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#e5e7eb'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#e8e8e8'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f4f4f4'}
                                   title="Edit deliverable name"
                                 >
                                   <FaEdit />
@@ -305,7 +305,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                     setShowDeleteDeliverableConfirm(deliverable.id);
                                   }}
                                   style={{
-                                    background: '#f3f4f6',
+                                    background: '#ffffff',
                                     border: 'none',
                                     borderRadius: '4px',
                                     padding: '0.25rem 0.375rem',
@@ -317,7 +317,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                     transition: 'background 0.2s'
                                   }}
                                   onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = '#f4f4f4'}
                                   title="Delete deliverable"
                                 >
                                   <FaTrash />
@@ -336,9 +336,9 @@ const ProjectDeliverablesTab = (props: any) => {
                   style={{
                     padding: '0.75rem 0.9rem',
                     borderRadius: '10px',
-                    background: '#f8fafc',
-                    border: '1px dashed #cbd5e1',
-                    color: '#475569',
+                    background: '#ffffff',
+                    border: '1px dashed #d6d6d6',
+                    color: '#585858',
                     fontSize: '0.86rem',
                     lineHeight: 1.45,
                     marginRight: '0.75rem',
@@ -974,7 +974,7 @@ const ProjectDeliverablesTab = (props: any) => {
                     <div
                       key={column.id}
                       style={{
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #e9e9e9',
                         borderRadius: '10px',
                         background: '#fff',
                         overflow: 'hidden',
@@ -985,16 +985,16 @@ const ProjectDeliverablesTab = (props: any) => {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '0.75rem 1rem',
-                        borderBottom: '1px solid #e2e8f0',
-                        background: '#f8fafc',
+                        borderBottom: '1px solid #e9e9e9',
+                        background: '#ffffff',
                       }}>
-                        <h5 style={{ margin: 0, fontSize: '0.9rem', color: '#1f2937' }}>{column.title}</h5>
+                        <h5 style={{ margin: 0, fontSize: '0.9rem', color: '#2b2b2b' }}>{column.title}</h5>
                         <span style={{
                           fontSize: '0.75rem',
-                          color: '#475569',
+                          color: '#585858',
                           padding: '0.15rem 0.5rem',
                           borderRadius: '999px',
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid #d6d6d6',
                           background: '#fff',
                         }}>
                           {column.files.length}
@@ -1002,7 +1002,7 @@ const ProjectDeliverablesTab = (props: any) => {
                       </div>
 
                       {column.files.length === 0 ? (
-                        <div style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: '#94a3b8' }}>
+                        <div style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: '#a6a6a6' }}>
                           No items
                         </div>
                       ) : (
@@ -1042,30 +1042,30 @@ const ProjectDeliverablesTab = (props: any) => {
                                   gridTemplateColumns: '1.6fr 1fr 0.8fr 1fr 0.8fr',
                                   gap: '0.75rem',
                                   padding: '0.7rem 1rem',
-                                  borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
+                                  borderTop: idx === 0 ? 'none' : '1px solid #f5f5f5',
                                   alignItems: 'center',
                                   cursor: relatedTask ? 'pointer' : 'default',
                                 }}
                               >
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: '0.87rem', fontWeight: 600, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <div style={{ fontSize: '0.87rem', fontWeight: 600, color: '#2b2b2b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {title}
                                   </div>
-                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{link.department}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#787878' }}>{link.department}</div>
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: '#334155' }}>{ownerName}</div>
-                                <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{link.type}</div>
-                                <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{formattedDate || '-'}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#444444' }}>{ownerName}</div>
+                                <div style={{ fontSize: '0.76rem', color: '#787878' }}>{link.type}</div>
+                                <div style={{ fontSize: '0.76rem', color: '#787878' }}>{formattedDate || '-'}</div>
                                 <div>
                                   {link.url.startsWith('task-') ? (
-                                    <span style={{ fontSize: '0.76rem', color: '#64748b' }}>Task</span>
+                                    <span style={{ fontSize: '0.76rem', color: '#787878' }}>Task</span>
                                   ) : (
                                     <a
                                       href={link.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={(e) => e.stopPropagation()}
-                                      style={{ fontSize: '0.78rem', color: '#2563eb', textDecoration: 'none' }}
+                                      style={{ fontSize: '0.78rem', color: '#111111', textDecoration: 'none' }}
                                     >
                                       Open
                                     </a>
@@ -1088,7 +1088,7 @@ const ProjectDeliverablesTab = (props: any) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <div style={{
                         display: 'inline-flex',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid #d6d6d6',
                         borderRadius: '8px',
                         background: '#fff',
                         overflow: 'hidden',
@@ -1101,8 +1101,8 @@ const ProjectDeliverablesTab = (props: any) => {
                             fontSize: '0.75rem',
                             fontWeight: 600,
                             cursor: 'pointer',
-                            background: deliverablesViewMode === 'kanban' ? '#e2e8f0' : 'transparent',
-                            color: '#334155',
+                            background: deliverablesViewMode === 'kanban' ? '#e9e9e9' : 'transparent',
+                            color: '#444444',
                           }}
                         >
                           Kanban
@@ -1111,13 +1111,13 @@ const ProjectDeliverablesTab = (props: any) => {
                           onClick={() => setDeliverablesViewMode('list')}
                           style={{
                             border: 'none',
-                            borderLeft: '1px solid #cbd5e1',
+                            borderLeft: '1px solid #d6d6d6',
                             padding: '0.35rem 0.7rem',
                             fontSize: '0.75rem',
                             fontWeight: 600,
                             cursor: 'pointer',
-                            background: deliverablesViewMode === 'list' ? '#e2e8f0' : 'transparent',
-                            color: '#334155',
+                            background: deliverablesViewMode === 'list' ? '#e9e9e9' : 'transparent',
+                            color: '#444444',
                           }}
                         >
                           List
@@ -1126,7 +1126,7 @@ const ProjectDeliverablesTab = (props: any) => {
                       <div className="kanban-status-badge" style={{
                         backgroundColor: selectedDeliverable.status === 'Approved' ? '#d1fae5' : 
                                         selectedDeliverable.status === 'Ready for Review' ? '#fef3c7' :
-                                        selectedDeliverable.status === 'Revision' ? '#fee2e2' : '#f3f4f6',
+                                        selectedDeliverable.status === 'Revision' ? '#fee2e2' : '#f4f4f4',
                         color: selectedDeliverable.status === 'Approved' ? '#065f46' :
                                selectedDeliverable.status === 'Ready for Review' ? '#92400e' :
                                selectedDeliverable.status === 'Revision' ? '#991b1b' : '#6b7280'
@@ -1140,11 +1140,11 @@ const ProjectDeliverablesTab = (props: any) => {
                   <div style={{
                     marginBottom: '1rem',
                     padding: '0.75rem 1rem',
-                    background: '#f0f4ff',
-                    border: '1px solid #c7d2fe',
+                    background: '#ffffff',
+                    border: '1px solid #e2e2e2',
                     borderRadius: '8px',
                     fontSize: '0.875rem',
-                    color: '#4c51bf',
+                    color: '#111111',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
@@ -1183,9 +1183,9 @@ const ProjectDeliverablesTab = (props: any) => {
                                 padding: '0.75rem',
                                 marginBottom: '0.75rem',
                                 background: 'white',
-                                border: '2px dashed #cbd5e1',
+                                border: '2px dashed #d6d6d6',
                                 borderRadius: '8px',
-                                color: '#64748b',
+                                color: '#787878',
                                 fontSize: '0.875rem',
                                 fontWeight: 500,
                                 cursor: 'pointer',
@@ -1196,13 +1196,13 @@ const ProjectDeliverablesTab = (props: any) => {
                                 transition: 'all 0.2s ease'
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#667eea';
-                                e.currentTarget.style.color = '#667eea';
-                                e.currentTarget.style.background = '#f0f4ff';
+                                e.currentTarget.style.borderColor = '#111111';
+                                e.currentTarget.style.color = '#111111';
+                                e.currentTarget.style.background = '#f8f8f8';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#cbd5e1';
-                                e.currentTarget.style.color = '#64748b';
+                                e.currentTarget.style.borderColor = '#d6d6d6';
+                                e.currentTarget.style.color = '#787878';
                                 e.currentTarget.style.background = 'white';
                               }}
                             >
@@ -1211,8 +1211,8 @@ const ProjectDeliverablesTab = (props: any) => {
                           )}
                           {column.files.map((link, idx) => {
                             const deptColors: any = {
-                              'Copy Writing': '#667eea',
-                              'Design': '#8b5cf6',
+                              'Copy Writing': '#111111',
+                              'Design': '#111111',
                               'Development': '#10b981',
                               'Deliverable': '#6b7280'
                             };
@@ -1417,8 +1417,8 @@ const ProjectDeliverablesTab = (props: any) => {
                                             padding: '0.375rem 0.5rem',
                                             fontSize: '0.9375rem',
                                             fontWeight: 600,
-                                            color: '#1e293b',
-                                            border: '2px solid #667eea',
+                                            color: '#2c2c2c',
+                                            border: '2px solid #111111',
                                             borderRadius: '6px',
                                             background: 'white',
                                             outline: 'none'
@@ -1477,7 +1477,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                         style={{ 
                                           fontWeight: 600, 
                                           fontSize: '0.9375rem', 
-                                          color: '#1e293b',
+                                          color: '#2c2c2c',
                                           cursor: (relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) ? 'pointer' : 'default',
                                           padding: '0.25rem',
                                           borderRadius: '4px',
@@ -1485,7 +1485,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                         }}
                                         onMouseEnter={(e) => {
                                           if (relatedTask && (canAssignOwners || relatedTask?.assignedToId === currentUser?.id)) {
-                                            e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                            e.currentTarget.style.backgroundColor = '#f4f4f4';
                                           }
                                         }}
                                         onMouseLeave={(e) => {
@@ -1529,8 +1529,8 @@ const ProjectDeliverablesTab = (props: any) => {
                                                 padding: '0.375rem 0.5rem',
                                                 fontSize: '0.9375rem',
                                                 fontWeight: 600,
-                                                color: '#1e293b',
-                                                border: '2px solid #667eea',
+                                                color: '#2c2c2c',
+                                                border: '2px solid #111111',
                                                 borderRadius: '6px',
                                                 background: 'white',
                                                 outline: 'none'
@@ -1595,7 +1595,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                             style={{ 
                                               fontWeight: 600, 
                                               fontSize: '0.9375rem',
-                                              color: '#1e293b',
+                                              color: '#2c2c2c',
                                               marginBottom: '0.5rem',
                                               lineHeight: '1.4',
                                               cursor: (canAssignOwners || relatedTask?.assignedToId === currentUser?.id) ? 'pointer' : 'default',
@@ -1607,7 +1607,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                             }}
                                             onMouseEnter={(e) => {
                                               if (canAssignOwners || relatedTask?.assignedToId === currentUser?.id) {
-                                                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                                e.currentTarget.style.backgroundColor = '#f4f4f4';
                                               }
                                             }}
                                             onMouseLeave={(e) => {
@@ -1655,8 +1655,8 @@ const ProjectDeliverablesTab = (props: any) => {
                                             key={member.id}
                                             style={{ 
                                               fontSize: '0.75rem', 
-                                              color: '#667eea',
-                                              background: '#f0f4ff',
+                                              color: '#111111',
+                                              background: '#ffffff',
                                               padding: '0.125rem 0.5rem',
                                               borderRadius: '4px',
                                               display: 'inline-flex',
@@ -1696,9 +1696,9 @@ const ProjectDeliverablesTab = (props: any) => {
                                             }}
                                             style={{
                                               fontSize: '0.75rem',
-                                              color: '#667eea',
+                                              color: '#111111',
                                               background: 'none',
-                                              border: '1px dashed #667eea',
+                                              border: '1px dashed #111111',
                                               padding: '0.125rem 0.5rem',
                                               borderRadius: '4px',
                                               cursor: 'pointer',
@@ -1807,7 +1807,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                                   target="_blank" 
                                                   rel="noopener noreferrer"
                                                   style={{ 
-                                                    color: '#667eea', 
+                                                    color: '#111111', 
                                                     textDecoration: 'underline', 
                                                     wordBreak: 'break-all',
                                                     display: 'inline-flex',
@@ -2045,14 +2045,14 @@ const ProjectDeliverablesTab = (props: any) => {
                 const getDeliverableDepartments = (type: string) => {
                   if (type === 'Home Page') {
                     return [
-                      { name: 'Copy Writing', color: '#667eea', icon: '📝' },
-                      { name: 'Design', color: '#8b5cf6', icon: '🎨' },
+                      { name: 'Copy Writing', color: '#111111', icon: '📝' },
+                      { name: 'Design', color: '#111111', icon: '🎨' },
                       { name: 'Development', color: '#10b981', icon: '💻' }
                     ];
                   } else if (['Brand Book', 'Copy of Home Page', 'Speaker Kit', 'Other'].includes(type)) {
-                    return [{ name: 'Copy Writing', color: '#667eea', icon: '📝' }];
+                    return [{ name: 'Copy Writing', color: '#111111', icon: '📝' }];
                   } else if (['Logo', 'Social Banners'].includes(type)) {
-                    return [{ name: 'Design', color: '#8b5cf6', icon: '🎨' }];
+                    return [{ name: 'Design', color: '#111111', icon: '🎨' }];
                   }
                   return [{ name: 'General', color: '#6b7280', icon: '📦' }];
                 };
@@ -2103,13 +2103,13 @@ const ProjectDeliverablesTab = (props: any) => {
                 
                 const getStatusColor = () => {
                   switch (deliverable.status) {
-                    case 'Not Started': return { bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' };
-                    case 'In Progress': return { bg: '#dbeafe', color: '#1e40af', dot: '#3b82f6' };
+                    case 'Not Started': return { bg: '#f4f4f4', color: '#6b7280', dot: '#9ca3af' };
+                    case 'In Progress': return { bg: '#ececec', color: '#111111', dot: '#111111' };
                     case 'Ready for Review': return { bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' };
-                    case 'Client Review': return { bg: '#e0e7ff', color: '#3730a3', dot: '#6366f1' };
+                    case 'Client Review': return { bg: '#f0f0f0', color: '#111111', dot: '#111111' };
                     case 'Approved': return { bg: '#d1fae5', color: '#065f46', dot: '#10b981' };
                     case 'Revision': return { bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' };
-                    default: return { bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' };
+                    default: return { bg: '#f4f4f4', color: '#6b7280', dot: '#9ca3af' };
                   }
                 };
                 const statusStyle = getStatusColor();
@@ -2172,8 +2172,8 @@ const ProjectDeliverablesTab = (props: any) => {
                           <div className="links-list">
                             {relatedLinks.map((link, idx) => {
                               const deptColors: any = {
-                                'Copy Writing': '#667eea',
-                                'Design': '#8b5cf6',
+                                'Copy Writing': '#111111',
+                                'Design': '#111111',
                                 'Development': '#10b981',
                                 'Deliverable': '#6b7280'
                               };
