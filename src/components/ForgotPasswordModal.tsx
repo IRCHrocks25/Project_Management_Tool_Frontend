@@ -16,47 +16,16 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [webhookStatus, setWebhookStatus] = useState<string>('');
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[MODAL] handleEmailSubmit called with email:', email);
     setError('');
     setLoading(true);
-
     try {
-      console.log('[MODAL] Calling authService.forgotPassword...');
-      const response = await authService.forgotPassword(email);
-      console.log('[MODAL] forgotPassword succeeded');
-      
-      // Check webhook status and redirect if email was sent
-      if (response.webhookStatus) {
-        if (response.webhookStatus.success) {
-          const emailSent = response.webhookStatus.emailSent || 
-                           response.webhookStatus.message?.includes('Email sent');
-          
-          if (emailSent) {
-            setWebhookStatus('✅ Email sent successfully! Redirecting to OTP verification...');
-            // Redirect to OTP step after showing success message
-            setTimeout(() => {
-              setStep('otp');
-              setWebhookStatus(''); // Clear status when moving to next step
-            }, 1500);
-          } else {
-            setWebhookStatus('✅ Webhook received! Status: ' + response.webhookStatus.status);
-          }
-        } else {
-          setWebhookStatus('❌ Webhook failed: ' + (response.webhookStatus.error || response.webhookStatus.message));
-        }
-      } else {
-        // Production backend doesn't have updated code - webhook might still be called but status not returned
-        setWebhookStatus('⚠️ Webhook status not available - Production backend may not have updated code. Check Railway logs for webhook activity.');
-        console.warn('[MODAL] Webhook status not in response. Full response:', response);
-      }
+      await authService.forgotPassword(email);
+      setStep('otp');
     } catch (err: any) {
-      console.error('[MODAL] Error in handleEmailSubmit:', err);
-      console.error('[MODAL] Error details:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+      setError(err.response?.data?.message || 'Could not send a code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -66,19 +35,11 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    console.log('[MODAL] Verifying OTP...');
-    console.log('[MODAL] Email being used:', email);
-    console.log('[MODAL] OTP being verified:', otp);
-
     try {
       await authService.verifyOtp(email, otp);
-      console.log('[MODAL] OTP verified successfully, moving to password step');
       setStep('password');
     } catch (err: any) {
-      console.error('[MODAL] OTP verification failed:', err);
-      console.error('[MODAL] Error details:', err.response?.data);
-      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      setError(err.response?.data?.message || 'That code did not work. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -101,14 +62,9 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
     setLoading(true);
 
     try {
-      console.log('[MODAL] Resetting password...');
-      console.log('[MODAL] Email being used:', email);
-      await authService.resetPasswordWithOtp(email, password);
-      console.log('[MODAL] Password reset successful');
+      await authService.resetPasswordWithOtp(email, otp, password);
       setStep('success');
     } catch (err: any) {
-      console.error('[MODAL] Password reset failed:', err);
-      console.error('[MODAL] Error details:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
@@ -141,25 +97,9 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
         {step === 'email' && (
           <>
             <h1>Forgot Password</h1>
-            <p className="auth-subtitle">Enter your email address and we'll send you an OTP to reset your password.</p>
+            <p className="auth-subtitle">Enter your email address and we'll send you a code to reset your password.</p>
 
             {error && <div className="error-message">{error}</div>}
-            
-            {webhookStatus && (
-              <div style={{
-                padding: '1rem',
-                marginBottom: '1rem',
-                borderRadius: '8px',
-                backgroundColor: webhookStatus.includes('✅') ? '#d1fae5' : webhookStatus.includes('❌') ? '#fee2e2' : '#fef3c7',
-                color: webhookStatus.includes('✅') ? '#065f46' : webhookStatus.includes('❌') ? '#991b1b' : '#92400e',
-                border: `1px solid ${webhookStatus.includes('✅') ? '#10b981' : webhookStatus.includes('❌') ? '#ef4444' : '#f59e0b'}`,
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                textAlign: 'center'
-              }}>
-                {webhookStatus}
-              </div>
-            )}
 
             <form onSubmit={handleEmailSubmit}>
               <div className="form-group">
@@ -177,32 +117,22 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
               </div>
 
               <button type="submit" className="btn-primary btn-full" disabled={loading}>
-                {loading ? 'Sending OTP...' : 'Send OTP'}
+                {loading ? 'Sending...' : 'Send code'}
               </button>
             </form>
-
-            {webhookStatus && (
-              <button 
-                onClick={() => setStep('otp')}
-                className="btn-primary btn-full"
-                style={{ marginTop: '1rem' }}
-              >
-                Continue to OTP
-              </button>
-            )}
           </>
         )}
 
         {step === 'otp' && (
           <>
-            <h1>Enter OTP</h1>
-            <p className="auth-subtitle">We've sent a 6-digit OTP to your email. Please enter it below.</p>
+            <h1>Enter your code</h1>
+            <p className="auth-subtitle">If an account exists for that email, we sent it a 6-digit code. It expires in 10 minutes.</p>
 
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleOtpSubmit}>
               <div className="form-group">
-                <label htmlFor="otp">OTP Code</label>
+                <label htmlFor="otp">Code</label>
                 <input
                   type="text"
                   id="otp"
@@ -214,7 +144,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
                     setError('');
                   }}
                   required
-                  placeholder="Enter 6-digit OTP"
+                  placeholder="Enter 6-digit code"
                   autoFocus
                   maxLength={6}
                   style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' }}
@@ -222,7 +152,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
               </div>
 
               <button type="submit" className="btn-primary btn-full" disabled={loading || otp.length !== 6}>
-                {loading ? 'Verifying...' : 'Verify OTP'}
+                {loading ? 'Verifying...' : 'Verify code'}
               </button>
             </form>
 
@@ -245,7 +175,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
                   padding: 0,
                 }}
               >
-                Resend OTP
+                Send a new code
               </button>
             </p>
           </>

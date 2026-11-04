@@ -181,51 +181,9 @@ export const authService = {
     return response.data;
   },
 
-  async forgotPassword(email: string): Promise<{ 
-    message: string; 
-    resetLink?: string;
-    webhookStatus?: {
-      success: boolean;
-      status?: number;
-      message?: string;
-      error?: string;
-      emailSent?: boolean;
-    };
-  }> {
-    console.log('[FRONTEND] Calling forgotPassword with email:', email);
-    console.log('[FRONTEND] API URL:', API_URL);
-    console.log('[FRONTEND] Full endpoint:', `${API_URL}/auth/forgot-password`);
-    console.log('[FRONTEND] Request payload:', { email });
-    
-    try {
-      const response = await authAxios.post('/auth/forgot-password', { email });
-      console.log('[FRONTEND] Response received:', response.data);
-      
-      // Log webhook status if available
-      if (response.data.webhookStatus) {
-        console.log('[FRONTEND] 📤 WEBHOOK STATUS:', response.data.webhookStatus);
-        if (response.data.webhookStatus.success) {
-          console.log('[FRONTEND] ✅ Webhook triggered successfully!');
-          console.log('[FRONTEND] ✅ Webhook response status:', response.data.webhookStatus.status);
-          console.log('[FRONTEND] ✅ Webhook message:', response.data.webhookStatus.message);
-        } else {
-          console.error('[FRONTEND] ❌ Webhook failed!');
-          console.error('[FRONTEND] ❌ Webhook error:', response.data.webhookStatus.error);
-          console.error('[FRONTEND] ❌ Webhook status code:', response.data.webhookStatus.status);
-          console.error('[FRONTEND] ❌ Webhook message:', response.data.webhookStatus.message);
-        }
-      } else {
-        console.log('[FRONTEND] ⚠️ Webhook status not included in response (production mode)');
-        console.log('[FRONTEND] 💡 Check backend logs (Railway) to see webhook details');
-      }
-      
-      return response.data;
-    } catch (error: any) {
-      console.error('[FRONTEND] Error in forgotPassword:', error);
-      console.error('[FRONTEND] Error response:', error.response?.data);
-      console.error('[FRONTEND] Error status:', error.response?.status);
-      throw error;
-    }
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await authAxios.post('/auth/forgot-password', { email });
+    return response.data;
   },
 
   async resetPassword(token: string, password: string): Promise<{ message: string }> {
@@ -234,20 +192,8 @@ export const authService = {
   },
 
   async verifyOtp(email: string, otp: string): Promise<{ message: string; verified: boolean }> {
-    console.log('[FRONTEND] Calling verifyOtp with email:', email, 'OTP:', otp);
-    console.log('[FRONTEND] Full endpoint:', `${API_URL}/auth/verify-otp`);
-    console.log('[FRONTEND] Request payload:', { email, otp });
-    
-    try {
-      const response = await authAxios.post('/auth/verify-otp', { email, otp });
-      console.log('[FRONTEND] OTP verification response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('[FRONTEND] Error in verifyOtp:', error);
-      console.error('[FRONTEND] Error response:', error.response?.data);
-      console.error('[FRONTEND] Error status:', error.response?.status);
-      throw error;
-    }
+    const response = await authAxios.post('/auth/verify-otp', { email, otp });
+    return response.data;
   },
 
   async updateProfile(data: {
@@ -284,21 +230,9 @@ export const authService = {
     return response.data;
   },
 
-  async resetPasswordWithOtp(email: string, password: string): Promise<{ message: string }> {
-    console.log('[FRONTEND] Calling resetPasswordWithOtp with email:', email);
-    console.log('[FRONTEND] Full endpoint:', `${API_URL}/auth/reset-password-otp`);
-    console.log('[FRONTEND] Request payload:', { email, password: '***' });
-    
-    try {
-      const response = await authAxios.post('/auth/reset-password-otp', { email, password });
-      console.log('[FRONTEND] Password reset response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('[FRONTEND] Error in resetPasswordWithOtp:', error);
-      console.error('[FRONTEND] Error response:', error.response?.data);
-      console.error('[FRONTEND] Error status:', error.response?.status);
-      throw error;
-    }
+  async resetPasswordWithOtp(email: string, otp: string, password: string): Promise<{ message: string }> {
+    const response = await authAxios.post('/auth/reset-password-otp', { email, otp, password });
+    return response.data;
   },
 };
 
