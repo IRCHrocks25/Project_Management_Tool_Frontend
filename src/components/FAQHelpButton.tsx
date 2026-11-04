@@ -20,6 +20,7 @@ const FAQHelpButton: React.FC = () => {
   return (
     <>
       <button
+        className="faq-help-trigger"
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open FAQ"

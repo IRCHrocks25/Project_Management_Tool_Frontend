@@ -5,7 +5,6 @@ import {
   FaClock,
   FaFolderOpen,
   FaCalendarDay,
-  FaUser,
   FaCog,
   FaStickyNote,
   FaBullseye,
@@ -18,8 +17,9 @@ import {
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
 import './Dashboard.css';
+import './AppSidebar.css';
 
-const SIDEBAR_WIDTH = 260;
+const SIDEBAR_WIDTH = 246;
 /** Below this width the sidebar becomes a slide-in drawer so the page keeps its full width */
 const MOBILE_QUERY = '(max-width: 768px)';
 
@@ -41,6 +41,27 @@ type NavItem = {
   roles?: string[]; // if set, only show for these roles
   /** When true, Head PM (isHeadPM) may see this item even if roles is PM-only */
   alsoHeadPM?: boolean;
+};
+
+/** Page-level navigation a dashboard can place at the top of the sidebar */
+export type SidebarWorkspaceItem = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  count?: number;
+  active?: boolean;
+  onClick: () => void;
+};
+export type SidebarPinnedProject = {
+  id: string;
+  label: string;
+  color: string;
+  active?: boolean;
+  onClick: () => void;
+};
+export type SidebarWorkspace = {
+  items: SidebarWorkspaceItem[];
+  pinned?: SidebarPinnedProject[];
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -83,13 +104,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'DEPARTMENTS',
     items: [
-      { path: '/department-view/copy-writing', label: 'Copy Writing Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/designer', label: 'Design Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/developer', label: 'Development Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/ai-developer', label: 'AI Dev Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/social-media', label: 'Social Media Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/crm', label: 'CRM Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
-      { path: '/department-view/seo-geo', label: 'SEO/GEO Board', icon: <FaFlag />, roles: ['Project Manager'], alsoHeadPM: true },
+      { path: '/department-view/copy-writing', label: 'Copy Writing Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/designer', label: 'Design Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/developer', label: 'Development Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/ai-developer', label: 'AI Dev Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/social-media', label: 'Social Media Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/crm', label: 'CRM Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
+      { path: '/department-view/seo-geo', label: 'SEO/GEO Board', icon: <FaFlag />, roles: ['Project Manager', 'FOUNDER/CEO'], alsoHeadPM: true },
     ],
   },
   {
@@ -98,16 +119,9 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { path: '/forum', label: 'Forum', icon: <FaStickyNote /> },
     ],
   },
-  {
-    title: 'ME',
-    items: [
-      { path: '/profile', label: 'Profile', icon: <FaUser /> },
-      { path: '/settings', label: 'Settings', icon: <FaCog /> },
-    ],
-  },
 ];
 
-const AppSidebar: React.FC = () => {
+const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = authService.getUser();
@@ -146,6 +160,7 @@ const AppSidebar: React.FC = () => {
   const visibleSections = navSections.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
+      if (workspace && item.path === '/dashboard' && location.pathname === '/dashboard') return false;
       if (item.roles && item.roles.length > 0) {
         const roleOk = user?.role && item.roles.includes(user.role);
         const headOk = item.alsoHeadPM && user?.isHeadPM;
@@ -171,134 +186,96 @@ const AppSidebar: React.FC = () => {
 
   return (
     <>
-    {isMobile && (
-      <div
-        onClick={() => setDrawerOpen(false)}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 1290 }}
-      />
-    )}
-    <aside
-      style={{
-        width: SIDEBAR_WIDTH,
-        minWidth: SIDEBAR_WIDTH,
-        height: '100vh',
-        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: isMobile ? 'fixed' : 'sticky',
-        top: 0,
-        left: 0,
-        // Keep page content (positioned or not) from ever painting over the sidebar
-        zIndex: isMobile ? 1300 : 20,
-        overflowY: 'auto',
-        flexShrink: 0,
-      }}
-    >
-      {isMobile && (
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(false)}
-          aria-label="Close navigation"
-          style={{
-            position: 'absolute', top: 12, right: 12, width: 32, height: 32,
-            border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.08)',
-            color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <FaTimes />
-        </button>
-      )}
-      {/* User block at top */}
-      <div
-        style={{
-          padding: '1.5rem 1rem',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <UserAvatar
-            name={user?.name}
-            avatarUrl={user?.avatarUrl}
-            size={40}
-            color="#6366f1"
-          />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: 'white', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.name || 'User'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
-              {user?.role || ''}
-            </div>
+      {isMobile && <div className="as-scrim" onClick={() => setDrawerOpen(false)} />}
+      <aside className={`as-sidebar${isMobile ? ' as-mobile' : ''}`}>
+        {isMobile && (
+          <button type="button" className="as-close" onClick={() => setDrawerOpen(false)} aria-label="Close navigation">
+            <FaTimes />
+          </button>
+        )}
+        <div className="as-brand">
+          <div className="as-brandmark" aria-hidden="true">K</div>
+          <div>
+            <div className="as-brandname">Katalyst PM</div>
+            <div className="as-brandcaption">TEAM OPERATIONS</div>
           </div>
         </div>
-      </div>
 
-      {/* Nav sections */}
-      <nav style={{ flex: 1, padding: '1rem 0.75rem' }}>
-        {visibleSections.map((section) => (
-          <div key={section.title} style={{ marginBottom: '1.25rem' }}>
-            <div
-              style={{
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.45)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                padding: '0 0.75rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              {section.title}
-            </div>
-            {section.items.map((item) => {
-              const active = isActive(item.path);
-              return (
+        <nav className="as-nav" aria-label="Main">
+          {workspace && (
+            <>
+              <div className="as-label">Workspace</div>
+              {workspace.items.map((item) => (
                 <button
-                  key={item.path + item.label}
+                  key={item.key}
                   type="button"
-                  onClick={() => handleNav(item)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.625rem 0.75rem',
-                    marginBottom: '0.25rem',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: active ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                    color: active ? 'white' : 'rgba(255,255,255,0.85)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                      e.currentTarget.style.color = 'white';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                    }
-                  }}
+                  className={`as-item${item.active ? ' active' : ''}`}
+                  aria-current={item.active ? 'page' : undefined}
+                  onClick={() => { item.onClick(); setDrawerOpen(false); }}
                 >
-                  <span style={{ fontSize: '1rem', opacity: 0.95 }}>{item.icon}</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.label}
-                  </span>
+                  {item.icon}
+                  <span className="as-item-label">{item.label}</span>
+                  {typeof item.count === 'number' && item.count > 0 && <span className="as-count">{item.count}</span>}
                 </button>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-    </aside>
+              ))}
+              {workspace.pinned && workspace.pinned.length > 0 && (
+                <>
+                  <div className="as-label">My active projects</div>
+                  {workspace.pinned.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      className={`as-project${project.active ? ' active' : ''}`}
+                      onClick={() => { project.onClick(); setDrawerOpen(false); }}
+                    >
+                      <i className="as-project-dot" style={{ background: project.color }} />
+                      <span className="as-item-label">{project.label}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+          {visibleSections.map((section) => (
+            <div key={section.title}>
+              <div className="as-label">{section.title}</div>
+              {section.items.map((item) => {
+                const active = isActive(item.path);
+                return (
+                  <button
+                    key={item.path + item.label}
+                    type="button"
+                    className={`as-item${active ? ' active' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => handleNav(item)}
+                  >
+                    {item.icon}
+                    <span className="as-item-label">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <div className="as-bottom">
+          <button
+            type="button"
+            className={`as-item${isActive('/settings') ? ' active' : ''}`}
+            onClick={() => navigate('/settings')}
+          >
+            <FaCog />
+            <span className="as-item-label">Settings</span>
+          </button>
+          <button type="button" className="as-person" onClick={() => navigate('/profile')} title="Open your profile">
+            <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#6555e9" />
+            <span className="as-person-text">
+              <b>{user?.name || 'User'}</b>
+              <small>{user?.role || ''}</small>
+            </span>
+          </button>
+        </div>
+      </aside>
     </>
   );
 };

@@ -67,7 +67,7 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 /** PM Dashboard route: accessible by Project Managers and department heads (isTeamLead) */
 const PMDashboardRoute: React.FC = () => {
   const user = authService.getUser();
-  const isPM = user?.role === 'Project Manager';
+  const isPM = user?.role === 'Project Manager' || user?.role === 'FOUNDER/CEO';
   const isHead = !!user?.isTeamLead;
   if (isPM || isHead) {
     return <PMDashboard />;
@@ -78,7 +78,7 @@ const PMDashboardRoute: React.FC = () => {
 /** Tuesday view: same access as PMDashboard. */
 const TuesdayRoute: React.FC = () => {
   const user = authService.getUser();
-  const isPM = user?.role === 'Project Manager';
+  const isPM = user?.role === 'Project Manager' || user?.role === 'FOUNDER/CEO';
   const isHead = !!user?.isTeamLead;
   if (isPM || isHead) {
     return <TuesdayView />;

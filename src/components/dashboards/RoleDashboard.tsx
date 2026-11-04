@@ -1,29 +1,38 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FaChevronDown,
-  FaUser,
+  FaArrowRight,
   FaBell,
-  FaCog,
-  FaSignOutAlt,
+  FaBolt,
+  FaCalendarAlt,
+  FaChartLine,
+  FaCheckCircle,
+  FaChevronRight,
   FaClock,
-  FaSpinner,
-  FaHandPaper,
-  FaStickyNote,
-  FaTimes,
+  FaCog,
+  FaColumns,
+  FaComments,
+  FaEdit,
+  FaFolderPlus,
+  FaInbox,
+  FaLink,
   FaPlus,
+  FaSave,
+  FaSearch,
+  FaSignOutAlt,
+  FaSpinner,
+  FaSyncAlt,
+  FaThLarge,
+  FaTicketAlt,
+  FaTimes,
+  FaUser,
+  FaUsers,
   FaCopy,
   FaPalette,
   FaCode,
   FaRobot,
   FaShareAlt,
   FaDatabase,
-  FaSearch,
-  FaEdit,
-  FaSave,
-  FaLink,
-  FaComments,
-  FaTicketAlt,
 } from 'react-icons/fa';
 import { authService } from '../../services/auth.service';
 import { projectService } from '../../services/project.service';
@@ -39,11 +48,13 @@ import SendForReviewModal from '../SendForReviewModal';
 import LiveChatPanel from '../LiveChatPanel';
 import StatusChangeNotesModal from '../shared/StatusChangeNotesModal';
 import UserAvatar from '../UserAvatar';
-import UserGreeting from '../UserGreeting';
+import AppSidebar from '../AppSidebar';
+import TodaysPrioritiesCard from './TodaysPrioritiesCard';
 import TaskDetailSideModal from '../TaskDetailSideModal';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import DepartmentPriorityProjects from '../DepartmentPriorityProjects';
 import '../Dashboard.css';
+import './RoleDashboard.css';
 
 // Role configuration mapping
 const ROLE_CONFIG: Record<string, {
@@ -104,6 +115,92 @@ const ROLE_CONFIG: Record<string, {
   },
 };
 
+type ColumnId =
+  | 'not_started'
+  | 'owned_in_progress'
+  | 'for_approval'
+  | 'revision'
+  | 'elliot_review'
+  | 'qa_before_client'
+  | 'client_validation'
+  | 'approved_completed';
+type Section = 'overview' | 'my' | 'board' | 'approvals' | 'team';
+type TaskAction = { key: string; label: string; run: () => void };
+
+const COLUMN_LABEL: Record<ColumnId, string> = {
+  not_started: 'Not started',
+  owned_in_progress: 'In progress',
+  for_approval: 'Awaiting approval',
+  revision: 'Changes requested',
+  elliot_review: 'Elliot review',
+  qa_before_client: 'QA review',
+  client_validation: 'Client validation',
+  approved_completed: 'Completed',
+};
+const BOARD_COLUMNS: ColumnId[] = ['not_started', 'owned_in_progress', 'for_approval', 'revision', 'qa_before_client', 'client_validation', 'approved_completed'];
+const CHIP_COLUMNS: ColumnId[] = ['for_approval', 'revision', 'owned_in_progress', 'not_started', 'qa_before_client', 'client_validation', 'approved_completed'];
+const HEALTH_COLUMNS: ColumnId[] = ['not_started', 'owned_in_progress', 'for_approval', 'revision', 'qa_before_client', 'client_validation'];
+const NEXT_STEP: Record<ColumnId, string> = {
+  not_started: 'Claim this task or assign an owner, then start work.',
+  owned_in_progress: 'Finish the work, then send it for review.',
+  for_approval: 'A reviewer completes it or requests specific changes.',
+  revision: 'Apply the requested changes, then send it back for review.',
+  elliot_review: 'Waiting on Elliot. Move it forward once it is reviewed.',
+  qa_before_client: 'QA checks the work before it goes to the client.',
+  client_validation: 'Waiting on client feedback. Complete it once the client approves.',
+  approved_completed: 'This task is complete. No further action is needed.',
+};
+const PROJECT_DOT_COLORS = ['#8c80ed', '#58b7c5', '#efad72', '#85c5a5', '#e58fa8', '#7ba4ed'];
+const QUEUE_PAGE_SIZE = 30;
+const VIEW_STORAGE_KEY = 'roleDashboard.viewMode';
+
+const getAssigneeIds = (task: any): string[] => {
+  const assignees = task?.assignees || [];
+  if (assignees.length > 0) return assignees.map((a: any) => a.userId || a.user?.id);
+  return task?.assignedToId ? [task.assignedToId] : [];
+};
+
+/** Which workflow stage a task is in, including the In Review sub-states kept as description markers. */
+const getTaskColumn = (task: any): ColumnId => {
+  if (task.status === 'Completed' || task.isCompleted) return 'approved_completed';
+
+  const desc: string = task.description || '';
+  if (desc.includes('--- Column: Revision ---')) return 'revision';
+  if (desc.includes('--- Column: Elliot Review ---')) return 'elliot_review';
+  if (desc.includes('--- Column: QA Review ---')) return 'qa_before_client';
+  if (desc.includes('--- Column: Client Validation ---')) return 'client_validation';
+  if (desc.includes('--- Column: Client Review ---')) return 'client_validation';
+  if (desc.includes('--- Column: For Approval ---')) return 'for_approval';
+
+  if (task.assignedToId) {
+    if (task.status === 'In Progress') return 'owned_in_progress';
+    if (task.status === 'In Review') return 'for_approval';
+    if (task.status === 'Revision' || task.status === 'Needs Revision') return 'revision';
+    if (task.status === 'Elliot Review') return 'elliot_review';
+    if (task.status === 'QA Review' || task.status === 'QA') return 'qa_before_client';
+    if (task.status === 'Client Review' || task.status === 'Client Validation') return 'client_validation';
+    return 'owned_in_progress';
+  }
+  return 'not_started';
+};
+
+const getDueInfo = (task: any): { text: string; className: string } => {
+  if (!task?.dueDate) return { text: 'No date', className: 'rd-unassigned' };
+  const due = new Date(task.dueDate);
+  if (Number.isNaN(due.getTime())) return { text: 'No date', className: 'rd-unassigned' };
+  const text = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (getTaskColumn(task) === 'approved_completed') return { text, className: '' };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(due);
+  day.setHours(0, 0, 0, 0);
+  const days = Math.round((day.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return { text, className: 'rd-overdue' };
+  if (days === 0) return { text: 'Today', className: 'rd-duesoon' };
+  if (days <= 2) return { text, className: 'rd-duesoon' };
+  return { text, className: '' };
+};
+
 type KanbanColumnSortOrder = 'newest' | 'oldest';
 
 function sortKanbanTasksByCreatedAt(tasks: any[], order: KanbanColumnSortOrder): any[] {
@@ -151,13 +248,28 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- refreshUnreadChat used in LiveChatPanel onClose
   const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
-  const [filter, setFilter] = useState<'all' | 'my_tasks' | 'todo' | 'in_progress' | 'in_review' | 'completed'>('all');
+  const initialViewMode = (() => {
+    try {
+      return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'kanban' ? 'kanban' : 'list';
+    } catch {
+      return 'list';
+    }
+  })() as 'kanban' | 'list';
+  const [section, setSection] = useState<Section>(initialViewMode === 'kanban' ? 'board' : 'overview');
+  const [statusFilter, setStatusFilter] = useState<'all' | ColumnId>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(QUEUE_PAGE_SIZE);
+  const [showPrioritiesModal, setShowPrioritiesModal] = useState(false);
+  const [prioritiesRefreshKey, setPrioritiesRefreshKey] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | undefined>(undefined);
+  const hasLoadedRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'created'>('due_date');
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>(initialViewMode);
   const [updatingTask, setUpdatingTask] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const skipRefreshUntilRef = useRef<number | null>(null);
-  const [deliverableHistory] = useState<Record<string, any[]>>({});
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [taskProjectScope, setTaskProjectScope] = useState<'department' | 'all'>('department');
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
@@ -321,6 +433,33 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAvatarDropdown]);
 
+  const notify = (message: string) => {
+    setToast(message);
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3200);
+  };
+  useEffect(() => () => window.clearTimeout(toastTimerRef.current), []);
+
+  // Reset paging and bulk selection whenever the queue changes
+  useEffect(() => {
+    setVisibleCount(QUEUE_PAGE_SIZE);
+    setSelectedTaskIds([]);
+  }, [section, statusFilter, assigneeFilter, projectFilter, searchQuery, sortBy]);
+
+  // "/" jumps to search; Escape closes the priorities modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPrioritiesModal(false);
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && !(e.target as HTMLElement)?.isContentEditable) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // Define close handler early so it can be used across handlers
   const handleCloseTaskDetail = useCallback(() => {
     setShowTaskDetailModal(false);
@@ -372,6 +511,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -454,13 +594,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const handleForwardTask = async () => {
     if (!forwardingTask || !forwardData.targetDepartment) {
-      alert('Please select a target department to forward this task to.');
+      notify('Please select a target department to forward this task to.');
       return;
     }
 
     const targetTaskType = getTaskTypeForDepartment(forwardData.targetDepartment);
     if (!targetTaskType) {
-      alert('Selected department is not configured for tasks yet.');
+      notify('Selected department is not configured for tasks yet.');
       return;
     }
 
@@ -520,10 +660,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         notes: '',
         links: ''
       });
-      alert(`Task forwarded to ${deptName}. A new task has been created in that department.`);
+      notify(`Task forwarded to ${deptName}. A new task has been created in that department.`);
     } catch (error) {
       console.error('Failed to forward task:', error);
-      alert('Failed to forward task. Please try again.');
+      notify('Failed to forward task. Please try again.');
     } finally {
       setForwarding(false);
     }
@@ -533,7 +673,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     if (!returningTask) return;
     const linked = getLinkedOriginInfo(returningTask);
     if (!linked?.originTaskId) {
-      alert('Linked origin task not found for this forwarded task.');
+      notify('Linked origin task not found for this forwarded task.');
       return;
     }
 
@@ -551,10 +691,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       await taskService.updateStatus(linked.originTaskId, 'In Review');
       await taskService.updateStatus(returningTask.id, 'Completed', true);
       await loadData();
-      alert(`Task returned to ${linked.originDepartmentName || 'origin department'} for approval.`);
+      notify(`Task returned to ${linked.originDepartmentName || 'origin department'} for approval.`);
     } catch (error) {
       console.error('Failed to return task to origin department:', error);
-      alert('Failed to return task. Please try again.');
+      notify('Failed to return task. Please try again.');
     } finally {
       setUpdatingTask(null);
       setReturning(false);
@@ -567,7 +707,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const handleSendBackToTargetForRevision = async (task: any) => {
     const linked = getLinkedTargetInfo(task);
     if (!linked?.targetTaskId) {
-      alert('Linked department task not found for this task.');
+      notify('Linked department task not found for this task.');
       return;
     }
 
@@ -596,10 +736,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         await taskService.assign(linked.targetTaskId, targetPrevAssignee);
       }
       await loadData();
-      alert(`Marked for revision and sent back to ${linked.targetDepartmentName || 'linked department'}.`);
+      notify(`Marked for revision and sent back to ${linked.targetDepartmentName || 'linked department'}.`);
     } catch (error) {
       console.error('Failed to send task back for revision:', error);
-      alert('Failed to send back for revision. Please try again.');
+      notify('Failed to send back for revision. Please try again.');
     } finally {
       setUpdatingTask(null);
     }
@@ -670,7 +810,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       setSelectedTaskForReview(null);
     } catch (error) {
       console.error('Failed to send for review:', error);
-      alert('Failed to send for review. Please try again.');
+      notify('Failed to send for review. Please try again.');
     } finally {
       setUpdatingTask(null);
     }
@@ -704,7 +844,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const handleAssignTask = async () => {
     if (!assigningTask || assignUserIds.length === 0) {
-      alert('Please select at least one team member to assign this task to.');
+      notify('Please select at least one team member to assign this task to.');
       return;
     }
 
@@ -716,10 +856,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       setShowAssignModal(false);
       setAssigningTask(null);
       setAssignUserIds([]);
-      alert(`Task assigned to ${assignUserIds.length} team member(s) successfully!`);
+      notify(`Task assigned to ${assignUserIds.length} team member(s) successfully!`);
     } catch (error) {
       console.error('Failed to assign task:', error);
-      alert('Failed to assign task. Please try again.');
+      notify('Failed to assign task. Please try again.');
     } finally {
       setUpdatingTask(null);
       setAssigning(false);
@@ -749,16 +889,16 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const copyTaskLink = async (task: any) => {
     if (!task?.id || !task?.projectId) {
-      alert('Unable to copy task link.');
+      notify('Unable to copy task link.');
       return;
     }
     const taskUrl = `${window.location.origin}/project/${task.projectId}?task=${task.id}&tab=details`;
     try {
       await navigator.clipboard.writeText(taskUrl);
-      alert('Task link copied!');
+      notify('Task link copied!');
     } catch (error) {
       console.error('Failed to copy task link:', error);
-      alert('Failed to copy task link.');
+      notify('Failed to copy task link.');
     }
   };
 
@@ -777,119 +917,71 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     }
   };
 
-  const getFilteredAndSortedTasks = () => {
+  const columnCounts = useMemo(() => {
+    const counts: Partial<Record<ColumnId, number>> = {};
+    tasks.forEach((t: any) => {
+      const column = getTaskColumn(t);
+      counts[column] = (counts[column] || 0) + 1;
+    });
+    return counts;
+  }, [tasks]);
+
+  const queueTasks = useMemo(() => {
     let filtered = tasks;
 
-    if (filter === 'my_tasks') {
-      filtered = filtered.filter((t: any) => t.assignedToId === user?.id);
-    } else if (filter === 'todo') {
-      filtered = filtered.filter((t: any) => t.status === 'Todo' && !t.isCompleted);
-    } else if (filter === 'in_progress') {
-      filtered = filtered.filter((t: any) => t.status === 'In Progress');
-    } else if (filter === 'in_review') {
-      filtered = filtered.filter((t: any) => t.status === 'In Review');
-    } else if (filter === 'completed') {
-      filtered = filtered.filter((t: any) => t.isCompleted);
+    if (section === 'my') {
+      filtered = filtered.filter((t: any) => getAssigneeIds(t).includes(user?.id || ''));
+    }
+    if (assigneeFilter === 'unassigned') {
+      filtered = filtered.filter((t: any) => getAssigneeIds(t).length === 0);
+    } else if (assigneeFilter) {
+      filtered = filtered.filter((t: any) => getAssigneeIds(t).includes(assigneeFilter));
+    }
+    if (projectFilter) {
+      filtered = filtered.filter((t: any) => t.projectId === projectFilter);
+    }
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((t: any) => getTaskColumn(t) === statusFilter);
+    } else if (viewMode === 'list') {
+      // The list is a work queue: finished work is one click away under "Completed"
+      filtered = filtered.filter((t: any) => getTaskColumn(t) !== 'approved_completed');
     }
 
-    if (searchQuery.trim()) {
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
       filtered = filtered.filter((t: any) => {
         const project = projects.find((p: any) => p.id === t.projectId);
-        const projectName = project?.clientName || '';
+        const assigneeNames = getAssigneeIds(t).map((id) => users.find((u: any) => u.id === id)?.name || '');
         return (
-          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          projectName.toLowerCase().includes(searchQuery.toLowerCase())
+          (t.title || '').toLowerCase().includes(query) ||
+          (project?.clientName || '').toLowerCase().includes(query) ||
+          assigneeNames.some((name) => name.toLowerCase().includes(query))
         );
       });
     }
 
-    filtered = [...filtered].sort((a: any, b: any) => {
+    return [...filtered].sort((a: any, b: any) => {
       if (sortBy === 'due_date') {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
         if (!b.dueDate) return -1;
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       } else if (sortBy === 'priority') {
-        const priorityOrder: Record<string, number> = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        const priorityOrder: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
         return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
-      } else {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+  }, [tasks, section, statusFilter, assigneeFilter, projectFilter, viewMode, sortBy, user?.id, projects, users, searchQuery]);
 
-    return filtered;
-  };
-
-
-  const getGroupedTasks = useMemo(() => {
-    const filtered = getFilteredAndSortedTasks();
-    
-    // Get task status for Kanban columns - comprehensive status handling
-    const getTaskStatus = (task: any): string => {
-      // Completed always goes to Approved/Completed
-      if (task.status === 'Completed' || task.isCompleted) {
-        return 'approved_completed';
-      }
-
-      const desc: string = task.description || '';
-
-      // Column markers in description (for In Review sub-states)
-      if (desc.includes('--- Column: Revision ---')) return 'revision';
-      if (desc.includes('--- Column: Elliot Review ---')) return 'elliot_review';
-      if (desc.includes('--- Column: QA Review ---')) return 'qa_before_client';
-      if (desc.includes('--- Column: Client Validation ---')) return 'client_validation';
-      if (desc.includes('--- Column: Client Review ---')) return 'client_validation';
-      if (desc.includes('--- Column: For Approval ---')) return 'for_approval';
-
-      if (task.assignedToId) {
-        if (task.status === 'In Progress') {
-          return 'owned_in_progress';
-        }
-        if (task.status === 'In Review') {
-          // In Review with no marker defaults to For Approval
-          return 'for_approval';
-        }
-        if (task.status === 'Revision' || task.status === 'Needs Revision') {
-          return 'revision';
-        }
-        if (task.status === 'Elliot Review') {
-          return 'elliot_review';
-        }
-        if (task.status === 'QA Review' || task.status === 'QA') {
-          return 'qa_before_client';
-        }
-        if (task.status === 'Client Review' || task.status === 'Client Validation') {
-          return 'client_validation';
-        }
-        return 'owned_in_progress';
-      }
-      
-      return 'not_started';
-    };
-
-    const grouped: Record<string, any[]> = {
-      'not_started': [],
-      'owned_in_progress': [],
-      'for_approval': [],
-      'revision': [],
-      'elliot_review': [],
-      'approved_completed': [],
-      'qa_before_client': [],
-      'client_validation': []
-    };
-    
-    for (let i = 0; i < filtered.length; i++) {
-      const task = filtered[i];
-      const status = getTaskStatus(task);
-      const group = grouped[status];
-      if (group) {
-        group.push(task);
-      }
-    }
-    
+  const groupedTasks = useMemo(() => {
+    const grouped: Partial<Record<ColumnId, any[]>> = {};
+    queueTasks.forEach((task: any) => {
+      const column = getTaskColumn(task);
+      (grouped[column] = grouped[column] || []).push(task);
+    });
     return grouped;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter, sortBy, user?.id, projects, searchQuery]);
+  }, [queueTasks]);
 
   const projectNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -960,7 +1052,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (Number.isNaN(dueDate.getTime())) continue;
 
       const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / msPerDay);
-      if (daysLeft >= 1 && daysLeft <= 5) {
+      if (daysLeft <= 5) {
         alerts.push({
           taskId: task.id,
           projectId: task.projectId,
@@ -1018,7 +1110,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     return <div>Invalid role configuration</div>;
   }
 
-  const { departmentName, color } = config;
+  const { departmentName } = config;
+  const color = '#6555e9';
 
   const handleEditTask = (task: any) => {
     setEditingTask(task);
@@ -1036,7 +1129,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const handleUpdateTask = async () => {
     if (!editingTask || !editTaskData.title.trim()) {
-      alert('Please enter a task title');
+      notify('Please enter a task title');
       return;
     }
 
@@ -1095,10 +1188,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       });
       setShowEditCustomDeliverableInput(false);
       setEditCustomDeliverableName('');
-      alert('Task updated successfully!');
+      notify('Task updated successfully!');
     } catch (error) {
       console.error('Failed to update task:', error);
-      alert('Failed to update task. Please try again.');
+      notify('Failed to update task. Please try again.');
     } finally {
       setIsUpdatingTaskInModal(false);
     }
@@ -1106,7 +1199,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   const handleCreateTask = async () => {
     if (!newTaskData.projectId || !newTaskData.title.trim()) {
-      alert('Please select a client and enter a task title');
+      notify('Please select a client and enter a task title');
       return;
     }
 
@@ -1162,100 +1255,20 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       setTaskProjectScope('department');
       setShowCustomDeliverableInput(false);
       setCustomDeliverableName('');
-      alert('Task created successfully!');
+      notify('Task created successfully!');
     } catch (error) {
       console.error('Failed to create task:', error);
-      alert('Failed to create task. Please try again.');
+      notify('Failed to create task. Please try again.');
     } finally {
       setCreatingTask(false);
     }
   };
 
-  const getTaskBorderColor = (status: string, isCompleted: boolean, taskInRevision: boolean) => {
-    if (taskInRevision) return '#dc2626';
-    if (isCompleted) return '#10b981';
-    if (status === 'In Review') return '#f59e0b';
-    if (status === 'In Progress') return '#3b82f6';
-    if (status === 'Blocked') return '#ef4444';
-    return '#e5e7eb';
-  };
-
   const hasRevisionDeliverables = (project: any) => {
-    return project.deliverables?.some((d: any) => 
+    return project.deliverables?.some((d: any) =>
       ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) &&
       d.status === 'Revision'
     );
-  };
-
-  const isTaskInRevision = (task: any, project: any) => {
-    if (task.deliverableId) {
-      const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
-      if (deliverable) {
-        if (deliverable.status === 'Revision') {
-          return true;
-        }
-        
-        const history = deliverableHistory[deliverable.id] || [];
-        if (history.length > 0) {
-          if (task.status === 'In Review') {
-            return false;
-          }
-          
-          if (task.fileUrl) {
-            const fileHistory = history.filter((h: any) => h.fileUrl === task.fileUrl);
-            if (fileHistory.length > 0) {
-              const latestFileHistory = fileHistory[0];
-              if (latestFileHistory.action === 'Revision Requested') {
-                return true;
-              }
-            }
-          }
-          
-          const revisionHistory = history.filter((h: any) => h.action === 'Revision Requested');
-          if (revisionHistory.length > 0) {
-            const latestRevision = revisionHistory[0];
-            if (!task.fileUrl || !latestRevision.fileUrl || latestRevision.fileUrl === task.fileUrl) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return false;
-  };
-
-  const getTaskNotes = (task: any, project: any) => {
-    if (!task.deliverableId) return [];
-    
-    const deliverable = project.deliverables?.find((d: any) => d.id === task.deliverableId);
-    if (!deliverable) return [];
-    
-    const history = deliverableHistory[deliverable.id] || [];
-    const taskNotes: any[] = [];
-    
-    history.forEach((h: any) => {
-      if (h.notes && h.notes.trim() && h.action === 'Revision Requested') {
-        if (task.fileUrl) {
-          if (h.fileUrl === task.fileUrl) {
-            taskNotes.push({
-              ...h,
-              deliverableType: deliverable.type || deliverable.customType,
-              deliverableId: deliverable.id,
-            });
-          }
-        } else {
-          if (!h.fileUrl) {
-            taskNotes.push({
-              ...h,
-              deliverableType: deliverable.type || deliverable.customType,
-              deliverableId: deliverable.id,
-            });
-          }
-        }
-      }
-    });
-    
-    return taskNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const getLinkedOriginInfo = (task: any) => {
@@ -1440,10 +1453,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       setShowStatusChangeModal(false);
       setStatusChangeContext(null);
 
-      alert(`Task moved to ${statusChangeContext.targetColumnLabel} ✓`);
+      notify(`Task moved to ${statusChangeContext.targetColumnLabel} ✓`);
     } catch (error) {
       console.error('Failed to update task status:', error);
-      alert('Failed to update task status. Please try again.');
+      notify('Failed to update task status. Please try again.');
     } finally {
       setStatusChangeLoading(false);
     }
@@ -1451,49 +1464,75 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
 
 
-  if (loading) {
+  const openStatusChange = (taskId: string, columnId: ColumnId) => {
+    setStatusChangeContext({ taskId, targetColumnId: columnId, targetColumnLabel: COLUMN_LABEL[columnId] });
+    setShowStatusChangeModal(true);
+  };
+
+  const rememberViewMode = (mode: 'kanban' | 'list') => {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, mode);
+    } catch {
+      // Remembering the layout is only a convenience
+    }
+  };
+
+  const switchViewMode = (mode: 'kanban' | 'list') => {
+    rememberViewMode(mode);
+    if (mode === 'kanban' && section === 'overview') setSection('board');
+    if (mode === 'list' && section === 'board') setSection('overview');
+  };
+
+  const goToSection = (next: Section) => {
+    setSection(next);
+    setProjectFilter(null);
+    setAssigneeFilter(null);
+    setSearchQuery('');
+    setStatusFilter(next === 'approvals' ? 'for_approval' : 'all');
+    if (next === 'board') rememberViewMode('kanban');
+    else if (next === 'overview' || next === 'approvals') rememberViewMode('list');
+  };
+
+  const applyStatusFilter = (column: ColumnId) => {
+    if (section === 'board') {
+      setSection('overview');
+    }
+    rememberViewMode('list');
+    setStatusFilter((current) => (current === column ? 'all' : column));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTaskIds.length === 0) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedTaskIds.length} selected task${selectedTaskIds.length > 1 ? 's' : ''}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+    try {
+      setUpdatingTask('bulk-delete');
+      await Promise.all(selectedTaskIds.map((id) => taskService.delete(id)));
+      await loadData();
+      notify(`Deleted ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''}.`);
+      setSelectedTaskIds([]);
+    } catch (error) {
+      console.error('Failed to bulk delete tasks:', error);
+      await loadData();
+      notify('Some tasks could not be deleted. Please try again.');
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  if (loading && !hasLoadedRef.current) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <FaSpinner className="spinner" style={{
-            fontSize: '3rem',
-            marginBottom: '1rem',
-            animation: 'spin 1s linear infinite'
-          }} />
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            margin: '0 0 0.5rem 0',
-            color: 'white'
-          }}>
-            Loading {departmentName}
-          </h2>
-          <p style={{
-            fontSize: '1rem',
-            margin: 0,
-            opacity: 0.9,
-            animation: 'pulse 2s ease-in-out infinite'
-          }}>
-            Fetching projects and tasks...
-          </p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 0.9; }
-            50% { opacity: 0.6; }
-          }
-        `}</style>
+      <div className="rd-root">
+        <AppSidebar />
+        <main className="rd-main rd-loading" aria-live="polite">
+          <div style={{ textAlign: 'center' }}>
+            <FaSpinner className="rd-spin" style={{ fontSize: 22, color: '#6555e9', marginBottom: 12 }} />
+            <div>Loading {departmentName}…</div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -1505,2158 +1544,699 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       : (t.assignedToId ? [t.assignedToId] : []);
     return assigneeIds.includes(user?.id || '');
   });
-  const groupedTasks = getGroupedTasks; // This is already a useMemo result, use it directly
   const isAIDeveloper = config.taskType === 'AI';
   const isTeamLead = hasBoardManagementAccess;
   const canCreateProjects = Boolean(user?.isHeadPM || isTeamLead || user?.role === 'FOUNDER/CEO');
 
-  // Continue with the rest of the component JSX...
-  // Due to size limits, I'll create a simplified version that includes the key parts
-  // The full JSX structure would be identical to CopyDashboard but using config values
+  const countOf = (id: ColumnId) => columnCounts[id] || 0;
+  const activeTasks = tasks.filter((t: any) => getTaskColumn(t) !== 'approved_completed');
+  const myActiveCount = myTasks.filter((t: any) => getTaskColumn(t) !== 'approved_completed').length;
+  const unassignedCount = activeTasks.filter((t: any) => getAssigneeIds(t).length === 0).length;
+  const overdueCount = taskDueAlerts.filter((a) => a.daysLeft < 0).length;
+  const healthRows = HEALTH_COLUMNS.map((id) => ({ id, label: COLUMN_LABEL[id], value: countOf(id) }));
+  const healthMax = Math.max(1, ...healthRows.map((r) => r.value));
+  const queueTotal = queueTasks.length;
+  const visibleTasks = queueTasks.slice(0, visibleCount);
 
-  return (
-    <div className="dashboard premium" style={{ display: 'flex', minHeight: '100vh', padding: 0 }}>
-      {/* Sidebar */}
-      <div
-        className="role-dashboard-sidebar"
-        style={{
-          width: '280px',
-          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-          overflowY: 'auto',
-          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
-          zIndex: 100
-        }}
-      >
-        {/* Sidebar Header */}
-        <div style={{
-          padding: '2rem 1.5rem',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)`
-        }}>
-          <h2 style={{
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: 'white',
-            margin: '0 0 0.5rem 0',
-            letterSpacing: '-0.02em'
-          }}>
-            {departmentName}
-          </h2>
-          
+  const pinnedProjects = (() => {
+    const openByProject = new Map<string, number>();
+    myTasks.forEach((t: any) => {
+      if (getTaskColumn(t) !== 'approved_completed') {
+        openByProject.set(t.projectId, (openByProject.get(t.projectId) || 0) + 1);
+      }
+    });
+    return Array.from(openByProject.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([id]) => {
+        const hash = id.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+        return {
+          id,
+          label: getProjectName(id),
+          color: PROJECT_DOT_COLORS[hash % PROJECT_DOT_COLORS.length],
+          active: projectFilter === id,
+          onClick: () => {
+            setProjectFilter(id);
+            setSection('overview');
+            setStatusFilter('all');
+            setViewMode('list');
+          },
+        };
+      });
+  })();
+
+  const teamRows = (() => {
+    const rows = new Map<string, { id: string; name: string; avatarUrl?: string; active: number; progress: number; review: number; overdue: number }>();
+    const ensure = (id: string) => {
+      if (!rows.has(id)) {
+        const u = users.find((x: any) => x.id === id);
+        rows.set(id, { id, name: u?.name || getUserName(id), avatarUrl: u?.avatarUrl, active: 0, progress: 0, review: 0, overdue: 0 });
+      }
+      return rows.get(id)!;
+    };
+    users.filter((u: any) => u.role === role).forEach((u: any) => ensure(u.id));
+    activeTasks.forEach((t: any) => {
+      const column = getTaskColumn(t);
+      const late = getDueInfo(t).className === 'rd-overdue';
+      getAssigneeIds(t).forEach((id: string) => {
+        const row = ensure(id);
+        row.active += 1;
+        if (column === 'owned_in_progress') row.progress += 1;
+        if (column === 'for_approval') row.review += 1;
+        if (late) row.overdue += 1;
+      });
+    });
+    return Array.from(rows.values()).sort((a, b) => b.active - a.active || a.name.localeCompare(b.name));
+  })();
+
+  /**
+   * What the current user can do with a task. Same rules the old Kanban cards used,
+   * so the board card and the task drawer always offer the same actions.
+   */
+  const getTaskActions = (task: any): TaskAction[] => {
+    const project = projects.find((p: any) => p.id === task.projectId) || {};
+    const assigneeIds = getAssigneeIds(task);
+    const isMine = assigneeIds.includes(user?.id || '');
+    const linkedOrigin = getLinkedOriginInfo(task);
+    const linkedTarget = getLinkedTargetInfo(task);
+    const revisionPending = hasRevisionDeliverables(project);
+    const close = (fn: () => void) => () => {
+      handleCloseTaskDetail();
+      fn();
+    };
+    const actions: TaskAction[] = [];
+
+    if (assigneeIds.length === 0) {
+      actions.push({ key: 'claim', label: 'Claim task', run: close(() => { handleClaimTask(task.id); }) });
+      if (isTeamLead) actions.push({ key: 'assign', label: 'Assign to team member', run: close(() => handleOpenAssignModal(task)) });
+    }
+    if (task.assignedToId && !task.isCompleted && (isMine || isTeamLead)) {
+      if (task.status === 'Todo') {
+        actions.push({ key: 'start', label: 'Start task', run: close(() => { handleTaskStatusUpdate(task.id, 'In Progress'); }) });
+      }
+      if (task.status === 'In Progress' || (revisionPending && task.status === 'In Review')) {
+        actions.push({ key: 'review', label: revisionPending ? 'Resubmit' : 'Send for review', run: close(() => { handleSendForReview(task); }) });
+        if (isAIDeveloper) actions.push({ key: 'forward', label: 'Forward to department', run: close(() => handleOpenForwardModal(task)) });
+        if (!revisionPending && !linkedOrigin) {
+          actions.push({ key: 'complete', label: 'Complete', run: close(() => { handleTaskStatusUpdate(task.id, 'Completed', true); }) });
+        }
+      }
+      if (linkedOrigin) {
+        actions.push({
+          key: 'return',
+          label: `Return to ${linkedOrigin.originDepartmentName || 'origin dept'} for approval`,
+          run: close(() => handleOpenReturnModal(task)),
+        });
+      }
+      if (task.status === 'In Review' && !revisionPending && !linkedTarget) {
+        actions.push({ key: 'mark-complete', label: 'Mark complete', run: close(() => { handleTaskStatusUpdate(task.id, 'Completed', true); }) });
+        actions.push({ key: 'request-changes', label: 'Request changes', run: close(() => openStatusChange(task.id, 'revision')) });
+        actions.push({ key: 'back', label: 'Back to in progress', run: close(() => { handleTaskStatusUpdate(task.id, 'In Progress'); }) });
+      }
+      if (linkedTarget && task.status === 'In Review') {
+        actions.push({
+          key: 'send-back',
+          label: `Send back to ${linkedTarget.targetDepartmentName || 'linked dept'} for revision`,
+          run: close(() => { handleSendBackToTargetForRevision(task); }),
+        });
+      }
+    }
+    if (task.assignedToId && !task.isCompleted && isTeamLead) {
+      actions.push({ key: 'members', label: 'Update members', run: close(() => handleOpenAssignModal(task)) });
+    }
+    return actions;
+  };
+
+  const renderOwner = (task: any) => {
+    const ids = getAssigneeIds(task);
+    if (ids.length === 0) return <span className="rd-unassigned">Unassigned</span>;
+    const first = users.find((u: any) => u.id === ids[0]);
+    const name = getUserName(ids[0]);
+    return (
+      <span className="rd-owner">
+        <UserAvatar name={name} avatarUrl={first?.avatarUrl} size={25} color="#6555e9" />
+        <span className="rd-owner-name">{name}{ids.length > 1 ? ` +${ids.length - 1}` : ''}</span>
+      </span>
+    );
+  };
+
+  const drawerTask = selectedTaskDetail
+    ? tasks.find((t: any) => t.id === selectedTaskDetail.id) || selectedTaskDetail
+    : null;
+  const drawerActions = drawerTask ? getTaskActions(drawerTask) : [];
+  const drawerColumn: ColumnId = drawerTask ? getTaskColumn(drawerTask) : 'not_started';
+  const drawerFooter = drawerTask ? (
+    <div className="rd-drawer-foot">
+      <div className="rd-next">
+        <b>What happens next?</b>
+        {NEXT_STEP[drawerColumn]}
+      </div>
+      {drawerActions.length > 0 && (
+        <div className="rd-foot-actions">
+          {drawerActions.map((action, i) => (
+            <button
+              key={action.key}
+              type="button"
+              className={`rd-btn ${i === 0 ? 'rd-btn-primary' : 'rd-btn-subtle'}`}
+              disabled={updatingTask === drawerTask.id}
+              onClick={action.run}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
-
-        {/* Department List - Only show current role */}
-        <div style={{
-          padding: '1rem 0.75rem',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          {departmentMenuItems.filter(item => item.id === role).map((item) => {
-            const Icon = item.icon;
-            
-            return (
-              <div
-                key={item.id}
-                style={{
-                  width: '100%',
-                  padding: '1rem 1.25rem',
-                  marginBottom: '0.5rem',
-                  border: 'none',
-                  borderRadius: '12px',
-                  background: `linear-gradient(135deg, ${item.color}15 0%, ${item.color}25 100%)`,
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  position: 'relative',
-                  textAlign: 'left',
-                  fontSize: '0.9375rem',
-                  fontWeight: 600,
-                  boxShadow: `0 4px 12px ${item.color}30`,
-                  borderLeft: `3px solid ${item.color}`
-                }}
-              >
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: `linear-gradient(135deg, ${item.color} 0%, ${item.color}dd 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: `0 4px 12px ${item.color}40`
-                }}>
-                  <Icon style={{
-                    fontSize: '1.125rem',
-                    color: 'white'
-                  }} />
-                </div>
-                <span style={{
-                  flex: 1,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>
-                  {item.name}
-                </span>
-                <div style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: item.color,
-                  boxShadow: `0 0 8px ${item.color}`,
-                  animation: 'pulse-dot 2s ease-in-out infinite'
-                }} />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* My Projects Section */}
-        <div
-          className="role-dashboard-sidebar-projects"
-          style={{
-            flex: 1,
-            padding: '1rem 0.75rem',
-            overflowY: 'auto',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+      )}
+      <div className="rd-foot-tools">
+        <select
+          className="rd-select"
+          aria-label="Move task to stage"
+          value=""
+          onChange={(e) => {
+            if (!e.target.value) return;
+            const target = e.target.value as ColumnId;
+            handleCloseTaskDetail();
+            openStatusChange(drawerTask.id, target);
           }}
         >
-          <div style={{
-            padding: '0.5rem 0.75rem',
-            marginBottom: '0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <h3 style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'rgba(255, 255, 255, 0.5)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              margin: 0
-            }}>
-              My Projects
-            </h3>
-            <button
-              onClick={() => navigate('/my-projects')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                border: 'none',
-                borderRadius: '6px',
-                background: `${color}33`,
-                color: 'rgba(255, 255, 255, 0.9)',
-                cursor: 'pointer',
-                fontSize: '0.7rem',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${color}4d`;
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${color}33`;
-                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
-              }}
-            >
-              View All
-            </button>
-          </div>
-          {(() => {
-            const myProjectIds = new Set(
-              myTasks.map((t: any) => t.projectId)
-            );
-            const myProjectsList = projects.filter((p: any) => myProjectIds.has(p.id));
-            
-            if (myProjectsList.length === 0) {
-              return (
-                <div style={{
-                  padding: '1rem',
-                  textAlign: 'center',
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  fontSize: '0.8125rem'
-                }}>
-                  No projects yet
-                </div>
-              );
-            }
-
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {myProjectsList.map((project: any) => {
-                  const projectTasks = myTasks.filter((t: any) => t.projectId === project.id);
-                  const inProgressCount = projectTasks.filter((t: any) => t.status === 'In Progress').length;
-                  const inReviewCount = projectTasks.filter((t: any) => t.status === 'In Review').length;
-                  const completedCount = projectTasks.filter((t: any) => t.isCompleted).length;
-                  
-                  return (
-                    <button
-                      key={project.id}
-                      onClick={() => navigate(`/project/${project.id}`)}
-                      style={{
-                        width: '100%',
-                        padding: '0.875rem 1rem',
-                        border: 'none',
-                        borderRadius: '10px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                        borderLeft: '2px solid transparent'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.borderLeftColor = color;
-                        e.currentTarget.style.transform = 'translateX(4px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        e.currentTarget.style.borderLeftColor = 'transparent';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                      }}
-                    >
-                      <div style={{
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        color: 'white',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {project.clientName}
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        fontSize: '0.75rem',
-                        color: 'rgba(255, 255, 255, 0.6)'
-                      }}>
-                        {inProgressCount > 0 && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></span>
-                            {inProgressCount} in progress
-                          </span>
-                        )}
-                        {inReviewCount > 0 && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
-                            {inReviewCount} in review
-                          </span>
-                        )}
-                        {completedCount > 0 && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
-                            {completedCount} done
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Sidebar Footer */}
-        <div style={{
-          padding: '1.5rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(0, 0, 0, 0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem'
-        }}>
-          <button
-            onClick={() => navigate('/forum')}
-            style={{
-              width: '100%',
-              padding: '0.875rem 1rem',
-              border: `1px solid ${color}`,
-              borderRadius: '10px',
-              background: `${color}20`,
-              color: 'rgba(255, 255, 255, 0.95)',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${color}40`;
-              e.currentTarget.style.borderColor = color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = `${color}20`;
-              e.currentTarget.style.borderColor = color;
-            }}
-          >
-            <FaStickyNote style={{ fontSize: '0.875rem' }} />
-            Forum
-          </button>
-          <button
-            onClick={() => navigate('/timeline')}
-            style={{
-              width: '100%',
-              padding: '0.875rem 1rem',
-              border: `1px solid ${color}`,
-              borderRadius: '10px',
-              background: `${color}20`,
-              color: 'rgba(255, 255, 255, 0.95)',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${color}40`;
-              e.currentTarget.style.borderColor = color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = `${color}20`;
-              e.currentTarget.style.borderColor = color;
-            }}
-          >
-            <FaClock style={{ fontSize: '0.875rem' }} />
-            My Timeline
-          </button>
-          {isAIDeveloper && (
-            <button
-              onClick={() => setShowTicketsModal(true)}
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem',
-                border: `1px solid ${color}`,
-                borderRadius: '10px',
-                background: `${color}20`,
-                color: 'rgba(255, 255, 255, 0.95)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${color}40`;
-                e.currentTarget.style.borderColor = color;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${color}20`;
-                e.currentTarget.style.borderColor = color;
-              }}
-            >
-              <FaTicketAlt style={{ fontSize: '0.875rem' }} />
-              Tickets
-            </button>
-          )}
-          {isTeamLead && (
-            <button
-              onClick={() => navigate('/pm-dashboard')}
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: 'rgba(255, 255, 255, 0.9)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-              }}
-            >
-              ← See Full Dashboard
-            </button>
-          )}
-        </div>
+          <option value="">Move to stage…</option>
+          {BOARD_COLUMNS.filter((id) => id !== drawerColumn).map((id) => (
+            <option key={id} value={id}>{COLUMN_LABEL[id]}</option>
+          ))}
+        </select>
+        <button type="button" className="rd-btn rd-btn-subtle" onClick={() => { handleCloseTaskDetail(); handleEditTask(drawerTask); }}>
+          <FaEdit /> Edit
+        </button>
+        <button type="button" className="rd-btn rd-btn-subtle" aria-label="Copy task link" title="Copy task link" onClick={() => copyTaskLink(drawerTask)}>
+          <FaLink />
+        </button>
       </div>
+    </div>
+  ) : null;
 
-      {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Top Navigation Bar */}
-        <div style={{
-          background: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '1rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flex: 1 }}>
-            <UserGreeting userName={user?.name} accentColor={color} compact />
+  const sectionCopy: Record<Section, { title: string; desc: string; queue: string; sub: string }> = {
+    overview: { title: 'Team overview', desc: "A clear view of the work that needs your team's attention.", queue: 'Work queue', sub: 'Review, delegate, and move work forward from one place.' },
+    my: { title: 'My work', desc: 'Your current tasks, handoffs and next actions.', queue: 'Your work queue', sub: 'Everything assigned to you that is still open.' },
+    board: { title: 'Board', desc: 'See work by workflow stage. Drag a card to move it.', queue: 'Team board', sub: 'Open a card to see its details and next action.' },
+    approvals: { title: 'Approvals', desc: 'Review submitted work and unblock the team.', queue: 'Approval inbox', sub: 'Open a task to complete it or request changes.' },
+    team: { title: 'Team', desc: "See who owns what, and where someone needs help.", queue: 'Tasks', sub: 'Select a person to see their tasks.' },
+  };
+  const copy = sectionCopy[section];
+  const pageTitle = projectFilter ? getProjectName(projectFilter) : copy.title;
+  const pageDesc = projectFilter ? 'Tasks, owners and next actions for this project.' : copy.desc;
+  const assigneeFilterName = assigneeFilter === 'unassigned' ? 'Unassigned' : assigneeFilter ? getUserName(assigneeFilter) : '';
+
+  return (
+    <div className="dashboard rd-root" style={{ padding: 0 }}>
+      <AppSidebar
+        workspace={{
+          items: [
+            { key: 'overview', label: 'Overview', icon: <FaThLarge />, active: section === 'overview' && !projectFilter, onClick: () => goToSection('overview') },
+            { key: 'my', label: 'My work', icon: <FaCheckCircle />, count: myActiveCount, active: section === 'my', onClick: () => goToSection('my') },
+            { key: 'board', label: 'Board', icon: <FaColumns />, active: section === 'board', onClick: () => goToSection('board') },
+            { key: 'approvals', label: 'Approvals', icon: <FaInbox />, count: countOf('for_approval'), active: section === 'approvals', onClick: () => goToSection('approvals') },
+            { key: 'team', label: 'Team', icon: <FaUsers />, active: section === 'team', onClick: () => goToSection('team') },
+          ],
+          pinned: pinnedProjects,
+        }}
+      />
+
+      <main className="rd-main">
+        <header className="rd-topbar">
+          <div className="rd-crumb">
+            <span className="rd-crumb-root">Workspaces /</span>
+            <strong>{departmentName}</strong>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button
-              onClick={() => setShowLiveChatPanel(true)}
-              style={{
-                position: 'relative',
-                padding: '0.5rem',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                color: '#6b7280',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f3f4f6';
-                e.currentTarget.style.color = '#111827';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }}
-              title="Live Chat"
-            >
-              <FaComments style={{ fontSize: '1.25rem' }} />
-              {unreadChatCount > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '0.25rem',
-                  right: '0.25rem',
-                  background: '#ef4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.7rem',
-                  fontWeight: 600
-                }}>
-                  {unreadChatCount > 9 ? '9+' : unreadChatCount}
-                </span>
-              )}
+          <div className="rd-topactions">
+            <button type="button" className="rd-icon-btn" onClick={() => setShowLiveChatPanel(true)} aria-label="Live chat" title="Live chat">
+              <FaComments />
+              {unreadChatCount > 0 && <span className="rd-badge">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
             </button>
-            <button
-              onClick={() => setShowNotificationsModal(true)}
-              style={{
-                position: 'relative',
-                padding: '0.5rem',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                color: '#6b7280',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f3f4f6';
-                e.currentTarget.style.color = '#111827';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }}
-            >
-              <FaBell style={{ fontSize: '1.25rem' }} />
-              {unreadNotifications > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '0.25rem',
-                  right: '0.25rem',
-                  background: '#ef4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.7rem',
-                  fontWeight: 600
-                }}>
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </span>
-              )}
+            <button type="button" className="rd-icon-btn" onClick={() => setShowNotificationsModal(true)} aria-label="Notifications" title="Notifications">
+              <FaBell />
+              {unreadNotifications > 0 && <span className="rd-badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
             </button>
-            {isAIDeveloper && (
-              <button
-                onClick={() => {
-                  setShowTestWebhookModal(true);
-                  setTestWebhookUserId('');
-                  setTestWebhookResult(null);
-                }}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  border: `1px solid ${color}`,
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  color: color,
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${color}15`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-                title="Send test notification to webhook (n8n)"
-              >
-                Test webhook
+            {canCreateProjects && (
+              <button type="button" className="rd-btn rd-btn-subtle" onClick={() => setShowCreateProjectModal(true)} aria-label="New project">
+                <FaFolderPlus /> <span className="rd-btn-label">New project</span>
               </button>
             )}
-
-            <div className="avatar-dropdown-container" style={{ position: 'relative' }}>
-              <button
-                onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.5rem 0.75rem',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <UserAvatar
-                  name={user?.name}
-                  avatarUrl={user?.avatarUrl}
-                  size={36}
-                  color={color}
-                />
-                <span style={{ color: '#111827', fontWeight: 500, fontSize: '0.875rem' }}>
-                  {user?.name}
-                </span>
-                <FaChevronDown style={{ color: '#6b7280', fontSize: '0.75rem' }} />
-              </button>
-
-              {showAvatarDropdown && (
-                <div ref={dropdownRef} style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                  minWidth: '200px',
-                  zIndex: 1000,
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
-                      {user?.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                      {user?.role}
-                    </div>
-                  </div>
-                  <div style={{ borderTop: '1px solid #e5e7eb' }}>
-                    <button
-                      onClick={() => navigate('/profile')}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        color: '#374151',
-                        fontSize: '0.875rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <FaUser style={{ fontSize: '0.875rem' }} />
-                      Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAvatarDropdown(false);
-                        navigate('/timeline');
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        color: '#374151',
-                        fontSize: '0.875rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <FaClock style={{ fontSize: '0.875rem' }} />
-                      My Timeline
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAvatarDropdown(false);
-                        setShowSubmitTicketModal(true);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        color: '#374151',
-                        fontSize: '0.875rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <FaTicketAlt style={{ fontSize: '0.875rem' }} />
-                      Submit Ticket
-                    </button>
-                    <button
-                      onClick={() => navigate('/settings')}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        color: '#374151',
-                        fontSize: '0.875rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <FaCog style={{ fontSize: '0.875rem' }} />
-                      Settings
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        color: '#ef4444',
-                        fontSize: '0.875rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#fef2f2';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <FaSignOutAlt style={{ fontSize: '0.875rem' }} />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Filters and Controls */}
-        <div style={{
-          background: '#f9fafb',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '1.5rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-            <FaSearch style={{ color: '#9ca3af', fontSize: '1rem' }} />
-            <input
-              type="text"
-              placeholder="Search tasks or projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '0.625rem 1rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                background: 'white',
-                outline: 'none',
-                transition: 'all 0.2s'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = color;
-                e.target.style.boxShadow = `0 0 0 3px ${color}20`;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-              style={{
-                padding: '0.625rem 1rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                background: 'white',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="all">All Tasks</option>
-              <option value="my_tasks">My Tasks</option>
-              <option value="todo">Todo</option>
-              <option value="in_progress">In Progress</option>
-              <option value="in_review">In Review</option>
-              <option value="completed">Completed</option>
-            </select>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              style={{
-                padding: '0.625rem 1rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                background: 'white',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="due_date">Sort by Due Date</option>
-              <option value="priority">Sort by Priority</option>
-              <option value="created">Sort by Created</option>
-            </select>
-
-            <div style={{ display: 'flex', gap: '0.25rem', background: 'white', padding: '0.25rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <button
-                onClick={() => setViewMode('kanban')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: viewMode === 'kanban' ? color : 'transparent',
-                  color: viewMode === 'kanban' ? 'white' : '#6b7280',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-              >
-                Kanban
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: viewMode === 'list' ? color : 'transparent',
-                  color: viewMode === 'list' ? 'white' : '#6b7280',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-              >
-                List
-              </button>
-            </div>
-
             <button
+              type="button"
+              className="rd-btn rd-btn-primary"
+              aria-label="New task"
               onClick={() => {
                 setTaskProjectScope('department');
                 setShowAddTaskModal(true);
               }}
-              style={{
-                padding: '0.625rem 1.25rem',
-                border: 'none',
-                borderRadius: '8px',
-                background: color,
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.9';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
             >
-              <FaPlus />
-              Add Task
+              <FaPlus /> <span className="rd-btn-label">New task</span>
             </button>
-
-            {canCreateProjects && (
+            <div className="rd-avatar-wrap avatar-dropdown-container">
               <button
-                onClick={() => setShowCreateProjectModal(true)}
-                style={{
-                  padding: '0.625rem 1.25rem',
-                  border: `1px solid ${color}`,
-                  borderRadius: '8px',
-                  background: 'white',
-                  color: color,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${color}15`;
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-                title="Create project (head access)"
+                type="button"
+                className="rd-avatar-btn"
+                onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
+                aria-label="Account menu"
+                aria-expanded={showAvatarDropdown}
               >
-                <FaPlus />
-                Create Project
+                <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size={34} color="#6555e9" />
               </button>
-            )}
-
-            {isTeamLead && viewMode === 'list' && (
-              <button
-                onClick={async () => {
-                  if (selectedTaskIds.length === 0) return;
-                  const confirmed = window.confirm(
-                    `Delete ${selectedTaskIds.length} selected task${selectedTaskIds.length > 1 ? 's' : ''}? This cannot be undone.`
-                  );
-                  if (!confirmed) return;
-
-                  try {
-                    // Mark as updating to block other actions while deleting
-                    setUpdatingTask('bulk-delete');
-
-                    // Delete all selected tasks in parallel so failures surface clearly
-                    await Promise.all(
-                      selectedTaskIds.map((id) =>
-                        taskService.delete(id).catch((error) => {
-                          console.error('Failed to delete task in bulk operation:', error);
-                          throw error;
-                        })
-                      )
-                    );
-
-                    await loadData();
-                    setSelectedTaskIds([]);
-                    alert(`Deleted ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''}.`);
-                  } catch (error) {
-                    console.error('Failed to bulk delete tasks:', error);
-                    alert('Failed to delete the selected tasks. Please check the console for details or try again.');
-                  } finally {
-                    setUpdatingTask(null);
-                  }
-                }}
-                disabled={selectedTaskIds.length === 0 || updatingTask === 'bulk-delete'}
-                style={{
-                  padding: '0.625rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: selectedTaskIds.length === 0 ? '#e5e7eb' : '#fee2e2',
-                  color: selectedTaskIds.length === 0 ? '#9ca3af' : '#b91c1c',
-                  cursor:
-                    selectedTaskIds.length === 0 || updatingTask === 'bulk-delete'
-                      ? 'not-allowed'
-                      : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {updatingTask === 'bulk-delete'
-                  ? 'Deleting selected...'
-                  : `Delete Selected (${selectedTaskIds.length})`}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {taskDueAlerts.length > 0 && (
-          <div style={{
-            margin: '0.85rem 2rem 0',
-            padding: '1rem 1.1rem',
-            borderRadius: '14px',
-            border: '1px solid #fca5a5',
-            background: 'linear-gradient(135deg, #fff1f2 0%, #fffbeb 100%)',
-            boxShadow: '0 10px 28px rgba(239, 68, 68, 0.18)',
-            animation: 'taskDuePulse 1.8s ease-in-out infinite',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <style>{`
-              @keyframes taskDuePulse {
-                0%, 100% { box-shadow: 0 10px 28px rgba(239, 68, 68, 0.18); }
-                50% { box-shadow: 0 16px 34px rgba(239, 68, 68, 0.3); }
-              }
-            `}</style>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: 'linear-gradient(90deg, #ef4444 0%, #f97316 100%)',
-            }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '1rem' }}>🚨</span>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#991b1b' }}>
-                  Task Due Alarm
+              {showAvatarDropdown && (
+                <div className="rd-menu">
+                  <div className="rd-menu-head">
+                    <b>{user?.name}</b>
+                    <small>{user?.email}</small>
+                  </div>
+                  <button type="button" onClick={() => navigate('/profile')}><FaUser /> Profile</button>
+                  <button type="button" onClick={() => navigate('/timeline')}><FaClock /> My timeline</button>
+                  <button type="button" onClick={() => { setShowAvatarDropdown(false); setShowSubmitTicketModal(true); }}><FaTicketAlt /> Submit ticket</button>
+                  {isAIDeveloper && (
+                    <button type="button" onClick={() => { setShowAvatarDropdown(false); setShowTicketsModal(true); }}><FaInbox /> View tickets</button>
+                  )}
+                  {isAIDeveloper && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAvatarDropdown(false);
+                        setShowTestWebhookModal(true);
+                        setTestWebhookUserId('');
+                        setTestWebhookResult(null);
+                      }}
+                    >
+                      <FaBolt /> Test webhook
+                    </button>
+                  )}
+                  {isTeamLead && (
+                    <button type="button" onClick={() => navigate('/pm-dashboard')}><FaThLarge /> PM dashboard</button>
+                  )}
+                  <button type="button" onClick={() => navigate('/settings')}><FaCog /> Settings</button>
+                  <button type="button" className="danger" onClick={handleLogout}><FaSignOutAlt /> Log out</button>
                 </div>
-              </div>
-              <span style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#9a3412',
-                background: '#ffedd5',
-                border: '1px solid #fdba74',
-                borderRadius: '999px',
-                padding: '0.2rem 0.6rem',
-              }}>
-                {taskDueAlerts.length} due soon
-              </span>
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#7f1d1d', marginTop: '0.3rem', marginBottom: '0.6rem', fontWeight: 600 }}>
-              1-2 days = Critical · 3-5 days = High
-            </div>
-            <div style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {(showAllTaskDueAlerts ? taskDueAlerts : taskDueAlerts.slice(0, 8)).map((item) => (
-                <button
-                  key={item.taskId}
-                  type="button"
-                  onClick={() => navigate(`/project/${item.projectId}?task=${item.taskId}&tab=details`)}
-                  style={{
-                    border: item.daysLeft <= 2 ? '1px solid #ef4444' : '1px solid #f97316',
-                    borderRadius: '10px',
-                    background: item.daysLeft <= 2 ? '#fef2f2' : '#fff7ed',
-                    color: item.daysLeft <= 2 ? '#b91c1c' : '#c2410c',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    padding: '0.4rem 0.65rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    maxWidth: '360px',
-                    textAlign: 'left',
-                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
-                  }}
-                  title={`Due ${item.dueDate.toLocaleDateString()}`}
-                >
-                  <span style={{
-                    fontSize: '0.65rem',
-                    borderRadius: '999px',
-                    padding: '0.15rem 0.45rem',
-                    background: item.daysLeft <= 2 ? '#ef4444' : '#f97316',
-                    color: 'white',
-                    flexShrink: 0,
-                  }}>
-                    {item.daysLeft}d
-                  </span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.projectName} · {item.taskTitle}
-                  </span>
-                </button>
-              ))}
-              {taskDueAlerts.length > 8 && !showAllTaskDueAlerts && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTaskDueAlerts(true)}
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#9a3412',
-                    fontWeight: 700,
-                    padding: '0.34rem 0.6rem',
-                    borderRadius: '999px',
-                    border: '1px solid #fdba74',
-                    background: '#fff7ed',
-                    cursor: 'pointer',
-                  }}
-                >
-                  +{taskDueAlerts.length - 8} more
-                </button>
-              )}
-              {taskDueAlerts.length > 8 && showAllTaskDueAlerts && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTaskDueAlerts(false)}
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#9a3412',
-                    fontWeight: 700,
-                    padding: '0.34rem 0.6rem',
-                    borderRadius: '999px',
-                    border: '1px solid #fdba74',
-                    background: '#fff7ed',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Show less
-                </button>
               )}
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Task Content Area */}
-        <div style={{
-          flex: 1,
-          padding: '2rem',
-          overflowY: 'auto',
-          background: '#f9fafb'
-        }}>
-          <DepartmentPriorityProjects
-            taskType={config.taskType}
-            departmentName={config.departmentName}
-            color={color}
-            tasks={tasks}
-            projects={projects}
-            canEditTeamOverride={canEditTeamOverride}
-            onOpenTaskDetail={handleOpenTaskDetail}
-            onEditTask={handleEditTask}
-            onUpdateTaskColumn={async (taskId, columnId) => {
-              await handleQuickMoveTaskToColumn(taskId, columnId);
-            }}
-          />
+        <div className="rd-content">
+          <div className="rd-header">
+            <div>
+              <div className="rd-eyebrow"><span className="rd-live" />{departmentName}</div>
+              <h1 className="rd-h1">{pageTitle}</h1>
+              <p className="rd-desc">{pageDesc}</p>
+            </div>
+            <div className="rd-today">
+              <FaCalendarAlt aria-hidden="true" />
+              {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          </div>
 
-          {viewMode === 'kanban' ? (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
-              gridAutoRows: 'minmax(400px, 1fr)',
-              gap: '1.5rem',
-              paddingBottom: '1rem',
-              paddingTop: '0.5rem',
-              width: '100%',
-              minHeight: '500px',
-              gridAutoFlow: 'row',
-              alignItems: 'stretch'
-            }}>
-              {[
-                { id: 'not_started', title: 'Not yet started', color: '#6b7280' },
-                { id: 'owned_in_progress', title: 'Owned/In Progress', color: '#3b82f6' },
-                { id: 'for_approval', title: 'For Approval', color: '#f59e0b' },
-                { id: 'revision', title: 'Revision', color: '#ef4444' },
-                // { id: 'elliot_review', title: 'Elliot Review', color: '#8b5cf6' },
-                { id: 'approved_completed', title: 'Approved/Completed', color: '#10b981' },
-                { id: 'qa_before_client', title: 'QA Before Sending to Client', color: '#06b6d4' },
-                { id: 'client_validation', title: 'Client Validation', color: '#f97316' }
-              ].map((column) => {
-                const statusTasks = groupedTasks[column.id] || [];
-                const sortOrder = kanbanColumnSort[column.id] ?? 'newest';
-                const sortedStatusTasks = sortKanbanTasksByCreatedAt(statusTasks, sortOrder);
+          <div className="rd-stats">
+            {[
+              { id: 'for_approval' as ColumnId, label: 'Waiting for approval', tone: 'purple', icon: <FaInbox />, foot: 'Needs a reviewer decision' },
+              { id: 'revision' as ColumnId, label: 'Changes requested', tone: 'amber', icon: <FaSyncAlt />, foot: 'Waiting for rework' },
+              { id: 'owned_in_progress' as ColumnId, label: 'In progress', tone: 'blue', icon: <FaClock />, foot: unassignedCount > 0 ? `${unassignedCount} more unassigned` : 'Owned by team members' },
+              { id: 'approved_completed' as ColumnId, label: 'Completed', tone: 'green', icon: <FaCheckCircle />, foot: 'Delivered by this team' },
+            ].map((stat) => (
+              <button
+                key={stat.id}
+                type="button"
+                className={`rd-stat${statusFilter === stat.id ? ' active' : ''}`}
+                aria-pressed={statusFilter === stat.id}
+                onClick={() => applyStatusFilter(stat.id)}
+              >
+                <div className="rd-stat-top">
+                  <span>{stat.label}</span>
+                  <span className={`rd-stat-icon ${stat.tone}`} aria-hidden="true">{stat.icon}</span>
+                </div>
+                <div className="rd-stat-num">{countOf(stat.id)}</div>
+                <div className="rd-stat-foot">{stat.foot}</div>
+              </button>
+            ))}
+          </div>
 
-                return (
-                  <div 
-                    key={column.id} 
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
-                      setDragOverColumn(column.id);
-                    }}
-                    onDragLeave={() => setDragOverColumn(null)}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      setDragOverColumn(null);
-                      if (!draggedTask) return;
-                      
-                      const task = tasks.find((t: any) => t.id === draggedTask);
-                      if (!task) return;
-                      
-                      // Map column ID to status label
-                      const columnLabelMap: Record<string, string> = {
-                        'not_started': 'Not Yet Started',
-                        'owned_in_progress': 'Owned/In Progress',
-                        'for_approval': 'For Approval',
-                        'revision': 'Revision',
-                        'elliot_review': 'Elliot Review',
-                        'approved_completed': 'Approved/Completed',
-                        'qa_before_client': 'QA Before Sending to Client',
-                        'client_validation': 'Client Validation',
-                      };
-                      
-                      const targetLabel = columnLabelMap[column.id] || column.title;
-                      
-                      // Open modal to capture notes and links
-                      setStatusChangeContext({
-                        taskId: draggedTask,
-                        targetColumnId: column.id,
-                        targetColumnLabel: targetLabel,
-                      });
-                      setShowStatusChangeModal(true);
-                      setDraggedTask(null);
-                    }}
-                    style={{
-                      width: '100%',
-                      minWidth: '280px',
-                      maxWidth: '100%',
-                      background: 'white',
-                      borderRadius: '12px',
-                      boxShadow: dragOverColumn === column.id ? '0 4px 12px rgba(99,102,241,0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
-                      border: dragOverColumn === column.id ? '2px solid #6366f1' : '2px solid #e2e8f0',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      transition: 'all 0.2s',
-                      minHeight: '400px',
-                      maxHeight: 'calc(100vh - 300px)',
-                      position: 'relative'
-                    }}
-                  >
-                    <div style={{
-                      padding: '1rem',
-                      background: '#f8fafc',
-                      borderBottom: '1px solid #e2e8f0',
-                      borderRadius: '12px 12px 0 0'
-                    }}>
-                      <h3 style={{
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        color: '#1e293b',
-                        margin: '0 0 0.25rem 0'
-                      }}>
-                        {column.title}
-                      </h3>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                        marginTop: '0.35rem',
-                      }}>
-                        <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                          {statusTasks.length} task(s)
-                        </span>
-                        <label style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          fontSize: '0.75rem',
-                          color: '#64748b',
-                          fontWeight: 500,
-                          margin: 0,
-                          cursor: 'pointer',
-                        }}>
-                          <span style={{ whiteSpace: 'nowrap' }}>Sort</span>
-                          <select
-                            value={sortOrder}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              const v = e.target.value as KanbanColumnSortOrder;
-                              setKanbanColumnSort((prev) => ({ ...prev, [column.id]: v }));
-                            }}
-                            style={{
-                              padding: '0.2rem 0.4rem',
-                              borderRadius: '6px',
-                              border: '1px solid #e2e8f0',
-                              fontSize: '0.75rem',
-                              color: '#334155',
-                              background: 'white',
-                              cursor: 'pointer',
-                              maxWidth: '140px',
-                            }}
-                          >
-                            <option value="newest">Newest → oldest</option>
-                            <option value="oldest">Oldest → newest</option>
-                          </select>
-                        </label>
-                      </div>
-                    </div>
-                    <div style={{
-                      padding: '0.75rem',
-                      flex: 1,
-                      overflowY: 'auto',
-                      minHeight: '200px',
-                      maxHeight: 'calc(100vh - 400px)'
-                    }}>
-                      {sortedStatusTasks.map((task: any) => {
-                        const project = projects.find((p: any) => p.id === task.projectId);
-                        const taskInRevision = project ? isTaskInRevision(task, project) : false;
-                        const taskNotes = project ? getTaskNotes(task, project) : [];
-                        const borderColor = getTaskBorderColor(task.status, task.isCompleted, taskInRevision);
-                        const linkedOrigin = getLinkedOriginInfo(task);
-                        const linkedTarget = getLinkedTargetInfo(task);
-
-                        return (
-                          <div
-                            key={task.id}
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedTask(task.id);
-                              e.dataTransfer.effectAllowed = 'move';
-                              const target = e.target as HTMLElement;
-                              if (target.closest('.kanban-task-card')) {
-                                (target.closest('.kanban-task-card') as HTMLElement).style.opacity = '0.5';
-                              }
-                            }}
-                            onDragEnd={(e) => {
-                              const target = e.target as HTMLElement;
-                              if (target.closest('.kanban-task-card')) {
-                                (target.closest('.kanban-task-card') as HTMLElement).style.opacity = '1';
-                              }
-                              setDraggedTask(null);
-                              setDragOverColumn(null);
-                            }}
-                            className="kanban-task-card"
-                            style={{
-                              padding: '0.75rem',
-                              marginBottom: '0.75rem',
-                              border: taskInRevision ? '2px solid #dc2626' : `1px solid ${borderColor}`,
-                              borderRadius: '8px',
-                              background: 'white',
-                              cursor: draggedTask === task.id ? 'grabbing' : 'grab',
-                              transition: 'all 0.2s',
-                              position: 'relative',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                            }}
-                            onClick={(e) => {
-                              const target = e.target as HTMLElement;
-                              
-                              // Don't navigate if clicking buttons or interactive elements
-                              if (target.closest('button[data-edit-task]') || 
-                                  target.closest('button') ||
-                                  target.tagName === 'BUTTON' ||
-                                  (target.tagName === 'svg' && target.closest('button')) ||
-                                  (target.tagName === 'path' && target.closest('button'))) {
-                                return;
-                              }
-                              
-                              if (target.closest('input[type="checkbox"]') || 
-                                  target.closest('select') || 
-                                  target.tagName === 'INPUT' || 
-                                  target.tagName === 'SELECT') {
-                                return;
-                              }
-                              
-                              // Open task detail modal instead of navigating
-                              handleOpenTaskDetail(task);
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.borderColor = color;
-                              e.currentTarget.style.boxShadow = `0 4px 8px ${color}25`;
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'white';
-                              e.currentTarget.style.borderColor = taskInRevision ? '#dc2626' : borderColor;
-                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                          >
-                            {taskInRevision && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '0',
-                                right: '0',
-                                background: '#dc2626',
-                                color: 'white',
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.625rem',
-                                fontWeight: 600,
-                                borderBottomLeftRadius: '6px',
-                                borderTopRightRadius: '6px',
-                                zIndex: 10
-                              }}>
-                                REVISION
-                              </div>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  marginBottom: '0.25rem'
-                                }}>
-                                  <div>
-                                    <div style={{
-                                      fontSize: '0.75rem',
-                                      color: color,
-                                      fontWeight: 500
-                                    }}>
-                                      {getProjectName(task.projectId)}
-                                    </div>
-                                    {getProjectPmName(task.projectId) && (
-                                      <div style={{
-                                        fontSize: '0.6875rem',
-                                        color: '#94a3b8',
-                                        marginTop: '0.125rem'
-                                      }}>
-                                        PM: {getProjectPmName(task.projectId)}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    data-edit-task="true"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      handleEditTask(task);
-                                    }}
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                    }}
-                                    style={{
-                                      background: 'transparent',
-                                      border: `1px solid ${color}`,
-                                      color: color,
-                                      cursor: 'pointer',
-                                      padding: '0.5rem',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      borderRadius: '6px',
-                                      transition: 'all 0.2s',
-                                      zIndex: 100,
-                                      position: 'relative',
-                                      outline: 'none',
-                                      minWidth: '36px',
-                                      minHeight: '36px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = `${color}15`;
-                                      e.currentTarget.style.color = color;
-                                      e.currentTarget.style.borderColor = color;
-                                      e.currentTarget.style.transform = 'scale(1.1)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = 'transparent';
-                                      e.currentTarget.style.color = color;
-                                      e.currentTarget.style.borderColor = color;
-                                      e.currentTarget.style.transform = 'scale(1)';
-                                    }}
-                                    title="Edit Task"
-                                  >
-                                    <FaEdit style={{ fontSize: '1rem', pointerEvents: 'none' }} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      copyTaskLink(task);
-                                    }}
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                    }}
-                                    style={{
-                                      background: 'transparent',
-                                      border: '1px solid #d1d5db',
-                                      color: '#4b5563',
-                                      cursor: 'pointer',
-                                      padding: '0.5rem',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      borderRadius: '6px',
-                                      transition: 'all 0.2s',
-                                      zIndex: 100,
-                                      position: 'relative',
-                                      outline: 'none',
-                                      minWidth: '36px',
-                                      minHeight: '36px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = '#f3f4f6';
-                                      e.currentTarget.style.borderColor = '#9ca3af';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = 'transparent';
-                                      e.currentTarget.style.borderColor = '#d1d5db';
-                                    }}
-                                    title="Copy task link"
-                                  >
-                                    <FaLink style={{ fontSize: '0.95rem', pointerEvents: 'none' }} />
-                                  </button>
-                                </div>
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.5rem',
-                                  marginBottom: '0.5rem',
-                                  flexWrap: 'wrap'
-                                }}>
-                                  <h4 style={{
-                                    fontSize: '0.875rem',
-                                    fontWeight: 600,
-                                    color: '#111827',
-                                    margin: 0,
-                                    flex: 1,
-                                    minWidth: 0
-                                  }}>
-                                    {task.title}
-                                  </h4>
-                                  <span style={{
-                                    padding: '0.125rem 0.5rem',
-                                    borderRadius: '0.25rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 500,
-                                    background: task.isCompleted ? '#d1fae5' : task.status === 'In Review' ? '#fef3c7' : '#f3f4f6',
-                                    color: task.isCompleted ? '#065f46' : task.status === 'In Review' ? '#92400e' : '#374151',
-                                    whiteSpace: 'nowrap'
-                                  }}>
-                                    {task.isCompleted ? 'Completed' : task.status}
-                                  </span>
-                                </div>
-                                {task.description && (
-                                  <p style={{
-                                    color: '#64748b',
-                                    fontSize: '0.75rem',
-                                    margin: '0 0 0.5rem 0',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical'
-                                  }}>
-                                    {task.description}
-                                  </p>
-                                )}
-                                {taskNotes.length > 0 && (
-                                  <div style={{
-                                    marginTop: '0.5rem',
-                                    marginBottom: '0.5rem',
-                                    padding: '0.5rem',
-                                    background: '#fef3c7',
-                                    border: '1px solid #fde68a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.7rem',
-                                    color: '#92400e'
-                                  }}>
-                                    <FaStickyNote style={{ fontSize: '0.625rem', marginRight: '0.25rem', display: 'inline' }} />
-                                    Revision notes available
-                                  </div>
-                                )}
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '1rem',
-                                  fontSize: '0.75rem',
-                                  color: '#64748b',
-                                  marginBottom: '0.5rem',
-                                  flexWrap: 'wrap'
-                                }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                    <FaUser style={{ fontSize: '0.75rem' }} />
-                                    {(() => {
-                                      const assignees = task.assignees || [];
-                                      const assigneeIds = assignees.length > 0 
-                                        ? assignees.map((a: any) => a.userId || a.user?.id)
-                                        : (task.assignedToId ? [task.assignedToId] : []);
-                                      
-                                      if (assigneeIds.length === 0) {
-                                        return <span>Unassigned</span>;
-                                      } else if (assigneeIds.length === 1) {
-                                        return <span>{getUserName(assigneeIds[0])}</span>;
-                                      } else {
-                                        return (
-                                          <span>
-                                            {assigneeIds.slice(0, 2).map((id: string) => getUserName(id)).join(', ')}
-                                            {assigneeIds.length > 2 && ` +${assigneeIds.length - 2} more`}
-                                          </span>
-                                        );
-                                      }
-                                    })()}
-                                  </div>
-                                  {task.dueDate && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      <FaClock style={{ fontSize: '0.75rem' }} />
-                                      <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                {(() => {
-                                  const assignees = task.assignees || [];
-                                  const assigneeIds = assignees.length > 0 
-                                    ? assignees.map((a: any) => a.userId || a.user?.id)
-                                    : (task.assignedToId ? [task.assignedToId] : []);
-                                  return assigneeIds.length === 0;
-                                })() && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          await handleClaimTask(task.id);
-                                        } catch (error) {
-                                          console.error('Failed to claim task:', error);
-                                        }
-                                      }}
-                                      disabled={updatingTask === task.id}
-                                      style={{
-                                        width: '100%',
-                                        padding: '0.5rem',
-                                        border: 'none',
-                                        borderRadius: '0.375rem',
-                                        background: '#10b981',
-                                        color: 'white',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 500,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem'
-                                      }}
-                                    >
-                                      {updatingTask === task.id ? (
-                                        <FaSpinner className="spinner" />
-                                      ) : (
-                                        <>
-                                          <FaHandPaper /> Claim Task
-                                        </>
-                                      )}
-                                    </button>
-                                    {isTeamLead && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleOpenAssignModal(task);
-                                        }}
-                                        disabled={updatingTask === task.id}
-                                        style={{
-                                          width: '100%',
-                                          padding: '0.5rem',
-                                          border: `1px solid ${color}`,
-                                          borderRadius: '0.375rem',
-                                          background: 'transparent',
-                                          color: color,
-                                          cursor: 'pointer',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 500,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          gap: '0.5rem'
-                                        }}
-                                      >
-                                        <FaUser /> Assign to Team Member
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                                {task.assignedToId && (
-                                  <>
-                                    {(() => {
-                                      const assignees = task.assignees || [];
-                                      const assigneeIds = assignees.length > 0 
-                                        ? assignees.map((a: any) => a.userId || a.user?.id)
-                                        : (task.assignedToId ? [task.assignedToId] : []);
-                                      const isAssignedToMe = assigneeIds.includes(user?.id || '');
-                                      const displayText = assigneeIds.length === 0 
-                                        ? 'Unassigned'
-                                        : assigneeIds.length === 1
-                                        ? (isAssignedToMe ? 'Assigned to you' : `Assigned to ${getUserName(assigneeIds[0])}`)
-                                        : isAssignedToMe
-                                        ? `Assigned to you + ${assigneeIds.length - 1} other${assigneeIds.length > 2 ? 's' : ''}`
-                                        : `Assigned to ${assigneeIds.length} team member${assigneeIds.length > 1 ? 's' : ''}`;
-                                      
-                                      return (
-                                        <div style={{
-                                          width: '100%',
-                                          padding: '0.35rem 0.75rem',
-                                          borderRadius: '999px',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          color: isAssignedToMe ? '#047857' : '#4b5563',
-                                          textAlign: 'center',
-                                          background: isAssignedToMe ? '#ecfdf5' : '#f3f4f6',
-                                          marginBottom: '0.5rem',
-                                          borderLeft: isAssignedToMe ? '4px solid #10b981' : '4px solid #e5e7eb',
-                                          boxShadow: '0 0 0 1px rgba(148, 163, 184, 0.15)',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                          gap: '0.5rem'
-                                        }}>
-                                          <span style={{ flex: 1, textAlign: 'left' }}>
-                                            {displayText}
-                                            {assigneeIds.length > 1 && !isAssignedToMe && (
-                                              <span style={{ fontSize: '0.625rem', opacity: 0.7, display: 'block', marginTop: '0.125rem' }}>
-                                                {assigneeIds.slice(0, 2).map((id: string) => getUserName(id)).join(', ')}
-                                                {assigneeIds.length > 2 && ` +${assigneeIds.length - 2} more`}
-                                              </span>
-                                            )}
-                                          </span>
-                                          {isTeamLead && !task.isCompleted && (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleOpenAssignModal(task);
-                                              }}
-                                              style={{
-                                                padding: '0.25rem 0.5rem',
-                                                border: `1px solid ${color}`,
-                                                borderRadius: '0.25rem',
-                                                background: 'transparent',
-                                                color: color,
-                                                cursor: 'pointer',
-                                                fontSize: '0.625rem',
-                                                fontWeight: 600,
-                                                whiteSpace: 'nowrap'
-                                              }}
-                                              title="Update members for this task"
-                                            >
-                                              {assigneeIds.length > 0 ? 'Update Members' : 'Assign Members'}
-                                            </button>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                    {(() => {
-                                      const assignees = task.assignees || [];
-                                      const assigneeIds = assignees.length > 0 
-                                        ? assignees.map((a: any) => a.userId || a.user?.id)
-                                        : (task.assignedToId ? [task.assignedToId] : []);
-                                      const isAssignedToMe = assigneeIds.includes(user?.id || '');
-                                      return !task.isCompleted && (isAssignedToMe || isTeamLead);
-                                    })() && (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                        {task.status === 'Todo' && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleTaskStatusUpdate(task.id, 'In Progress');
-                                            }}
-                                            disabled={updatingTask === task.id}
-                                            style={{
-                                              width: '100%',
-                                              padding: '0.5rem',
-                                              border: 'none',
-                                              borderRadius: '0.375rem',
-                                              background: '#3b82f6',
-                                              color: 'white',
-                                              cursor: 'pointer',
-                                              fontSize: '0.75rem',
-                                              fontWeight: 500,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              gap: '0.5rem'
-                                            }}
-                                          >
-                                            {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Start'}
-                                          </button>
-                                        )}
-                                        {(task.status === 'In Progress' || (hasRevisionDeliverables(project || {}) && task.status === 'In Review')) && (
-                                          <>
-                                            {/* Primary review action */}
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleSendForReview(task);
-                                              }}
-                                              disabled={updatingTask === task.id}
-                                              style={{
-                                                width: '100%',
-                                                padding: '0.5rem',
-                                                border: 'none',
-                                                borderRadius: '0.375rem',
-                                                background: '#f59e0b',
-                                                color: 'white',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem'
-                                              }}
-                                            >
-                                              {updatingTask === task.id ? (
-                                                <FaSpinner className="spinner" />
-                                              ) : hasRevisionDeliverables(project || {}) ? (
-                                                'Resubmit'
-                                              ) : (
-                                                'Send for Review'
-                                              )}
-                                            </button>
-
-                                            {/* For AI Developer only: extra option to forward instead of just review */}
-                                            {isAIDeveloper && (
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleOpenForwardModal(task);
-                                                }}
-                                                disabled={updatingTask === task.id}
-                                                style={{
-                                                  width: '100%',
-                                                  padding: '0.5rem',
-                                                  border: 'none',
-                                                  borderRadius: '0.375rem',
-                                                  background: '#4f46e5',
-                                                  color: 'white',
-                                                  cursor: 'pointer',
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 500,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  gap: '0.5rem'
-                                                }}
-                                              >
-                                                {updatingTask === task.id ? (
-                                                  <FaSpinner className="spinner" />
-                                                ) : (
-                                                  'Forward to Department'
-                                                )}
-                                              </button>
-                                            )}
-                                            {!hasRevisionDeliverables(project || {}) && !linkedOrigin && (
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleTaskStatusUpdate(task.id, 'Completed', true);
-                                                }}
-                                                disabled={updatingTask === task.id}
-                                                style={{
-                                                  width: '100%',
-                                                  padding: '0.5rem',
-                                                  border: 'none',
-                                                  borderRadius: '0.375rem',
-                                                  background: '#10b981',
-                                                  color: 'white',
-                                                  cursor: 'pointer',
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 500,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  gap: '0.5rem'
-                                                }}
-                                              >
-                                                {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Complete'}
-                                              </button>
-                                            )}
-                                          </>
-                                        )}
-                                        {linkedOrigin && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleOpenReturnModal(task);
-                                            }}
-                                            disabled={updatingTask === task.id}
-                                            style={{
-                                              width: '100%',
-                                              padding: '0.5rem',
-                                              border: 'none',
-                                              borderRadius: '0.375rem',
-                                              background: '#4f46e5',
-                                              color: 'white',
-                                              cursor: 'pointer',
-                                              fontSize: '0.75rem',
-                                              fontWeight: 500,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              gap: '0.5rem'
-                                            }}
-                                          >
-                                            {updatingTask === task.id ? (
-                                              <FaSpinner className="spinner" />
-                                            ) : (
-                                              `Return to ${linkedOrigin.originDepartmentName || 'Origin Dept'} for Approval`
-                                            )}
-                                          </button>
-                                        )}
-                                        {task.status === 'In Review' && !hasRevisionDeliverables(project || {}) && !linkedTarget && (
-                                          <>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTaskStatusUpdate(task.id, 'In Progress');
-                                              }}
-                                              disabled={updatingTask === task.id}
-                                              style={{
-                                                width: '100%',
-                                                padding: '0.5rem',
-                                                border: 'none',
-                                                borderRadius: '0.375rem',
-                                                background: '#3b82f6',
-                                                color: 'white',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem'
-                                              }}
-                                            >
-                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Back to In Progress'}
-                                            </button>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTaskStatusUpdate(task.id, 'Completed', true);
-                                              }}
-                                              disabled={updatingTask === task.id}
-                                              style={{
-                                                width: '100%',
-                                                padding: '0.5rem',
-                                                border: 'none',
-                                                borderRadius: '0.375rem',
-                                                background: '#10b981',
-                                                color: 'white',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem'
-                                              }}
-                                            >
-                                              {updatingTask === task.id ? <FaSpinner className="spinner" /> : 'Mark Complete'}
-                                            </button>
-                                          </>
-                                        )}
-                                        {linkedTarget && task.status === 'In Review' && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleSendBackToTargetForRevision(task);
-                                            }}
-                                            disabled={updatingTask === task.id}
-                                            style={{
-                                              width: '100%',
-                                              padding: '0.5rem',
-                                              border: 'none',
-                                              borderRadius: '0.375rem',
-                                              background: '#dc2626',
-                                              color: 'white',
-                                              cursor: 'pointer',
-                                              fontSize: '0.75rem',
-                                              fontWeight: 500,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              gap: '0.5rem'
-                                            }}
-                                          >
-                                            {updatingTask === task.id ? (
-                                              <FaSpinner className="spinner" />
-                                            ) : (
-                                              `Send Back to ${linkedTarget.targetDepartmentName || 'Linked Dept'} for Revision`
-                                            )}
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {sortedStatusTasks.length === 0 && (
-                        <div style={{
-                          padding: '2rem',
-                          textAlign: 'center',
-                          color: '#9ca3af',
-                          fontSize: '0.875rem'
-                        }}>
-                          No tasks
-                        </div>
-                      )}
+          <div className="rd-grid">
+            <div style={{ minWidth: 0 }}>
+              {section === 'team' && (
+                <section className="rd-panel">
+                  <div className="rd-panel-head">
+                    <div>
+                      <h2 className="rd-panel-title">Team workload</h2>
+                      <p className="rd-panel-sub">Open tasks per person. Select someone to filter the queue below.</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              overflow: 'hidden'
-            }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                    {isTeamLead && (
-                      <th style={{ padding: '1rem', textAlign: 'center', width: '40px' }}>
-                        <input
-                          type="checkbox"
-                          checked={getFilteredAndSortedTasks().length > 0 && selectedTaskIds.length === getFilteredAndSortedTasks().length}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTaskIds(getFilteredAndSortedTasks().map((t: any) => t.id));
-                            } else {
-                              setSelectedTaskIds([]);
-                            }
-                          }}
-                        />
-                      </th>
+                  <div className="rd-team-row head" aria-hidden="true">
+                    <span>Person</span>
+                    <span className="rd-team-num">Open</span>
+                    <span className="rd-team-num rd-team-hide">In progress</span>
+                    <span className="rd-team-num rd-team-hide">In approval</span>
+                    <span className="rd-team-num">Overdue</span>
+                  </div>
+                  {teamRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className={`rd-team-row${assigneeFilter === row.id ? ' active' : ''}`}
+                      onClick={() => setAssigneeFilter(assigneeFilter === row.id ? null : row.id)}
+                    >
+                      <span className="rd-owner">
+                        <UserAvatar name={row.name} avatarUrl={row.avatarUrl} size={25} color="#6555e9" />
+                        <span className="rd-owner-name">{row.name}</span>
+                      </span>
+                      <span className="rd-team-num">{row.active}</span>
+                      <span className="rd-team-num rd-team-hide">{row.progress}</span>
+                      <span className="rd-team-num rd-team-hide">{row.review}</span>
+                      <span className={`rd-team-num${row.overdue > 0 ? ' rd-overdue' : ''}`}>{row.overdue}</span>
+                    </button>
+                  ))}
+                  {unassignedCount > 0 && (
+                    <button
+                      type="button"
+                      className={`rd-team-row${assigneeFilter === 'unassigned' ? ' active' : ''}`}
+                      onClick={() => setAssigneeFilter(assigneeFilter === 'unassigned' ? null : 'unassigned')}
+                    >
+                      <span className="rd-unassigned">Unassigned</span>
+                      <span className="rd-team-num">{unassignedCount}</span>
+                      <span className="rd-team-num rd-team-hide">–</span>
+                      <span className="rd-team-num rd-team-hide">–</span>
+                      <span className="rd-team-num">–</span>
+                    </button>
+                  )}
+                </section>
+              )}
+
+              <section className="rd-panel">
+                <div className="rd-panel-head">
+                  <div>
+                    <h2 className="rd-panel-title">{copy.queue}</h2>
+                    <p className="rd-panel-sub">{copy.sub}</p>
+                  </div>
+                  <div className="rd-segmented" role="group" aria-label="Queue layout">
+                    <button type="button" className={`rd-segment${viewMode === 'list' ? ' active' : ''}`} aria-pressed={viewMode === 'list'} onClick={() => switchViewMode('list')}>List</button>
+                    <button type="button" className={`rd-segment${viewMode === 'kanban' ? ' active' : ''}`} aria-pressed={viewMode === 'kanban'} onClick={() => switchViewMode('kanban')}>Board</button>
+                  </div>
+                </div>
+
+                <div className="rd-toolbar">
+                  <div className="rd-chips">
+                    <button type="button" className={`rd-chip${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>
+                      {viewMode === 'list' ? 'All open' : 'All work'}
+                    </button>
+                    {CHIP_COLUMNS.map((id) => (
+                      <button key={id} type="button" className={`rd-chip${statusFilter === id ? ' active' : ''}`} onClick={() => setStatusFilter(id)}>
+                        {COLUMN_LABEL[id]}<span className="rd-chip-count">{countOf(id)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rd-tools">
+                    <label className="rd-search">
+                      <FaSearch aria-hidden="true" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Find a task or project…"
+                        aria-label="Find a task or project"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </label>
+                    {viewMode === 'list' && (
+                      <select className="rd-select" aria-label="Sort tasks" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                        <option value="due_date">Due date</option>
+                        <option value="priority">Priority</option>
+                        <option value="created">Newest</option>
+                      </select>
                     )}
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Task</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Project</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>PM</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Status</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Due Date</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Assigned To</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getFilteredAndSortedTasks().map((task: any) => {
-                    const isSelected = selectedTaskIds.includes(task.id);
-                    return (
-                      <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  </div>
+                </div>
+
+                {(projectFilter || assigneeFilter) && (
+                  <div className="rd-active-filters">
+                    {projectFilter && (
+                      <button type="button" className="rd-filter-tag" onClick={() => setProjectFilter(null)} aria-label={`Remove project filter ${getProjectName(projectFilter)}`}>
+                        Project: {getProjectName(projectFilter)} <FaTimes aria-hidden="true" />
+                      </button>
+                    )}
+                    {assigneeFilter && (
+                      <button type="button" className="rd-filter-tag" onClick={() => setAssigneeFilter(null)} aria-label={`Remove assignee filter ${assigneeFilterName}`}>
+                        Assignee: {assigneeFilterName} <FaTimes aria-hidden="true" />
+                      </button>
+                    )}
+                    {projectFilter && (
+                      <button type="button" className="rd-link" onClick={() => navigate(`/project/${projectFilter}`)}>Open project</button>
+                    )}
+                  </div>
+                )}
+
+                {isTeamLead && viewMode === 'list' && selectedTaskIds.length > 0 && (
+                  <div className="rd-bulkbar">
+                    <span>{selectedTaskIds.length} selected</span>
+                    <button type="button" className="rd-btn rd-btn-danger" disabled={updatingTask === 'bulk-delete'} onClick={handleBulkDelete}>
+                      {updatingTask === 'bulk-delete' ? 'Deleting…' : 'Delete selected'}
+                    </button>
+                  </div>
+                )}
+
+                {viewMode === 'list' ? (
+                  <table className="rd-table">
+                    <thead>
+                      <tr>
                         {isTeamLead && (
-                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                          <th className="rd-col-check">
                             <input
                               type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedTaskIds((prev) => [...prev, task.id]);
-                                } else {
-                                  setSelectedTaskIds((prev) => prev.filter((id) => id !== task.id));
-                                }
-                              }}
+                              aria-label="Select all tasks"
+                              checked={queueTotal > 0 && selectedTaskIds.length === queueTotal}
+                              onChange={(e) => setSelectedTaskIds(e.target.checked ? queueTasks.map((t: any) => t.id) : [])}
                             />
-                          </td>
+                          </th>
                         )}
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 600, color: '#111827', marginBottom: '0.25rem' }}>
-                            {task.title}
-                          </div>
-                          {task.description && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              {task.description.substring(0, 100)}...
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
-                          {getProjectName(task.projectId)}
-                        </td>
-                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>
-                          {getProjectPmName(task.projectId) || '—'}
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            background: task.isCompleted ? '#d1fae5' : task.status === 'In Progress' ? '#dbeafe' : task.status === 'In Review' ? '#fef3c7' : '#f3f4f6',
-                            color: task.isCompleted ? '#065f46' : task.status === 'In Progress' ? '#1e40af' : task.status === 'In Review' ? '#92400e' : '#374151'
-                          }}>
-                            {task.isCompleted ? 'Completed' : task.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}
-                        </td>
-                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#374151' }}>
-                          {task.assignedToId ? getUserName(task.assignedToId) : 'Unassigned'}
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() => navigate(`/project/${task.projectId}`)}
-                              style={{
-                                padding: '0.375rem 0.75rem',
-                                border: 'none',
-                                borderRadius: '6px',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                              }}
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={() => copyTaskLink(task)}
-                              style={{
-                                padding: '0.375rem 0.75rem',
-                                border: 'none',
-                                borderRadius: '6px',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                              }}
-                            >
-                              Copy Link
-                            </button>
-                            <button
-                              onClick={() => handleEditTask(task)}
-                              style={{
-                                padding: '0.375rem 0.75rem',
-                                border: 'none',
-                                borderRadius: '6px',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                              }}
-                            >
-                              Edit
-                            </button>
-                            {isTeamLead && (
-                              <button
-                                onClick={async () => {
-                                  const confirmed = window.confirm('Are you sure you want to delete this task? This cannot be undone.');
-                                  if (!confirmed) return;
-                                  try {
-                                    setUpdatingTask(task.id);
-                                    await taskService.delete(task.id);
-                                    await loadData();
-                                  } catch (error) {
-                                    console.error('Failed to delete task:', error);
-                                    alert('Failed to delete task. Please try again.');
-                                  } finally {
-                                    setUpdatingTask(null);
-                                  }
-                                }}
-                                disabled={updatingTask === task.id}
-                                style={{
-                                  padding: '0.375rem 0.75rem',
-                                  borderRadius: '6px',
-                                  border: 'none',
-                                  background: '#fee2e2',
-                                  color: '#b91c1c',
-                                  cursor: updatingTask === task.id ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 500
-                                }}
-                              >
-                                {updatingTask === task.id ? 'Deleting…' : 'Delete'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                        <th className="rd-col-task">Task / project</th>
+                        <th className="rd-col-status">Status</th>
+                        <th className="rd-col-owner">Assignee</th>
+                        <th className="rd-col-date">Due date</th>
+                        <th className="rd-col-arrow" aria-hidden="true"></th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {visibleTasks.map((task: any) => {
+                        const column = getTaskColumn(task);
+                        const due = getDueInfo(task);
+                        const pm = getProjectPmName(task.projectId);
+                        return (
+                          <tr
+                            key={task.id}
+                            tabIndex={0}
+                            onClick={() => handleOpenTaskDetail(task)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.target === e.currentTarget) handleOpenTaskDetail(task);
+                            }}
+                          >
+                            {isTeamLead && (
+                              <td className="rd-col-check" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select ${task.title}`}
+                                  checked={selectedTaskIds.includes(task.id)}
+                                  onChange={(e) =>
+                                    setSelectedTaskIds((prev) =>
+                                      e.target.checked ? [...prev, task.id] : prev.filter((id) => id !== task.id)
+                                    )
+                                  }
+                                />
+                              </td>
+                            )}
+                            <td className="rd-col-task">
+                              <div className="rd-task-name">{task.title}</div>
+                              <div className="rd-task-meta">
+                                {getProjectName(task.projectId)}
+                                {pm && <><span className="rd-dotsep">·</span>PM: {pm}</>}
+                                {task.priority === 'High' && <><span className="rd-dotsep">·</span><span className="rd-high">High priority</span></>}
+                              </div>
+                            </td>
+                            <td className="rd-col-status"><span className={`rd-pill ${column}`}>{COLUMN_LABEL[column]}</span></td>
+                            <td className="rd-col-owner">{renderOwner(task)}</td>
+                            <td className="rd-col-date"><span className={due.className}>{due.text}</span></td>
+                            <td className="rd-col-arrow" aria-hidden="true"><FaChevronRight /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="rd-board">
+                    {BOARD_COLUMNS.map((columnId) => {
+                      const columnTasks = sortKanbanTasksByCreatedAt(groupedTasks[columnId] || [], kanbanColumnSort[columnId] ?? 'newest');
+                      return (
+                        <div
+                          key={columnId}
+                          className={`rd-board-col${dragOverColumn === columnId ? ' over' : ''}`}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            setDragOverColumn(columnId);
+                          }}
+                          onDragLeave={() => setDragOverColumn(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverColumn(null);
+                            if (!draggedTask) return;
+                            openStatusChange(draggedTask, columnId);
+                            setDraggedTask(null);
+                          }}
+                        >
+                          <div className="rd-board-heading">
+                            <span>{COLUMN_LABEL[columnId]}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <select
+                                className="rd-board-sort"
+                                aria-label={`Sort ${COLUMN_LABEL[columnId]}`}
+                                value={kanbanColumnSort[columnId] ?? 'newest'}
+                                onChange={(e) =>
+                                  setKanbanColumnSort((prev) => ({ ...prev, [columnId]: e.target.value as KanbanColumnSortOrder }))
+                                }
+                              >
+                                <option value="newest">Newest</option>
+                                <option value="oldest">Oldest</option>
+                              </select>
+                              <span className="rd-board-count">{columnTasks.length}</span>
+                            </span>
+                          </div>
+                          <div className="rd-board-list">
+                            {columnTasks.map((task: any) => {
+                              const due = getDueInfo(task);
+                              const primary = getTaskActions(task)[0];
+                              return (
+                                <div
+                                  key={task.id}
+                                  className="rd-card"
+                                  role="button"
+                                  tabIndex={0}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    setDraggedTask(task.id);
+                                    e.dataTransfer.effectAllowed = 'move';
+                                  }}
+                                  onDragEnd={() => setDraggedTask(null)}
+                                  onClick={() => handleOpenTaskDetail(task)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && e.target === e.currentTarget) handleOpenTaskDetail(task);
+                                  }}
+                                >
+                                  <small>{getProjectName(task.projectId)}</small>
+                                  <b>{task.title}</b>
+                                  <div className="rd-card-foot">
+                                    {renderOwner(task)}
+                                    <span className={due.className} style={{ flexShrink: 0 }}>{due.text}</span>
+                                  </div>
+                                  {primary && (
+                                    <button
+                                      type="button"
+                                      className="rd-btn rd-btn-subtle"
+                                      disabled={updatingTask === task.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        primary.run();
+                                      }}
+                                    >
+                                      {updatingTask === task.id ? <FaSpinner className="rd-spin" /> : primary.label}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {columnTasks.length === 0 && <div className="rd-board-empty">Nothing here</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {viewMode === 'list' && queueTotal === 0 && (
+                  <div className="rd-empty">
+                    <b>No tasks match this view</b>
+                    Try a different search or status.
+                    {(statusFilter !== 'all' || searchQuery || projectFilter || assigneeFilter) && (
+                      <div style={{ marginTop: 10 }}>
+                        <button type="button" className="rd-link" onClick={() => goToSection('overview')}>Clear filters</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {viewMode === 'list' && queueTotal > 0 && (
+                  <div className="rd-panel-foot">
+                    <span>Showing {visibleTasks.length} of {queueTotal} {queueTotal === 1 ? 'task' : 'tasks'}</span>
+                    {visibleTasks.length < queueTotal && (
+                      <button type="button" className="rd-link" onClick={() => setVisibleCount((n) => n + QUEUE_PAGE_SIZE)}>Show more</button>
+                    )}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <aside className="rd-rail" aria-label="Team summary">
+              <TodaysPrioritiesCard
+                taskType={config.taskType}
+                refreshKey={prioritiesRefreshKey}
+                onManage={() => setShowPrioritiesModal(true)}
+                onOpenRow={(row) => {
+                  const rowTask = row.taskId ? tasks.find((t: any) => t.id === row.taskId) : null;
+                  if (rowTask) handleOpenTaskDetail(rowTask);
+                  else if (row.projectId) navigate(`/project/${row.projectId}`);
+                }}
+              />
+
+              {taskDueAlerts.length > 0 && (
+                <section className="rd-panel rd-rail-card">
+                  <div className="rd-rail-title">
+                    <h3>{overdueCount > 0 ? `Overdue and due soon` : 'Due soon'}</h3>
+                    <span className="rd-board-count">{taskDueAlerts.length}</span>
+                  </div>
+                  {(showAllTaskDueAlerts ? taskDueAlerts : taskDueAlerts.slice(0, 5)).map((item) => {
+                    const dueTask = tasks.find((t: any) => t.id === item.taskId);
+                    return (
+                      <button key={item.taskId} type="button" className="rd-due-row" onClick={() => dueTask && handleOpenTaskDetail(dueTask)}>
+                        <span className="rd-due-text">
+                          <span className="rd-due-title">{item.taskTitle}</span>
+                          <span className="rd-due-project">{item.projectName}</span>
+                        </span>
+                        <span className={`rd-due-when ${item.daysLeft < 0 ? 'rd-overdue' : item.daysLeft <= 1 ? 'rd-duesoon' : ''}`}>
+                          {item.daysLeft < 0 ? `${Math.abs(item.daysLeft)}d overdue` : item.daysLeft === 0 ? 'Today' : `${item.daysLeft}d left`}
+                        </span>
+                      </button>
                     );
                   })}
-                </tbody>
-              </table>
-              {getFilteredAndSortedTasks().length === 0 && (
-                <div style={{
-                  padding: '3rem',
-                  textAlign: 'center',
-                  color: '#9ca3af',
-                  fontSize: '0.875rem'
-                }}>
-                  No tasks found
-                </div>
+                  {taskDueAlerts.length > 5 && (
+                    <button type="button" className="rd-link" style={{ marginTop: 8 }} onClick={() => setShowAllTaskDueAlerts(!showAllTaskDueAlerts)}>
+                      {showAllTaskDueAlerts ? 'Show less' : `Show all ${taskDueAlerts.length}`}
+                    </button>
+                  )}
+                </section>
               )}
-            </div>
-          )}
+
+              <section className="rd-panel rd-rail-card">
+                <div className="rd-rail-title">
+                  <h3>Workflow health</h3>
+                  <FaChartLine style={{ color: '#747b8c' }} aria-hidden="true" />
+                </div>
+                {healthRows.map((row) => (
+                  <button key={row.id} type="button" className="rd-health-row" onClick={() => applyStatusFilter(row.id)} title={`Show ${row.label.toLowerCase()} tasks`}>
+                    <span className="rd-health-label"><span>{row.label}</span><b>{row.value}</b></span>
+                    <span className="rd-track"><span className="rd-fill" style={{ width: `${(row.value / healthMax) * 100}%` }} /></span>
+                  </button>
+                ))}
+              </section>
+
+              <section className="rd-panel rd-rail-card rd-quick">
+                <div className="rd-rail-title"><h3>Quick actions</h3></div>
+                <button type="button" className="rd-btn rd-btn-subtle" onClick={() => goToSection('approvals')}>Open approval inbox <FaArrowRight aria-hidden="true" /></button>
+                <button type="button" className="rd-btn rd-btn-subtle" onClick={() => goToSection('my')}>See my assigned work <FaArrowRight aria-hidden="true" /></button>
+              </section>
+            </aside>
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* Modals */}
       <NotificationsModal
@@ -5139,6 +3719,11 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         getProjectName={getProjectName}
         getProjectPmName={getProjectPmName}
         initialTab={taskDetailTab}
+        footer={drawerFooter}
+        onTaskDeleted={isTeamLead ? () => {
+          notify('Task deleted.');
+          loadData();
+        } : undefined}
         onTaskUpdate={(updatedTask) => {
           setSelectedTaskDetail(updatedTask);
           setTasks((prev) => prev.map((t: any) => t.id === updatedTask?.id ? updatedTask : t));
@@ -5168,9 +3753,48 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
           }}
         />
       )}
+      {showPrioritiesModal && (
+        <div
+          className="rd-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowPrioritiesModal(false);
+              setPrioritiesRefreshKey((n) => n + 1);
+            }
+          }}
+        >
+          <div className="rd-modal" role="dialog" aria-modal="true" aria-label="Today's priorities">
+            <button
+              type="button"
+              className="rd-icon-btn rd-modal-close"
+              aria-label="Close priorities"
+              onClick={() => {
+                setShowPrioritiesModal(false);
+                setPrioritiesRefreshKey((n) => n + 1);
+              }}
+            >
+              <FaTimes />
+            </button>
+            <DepartmentPriorityProjects
+              taskType={config.taskType}
+              departmentName={config.departmentName}
+              color={color}
+              tasks={tasks}
+              projects={projects}
+              canEditTeamOverride={canEditTeamOverride}
+              onOpenTaskDetail={handleOpenTaskDetail}
+              onEditTask={handleEditTask}
+              onUpdateTaskColumn={async (taskId, columnId) => {
+                await handleQuickMoveTaskToColumn(taskId, columnId);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {toast && <div className="rd-toast" role="status">{toast}</div>}
     </div>
   );
 };
 
 export default RoleDashboard;
-

@@ -1,6 +1,5 @@
 import React from 'react';
 import { authService } from '../services/auth.service';
-import FounderDashboard from './dashboards/FounderDashboard';
 import PMDashboard from './dashboards/PMDashboard';
 import RapidProspectDashboard from './dashboards/RapidProspectDashboard';
 import RoleDashboard from './dashboards/RoleDashboard';
@@ -16,7 +15,6 @@ const RoleBasedDashboard: React.FC = () => {
 
   switch (role) {
     case 'FOUNDER/CEO':
-      return <FounderDashboard />;
     case 'Project Manager':
       return <PMDashboard />;
     case 'Rapid Prospect':

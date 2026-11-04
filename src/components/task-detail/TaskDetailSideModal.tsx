@@ -21,6 +21,8 @@ interface TaskDetailSideModalProps {
   onTaskUpdate?: (updatedTask: any) => void;
   onTaskDeleted?: (taskId: string) => void;
   initialTab?: 'details' | 'conversation';
+  /** Pinned below the scrolling body, e.g. the task's next-step actions */
+  footer?: React.ReactNode;
 }
 
 const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
@@ -33,6 +35,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   onTaskUpdate,
   onTaskDeleted,
   initialTab = 'details',
+  footer,
 }) => {
   const navigate = useNavigate();
   const [resolvedTask, setResolvedTask] = useState<any | null>(null);
@@ -268,6 +271,7 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
             />
           )}
         </div>
+        {footer}
       </div>
     </div>
   );

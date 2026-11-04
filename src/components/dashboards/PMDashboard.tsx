@@ -17,6 +17,7 @@ import PMListView from './PMListView';
 import PMProjectsRegistryView from './PMProjectsRegistryView';
 import PMKanbanView from './PMKanbanView';
 import PMQuickOverview from './PMQuickOverview';
+import FounderAnalytics from './FounderAnalytics';
 import PMOverviewSearchResults from './PMOverviewSearchResults';
 import PMAlertsPanel, { PMMonthlyReminderForm, PMTaskDueAlert } from './PMAlertsPanel';
 import UserAvatar from '../UserAvatar';
@@ -29,6 +30,9 @@ const ITEMS_PER_PAGE = 10; // Constant for pagination
 const PMDashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = authService.getUser();
+  const isFounder = user?.role === 'FOUNDER/CEO';
+  /** Founders get everything a Project Manager gets on this dashboard. */
+  const hasPmTools = user?.role === 'Project Manager' || isFounder;
   const [projects, setProjects] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const tasksRef = useRef<any[]>([]);
@@ -834,7 +838,7 @@ const PMDashboard: React.FC = () => {
     return alerts.sort((a, b) => a.daysLeft - b.daysLeft || a.taskTitle.localeCompare(b.taskTitle));
   }, [tasks, projects]);
 
-  const canManageMonthlyReminders = user?.role === 'Project Manager' || !!user?.isHeadPM;
+  const canManageMonthlyReminders = hasPmTools || !!user?.isHeadPM;
 
   const projectOptionsForMonthlyReminders = useMemo(() => {
     return [...projects]
@@ -1295,7 +1299,7 @@ const PMDashboard: React.FC = () => {
             <h2 className="logo">Katalyst PM</h2>
           </div>
           <div className="nav-right">
-            {user?.role === 'Project Manager' && (
+            {hasPmTools && (
               <button 
                 onClick={() => setShowCreateModal(true)} 
                 className="btn-primary btn-primary-premium"
@@ -1603,7 +1607,7 @@ const PMDashboard: React.FC = () => {
               >
                 List
               </button>
-              {user?.role === 'Project Manager' && (
+              {hasPmTools && (
                 <button 
                   className={viewMode === 'tasks' ? 'active' : ''}
                   onClick={() => setViewMode('tasks')}
@@ -1722,6 +1726,15 @@ const PMDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {isFounder && viewMode === 'overview' && (
+          <FounderAnalytics
+            projects={projects}
+            tasks={tasks}
+            users={users}
+            lastEmailLogs={lastEmailLogs}
+          />
+        )}
 
         <PMAlertsPanel
           taskDueAlerts={taskDueAlerts}
