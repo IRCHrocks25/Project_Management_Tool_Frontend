@@ -34,6 +34,10 @@ import HubRoot from './components/hub/HubRoot';
 import AllProducts from './components/hub/AllProducts';
 import ProductPage from './components/hub/ProductPage';
 import SharePage from './components/hub/SharePage';
+import FormsRoot from './components/forms/FormsRoot';
+import FormsHome from './components/forms/FormsHome';
+import FormEditor from './components/forms/FormEditor';
+import PublicForm from './components/forms/PublicForm';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -133,10 +137,10 @@ const DepartmentBoardRoute: React.FC = () => {
   return <RoleDashboard role={mappedRole} pmPreviewMode={user?.role === 'Project Manager'} />;
 };
 
-/** The public client share page (/share/:token) shows no app chrome. */
+/** Public client pages (/share/:token, /f/:token) show no app chrome. */
 const FAQHelpButtonExceptSharePage: React.FC = () => {
   const { pathname } = useLocation();
-  return pathname.startsWith('/share/') ? null : <FAQHelpButton />;
+  return pathname.startsWith('/share/') || pathname.startsWith('/f/') ? null : <FAQHelpButton />;
 };
 
 const App: React.FC = () => {
@@ -200,9 +204,17 @@ const App: React.FC = () => {
             <Route path=":slug" element={<ProductPage />} />
             <Route path=":slug/:tab" element={<ProductPage />} />
           </Route>
+          {/* Forms */}
+          <Route path="forms" element={<FormsRoot />}>
+            <Route index element={<FormsHome />} />
+            <Route path=":id" element={<FormEditor />} />
+            <Route path=":id/:tab" element={<FormEditor />} />
+          </Route>
         </Route>
         {/* Katalyst Hub: public client page for a shared vault login (no sign-in) */}
         <Route path="/share/:token" element={<SharePage />} />
+        {/* Forms: public page a client fills in (no sign-in) */}
+        <Route path="/f/:token" element={<PublicForm />} />
         <Route
           path="/users"
           element={
