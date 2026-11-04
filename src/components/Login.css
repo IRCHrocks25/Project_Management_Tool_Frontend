@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.kl-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #ffffff;
+  color: #111111;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.kl-card { width: 100%; max-width: 400px; }
+.kl-brand { min-height: 44px; display: inline-flex; align-items: center; gap: 10px; margin-bottom: 40px; color: #111111; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-decoration: none; }
+.kl-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: #111111; color: #ffffff; font-size: 15px; font-weight: 700; }
+.kl-heading { margin: 0 0 8px; font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; }
+.kl-sub { margin: 0 0 28px; color: #555555; font-size: 16px; line-height: 1.5; }
+.kl-notice, .kl-error { margin-bottom: 20px; padding: 11px 13px; border-radius: 9px; font-size: 14px; line-height: 1.45; }
+.kl-notice { background: #f4f4f4; color: #111111; }
+.kl-error { display: flex; align-items: flex-start; gap: 9px; background: #fdf1ef; color: #a2362a; }
+.kl-error svg { flex-shrink: 0; margin-top: 3px; font-size: 13px; }
+.kl-form { display: flex; flex-direction: column; gap: 18px; }
+.kl-field label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 600; }
+.kl-label-row { display: flex; align-items: center; margin-bottom: -4px; justify-content: space-between; gap: 12px; }
+.kl-link { min-height: 44px; padding: 0; border: 0; background: transparent; color: #444444; font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.kl-link:hover { color: #111111; }
+.kl-field input { width: 100%; min-height: 48px; padding: 11px 13px; border: 1px solid #d4d4d4; border-radius: 9px; background: #ffffff; color: #111111; font: inherit; font-size: 16px; box-sizing: border-box; outline: none; transition: border-color 0.12s, box-shadow 0.12s; }
+.kl-field input::placeholder { color: #767676; }
+.kl-field input:focus { border-color: #111111; box-shadow: 0 0 0 1px #111111; }
+.kl-password { position: relative; }
+.kl-password input { padding-right: 50px; }
+.kl-eye { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #555555; font-size: 16px; cursor: pointer; }
+.kl-eye:hover { color: #111111; }
+.kl-submit { min-height: 48px; margin-top: 4px; border: 0; border-radius: 9px; background: #111111; color: #ffffff; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; transition: background 0.12s; }
+.kl-submit:hover:not(:disabled) { background: #333333; }
+.kl-submit:disabled { opacity: 0.6; cursor: default; }
+.kl-brand:focus-visible, .kl-link:focus-visible, .kl-eye:focus-visible, .kl-submit:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
+.kl-foot { margin: 24px 0 0; color: #555555; font-size: 14px; line-height: 1.5; text-align: center; }

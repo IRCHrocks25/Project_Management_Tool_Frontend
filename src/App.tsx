@@ -136,10 +136,14 @@ const DepartmentBoardRoute: React.FC = () => {
   return <RoleDashboard role={mappedRole} pmPreviewMode={user?.role === 'Project Manager'} />;
 };
 
-/** Signed-in pages only: public client pages (/share/:token, /f/:token) show no app chrome. */
+/** Pages anyone can open: the assistant must never appear here, even if a teammate is logged in on this browser. */
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/reset-password', '/rapid-prospect-onboarding'];
+const PUBLIC_PREFIXES = ['/share/', '/f/', '/client-updates/forms/'];
+
 const AssistantOnAppPages: React.FC = () => {
   const { pathname } = useLocation();
-  const isPublic = pathname.startsWith('/share/') || pathname.startsWith('/f/');
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const isPublic = PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
   return authService.isAuthenticated() && !isPublic ? <AssistantWidget /> : null;
 };
 

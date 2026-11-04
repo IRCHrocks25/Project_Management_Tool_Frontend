@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #111111 0%, #767676 100%);
+  background: #ffffff;
   padding: 2rem;
 }
 
@@ -13,7 +13,8 @@
   padding: 3rem;
   width: 100%;
   max-width: 450px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
 .auth-card h1 {
