@@ -71,16 +71,6 @@ class NotificationService {
     });
   }
 
-  /** Trigger a test notification webhook (sends to n8n with Webhook-Token header). For AI dashboard. */
-  async testWebhook(email: string, userName?: string): Promise<{ success: boolean; message?: string }> {
-    const response = await axios.post<{ success: boolean; message?: string }>(
-      `${API_URL}/notifications/test-webhook`,
-      { email: email.trim(), userName: userName?.trim() || undefined },
-      { headers: this.getAuthHeaders() },
-    );
-    return response.data;
-  }
-
   /** Connect to the notifications WebSocket so new notifications arrive in real time (like live chat). */
   connectSocket(): Socket | null {
     return getNotificationSocket();

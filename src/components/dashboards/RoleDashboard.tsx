@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   FaArrowRight,
   FaBell,
-  FaBolt,
   FaCalendarAlt,
   FaChartLine,
   FaCheckCircle,
@@ -288,10 +287,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const [showSubmitTicketModal, setShowSubmitTicketModal] = useState(false);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [showAllTaskDueAlerts, setShowAllTaskDueAlerts] = useState(false);
-  const [showTestWebhookModal, setShowTestWebhookModal] = useState(false);
-  const [testWebhookUserId, setTestWebhookUserId] = useState<string>('');
-  const [testWebhookSending, setTestWebhookSending] = useState(false);
-  const [testWebhookResult, setTestWebhookResult] = useState<{ success: boolean; message?: string } | null>(null);
 
   // (Department priority state is now managed by <DepartmentPriorityProjects />)
 
@@ -1691,19 +1686,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   {isAIDeveloper && (
                     <button type="button" onClick={() => { setShowAvatarDropdown(false); setShowTicketsModal(true); }}><FaInbox /> View tickets</button>
                   )}
-                  {isAIDeveloper && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAvatarDropdown(false);
-                        setShowTestWebhookModal(true);
-                        setTestWebhookUserId('');
-                        setTestWebhookResult(null);
-                      }}
-                    >
-                      <FaBolt /> Test webhook
-                    </button>
-                  )}
                   {isTeamLead && (
                     <button type="button" onClick={() => navigate('/pm-dashboard')}><FaThLarge /> PM dashboard</button>
                   )}
@@ -2136,142 +2118,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         onClose={() => setShowTicketsModal(false)}
         accentColor={color}
       />
-      {/* Test notification webhook modal (AI Developer only) */}
-      {showTestWebhookModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            padding: '2rem'
-          }}
-          onClick={() => {
-            if (!testWebhookSending) {
-              setShowTestWebhookModal(false);
-              setTestWebhookResult(null);
-            }
-          }}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '440px',
-              boxShadow: '0 24px 80px rgba(0, 0, 0, 0.2)',
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e8e8e8' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#1c1c1c' }}>
-                Test notification webhook
-              </h2>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                Sends a test payload to the n8n webhook (Webhook-Token: katalystPM2026). Choose an email to receive the test.
-              </p>
-            </div>
-            <div style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <label style={{ fontWeight: 600, color: '#444444', fontSize: '0.9375rem' }}>
-                Send test to
-              </label>
-              <select
-                value={testWebhookUserId}
-                onChange={(e) => setTestWebhookUserId(e.target.value)}
-                disabled={testWebhookSending}
-                style={{
-                  padding: '0.75rem 1rem',
-                  borderRadius: '10px',
-                  border: '1px solid #e8e8e8',
-                  fontSize: '0.9375rem',
-                  background: 'white',
-                  cursor: testWebhookSending ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <option value="">Select a user (email)...</option>
-                {users.filter((u: any) => u.email).map((u: any) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} – {u.email}
-                  </option>
-                ))}
-              </select>
-              {testWebhookResult && (
-                <div
-                  style={{
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    background: testWebhookResult.success ? '#ecfdf5' : '#fef2f2',
-                    color: testWebhookResult.success ? '#065f46' : '#b91c1c',
-                    border: `1px solid ${testWebhookResult.success ? '#a7f3d0' : '#fecaca'}`
-                  }}
-                >
-                  {testWebhookResult.success ? '✓ ' : '✗ '}
-                  {testWebhookResult.message || (testWebhookResult.success ? 'Sent.' : 'Failed.')}
-                </div>
-              )}
-            </div>
-            <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e8e8e8', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!testWebhookSending) {
-                    setShowTestWebhookModal(false);
-                    setTestWebhookResult(null);
-                  }
-                }}
-                style={{
-                  padding: '0.75rem 1.25rem',
-                  borderRadius: '8px',
-                  border: '1px solid #e8e8e8',
-                  background: 'white',
-                  color: '#444444',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  cursor: testWebhookSending ? 'not-allowed' : 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!testWebhookUserId || testWebhookSending}
-                onClick={async () => {
-                  const selectedUser = users.find((u: any) => u.id === testWebhookUserId);
-                  if (!selectedUser?.email) return;
-                  setTestWebhookSending(true);
-                  setTestWebhookResult(null);
-                  try {
-                    const result = await notificationService.testWebhook(selectedUser.email, selectedUser.name);
-                    setTestWebhookResult(result);
-                  } catch (err: any) {
-                    setTestWebhookResult({ success: false, message: err?.response?.data?.message || err?.message || 'Request failed' });
-                  } finally {
-                    setTestWebhookSending(false);
-                  }
-                }}
-                style={{
-                  padding: '0.75rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: (!testWebhookUserId || testWebhookSending) ? '#9ca3af' : color,
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  cursor: (!testWebhookUserId || testWebhookSending) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {testWebhookSending ? 'Sending...' : 'Send test'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <LiveChatPanel
         isOpen={showLiveChatPanel}
         onClose={() => {

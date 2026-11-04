@@ -57,7 +57,7 @@ const Settings: React.FC = () => {
     setErrorMessage('');
 
     try {
-      // Persist notification preference on backend so email webhook obeys the toggle.
+      // Persist notification preference on backend so notification emails obey the toggle.
       await authService.updateProfile({
         emailNotificationsEnabled: settings.emailNotifications,
       });
