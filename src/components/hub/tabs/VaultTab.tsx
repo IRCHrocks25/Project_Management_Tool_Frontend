@@ -4,11 +4,12 @@
  *   password masked with Reveal (hides after 30 s) and Copy (logged as a copy); Share on
  *   shareable items; overflow Edit / Activity / Delete (confirm + Undo).
  *   People without reveal rights see the item with the password masked and a short explanation.
- *   `?credential=<id>` scrolls to and highlights a row.
+ *   `?credential=<id>` scrolls to and highlights a row (filters are ignored while it does).
+ *   Search matches name, username, login page and environment; every word must match.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Credential, hubErrorMessage, hubErrorStatus, hubService, ProductDetail } from '../../../services/hub.service';
+import { Credential, CredentialEnvironment, hubErrorMessage, hubErrorStatus, hubService, ProductDetail } from '../../../services/hub.service';
 import { usePrimaryAction } from '../primaryAction';
 import { CREDENTIAL_ENV, fullDateTime, when } from '../hubUtils';
 import { useVaultCopy } from '../VaultCopy';
@@ -30,6 +31,16 @@ export interface VaultTabProps {
 const REVEAL_MS = 30000;
 const MASK = '••••••••••••';
 
+/** True when every word of the query appears in the credential's name, username, login page or environment. */
+export function credentialMatches(c: Credential, query: string): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const haystack = [c.label, c.username, c.loginUrl || '', CREDENTIAL_ENV[c.environment] || c.environment]
+    .join(' ')
+    .toLowerCase();
+  return words.every((w) => haystack.includes(w));
+}
+
 const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
   const toast = useToast();
   const { copy, fallback } = useVaultCopy();
@@ -45,6 +56,8 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
   const [working, setWorking] = useState<Record<string, 'reveal' | 'copy' | undefined>>({});
   const timers = useRef<Record<string, number>>({});
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [env, setEnv] = useState<CredentialEnvironment | ''>('');
 
   const [modal, setModal] = useState<{ credential: Credential | null } | null>(null);
   const [sharing, setSharing] = useState<Credential | null>(null);
@@ -162,7 +175,13 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
     onChanged();
   };
 
-  const list = (creds || []).filter((c) => !hidden.has(c.id));
+  const all = (creds || []).filter((c) => !hidden.has(c.id));
+  const filtering = !deepLink && (q.trim() !== '' || env !== '');
+  const list = filtering ? all.filter((c) => (!env || c.environment === env) && credentialMatches(c, q)) : all;
+  const clearFilters = () => {
+    setQ('');
+    setEnv('');
+  };
 
   const lastActivity = (c: Credential) =>
     c.lastEvent ? (
@@ -191,6 +210,48 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
           </div>
         </div>
       ) : null}
+
+      {!error && all.length > 0 && (
+        <div className="hub-vbar">
+          <div className="hub-vq">
+            <Icon name="search" />
+            <label className="hub-sr" htmlFor="hub-vault-q">
+              Search the vault
+            </label>
+            <input
+              id="hub-vault-q"
+              className="hub-inp"
+              type="search"
+              placeholder="Search by name, username or login page"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && q) {
+                  e.stopPropagation();
+                  setQ('');
+                }
+              }}
+              autoComplete="off"
+            />
+          </div>
+          <div className="hub-venv">
+            <label className="hub-sr" htmlFor="hub-vault-env">
+              Filter by environment
+            </label>
+            <select id="hub-vault-env" className="hub-inp" value={env} onChange={(e) => setEnv(e.target.value as CredentialEnvironment | '')}>
+              <option value="">All environments</option>
+              {(Object.keys(CREDENTIAL_ENV) as CredentialEnvironment[]).map((k) => (
+                <option key={k} value={k}>
+                  {CREDENTIAL_ENV[k]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="hub-vcount" role="status">
+            {filtering ? `${list.length} of ${all.length} shown` : `${all.length} saved`}
+          </span>
+        </div>
+      )}
 
       {error ? (
         <div className="hub-card">
@@ -290,6 +351,17 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
               </div>
             );
           })}
+        </div>
+      ) : filtering ? (
+        <div className="hub-card">
+          <EmptyState
+            icon="search"
+            title="Nothing matches"
+            text={`No saved logins match${q.trim() ? ` "${q.trim()}"` : ''}${env ? ` in ${CREDENTIAL_ENV[env]}` : ''}. Try another word, or look in all environments.`}
+            actionLabel="Clear search"
+            actionIcon="x"
+            onAction={clearFilters}
+          />
         </div>
       ) : (
         <div className="hub-card">
