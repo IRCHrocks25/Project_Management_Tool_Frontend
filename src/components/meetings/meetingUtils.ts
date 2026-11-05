@@ -48,11 +48,14 @@ export const initials = (name: string): string => {
   return picked.map((w) => Array.from(w)[0]).join('').toUpperCase();
 };
 
+/** Teal, green, amber, orange, rose: the product avoids blues and purples. */
+const AVATAR_HUES = [172, 145, 38, 20, 345];
+
 /** A steady colour per person, so someone keeps the same avatar through a call. */
 export const avatarHue = (name: string): number => {
   let hash = 0;
-  for (const ch of plainName(name)) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
-  return hash;
+  for (const ch of plainName(name)) hash = (hash * 31 + ch.charCodeAt(0)) % 9973;
+  return AVATAR_HUES[hash % AVATAR_HUES.length];
 };
 
 /** Call length as 4:07, or 1:04:07 past an hour. */

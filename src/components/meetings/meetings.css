@@ -99,7 +99,7 @@
 .mt-call-room[data-lk-theme] .lk-focus-toggle-button { background:rgba(12,12,15,.62); color:#ffffff; border-radius:8px; }
 .mt-call-room[data-lk-theme] .lk-participant-media-video[data-lk-source="screen_share"] { background:#000000; }
 
-.mt-avatar { --avatar-hue:220; display:inline-grid; place-items:center; flex:none; width:32px; height:32px; border-radius:50%; font-size:12px; font-weight:600; color:#ffffff; background:linear-gradient(135deg, hsl(var(--avatar-hue) 70% 58%), hsl(calc(var(--avatar-hue) + 45) 70% 42%)); }
+.mt-avatar { --avatar-hue:220; display:inline-grid; place-items:center; flex:none; width:32px; height:32px; border-radius:50%; font-size:12px; font-weight:600; color:#ffffff; background:linear-gradient(135deg, hsl(var(--avatar-hue) 70% 58%), hsl(calc(var(--avatar-hue) + 12) 70% 40%)); }
 .mt-avatar-lg { width:clamp(56px, 24%, 128px); height:auto; aspect-ratio:1; font-size:clamp(20px, 3.4vw, 44px); }
 
 /* Floating controls */
@@ -112,7 +112,9 @@
 .mt-dock .lk-button-group-menu { display:inline-flex; }
 .mt-dock .lk-button-group-menu > .lk-button, .mt-dock .lk-button-menu { width:30px; border-radius:0 999px 999px 0; background:transparent; }
 .mt-dock .lk-button[data-lk-source="microphone"][data-lk-enabled="false"], .mt-dock .lk-button[data-lk-source="camera"][data-lk-enabled="false"] { background:var(--call-off); color:#ffffff; }
-.mt-dock .lk-button[data-lk-source="screen_share"][data-lk-enabled="true"], .mt-dock .mt-people-btn[aria-pressed="true"], .mt-dock .lk-chat-toggle[aria-pressed="true"] { background:#ffffff; color:#111111; }
+.mt-dock .lk-button[data-lk-source="screen_share"][data-lk-enabled="true"], .mt-dock .mt-blur-btn[aria-pressed="true"], .mt-dock .mt-blur-btn[aria-pressed="true"]:hover { background:var(--color-action); color:#ffffff; }
+.mt-dock .mt-blur-btn:disabled { opacity:.6; cursor:progress; }
+.mt-dock .mt-people-btn[aria-pressed="true"], .mt-dock .lk-chat-toggle[aria-pressed="true"] { background:#ffffff; color:#111111; }
 .mt-dock .lk-device-menu { min-width:240px; padding:6px; border:1px solid var(--call-line); border-radius:12px; background:var(--call-raised); box-shadow:0 14px 40px rgba(0,0,0,.5); }
 .mt-dock .lk-device-menu .lk-button { width:100%; height:auto; min-height:36px; justify-content:flex-start; padding:8px 12px; border-radius:8px; background:transparent; color:var(--call-fg); text-align:left; transform:none; }
 .mt-dock .lk-device-menu .lk-button:hover { background:var(--call-glass); transform:none; }
@@ -146,6 +148,11 @@
 .mt-person-state > span { display:inline-flex; }
 .mt-person-state > span[data-off="true"] { color:var(--call-off); }
 .mt-person-state svg { width:16px; height:16px; }
+.mt-person-btn { display:inline-grid; place-items:center; width:28px; height:28px; padding:0; border:none; border-radius:50%; background:var(--call-glass); color:var(--call-fg); cursor:pointer; }
+.mt-person-btn:hover { background:var(--call-glass-hover); }
+.mt-person-remove { color:#ff8b8e; }
+.mt-person-remove:hover { background:var(--call-off); color:#ffffff; }
+.mt-call-note { position:absolute; left:50%; bottom:92px; z-index:30; transform:translateX(-50%); max-width:calc(100% - 32px); padding:8px 14px; border:1px solid var(--call-line); border-radius:10px; background:var(--call-raised); color:var(--call-fg); font-size:14px; }
 
 /* Someone at the door: a card over the call, so the video doesn't jump */
 .mt-waiting { position:absolute; top:64px; right:var(--s4); z-index:30; display:grid; gap:var(--s1); width:min(360px, calc(100% - 32px)); padding:var(--s2); border:1px solid var(--call-line); border-radius:14px; background:var(--call-raised); box-shadow:0 14px 40px rgba(0,0,0,.5); animation:mt-slide-in .22s ease-out; }
@@ -176,6 +183,7 @@
   .mt-dock .lk-button, .mt-dock .lk-chat-toggle, .mt-dock .lk-disconnect-button { width:44px; height:44px; }
   .mt-call-room[data-lk-theme] .mt-dock .lk-disconnect-button { width:44px; }
   .mt-dock .lk-button-group-menu { display:none; }
+  .mt-call-room[data-lk-theme] .mt-dock { flex-wrap:wrap; justify-content:center; border-radius:26px; }
   .mt-call-room[data-lk-theme] .lk-chat, .mt-people { position:absolute; inset:0; z-index:25; width:auto; margin:0; border:none; border-radius:0; }
   .mt-head-label { display:none; }
   .mt-call-head { padding:var(--s2) var(--s3); }

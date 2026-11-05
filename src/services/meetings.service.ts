@@ -67,6 +67,10 @@ export type GuestStatus =
 const data = <T,>(p: Promise<{ data: T }>) => p.then((r) => r.data);
 
 export const meetingsService = {
+  muteParticipant: (id: string, identity: string) =>
+    data<{ muted: boolean }>(axios.post(`${API_URL}/meetings/${id}/participants/mute`, { identity }, auth())),
+  removeParticipant: (id: string, identity: string) =>
+    data<{ removed: boolean }>(axios.post(`${API_URL}/meetings/${id}/participants/remove`, { identity }, auth())),
   list: (view: MeetingView) =>
     data<{ meetings: Meeting[]; videoReady: boolean }>(axios.get(`${API_URL}/meetings`, { ...auth(), params: { view } })),
   get: (id: string) => data<Meeting>(axios.get(`${API_URL}/meetings/${id}`, auth())),

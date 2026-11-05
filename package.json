@@ -8,6 +8,7 @@
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
     "@livekit/components-styles": "^1.2.0",
+    "@livekit/track-processors": "^0.8.2",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/table-core": "^8.21.3",
     "@tiptap/core": "^2.27.3",
