@@ -117,7 +117,7 @@ const Notifications: React.FC = () => {
               {unreadCount > 0 && (
                 <div className="notifications-actions" style={{ padding: '1rem', borderBottom: '1px solid #e8e8e8' }}>
                   <button onClick={handleMarkAllAsRead} className="mark-all-read-btn" style={{
-                    background: '#111111',
+                    background: 'var(--color-action)',
                     color: 'white',
                     border: 'none',
                     padding: '0.5rem 1rem',

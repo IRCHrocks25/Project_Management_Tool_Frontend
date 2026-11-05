@@ -475,7 +475,7 @@ const Clients: React.FC = () => {
               onClick={() => navigate('/clients')}
               style={{ 
                 marginRight: '0.75rem',
-                backgroundColor: '#111111',
+                backgroundColor: 'var(--color-action)',
                 color: '#ffffff',
                 borderColor: '#111111'
               }}

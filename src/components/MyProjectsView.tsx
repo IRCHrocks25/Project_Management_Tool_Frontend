@@ -914,7 +914,7 @@ const MyProjectsView: React.FC = () => {
                         <button
                           onClick={(e) => handleViewUpdatesClick(project, e)}
                           style={{
-                            background: '#111111',
+                            background: 'var(--color-action)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '0.375rem',
@@ -1312,7 +1312,7 @@ const MyProjectsView: React.FC = () => {
                                           padding: '0.5rem',
                                           border: 'none',
                                           borderRadius: '0.375rem',
-                                          background: '#111111',
+                                          background: 'var(--color-action)',
                                           color: 'white',
                                           cursor: 'pointer',
                                           fontSize: '0.75rem',

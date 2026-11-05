@@ -16,8 +16,14 @@ import {
   FaTrash,
 } from 'react-icons/fa';
 
+import TaskBoardCard from '../dashboards/TaskBoardCard';
+import { BOARD_COLUMN_TITLE, ColumnId, getTaskColumn } from '../dashboards/taskColumns';
+import { useDragEdgeScroll } from '../dashboards/useDragEdgeScroll';
+
 const ProjectDeliverablesTab = (props: any) => {
   const [deliverablesViewMode, setDeliverablesViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [columnSort, setColumnSort] = useState<Record<string, 'newest' | 'oldest'>>({});
+  useDragEdgeScroll(!!props.draggedFile);
   const {
     authService,
     deliverablesForDisplay,
@@ -71,6 +77,8 @@ const ProjectDeliverablesTab = (props: any) => {
     setSelectedDeliverableForTeam,
     setShowAddDeliverableTeamMemberModal,
     copyTaskLink,
+    getBoardActions,
+    updatingBoardTaskId,
     handleApproveFile,
     updatingDeliverable,
     handleRequestRevisionClick,
@@ -603,6 +611,9 @@ const ProjectDeliverablesTab = (props: any) => {
                 
                 // Get related task to check current status
                 const relatedTask = link.taskId ? tasks.find((t: any) => t.id === link.taskId) : null;
+
+                // A task sits in the same column on every board.
+                if (relatedTask) return getTaskColumn(relatedTask);
                 
                 // Debug logging for status determination
                 if (!isPlaceholder && selectedDeliverable.status === 'Revision') {
@@ -824,35 +835,13 @@ const ProjectDeliverablesTab = (props: any) => {
                 // Placeholder tasks (url: "task-xxx") and tasks with files both support status updates
                 if (draggedFile.taskId) {
                   try {
-                    // For review columns, open a modal to capture notes/links
-                    const modalColumns = [
-                      'for_approval',
-                      'revision',
-                      'approved_completed',
-                      'qa_before_client',
-                      'client_validation',
-                    ];
+                    setStatusChangeContext({
+                      taskId: draggedFile.taskId,
+                      columnId: targetColumnId,
+                      label: BOARD_COLUMN_TITLE[targetColumnId as ColumnId] || targetColumnId,
+                    });
+                    setShowStatusChangeModal(true);
 
-                    if (modalColumns.includes(targetColumnId)) {
-                      const labelMap: Record<string, string> = {
-                        for_approval: 'For Approval',
-                        revision: 'Revision',
-                        approved_completed: 'Approved/Completed',
-                        qa_before_client: 'QA Before Sending to Client',
-                        client_validation: 'Client Validation',
-                      };
-
-                      setStatusChangeContext({
-                        taskId: draggedFile.taskId,
-                        columnId: targetColumnId,
-                        label: labelMap[targetColumnId] || targetColumnId,
-                      });
-                      setShowStatusChangeModal(true);
-                    } else {
-                      // Simple columns can update immediately
-                      await handleTaskStatusChange(draggedFile.taskId, targetColumnId);
-                    }
-                    
                     setDragOverColumn(null);
                     setDraggedFile(null);
                     return;
@@ -1154,23 +1143,39 @@ const ProjectDeliverablesTab = (props: any) => {
                   </div>
                   
                   {deliverablesViewMode === 'kanban' ? (
-                    <div className="kanban-columns">
+                    <div className="rd-board rd-board-project">
                       {kanbanColumns.map((column) => (
                       <div 
                         key={column.id} 
-                        className={`kanban-column ${dragOverColumn === column.id ? 'drag-over' : ''}`}
+                        className={`rd-board-col${dragOverColumn === column.id ? ' over' : ''}`}
+                        onDragEnter={(e) => e.preventDefault()}
                         onDragOver={(e) => handleColumnDragOver(e, column.id)}
                         onDragLeave={handleColumnDragLeave}
                         onDrop={(e) => handleColumnDrop(e, column.id)}
                       >
-                        <div className="kanban-column-header">
-                          <h5 className="kanban-column-title">{column.title}</h5>
-                          <span className="kanban-column-count">{column.files.length}</span>
+                        <div className="rd-board-heading">
+                          <span className="rd-board-title">
+                            {column.title}
+                            <small>{column.files.length} task(s)</small>
+                          </span>
+                          <select
+                            className="rd-board-sort"
+                            aria-label={`Sort ${column.title}`}
+                            value={columnSort[column.id] ?? 'newest'}
+                            onChange={(e) =>
+                              setColumnSort((prev) => ({ ...prev, [column.id]: e.target.value as 'newest' | 'oldest' }))
+                            }
+                          >
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                          </select>
                         </div>
-                        <div className="kanban-column-content">
+                        <div className="rd-board-list">
                           {/* Add Task button for PMs in NOT YET STARTED column */}
                           {column.id === 'not_started' && authService.getUser()?.role === 'Project Manager' && (
                             <button
+                              type="button"
+                              className="rd-board-add"
                               onClick={() => {
                                 setSelectedDeliverableForTask(selectedDeliverable.id);
                                 setNewTaskData({ department: '', notes: '', assignedToId: '', dueDate: '' });
@@ -1178,38 +1183,17 @@ const ProjectDeliverablesTab = (props: any) => {
                                 setNewTaskFileUrls([]);
                                 setShowAddTaskFromDeliverableModal(true);
                               }}
-                              style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                marginBottom: '0.75rem',
-                                background: 'white',
-                                border: '2px dashed #d6d6d6',
-                                borderRadius: '8px',
-                                color: '#787878',
-                                fontSize: '0.875rem',
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#111111';
-                                e.currentTarget.style.color = '#111111';
-                                e.currentTarget.style.background = '#f8f8f8';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#d6d6d6';
-                                e.currentTarget.style.color = '#787878';
-                                e.currentTarget.style.background = 'white';
-                              }}
                             >
                               <FaPlus /> Add Task
                             </button>
                           )}
-                          {column.files.map((link, idx) => {
+                          {[...column.files].sort((a: any, b: any) => {
+                            const when = (l: any) => {
+                              const t = l.taskId ? tasks.find((x: any) => x.id === l.taskId) : null;
+                              return new Date(t?.createdAt || l.createdAt || 0).getTime();
+                            };
+                            return columnSort[column.id] === 'oldest' ? when(a) - when(b) : when(b) - when(a);
+                          }).map((link, idx) => {
                             const deptColors: any = {
                               'Copy Writing': '#111111',
                               'Design': '#111111',
@@ -1306,6 +1290,85 @@ const ProjectDeliverablesTab = (props: any) => {
                             const currentFileStatus = getFileStatus(link);
                             const isInRevision = currentFileStatus === 'revision';
                             
+                            if (relatedTask) {
+                              const latestNote: string = fileHistory[0]?.notes?.trim() || '';
+                              return (
+                                <TaskBoardCard
+                                  key={`${relatedTask.id}-${idx}`}
+                                  task={relatedTask}
+                                  columnId={getTaskColumn(relatedTask)}
+                                  clientName={project.clientName}
+                                  pmName={project.pm?.name}
+                                  department={link.department}
+                                  currentUserId={authService.getUser()?.id}
+                                  getUserName={(userId: string) => allUsers.find((u: any) => u.id === userId)?.name || 'Unknown'}
+                                  actions={getBoardActions(relatedTask)}
+                                  busy={updatingBoardTaskId === relatedTask.id}
+                                  onOpen={() => {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }}
+                                  onEdit={() => {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }}
+                                  onCopyLink={() => copyTaskLink(relatedTask)}
+                                  onUpdateMembers={() => {
+                                    setSelectedTaskDetail(relatedTask);
+                                    setShowTaskDetailModal(true);
+                                  }}
+                                  onDragStart={(e) => handleFileDragStart(e, link)}
+                                  onDragEnd={handleFileDragEnd}
+                                >
+                                  {!link.url.startsWith('task-') && (
+                                    <div className="rd-card-extra">
+                                      <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.url} onClick={(e) => e.stopPropagation()}>
+                                        <FaExternalLinkAlt aria-hidden="true" />
+                                        Open {link.type === 'File' ? 'file' : `in ${link.type}`}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {latestNote && <div className="rd-card-extra rd-card-note">{latestNote}</div>}
+                                  {(deliverableMembers.length > 0 || isPM) && (
+                                    <div className="rd-card-extra rd-card-team">
+                                      {deliverableMembers.length > 0 && <span>Team:</span>}
+                                      {deliverableMembers.map((member: any) => (
+                                        <span key={member.id}>
+                                          {member.user?.name}
+                                          {isPM && (
+                                            <button
+                                              type="button"
+                                              title="Remove team member"
+                                              aria-label={`Remove ${member.user?.name}`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRemoveDeliverableTeamMember(selectedDeliverable.id, member.userId);
+                                              }}
+                                            >
+                                              <FaTimes />
+                                            </button>
+                                          )}
+                                        </span>
+                                      ))}
+                                      {isPM && (
+                                        <button
+                                          type="button"
+                                          className="rd-card-team-add"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedDeliverableForTeam(selectedDeliverable.id);
+                                            setShowAddDeliverableTeamMemberModal(true);
+                                          }}
+                                        >
+                                          <FaPlus aria-hidden="true" /> Add team member
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </TaskBoardCard>
+                              );
+                            }
+
                             return (
                               <div 
                                 key={idx} 
@@ -1730,7 +1793,7 @@ const ProjectDeliverablesTab = (props: any) => {
                                     </div>
                                   )}
 
-                                  {canAssignOwners && link.taskId && (
+                                  {link.taskId && (
                                     <div className="kanban-card-actions">
                                       <button
                                         type="button"
@@ -1759,6 +1822,13 @@ const ProjectDeliverablesTab = (props: any) => {
                                         <FaCopy aria-hidden="true" />
                                         Copy link
                                       </button>
+                                    </div>
+                                  )}
+
+                                  {relatedTask?.dueDate && (
+                                    <div className="kanban-card-date">
+                                      <span className="kanban-meta-label">Due</span>
+                                      <span>{new Date(relatedTask.dueDate).toLocaleDateString()}</span>
                                     </div>
                                   )}
 

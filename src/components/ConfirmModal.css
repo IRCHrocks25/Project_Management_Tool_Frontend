@@ -191,11 +191,11 @@
 }
 
 .confirm-modal-btn.confirm-btn.info {
-  background: #111111;
+  background: var(--color-action);
 }
 
 .confirm-modal-btn.confirm-btn.info:hover:not(:disabled) {
-  background: #111111;
+  background: var(--color-action-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(17, 17, 17, 0.25);
 }

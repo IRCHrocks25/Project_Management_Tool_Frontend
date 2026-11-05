@@ -17,7 +17,7 @@
 
 /* Buttons */
 .lp-btn { width: 100%; min-height: 48px; padding: 11px 20px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #111111; border-radius: 9px; background: #111111; color: #ffffff; font-size: 15px; font-weight: 650; line-height: 1.35; text-align: center; text-decoration: none; transition: background 0.12s, border-color 0.12s; }
-.lp-btn:hover { background: #333333; border-color: #333333; }
+.lp-btn:hover { background: var(--color-action-hover); border-color: var(--color-action-hover); }
 .lp-btn.ghost { background: #ffffff; border-color: #d4d4d4; color: #111111; }
 .lp-btn.ghost:hover { background: #f5f5f5; border-color: #bdbdbd; }
 .lp-btn.small { width: auto; min-height: 44px; padding: 7px 14px; font-size: 14px; }

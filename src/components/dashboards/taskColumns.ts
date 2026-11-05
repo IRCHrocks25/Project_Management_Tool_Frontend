@@ -1,4 +1,5 @@
 import { taskService } from '../../services/task.service';
+import { deliverableService } from '../../services/deliverable.service';
 
 /** Workflow stages a task can be in, shared by the department and PM dashboards. */
 export type ColumnId =
@@ -161,5 +162,180 @@ export const moveTaskToColumn = async (
     await taskService.update(task.id, { description: descWithMarker + logBlock, baseDescription: task.description || '' });
   } catch (descError) {
     console.warn('Failed to update task description with status change log:', descError);
+  }
+};
+
+/** The board keeps the order and names the team already knows. */
+export const BOARD_DISPLAY_ORDER: ColumnId[] = [
+  'not_started',
+  'owned_in_progress',
+  'for_approval',
+  'revision',
+  'approved_completed',
+  'qa_before_client',
+  'client_validation',
+];
+
+export const BOARD_COLUMN_TITLE: Partial<Record<ColumnId, string>> = {
+  not_started: 'Not yet started',
+  owned_in_progress: 'Owned/In Progress',
+  for_approval: 'For Approval',
+  revision: 'Revision',
+  approved_completed: 'Approved/Completed',
+  qa_before_client: 'QA Before Sending to Client',
+  client_validation: 'Client Validation',
+};
+
+export const CARD_STAGE_TONE: Partial<Record<ColumnId, string>> = {
+  for_approval: 'tone-review',
+  revision: 'tone-revision',
+  approved_completed: 'tone-done',
+};
+
+export const CARD_ACTION_TONE: Record<string, string> = {
+  complete: 'done',
+  'mark-complete': 'done',
+  'request-changes': 'attention',
+  'send-back': 'attention',
+  back: 'plain',
+};
+
+/** Button colour by what the action means: go ahead, finished, or needs a closer look. */
+export const ACTION_BUTTON_CLASS: Record<string, string> = {
+  claim: 'rd-btn-go',
+  start: 'rd-btn-go',
+  review: 'rd-btn-go',
+  complete: 'rd-btn-done',
+  'mark-complete': 'rd-btn-done',
+  'request-changes': 'rd-btn-attention',
+  'send-back': 'rd-btn-attention',
+};
+
+/** The text someone wrote, without the history blocks and linked-task ids stored beside it. */
+export const cardDescription = (description?: string | null): string =>
+  (description || '')
+    .split(/\n\n--- /)[0]
+    .replace(/\n?\[\[[A-Z_]+:[^\]]*\]\]/g, '')
+    .replace(/^--- .* ---$/gm, '')
+    .trim();
+
+export const getTaskAssigneeIds = (task: any): string[] =>
+  task?.assignees?.length
+    ? task.assignees.map((a: any) => a.userId || a.user?.id)
+    : task?.assignedToId
+      ? [task.assignedToId]
+      : [];
+
+export const hasRevisionDeliverables = (project: any) =>
+  project?.deliverables?.some(
+    (d: any) =>
+      ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) &&
+      d.status === 'Revision',
+  );
+
+export const getLinkedOriginInfo = (task: any) => {
+  if (!task?.description) return null;
+  const desc: string = task.description;
+  const originTaskMatch = desc.match(/\[\[LINKED_ORIGIN_TASK_ID:([^\]]+)\]\]/);
+  const originDeptMatch = desc.match(/\[\[LINKED_ORIGIN_DEPARTMENT:([^\]]+)\]\]/);
+  const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
+  if (!originTaskMatch) return null;
+  return {
+    originTaskId: originTaskMatch[1],
+    originDepartmentName: originDeptMatch ? originDeptMatch[1] : '',
+    targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : '',
+  };
+};
+
+export const getLinkedTargetInfo = (task: any) => {
+  if (!task?.description) return null;
+  const desc: string = task.description;
+  const targetTaskMatch = desc.match(/\[\[LINKED_TARGET_TASK_ID:([^\]]+)\]\]/);
+  const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
+  if (!targetTaskMatch) return null;
+  return {
+    targetTaskId: targetTaskMatch[1],
+    targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : '',
+  };
+};
+
+/** What someone can do with a task. Every board and task panel offers exactly these. */
+export const getTaskActionRules = (
+  task: any,
+  viewer: { userId?: string; isTeamLead: boolean; isAIDeveloper?: boolean; project: any },
+): { key: string; label: string }[] => {
+  const assigneeIds = getTaskAssigneeIds(task);
+  const isMine = assigneeIds.includes(viewer.userId || '');
+  const linkedOrigin = getLinkedOriginInfo(task);
+  const linkedTarget = getLinkedTargetInfo(task);
+  const revisionPending = hasRevisionDeliverables(viewer.project || {});
+  const rules: { key: string; label: string }[] = [];
+
+  if (assigneeIds.length === 0) {
+    rules.push({ key: 'claim', label: 'Claim task' });
+    if (viewer.isTeamLead) rules.push({ key: 'assign', label: 'Assign to team member' });
+  }
+  if (task.assignedToId && !task.isCompleted && (isMine || viewer.isTeamLead)) {
+    if (task.status === 'Todo') rules.push({ key: 'start', label: 'Start task' });
+    if (task.status === 'In Progress' || (revisionPending && task.status === 'In Review')) {
+      rules.push({ key: 'review', label: revisionPending ? 'Resubmit' : 'Send for review' });
+      if (viewer.isAIDeveloper) rules.push({ key: 'forward', label: 'Forward to department' });
+      if (!revisionPending && !linkedOrigin) rules.push({ key: 'complete', label: 'Complete' });
+    }
+    if (linkedOrigin) {
+      rules.push({ key: 'return', label: `Return to ${linkedOrigin.originDepartmentName || 'origin dept'} for approval` });
+    }
+    if (task.status === 'In Review' && !revisionPending && !linkedTarget) {
+      rules.push({ key: 'mark-complete', label: 'Mark complete' });
+      rules.push({ key: 'request-changes', label: 'Request changes' });
+      rules.push({ key: 'back', label: 'Back to in progress' });
+    }
+    if (linkedTarget && task.status === 'In Review') {
+      rules.push({ key: 'send-back', label: `Send back to ${linkedTarget.targetDepartmentName || 'linked dept'} for revision` });
+    }
+  }
+  if (task.assignedToId && !task.isCompleted && viewer.isTeamLead) {
+    rules.push({ key: 'members', label: 'Update members' });
+  }
+  return rules;
+};
+
+/** Submits a task for review: status, links as attachments, history in the description and on the deliverable. */
+export const submitTaskForReview = async (
+  task: any,
+  links: string[],
+  deliverableType: string,
+  deliverableId: string | undefined,
+  userName?: string,
+) => {
+  const validLinks = links.map((l) => l.trim()).filter(Boolean);
+  const primaryLink = validLinks[0];
+  const resolvedDeliverableId = deliverableId || task.deliverableId;
+  await taskService.updateStatus(task.id, 'In Review', false, primaryLink, deliverableType, resolvedDeliverableId);
+  await Promise.all(validLinks.map((link) => taskService.addLinkAttachment(task.id, link))).catch((attachmentError) => {
+    console.warn('Failed to add one or more review attachment links:', attachmentError);
+  });
+  const linkLines =
+    validLinks.length === 1
+      ? `\nAttachment: ${validLinks[0]}`
+      : `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
+  const logBlock = `\n\n--- Status Change ---\nNew Column: For Approval\nBy: ${userName || 'Unknown'}\nAt: ${new Date().toLocaleString()}${linkLines}`;
+  const currentDesc = task.description || '';
+  try {
+    await taskService.update(task.id, { description: currentDesc + logBlock, baseDescription: currentDesc });
+  } catch (descError) {
+    console.warn('Failed to update task description with review log:', descError);
+  }
+  if (resolvedDeliverableId && primaryLink) {
+    try {
+      await deliverableService.updateStatus(
+        resolvedDeliverableId,
+        'Ready for Review',
+        `Status moved to "For Approval" by ${userName || 'Unknown'}.${linkLines}`,
+        primaryLink,
+      );
+    } catch (historyError) {
+      console.warn('Failed to record deliverable history for review:', historyError);
+    }
   }
 };

@@ -202,7 +202,7 @@ const Users: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddUser(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minHeight: 44, padding: '0.625rem 1rem', border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minHeight: 44, padding: '0.625rem 1rem', border: 0, borderRadius: 9, background: 'var(--color-action)', color: '#fff', fontWeight: 650, cursor: 'pointer' }}
             >
               <FaPlus aria-hidden="true" /> Add teammate
             </button>
@@ -224,7 +224,7 @@ const Users: React.FC = () => {
                   <div style={{ padding: 12, marginBottom: 16, borderRadius: 9, background: '#f4f4f4', color: '#111111', overflowWrap: 'anywhere', lineHeight: 1.6 }}>
                     Email: {addedUser.email}<br />Temporary password: {addedUser.password}
                   </div>
-                  <button type="button" onClick={closeAddUser} style={{ minHeight: 44, width: '100%', border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer' }}>Done</button>
+                  <button type="button" onClick={closeAddUser} style={{ minHeight: 44, width: '100%', border: 0, borderRadius: 9, background: 'var(--color-action)', color: '#fff', fontWeight: 650, cursor: 'pointer' }}>Done</button>
                 </>
               ) : (
                 <form onSubmit={handleAddUser}>
@@ -262,7 +262,7 @@ const Users: React.FC = () => {
                   {addUserError && <p role="alert" style={{ margin: '0 0 12px', color: '#b84436', fontSize: 13 }}>{addUserError}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="button" onClick={closeAddUser} style={{ flex: 1, minHeight: 44, border: '1px solid #d4d4d4', borderRadius: 9, background: '#fff', color: '#111111', fontWeight: 650, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={addingUser} style={{ flex: 1, minHeight: 44, border: 0, borderRadius: 9, background: '#111111', color: '#fff', fontWeight: 650, cursor: 'pointer', opacity: addingUser ? 0.6 : 1 }}>{addingUser ? 'Adding…' : 'Add teammate'}</button>
+                    <button type="submit" disabled={addingUser} style={{ flex: 1, minHeight: 44, border: 0, borderRadius: 9, background: 'var(--color-action)', color: '#fff', fontWeight: 650, cursor: 'pointer', opacity: addingUser ? 0.6 : 1 }}>{addingUser ? 'Adding…' : 'Add teammate'}</button>
                   </div>
                 </form>
               )}

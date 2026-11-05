@@ -144,7 +144,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
-  background: #111111;
+  background: var(--color-action);
   color: white;
   border: none;
   border-radius: 8px;
@@ -156,7 +156,7 @@
 }
 
 .btn-primary-premium:hover {
-  background: #333333;
+  background: var(--color-action-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(17, 17, 17, 0.25);
 }
@@ -954,7 +954,7 @@
 
 .view-btn {
   padding: 0.5rem 1rem;
-  background: #111111;
+  background: var(--color-action);
   color: white;
   border: none;
   border-radius: 6px;
@@ -965,7 +965,7 @@
 }
 
 .view-btn:hover {
-  background: #333333;
+  background: var(--color-action-hover);
   transform: translateY(-1px);
 }
 

@@ -560,7 +560,7 @@ const FormBuilder: React.FC = () => {
           {form?.isPublished ? (
             <button
               style={{
-                background: '#111111',
+                background: 'var(--color-action)',
                 color: 'white',
                 border: 'none',
                 padding: '0.5rem 1rem',
@@ -580,7 +580,7 @@ const FormBuilder: React.FC = () => {
               onClick={handlePublish}
               disabled={publishing || formBlocks.length === 0}
               style={{
-                background: '#111111',
+                background: 'var(--color-action)',
                 color: 'white',
                 border: 'none',
                 padding: '0.5rem 1rem',
@@ -1312,7 +1312,7 @@ const FormBuilder: React.FC = () => {
               <button
                 onClick={() => setShowPublishModal(false)}
                 style={{
-                  background: '#111111',
+                  background: 'var(--color-action)',
                   color: 'white',
                   border: 'none',
                   padding: '0.625rem 1.25rem',
@@ -1421,7 +1421,7 @@ const FormBuilder: React.FC = () => {
               <button
                 onClick={() => setShowLinkModal(false)}
                 style={{
-                  background: '#111111',
+                  background: 'var(--color-action)',
                   color: 'white',
                   border: 'none',
                   padding: '0.625rem 1.25rem',
@@ -1484,7 +1484,7 @@ const FormBuilder: React.FC = () => {
             <button
               onClick={() => setShowThemeModal(false)}
               style={{
-                background: '#111111',
+                background: 'var(--color-action)',
                 color: 'white',
                 border: 'none',
                 padding: '0.625rem 1.25rem',
@@ -1547,7 +1547,7 @@ const FormBuilder: React.FC = () => {
             <button
               onClick={() => setShowCollaboratorsModal(false)}
               style={{
-                background: '#111111',
+                background: 'var(--color-action)',
                 color: 'white',
                 border: 'none',
                 padding: '0.625rem 1.25rem',

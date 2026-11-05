@@ -162,7 +162,7 @@
 
 .mbti-btn-primary {
   border: none;
-  background: #111111;
+  background: var(--color-action);
   color: #fff;
 }
 

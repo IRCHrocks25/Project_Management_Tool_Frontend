@@ -1,7 +1,7 @@
 .aw-trigger {
   position: fixed; right: 24px; bottom: 24px; z-index: 1150;
   width: 52px; height: 52px; display: grid; place-items: center;
-  border: 0; border-radius: 50%; background: #111111; color: #fff; font-size: 19px;
+  border: 0; border-radius: 50%; background: var(--color-action); color: #fff; font-size: 19px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); cursor: pointer;
   transition: transform 0.14s;
 }
@@ -35,7 +35,7 @@
 .aw-card p { margin: 0 0 10px; color: #555; font-size: 12px; line-height: 1.5; }
 .aw-card ul { margin: 0 0 10px; padding-left: 18px; line-height: 1.5; }
 .aw-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.aw-btn { min-height: 36px; padding: 7px 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #111111; border-radius: 9px; background: #111111; color: #fff; font: inherit; font-size: 12.5px; font-weight: 640; text-decoration: none; cursor: pointer; }
+.aw-btn { min-height: 36px; padding: 7px 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--color-action); border-radius: 9px; background: var(--color-action); color: #fff; font: inherit; font-size: 12.5px; font-weight: 640; text-decoration: none; cursor: pointer; }
 .aw-btn:hover { background: #333; }
 .aw-btn.ghost { background: #fff; border-color: #d4d4d4; color: #111111; }
 .aw-btn.ghost:hover { background: #f5f5f5; }
@@ -63,7 +63,7 @@
 .aw-input-row { display: flex; align-items: flex-end; gap: 6px; }
 .aw-input-row textarea { flex: 1; min-width: 0; min-height: 38px; max-height: 120px; padding: 9px 11px; border: 1px solid #d4d4d4; border-radius: 10px; background: #fff; color: #111111; font: inherit; line-height: 1.4; resize: none; outline: none; }
 .aw-input-row textarea:focus { border-color: #111111; }
-.aw-send { background: #111111; color: #fff; }
+.aw-send { background: var(--color-action); color: #fff; }
 .aw-send:hover:not(:disabled) { background: #333; color: #fff; }
 
 @media (max-width: 768px) {

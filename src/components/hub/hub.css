@@ -92,8 +92,8 @@
 .hub-btn:hover { background:var(--surface-2); }
 .hub-btn:active { transform:translateY(1px); }
 .hub-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
-.hub-btn-primary { background:var(--accent); border-color:var(--accent); color:var(--accent-fg); }
-.hub-btn-primary:hover { background:var(--accent-hover); border-color:var(--accent-hover); }
+.hub-btn-primary { background:var(--color-action); border-color:var(--color-action); color:#fff; }
+.hub-btn-primary:hover { background:var(--color-action-hover); border-color:var(--color-action-hover); }
 .hub-btn-ghost { border-color:transparent; background:transparent; color:var(--fg-2); }
 .hub-btn-ghost:hover { background:var(--surface-2); color:var(--fg); }
 .hub-btn-danger { background:var(--crit); border-color:var(--crit); color:var(--on-crit); }

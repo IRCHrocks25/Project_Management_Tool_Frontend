@@ -57,7 +57,14 @@ import './RoleDashboard.css';
 import { useProductTour } from '../tours/useProductTour';
 import { DEPARTMENT_TOUR_STEPS } from '../tours/tourSteps';
 import {
+  ACTION_BUTTON_CLASS,
   BOARD_COLUMNS,
+  BOARD_COLUMN_TITLE,
+  BOARD_DISPLAY_ORDER,
+  getLinkedOriginInfo,
+  getLinkedTargetInfo,
+  getTaskActionRules,
+  submitTaskForReview,
   COLUMN_LABEL,
   ColumnId,
   NEXT_STEP,
@@ -67,6 +74,8 @@ import {
   mapColumnToStatus,
   moveTaskToColumn,
 } from './taskColumns';
+import TaskBoardCard from './TaskBoardCard';
+import { useDragEdgeScroll } from './useDragEdgeScroll';
 
 // Role configuration mapping
 const ROLE_CONFIG: Record<string, {
@@ -134,6 +143,7 @@ const CHIP_COLUMNS: ColumnId[] = ['for_approval', 'revision', 'owned_in_progress
 const HEALTH_COLUMNS: ColumnId[] = ['not_started', 'owned_in_progress', 'for_approval', 'revision', 'qa_before_client', 'client_validation'];
 const PROJECT_DOT_COLORS = ['#9a9a9a'];
 const QUEUE_PAGE_SIZE = 30;
+// Kept for this browser tab only, so every fresh start opens on the overview.
 const VIEW_STORAGE_KEY = 'roleDashboard.viewMode';
 
 type KanbanColumnSortOrder = 'newest' | 'oldest';
@@ -185,7 +195,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
   const [unreadChatCount, refreshUnreadChat] = useUnreadChatCount();
   const initialViewMode = (() => {
     try {
-      return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'kanban' ? 'kanban' : 'list';
+      return window.sessionStorage.getItem(VIEW_STORAGE_KEY) === 'kanban' ? 'kanban' : 'list';
     } catch {
       return 'list';
     }
@@ -270,6 +280,9 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
   // Drag and drop state
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
+
+  useDragEdgeScroll(!!draggedTask);
+
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   /** Per Kanban column: sort by task createdAt (newest first = default, or oldest first). */
   const [kanbanColumnSort, setKanbanColumnSort] = useState<Record<string, KanbanColumnSortOrder>>({});
@@ -698,60 +711,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
     try {
       setUpdatingTask(selectedTaskForReview.id);
-      const validLinks = driveLinks.map((l) => l.trim()).filter(Boolean);
-      const primaryLink = validLinks[0];
-      const resolvedDeliverableId = deliverableId || selectedTaskForReview.deliverableId;
-
-      await taskService.updateStatus(
-        selectedTaskForReview.id,
-        'In Review',
-        false,
-        primaryLink,
-        deliverableType,
-        resolvedDeliverableId,
-      );
-
-      // Match drag-to-review: persist links as task attachments for Files & Links panel.
-      await Promise.all(
-        validLinks.map((link) => taskService.addLinkAttachment(selectedTaskForReview.id, link)),
-      ).catch((attachmentError) => {
-        console.warn('Failed to add one or more review attachment links:', attachmentError);
-      });
-
-      const timestamp = new Date().toLocaleString();
-      let logBlock = `\n\n--- Status Change ---\nNew Column: For Approval\nBy: ${user?.name || 'Unknown'}\nAt: ${timestamp}`;
-      if (validLinks.length === 1) {
-        logBlock += `\nAttachment: ${validLinks[0]}`;
-      } else if (validLinks.length > 1) {
-        logBlock += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
-      }
-
-      const currentDesc = selectedTaskForReview.description || '';
-      try {
-        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock, baseDescription: currentDesc });
-      } catch (descError) {
-        console.warn('Failed to update task description with review log:', descError);
-      }
-
-      // Deliverable history populates Activity History in the task side panel.
-      if (resolvedDeliverableId && primaryLink) {
-        try {
-          let baseNote = `Status moved to "For Approval" by ${user?.name || 'Unknown'}.`;
-          if (validLinks.length === 1) {
-            baseNote += `\nAttachment: ${validLinks[0]}`;
-          } else {
-            baseNote += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
-          }
-          await deliverableService.updateStatus(
-            resolvedDeliverableId,
-            'Ready for Review',
-            baseNote,
-            primaryLink,
-          );
-        } catch (historyError) {
-          console.warn('Failed to record deliverable history for review:', historyError);
-        }
-      }
+      await submitTaskForReview(selectedTaskForReview, driveLinks, deliverableType, deliverableId, user?.name);
 
       await loadData();
       setShowReviewModal(false);
@@ -1213,43 +1173,6 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
     }
   };
 
-  const hasRevisionDeliverables = (project: any) => {
-    return project.deliverables?.some((d: any) =>
-      ['Brand Book', 'Copy of Home Page', 'Home Page', 'Speaker Kit', 'Other'].includes(d.type) &&
-      d.status === 'Revision'
-    );
-  };
-
-  const getLinkedOriginInfo = (task: any) => {
-    if (!task?.description) return null;
-    const desc: string = task.description;
-    const originTaskMatch = desc.match(/\[\[LINKED_ORIGIN_TASK_ID:([^\]]+)\]\]/);
-    const originDeptMatch = desc.match(/\[\[LINKED_ORIGIN_DEPARTMENT:([^\]]+)\]\]/);
-    const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
-
-    if (!originTaskMatch) return null;
-
-    return {
-      originTaskId: originTaskMatch[1],
-      originDepartmentName: originDeptMatch ? originDeptMatch[1] : '',
-      targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
-    };
-  };
-
-  const getLinkedTargetInfo = (task: any) => {
-    if (!task?.description) return null;
-    const desc: string = task.description;
-    const targetTaskMatch = desc.match(/\[\[LINKED_TARGET_TASK_ID:([^\]]+)\]\]/);
-    const targetDeptMatch = desc.match(/\[\[LINKED_TARGET_DEPARTMENT:([^\]]+)\]\]/);
-
-    if (!targetTaskMatch) return null;
-
-    return {
-      targetTaskId: targetTaskMatch[1],
-      targetDepartmentName: targetDeptMatch ? targetDeptMatch[1] : ''
-    };
-  };
-
   // Quick move helper used by priority panel column selector.
   const handleQuickMoveTaskToColumn = async (taskId: string, columnId: string) => {
     const task = tasks.find((t: any) => t.id === taskId);
@@ -1337,14 +1260,14 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
 
   const openStatusChange = (taskId: string, columnId: ColumnId) => {
-    setStatusChangeContext({ taskId, targetColumnId: columnId, targetColumnLabel: COLUMN_LABEL[columnId] });
+    setStatusChangeContext({ taskId, targetColumnId: columnId, targetColumnLabel: BOARD_COLUMN_TITLE[columnId] || COLUMN_LABEL[columnId] });
     setShowStatusChangeModal(true);
   };
 
   const rememberViewMode = (mode: 'kanban' | 'list') => {
     setViewMode(mode);
     try {
-      window.localStorage.setItem(VIEW_STORAGE_KEY, mode);
+      window.sessionStorage.setItem(VIEW_STORAGE_KEY, mode);
     } catch {
       // Remembering the layout is only a convenience
     }
@@ -1487,61 +1410,28 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
    */
   const getTaskActions = (task: any): TaskAction[] => {
     const project = projects.find((p: any) => p.id === task.projectId) || {};
-    const assigneeIds = getAssigneeIds(task);
-    const isMine = assigneeIds.includes(user?.id || '');
-    const linkedOrigin = getLinkedOriginInfo(task);
-    const linkedTarget = getLinkedTargetInfo(task);
-    const revisionPending = hasRevisionDeliverables(project);
-    const close = (fn: () => void) => () => {
-      handleCloseTaskDetail();
-      fn();
+    const runs: Record<string, () => void> = {
+      claim: () => { handleClaimTask(task.id); },
+      assign: () => handleOpenAssignModal(task),
+      start: () => { handleTaskStatusUpdate(task.id, 'In Progress'); },
+      review: () => { handleSendForReview(task); },
+      forward: () => handleOpenForwardModal(task),
+      complete: () => { handleTaskStatusUpdate(task.id, 'Completed', true); },
+      return: () => handleOpenReturnModal(task),
+      'mark-complete': () => { handleTaskStatusUpdate(task.id, 'Completed', true); },
+      'request-changes': () => openStatusChange(task.id, 'revision'),
+      // Clears the review marker too, otherwise the task stays in its review stage
+      back: () => { moveTaskToColumn(task, 'owned_in_progress', COLUMN_LABEL.owned_in_progress, '', [], user?.name).then(loadData); },
+      'send-back': () => { handleSendBackToTargetForRevision(task); },
+      members: () => handleOpenAssignModal(task),
     };
-    const actions: TaskAction[] = [];
-
-    if (assigneeIds.length === 0) {
-      actions.push({ key: 'claim', label: 'Claim task', run: close(() => { handleClaimTask(task.id); }) });
-      if (isTeamLead) actions.push({ key: 'assign', label: 'Assign to team member', run: close(() => handleOpenAssignModal(task)) });
-    }
-    if (task.assignedToId && !task.isCompleted && (isMine || isTeamLead)) {
-      if (task.status === 'Todo') {
-        actions.push({ key: 'start', label: 'Start task', run: close(() => { handleTaskStatusUpdate(task.id, 'In Progress'); }) });
-      }
-      if (task.status === 'In Progress' || (revisionPending && task.status === 'In Review')) {
-        actions.push({ key: 'review', label: revisionPending ? 'Resubmit' : 'Send for review', run: close(() => { handleSendForReview(task); }) });
-        if (isAIDeveloper) actions.push({ key: 'forward', label: 'Forward to department', run: close(() => handleOpenForwardModal(task)) });
-        if (!revisionPending && !linkedOrigin) {
-          actions.push({ key: 'complete', label: 'Complete', run: close(() => { handleTaskStatusUpdate(task.id, 'Completed', true); }) });
-        }
-      }
-      if (linkedOrigin) {
-        actions.push({
-          key: 'return',
-          label: `Return to ${linkedOrigin.originDepartmentName || 'origin dept'} for approval`,
-          run: close(() => handleOpenReturnModal(task)),
-        });
-      }
-      if (task.status === 'In Review' && !revisionPending && !linkedTarget) {
-        actions.push({ key: 'mark-complete', label: 'Mark complete', run: close(() => { handleTaskStatusUpdate(task.id, 'Completed', true); }) });
-        actions.push({ key: 'request-changes', label: 'Request changes', run: close(() => openStatusChange(task.id, 'revision')) });
-        actions.push({
-          key: 'back',
-          label: 'Back to in progress',
-          // Clears the review marker too, otherwise the task stays in its review stage
-          run: close(() => { moveTaskToColumn(task, 'owned_in_progress', COLUMN_LABEL.owned_in_progress, '', [], user?.name).then(loadData); }),
-        });
-      }
-      if (linkedTarget && task.status === 'In Review') {
-        actions.push({
-          key: 'send-back',
-          label: `Send back to ${linkedTarget.targetDepartmentName || 'linked dept'} for revision`,
-          run: close(() => { handleSendBackToTargetForRevision(task); }),
-        });
-      }
-    }
-    if (task.assignedToId && !task.isCompleted && isTeamLead) {
-      actions.push({ key: 'members', label: 'Update members', run: close(() => handleOpenAssignModal(task)) });
-    }
-    return actions;
+    return getTaskActionRules(task, { userId: user?.id, isTeamLead, isAIDeveloper, project }).map((rule) => ({
+      ...rule,
+      run: () => {
+        handleCloseTaskDetail();
+        runs[rule.key]();
+      },
+    }));
   };
 
   const renderOwner = (task: any) => {
@@ -1574,7 +1464,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             <button
               key={action.key}
               type="button"
-              className={`rd-btn ${i === 0 ? 'rd-btn-primary' : 'rd-btn-subtle'}`}
+              className={`rd-btn ${ACTION_BUTTON_CLASS[action.key] === 'rd-btn-go' || !ACTION_BUTTON_CLASS[action.key] ? (i === 0 ? 'rd-btn-primary' : 'rd-btn-subtle') : ACTION_BUTTON_CLASS[action.key]}`}
               disabled={updatingTask === drawerTask.id}
               onClick={action.run}
             >
@@ -1739,7 +1629,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
             ))}
           </div>
 
-          <div className="rd-grid">
+          <div className={`rd-grid${section === 'board' && viewMode === 'kanban' ? ' rd-grid-board' : ''}`}>
             <div style={{ minWidth: 0 }}>
               {section === 'team' && (
                 <section className="rd-panel">
@@ -1929,12 +1819,13 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                   </table>
                 ) : (
                   <div className="rd-board">
-                    {BOARD_COLUMNS.map((columnId) => {
+                    {BOARD_DISPLAY_ORDER.map((columnId) => {
                       const columnTasks = sortKanbanTasksByCreatedAt(groupedTasks[columnId] || [], kanbanColumnSort[columnId] ?? 'newest');
                       return (
                         <div
                           key={columnId}
                           className={`rd-board-col${dragOverColumn === columnId ? ' over' : ''}`}
+                          onDragEnter={(e) => e.preventDefault()}
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
@@ -1950,7 +1841,10 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                           }}
                         >
                           <div className="rd-board-heading">
-                            <span>{COLUMN_LABEL[columnId]}</span>
+                            <span className="rd-board-title">
+                              {BOARD_COLUMN_TITLE[columnId] || COLUMN_LABEL[columnId]}
+                              <small>{columnTasks.length} task(s)</small>
+                            </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <select
                                 className="rd-board-sort"
@@ -1963,50 +1857,33 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
                                 <option value="newest">Newest</option>
                                 <option value="oldest">Oldest</option>
                               </select>
-                              <span className="rd-board-count">{columnTasks.length}</span>
                             </span>
                           </div>
                           <div className="rd-board-list">
                             {columnTasks.map((task: any) => {
                               const due = getDueInfo(task);
-                              const primary = getTaskActions(task)[0];
                               return (
-                                <div
+                                <TaskBoardCard
                                   key={task.id}
-                                  className="rd-card"
-                                  role="button"
-                                  tabIndex={0}
-                                  draggable
+                                  task={task}
+                                  columnId={columnId}
+                                  clientName={getProjectName(task.projectId)}
+                                  pmName={getProjectPmName(task.projectId)}
+                                  currentUserId={user?.id}
+                                  getUserName={getUserName}
+                                  dueClassName={due.className}
+                                  actions={getTaskActions(task)}
+                                  busy={updatingTask === task.id}
+                                  onOpen={() => handleOpenTaskDetail(task)}
+                                  onEdit={() => handleEditTask(task)}
+                                  onCopyLink={() => copyTaskLink(task)}
+                                  onUpdateMembers={() => handleOpenAssignModal(task)}
                                   onDragStart={(e) => {
                                     setDraggedTask(task.id);
                                     e.dataTransfer.effectAllowed = 'move';
                                   }}
                                   onDragEnd={() => setDraggedTask(null)}
-                                  onClick={() => handleOpenTaskDetail(task)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.target === e.currentTarget) handleOpenTaskDetail(task);
-                                  }}
-                                >
-                                  <small>{getProjectName(task.projectId)}</small>
-                                  <b>{task.title}</b>
-                                  <div className="rd-card-foot">
-                                    {renderOwner(task)}
-                                    <span className={due.className} style={{ flexShrink: 0 }}>{due.text}</span>
-                                  </div>
-                                  {primary && (
-                                    <button
-                                      type="button"
-                                      className="rd-btn rd-btn-subtle"
-                                      disabled={updatingTask === task.id}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        primary.run();
-                                      }}
-                                    >
-                                      {updatingTask === task.id ? <FaSpinner className="rd-spin" /> : primary.label}
-                                    </button>
-                                  )}
-                                </div>
+                                />
                               );
                             })}
                             {columnTasks.length === 0 && <div className="rd-board-empty">Nothing here</div>}

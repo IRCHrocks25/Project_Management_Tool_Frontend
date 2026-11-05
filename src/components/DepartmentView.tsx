@@ -2183,7 +2183,7 @@ const DepartmentView: React.FC = () => {
               padding: '0.75rem 1.5rem',
               border: 'none',
               borderRadius: '0.5rem',
-              background: '#111111',
+              background: 'var(--color-action)',
               color: 'white',
               cursor: 'pointer',
               display: 'flex',
@@ -4642,7 +4642,7 @@ const DepartmentView: React.FC = () => {
                           }}
                           style={{
                             padding: '0.5rem 1rem',
-                            background: '#111111',
+                            background: 'var(--color-action)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',

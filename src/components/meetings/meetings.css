@@ -50,7 +50,7 @@
 .mt-prejoin[data-lk-theme] .lk-prejoin .lk-video-container, .mt-prejoin[data-lk-theme] .lk-prejoin .lk-camera-off-note { background:var(--surface); border-radius:var(--r-card); }
 .mt-prejoin[data-lk-theme] .lk-prejoin .lk-video-container { border:1px solid var(--line); }
 .mt-prejoin[data-lk-theme] .lk-prejoin .lk-camera-off-note svg path { fill:var(--line-strong); }
-.mt-prejoin .lk-join-button { background:var(--accent); color:var(--accent-fg); font-weight:600; border-radius:var(--r-ctl); }
+.mt-prejoin .lk-join-button { background:var(--color-action); color:#fff; font-weight:600; border-radius:var(--r-ctl); }
 .mt-prejoin .lk-join-button:disabled { opacity:.55; }
 .mt-prejoin .lk-username-container { width:100%; max-width:100%; }
 .mt-prejoin .lk-username-container input { background:var(--surface); border:1px solid var(--line-strong); color:var(--fg); border-radius:var(--r-ctl); }

@@ -553,7 +553,7 @@ const ClientUpdateFormView: React.FC = () => {
                   type="button"
                   onClick={() => setCurrentSectionIndex((prev) => Math.min(prev + 1, sections.length - 1))}
                   style={{
-                    background: '#111111',
+                    background: 'var(--color-action)',
                     color: 'white',
                     border: 'none',
                     padding: '0.75rem 1rem',
@@ -600,7 +600,7 @@ const ClientUpdateFormView: React.FC = () => {
                 disabled={submitting}
                 style={{
                   width: '100%',
-                  background: '#111111',
+                  background: 'var(--color-action)',
                   color: 'white',
                   border: 'none',
                   padding: '0.875rem 1.5rem',

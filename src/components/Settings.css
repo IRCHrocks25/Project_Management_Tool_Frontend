@@ -180,7 +180,7 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.875rem 1.5rem;
-  background: #111111;
+  background: var(--color-action);
   color: white;
   border: none;
   border-radius: 8px;
@@ -193,7 +193,7 @@
 }
 
 .btn-primary-settings:hover:not(:disabled) {
-  background: #333333;
+  background: var(--color-action-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(17, 17, 17, 0.25);
 }

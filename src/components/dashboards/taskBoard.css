@@ -1,0 +1,70 @@
+:root {
+  --rd-line: #ececec;
+  --rd-ink: #2d2d2d;
+  --rd-sub: #686868;
+  --rd-muted: #747b8c;
+  --rd-accent: #111111;
+  --rd-accent-dark: #333333;
+  --rd-accent-soft: #f6f6f6;
+}
+
+/* Columns wrap onto a second row so every stage is on screen and can be dropped on without side-scrolling. */
+.rd-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 2px 20px 22px; align-items: stretch; }
+.rd-board-col { min-width: 0; display: flex; flex-direction: column; height: max(440px, calc((100vh - 120px) / 2)); padding: 12px; background: #ffffff; border: 1px solid #f0f0f0; border-radius: 11px; transition: border-color 0.12s, background 0.12s; }
+.rd-board-col.over { border-color: var(--rd-accent); background: var(--rd-accent-soft); }
+.rd-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 2px 2px 12px; font-size: 11.5px; font-weight: 700; }
+.rd-board-count { padding: 3px 6px; border-radius: 6px; background: #ececec; color: #656565; font-size: 10.5px; font-weight: 650; }
+.rd-board-sort { border: 0; background: transparent; color: var(--rd-muted); font-size: 10.5px; cursor: pointer; max-width: 92px; }
+.rd-board-list { flex: 1; min-height: 0; overflow-y: auto; }
+.rd-board-title { min-width: 0; font-size: 13px; font-weight: 650; color: #1e293b; }
+.rd-board-title small { display: block; margin-top: 3px; color: var(--rd-muted); font-size: 11.5px; font-weight: 500; }
+.rd-card { position: relative; margin-bottom: 10px; padding: 11px; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: grab; transition: box-shadow 0.15s, transform 0.15s; }
+.rd-card:hover { box-shadow: 0 4px 8px rgba(17, 17, 17, 0.09); transform: translateY(-1px); }
+.rd-card:active { cursor: grabbing; }
+.rd-card:focus-visible { outline: 2px solid var(--color-action); }
+.rd-card.tone-review { border-color: #f4c98b; }
+.rd-card.tone-revision { border: 2px solid #dc2626; }
+.rd-card.tone-done { border-color: #86d3a3; }
+.rd-card-top { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
+.rd-card-client { flex: 1; min-width: 0; }
+.rd-card-client span { display: block; color: var(--color-action); font-size: 12px; font-weight: 550; overflow-wrap: anywhere; }
+.rd-card-client small { display: block; margin-top: 2px; color: #8a93a3; font-size: 11px; }
+.rd-card-icon { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #555; font-size: 12px; cursor: pointer; }
+.rd-card-icon:hover { border-color: var(--color-action); color: var(--color-action); }
+.rd-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.rd-card-heading h4 { min-width: 0; margin: 0; color: #111827; font-size: 13px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.rd-card-status { flex-shrink: 0; padding: 2px 7px; border-radius: 4px; background: #f3f4f6; color: #374151; font-size: 11px; font-weight: 550; white-space: nowrap; }
+.rd-card-status.tone-review { background: #fef3c7; color: #92400e; }
+.rd-card-status.tone-revision { background: #fee2e2; color: #b91c1c; }
+.rd-card-status.tone-done { background: #d1fae5; color: #065f46; }
+.rd-card-brief { display: -webkit-box; margin: 0 0 8px; overflow: hidden; color: #64748b; font-size: 12px; line-height: 1.4; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.rd-card-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; color: #64748b; font-size: 12px; }
+.rd-card-meta span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.rd-card-meta svg { flex-shrink: 0; font-size: 11px; }
+.rd-card-assigned { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 16px; background: #f3f4f6; color: #475569; font-size: 11.5px; font-weight: 550; }
+.rd-card-assigned.mine { border-color: #a7dcc0; background: #ecfdf5; color: #065f46; }
+.rd-card-assigned button { flex-shrink: 0; padding: 3px 7px; border: 1px solid currentColor; border-radius: 4px; background: #fff; color: var(--color-action); font: inherit; font-size: 10.5px; cursor: pointer; }
+.rd-card-action { width: 100%; min-height: 32px; margin-top: 6px; padding: 6px 8px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; color: #fff; font: inherit; font-size: 12px; font-weight: 550; cursor: pointer; }
+.rd-card-action:disabled { opacity: 0.6; cursor: default; }
+.rd-card-action.go { background: var(--color-action); }
+.rd-card-action.go:hover:not(:disabled) { background: var(--color-action-hover); }
+.rd-card-action.done { background: var(--color-done); }
+.rd-card-action.done:hover:not(:disabled) { background: #166534; }
+.rd-card-action.attention { background: var(--color-attention); }
+.rd-card-action.attention:hover:not(:disabled) { background: #92400e; }
+.rd-card-action.plain { background: #fff; border-color: #d4d4d4; color: #333; }
+.rd-card-action.plain:hover:not(:disabled) { border-color: #999; }
+.rd-board-empty { padding: 24px 8px; text-align: center; color: var(--rd-muted); font-size: 11.5px; }
+.rd-card-extra { margin-bottom: 8px; color: #64748b; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.rd-card-extra a { display: inline-flex; align-items: center; gap: 5px; color: var(--color-action); font-weight: 550; text-decoration: none; }
+.rd-card-extra a:hover { text-decoration: underline; }
+.rd-card-note { padding: 7px 9px; border: 1px solid #fde68a; border-radius: 6px; background: #fffbeb; color: #92400e; white-space: pre-wrap; }
+.rd-card-team { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.rd-card-team button { padding: 0 3px; border: 0; background: none; color: #b91c1c; font: inherit; cursor: pointer; }
+.rd-card-team .rd-card-team-add { padding: 2px 7px; border: 1px dashed #999; border-radius: 4px; color: #333; }
+.rd-board-add { width: 100%; min-height: 38px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px dashed #cfcfcf; border-radius: 8px; background: #fff; color: #686868; font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer; }
+.rd-board-add:hover { border-color: var(--color-action); color: var(--color-action); }
+
+@media (max-width: 1080px) {
+  .rd-board { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+}

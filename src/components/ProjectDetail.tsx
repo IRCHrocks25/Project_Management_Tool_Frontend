@@ -30,6 +30,18 @@ import {
 } from 'react-icons/fa';
 import { projectService } from '../services/project.service';
 import { taskService } from '../services/task.service';
+import SendForReviewModal from './SendForReviewModal';
+import {
+  ACTION_BUTTON_CLASS,
+  BOARD_COLUMN_TITLE,
+  BOARD_DISPLAY_ORDER,
+  ColumnId,
+  getTaskActionRules,
+  getTaskColumn,
+  NEXT_STEP,
+  submitTaskForReview,
+} from './dashboards/taskColumns';
+import './dashboards/RoleDashboard.css';
 import { deliverableService } from '../services/deliverable.service';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService, ClientUpdate, ClientUpdateForm, FormBlock } from '../services/client-updates.service';
@@ -89,6 +101,8 @@ const ProjectDetail: React.FC = () => {
 
   // Status change modal state for task kanban/status dropdown
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [boardReviewTask, setBoardReviewTask] = useState<any | null>(null);
+  const [updatingBoardTaskId, setUpdatingBoardTaskId] = useState<string | null>(null);
   const [statusChangeContext, setStatusChangeContext] = useState<{
     taskId: string;
     columnId: string;
@@ -1799,6 +1813,110 @@ const ProjectDetail: React.FC = () => {
     setConfirmDialog(null);
   };
 
+  const runBoardAction = async (task: any, key: string) => {
+    setShowTaskDetailModal(false);
+    setSelectedTaskDetail(null);
+    switch (key) {
+      case 'review':
+        setBoardReviewTask(task);
+        return;
+      case 'request-changes':
+        setStatusChangeContext({ taskId: task.id, columnId: 'revision', label: BOARD_COLUMN_TITLE.revision || 'Revision' });
+        setShowStatusChangeModal(true);
+        return;
+      case 'assign':
+      case 'members':
+        setSelectedTaskDetail(task);
+        setShowTaskDetailModal(true);
+        return;
+      default:
+        break;
+    }
+    setUpdatingBoardTaskId(task.id);
+    try {
+      if (key === 'claim') {
+        await taskService.assign(task.id, currentUser?.id || '');
+        await loadProject();
+      } else if (key === 'start') {
+        await handleTaskStatusChange(task.id, 'In Progress');
+      } else if (key === 'complete' || key === 'mark-complete') {
+        await handleTaskStatusChange(task.id, 'approved_completed');
+      } else if (key === 'back') {
+        await handleTaskStatusChange(task.id, 'owned_in_progress');
+      }
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      showToast('Failed to update task. Please try again.', 'error');
+    } finally {
+      setUpdatingBoardTaskId(null);
+    }
+  };
+
+  // Forwarding between departments lives on the department board and the task panel's Transfer button.
+  const getBoardActions = (task: any) =>
+    getTaskActionRules(task, { userId: currentUser?.id, isTeamLead: canAssignOwners, project })
+      .filter((rule) => !['return', 'send-back'].includes(rule.key))
+      .map((rule) => ({ ...rule, run: () => runBoardAction(task, rule.key) }));
+
+  const handleBoardReviewSubmit = async (links: string[], deliverableType: string, deliverableId?: string) => {
+    if (!boardReviewTask || links.length === 0) return;
+    setUpdatingBoardTaskId(boardReviewTask.id);
+    try {
+      await submitTaskForReview(boardReviewTask, links, deliverableType, deliverableId, currentUser?.name);
+      await loadProject();
+      setBoardReviewTask(null);
+    } catch (error) {
+      console.error('Failed to send for review:', error);
+      showToast('Failed to send for review. Please try again.', 'error');
+    } finally {
+      setUpdatingBoardTaskId(null);
+    }
+  };
+
+  const panelTask = selectedTaskDetail ? tasks.find((t: any) => t.id === selectedTaskDetail.id) || selectedTaskDetail : null;
+  const panelColumn: ColumnId = panelTask ? getTaskColumn(panelTask) : 'not_started';
+  const panelActions = panelTask ? getBoardActions(panelTask) : [];
+  const panelFooter = panelTask ? (
+    <div className="rd-drawer-foot">
+      <div className="rd-next">
+        <b>What happens next?</b>
+        {NEXT_STEP[panelColumn]}
+      </div>
+      {panelActions.length > 0 && (
+        <div className="rd-foot-actions">
+          {panelActions.map((action, i) => {
+            const tone = ACTION_BUTTON_CLASS[action.key];
+            const className = tone && tone !== 'rd-btn-go' ? tone : i === 0 ? 'rd-btn-primary' : 'rd-btn-subtle';
+            return (
+              <button key={action.key} type="button" className={`rd-btn ${className}`} disabled={updatingBoardTaskId === panelTask.id} onClick={action.run}>
+                {action.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="rd-foot-tools">
+        <select
+          className="rd-select"
+          aria-label="Move this task to another stage"
+          value=""
+          onChange={(e) => {
+            const target = e.target.value as ColumnId;
+            if (!target) return;
+            setShowTaskDetailModal(false);
+            setStatusChangeContext({ taskId: panelTask.id, columnId: target, label: BOARD_COLUMN_TITLE[target] || target });
+            setShowStatusChangeModal(true);
+          }}
+        >
+          <option value="">Move to stage…</option>
+          {BOARD_DISPLAY_ORDER.filter((id) => id !== panelColumn).map((id) => (
+            <option key={id} value={id}>{BOARD_COLUMN_TITLE[id]}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  ) : null;
+
   const copyTaskLink = async (task: any) => {
     if (!task?.id || !task?.projectId) {
       showToast('Unable to copy task link');
@@ -2365,7 +2483,7 @@ const ProjectDetail: React.FC = () => {
                       disabled={savingProjectMonthlyReminder}
                       className="btn-primary"
                       style={{
-                        background: '#111111',
+                        background: 'var(--color-action)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
@@ -2918,6 +3036,8 @@ const ProjectDetail: React.FC = () => {
               setSelectedDeliverableForTeam,
               setShowAddDeliverableTeamMemberModal,
               copyTaskLink,
+              getBoardActions,
+              updatingBoardTaskId,
               handleApproveFile,
               updatingDeliverable,
               handleRequestRevisionClick,
@@ -3162,7 +3282,7 @@ const ProjectDetail: React.FC = () => {
                                       setShowAssignDeliverableModal(true);
                                     }}
                                     style={{
-                                      background: '#111111',
+                                      background: 'var(--color-action)',
                                       border: 'none',
                                       borderRadius: '6px',
                                       padding: '0.375rem 0.625rem',
@@ -3516,7 +3636,7 @@ const ProjectDetail: React.FC = () => {
                   <button
                     onClick={() => setShowCreateUpdateModal(true)}
                     style={{
-                      background: '#111111',
+                      background: 'var(--color-action)',
                       color: 'white',
                       border: 'none',
                       padding: '0.625rem 1.25rem',
@@ -3941,7 +4061,7 @@ const ProjectDetail: React.FC = () => {
                                       }
                                     }}
                                     style={{
-                                      background: '#111111',
+                                      background: 'var(--color-action)',
                                       color: 'white',
                                       border: 'none',
                                       padding: '0.5rem 1rem',
@@ -3989,7 +4109,19 @@ const ProjectDetail: React.FC = () => {
       </div>
 
       {/* Task Detail Side Modal for project tasks */}
+      {boardReviewTask && (
+        <SendForReviewModal
+          isOpen
+          taskTitle={boardReviewTask.title || ''}
+          projectDeliverables={project?.deliverables || []}
+          taskDeliverableId={boardReviewTask.deliverableId}
+          onClose={() => setBoardReviewTask(null)}
+          onSubmit={handleBoardReviewSubmit}
+        />
+      )}
+
       <TaskDetailSideModal
+        footer={panelFooter}
         isOpen={showTaskDetailModal}
         task={selectedTaskDetail}
         initialTab={taskDetailInitialTab}
@@ -4435,7 +4567,7 @@ const ProjectDetail: React.FC = () => {
                     setBrandingAttachment('');
                   }}
                   style={{ 
-                    background: '#111111', 
+                    background: 'var(--color-action)', 
                     borderColor: '#111111',
                     color: 'white',
                     padding: '0.625rem 1.25rem',

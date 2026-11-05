@@ -32,8 +32,8 @@
 .kl-password input { padding-right: 50px; }
 .kl-eye { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #555555; font-size: 16px; cursor: pointer; }
 .kl-eye:hover { color: #111111; }
-.kl-submit { min-height: 48px; margin-top: 4px; border: 0; border-radius: 9px; background: #111111; color: #ffffff; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; transition: background 0.12s; }
-.kl-submit:hover:not(:disabled) { background: #333333; }
+.kl-submit { min-height: 48px; margin-top: 4px; border: 0; border-radius: 9px; background: var(--color-action); color: #ffffff; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; transition: background 0.12s; }
+.kl-submit:hover:not(:disabled) { background: var(--color-action-hover); }
 .kl-submit:disabled { opacity: 0.6; cursor: default; }
 .kl-brand:focus-visible, .kl-link:focus-visible, .kl-eye:focus-visible, .kl-submit:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
 .kl-foot { margin: 24px 0 0; color: #555555; font-size: 14px; line-height: 1.5; text-align: center; }

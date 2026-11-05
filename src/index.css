@@ -1,3 +1,18 @@
+/* Colour means something here, so it stays on actions and states. Pages and cards stay white.
+   Teal: do the next thing. Green: finished or approved. Amber: needs attention. Red: risky. */
+:root {
+  --color-action: #0f766e;
+  --color-action-hover: #115e59;
+  --color-action-soft: #f0fdfa;
+  --color-action-line: #99d5cf;
+  --color-done: #15803d;
+  --color-done-soft: #f0fdf4;
+  --color-done-line: #b5dfc3;
+  --color-attention: #b45309;
+  --color-attention-soft: #fffbeb;
+  --color-attention-line: #eed3a6;
+}
+
 * {
   margin: 0;
   padding: 0;

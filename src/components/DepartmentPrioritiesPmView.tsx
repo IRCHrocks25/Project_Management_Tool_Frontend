@@ -216,7 +216,7 @@ const DepartmentPrioritiesPmView: React.FC = () => {
               padding: '0.4rem 1rem',
               borderRadius: 8,
               border: 'none',
-              background: '#111111',
+              background: 'var(--color-action)',
               color: 'white',
               fontWeight: 600,
               cursor: loadingTasks ? 'not-allowed' : 'pointer',

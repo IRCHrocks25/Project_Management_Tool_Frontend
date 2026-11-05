@@ -578,7 +578,7 @@
 }
 
 .tdsm-post-btn {
-  background: var(--td-accent-primary);
+  background: var(--color-action);
   color: var(--td-text-on-accent);
   border: none;
   padding: 8px 16px;
@@ -593,7 +593,7 @@
   margin-top: 8px;
 }
 .tdsm-post-btn:hover:not(:disabled) {
-  background: var(--td-accent-primary-hover);
+  background: var(--color-action-hover);
 }
 .tdsm-post-btn:disabled {
   background: var(--td-border-strong);

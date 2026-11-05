@@ -2179,8 +2179,8 @@ const PMDashboard: React.FC = () => {
             </div>
             {currentDrawerTask.status === 'In Review' && !currentDrawerTask.isCompleted && (
               <div className="rd-foot-actions">
-                <button type="button" className="rd-btn rd-btn-primary" disabled={drawerBusy} onClick={() => quickMoveTask(currentDrawerTask, 'approved_completed', 'Task marked complete.')}>Mark complete</button>
-                <button type="button" className="rd-btn rd-btn-subtle" disabled={drawerBusy} onClick={() => setStageChange({ task: currentDrawerTask, columnId: 'revision' })}>Request changes</button>
+                <button type="button" className="rd-btn rd-btn-done" disabled={drawerBusy} onClick={() => quickMoveTask(currentDrawerTask, 'approved_completed', 'Task marked complete.')}>Mark complete</button>
+                <button type="button" className="rd-btn rd-btn-attention" disabled={drawerBusy} onClick={() => setStageChange({ task: currentDrawerTask, columnId: 'revision' })}>Request changes</button>
                 <button type="button" className="rd-btn rd-btn-subtle" disabled={drawerBusy} onClick={() => quickMoveTask(currentDrawerTask, 'owned_in_progress', 'Task moved back to in progress.')}>Back to in progress</button>
               </div>
             )}
