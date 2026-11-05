@@ -188,9 +188,9 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
       <span className="hub-vlog" title={fullDateTime(c.lastEvent.at)}>
         {actorName(c.lastEvent.user, c.lastEvent.action)} {CREDENTIAL_ACTION_TEXT[c.lastEvent.action] || c.lastEvent.action} · {when(c.lastEvent.at)}
       </span>
-    ) : (
+    ) : c.canReveal ? (
       <span className="hub-vlog">No activity yet</span>
-    );
+    ) : null;
 
   return (
     <div className="hub-sec">
@@ -336,7 +336,7 @@ const VaultTab: React.FC<VaultTabProps> = ({ product, onChanged }) => {
                       label={`More actions for ${c.label}`}
                       items={[
                         { label: 'Edit', icon: 'edit', hidden: !c.canReveal, onSelect: () => setModal({ credential: c }) },
-                        { label: 'Activity', icon: 'info', onSelect: () => setActivity(c) },
+                        { label: 'Activity', icon: 'info', hidden: !c.canReveal, onSelect: () => setActivity(c) },
                         {
                           label: 'Open login page',
                           icon: 'ext',

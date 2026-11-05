@@ -37,6 +37,11 @@ import FormsRoot from './components/forms/FormsRoot';
 import FormsHome from './components/forms/FormsHome';
 import FormEditor from './components/forms/FormEditor';
 import PublicForm from './components/forms/PublicForm';
+import WorkspaceRoot from './components/workspace/WorkspaceRoot';
+import MyDay from './components/workspace/MyDay';
+import VaultPage from './components/workspace/VaultPage';
+import PagesHome from './components/workspace/PagesHome';
+import PageEditor from './components/workspace/PageEditor';
 import { authService } from './services/auth.service';
 import './App.css';
 
@@ -207,6 +212,13 @@ const App: React.FC = () => {
             <Route index element={<AllProducts />} />
             <Route path=":slug" element={<ProductPage />} />
             <Route path=":slug/:tab" element={<ProductPage />} />
+          </Route>
+          {/* Workspace */}
+          <Route element={<WorkspaceRoot />}>
+            <Route path="my-day" element={<MyDay />} />
+            <Route path="vault" element={<VaultPage />} />
+            <Route path="pages" element={<PagesHome />} />
+            <Route path="pages/:id" element={<PageEditor />} />
           </Route>
           {/* Forms */}
           <Route path="forms" element={<FormsRoot />}>

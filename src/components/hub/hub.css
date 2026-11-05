@@ -9,11 +9,11 @@
  * Light by default; dark follows the OS unless data-theme="light" is set on the .hub root.
  */
 .hub {
-  --bg:#f6f6f6; --surface:#fcfcfc; --surface-2:#f0f0f0; --line:#e5e5e5; --line-strong:#d2d2d2;
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#f0f0f0; --line:#e5e5e5; --line-strong:#d2d2d2;
   --fg:#242424; --fg-2:#464646; --muted:#5F6878;
-  --accent:#111111; --accent-hover:#111111; --accent-fg:#fcfcfc; --accent-soft:#f0f0f0; --accent-text:#111111;
+  --accent:#111111; --accent-hover:#111111; --accent-fg:#ffffff; --accent-soft:#f0f0f0; --accent-text:#111111;
   --ok:#1D7348; --ok-soft:#E2F2E9; --warn:#87570A; --warn-soft:#FAEFD7; --crit:#B3261E; --crit-soft:#FAE5E3; --info:#111111; --info-soft:#eeeeee;
-  --on-crit:#fcfcfc;
+  --on-crit:#ffffff;
   --scrim:rgba(26, 26, 26,.45); --shadow:0 8px 28px rgba(26, 26, 26,.14),0 1px 3px rgba(26, 26, 26,.08);
   --font:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"DM Mono",ui-monospace,Menlo,monospace;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px;
@@ -146,7 +146,7 @@
 .hub-notice { display:flex; gap:var(--s3); align-items:flex-start; padding:var(--s3) var(--s4); border-radius:var(--r-card); border:1px solid var(--line); background:var(--surface); }
 .hub-notice .hub-ic { margin-top:2px; }
 .hub-notice.hub-warn { background:var(--warn-soft); border-color:transparent; } .hub-notice.hub-warn .hub-ic { color:var(--warn); }
-.hub-notice.hub-info { background:var(--info-soft); border-color:transparent; } .hub-notice.hub-info .hub-ic { color:var(--info); }
+.hub-notice.hub-info { background:var(--surface); border-color:var(--line); } .hub-notice.hub-info .hub-ic { color:var(--info); }
 .hub-notice.hub-crit { background:var(--crit-soft); border-color:transparent; } .hub-notice.hub-crit .hub-ic { color:var(--crit); }
 .hub-notice .hub-grow { flex:1; min-width:0; }
 .hub-attn-row { display:flex; gap:var(--s3); align-items:center; padding:10px var(--s4); border-top:1px solid var(--line); }

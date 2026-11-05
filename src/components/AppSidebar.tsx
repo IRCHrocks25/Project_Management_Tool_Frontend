@@ -14,6 +14,9 @@ import {
   FaCubes,
   FaWpforms,
   FaRegCompass,
+  FaSun,
+  FaKey,
+  FaRegFileAlt,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import UserAvatar from './UserAvatar';
@@ -71,11 +74,14 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'WORK',
     items: [
+      { path: '/my-day', label: 'My Day', icon: <FaSun /> },
       { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
       { path: '/timeline', label: 'My Timeline', icon: <FaClock /> },
       { path: '/my-projects', label: 'My Projects', icon: <FaFolderOpen /> },
       { path: '/products', label: 'Products', icon: <FaCubes /> },
       { path: '/forms', label: 'Forms', icon: <FaWpforms /> },
+      { path: '/pages', label: 'My Space', icon: <FaRegFileAlt /> },
+      { path: '/vault', label: 'Vault', icon: <FaKey /> },
     ],
   },
   {

@@ -1,0 +1,34 @@
+/* My Day. Builds on hub.css; two columns come from .hub-cols, which goes single column at 960px. */
+
+.ws-md-card { min-width:0; overflow:hidden; }
+.ws-md-h { display:flex; align-items:center; gap:var(--s2); min-height:52px; padding:var(--s2) var(--s4); flex-wrap:wrap; }
+.ws-md-h h2 { font-size:15px; font-weight:600; letter-spacing:-.005em; }
+.ws-md-count { font-size:12px; font-weight:500; color:var(--muted); background:var(--surface-2); border-radius:var(--r-sm); padding:0 6px; line-height:20px; }
+.ws-md-act { margin-left:auto; }
+.ws-md-empty { padding:0 var(--s4) var(--s4); color:var(--muted); }
+
+.ws-md-list { list-style:none; margin:0; padding:0; }
+.ws-md-list > li { border-top:1px solid var(--line); }
+.ws-md-list .hub-list-row { border-top:none; }
+.hub a.ws-md-link, .ws-md-link { color:var(--fg); text-decoration:none; transition:background var(--t); }
+.ws-md-link:hover { background:var(--surface-2); }
+.ws-md-link:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.ws-md-link .hub-grow { display:grid; gap:2px; }
+.ws-md-tags { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; flex:none; max-width:50%; }
+.ws-md-when { flex:none; white-space:nowrap; font-size:12.5px; color:var(--muted); }
+
+.ws-md-mention { all:unset; box-sizing:border-box; width:100%; cursor:pointer; display:flex; align-items:flex-start; gap:var(--s3); padding:var(--s3) var(--s4); min-height:48px; }
+.ws-md-preview { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
+
+.ws-md-group { padding:var(--s2) var(--s4) var(--s3); border-top:1px solid var(--line); display:grid; gap:2px; }
+.hub a.ws-md-page { justify-self:start; font-size:12.5px; font-weight:600; color:var(--fg-2); text-decoration:none; overflow-wrap:anywhere; margin-bottom:2px; border-radius:var(--r-sm); }
+.hub a.ws-md-page:hover { text-decoration:underline; }
+.ws-md-item { display:flex; align-items:flex-start; gap:var(--s2); padding:5px 0; cursor:pointer; min-width:0; overflow-wrap:anywhere; }
+.ws-md-item input { width:16px; height:16px; margin:3px 0 0; flex:none; accent-color:var(--accent-text); cursor:pointer; }
+
+@media (max-width:640px) {
+  .ws-md-task.hub-list-row { flex-wrap:wrap; }
+  .ws-md-task .hub-grow { flex:1 1 100%; }
+  .ws-md-tags { max-width:100%; justify-content:flex-start; }
+  .ws-md-item { padding:9px 0; }
+}

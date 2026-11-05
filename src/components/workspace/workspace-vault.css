@@ -1,0 +1,39 @@
+/* Workspace Vault page. Builds on hub.css and hub-vault.css; every new class is prefixed `ws-`. */
+
+/* rows */
+.ws-vbadge { display:inline-block; max-width:100%; line-height:22px; overflow:hidden; text-overflow:ellipsis; }
+.ws-vnotes-btn { font-size:12.5px; justify-self:start; }
+.ws-vnotes { grid-column:1 / -1; padding:var(--s2) var(--s3); background:var(--surface); border:1px solid var(--line); border-radius:var(--r-ctl); font-size:13px; color:var(--fg-2); white-space:pre-wrap; overflow-wrap:anywhere; }
+.ws-vrow .hub-vfield .hub-vsecret { white-space:normal; overflow-wrap:anywhere; }
+
+/* access editor */
+.ws-vaccess { border:0; margin:0; padding:0; min-width:0; display:grid; gap:var(--s2); }
+.ws-vaccess legend { padding:0; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--fg-2); }
+.ws-vaccess:disabled { opacity:.75; }
+.ws-vchoices { display:grid; gap:var(--s1); }
+.ws-vchoice { display:flex; align-items:center; gap:var(--s2); min-height:28px; cursor:pointer; min-width:0; }
+.ws-vaccess input[type="radio"], .ws-vaccess input[type="checkbox"] { width:16px; height:16px; margin:0; flex:none; accent-color:var(--accent-text); }
+.ws-vaccess:disabled .ws-vchoice, .ws-vaccess:disabled .ws-vperson { cursor:not-allowed; }
+.ws-vaudience { display:grid; gap:var(--s3); padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-ctl); min-width:0; }
+.ws-vaudience > div { display:grid; gap:var(--s2); min-width:0; }
+.ws-vsub { font-size:12.5px; font-weight:600; color:var(--fg-2); }
+.ws-vdepts { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:var(--s1) var(--s3); }
+.ws-vpeople { display:grid; max-height:200px; overflow-y:auto; border:1px solid var(--line); border-radius:var(--r-ctl); }
+.ws-vperson { display:flex; align-items:center; gap:var(--s2); padding:6px var(--s3); min-height:40px; cursor:pointer; border-top:1px solid var(--line); min-width:0; }
+.ws-vperson:first-child { border-top:none; }
+.ws-vperson-name { min-width:0; overflow-wrap:anywhere; }
+.ws-vperson-name small { display:block; font-size:12px; color:var(--muted); }
+
+/* history drawer */
+.ws-vhistory { display:grid; gap:var(--s5); }
+.ws-vloading { display:grid; gap:10px; }
+.ws-vfoot { margin-top:var(--s2); }
+.ws-vversion { flex-wrap:wrap; }
+.ws-vversion .hub-grow { flex:1 1 180px; }
+.ws-vversion-acts { display:flex; gap:var(--s2); flex:none; }
+.ws-vsecret { margin-top:var(--s1); overflow-wrap:anywhere; user-select:all; }
+
+@media (max-width:640px) {
+  .ws-vrow .hub-vact { display:contents; }
+  .ws-vdepts { grid-template-columns:minmax(0,1fr); }
+}

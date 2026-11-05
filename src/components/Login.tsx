@@ -26,8 +26,8 @@ const Login: React.FC = () => {
       storedRedirect = '';
     }
 
-    const candidate = [stateFrom, queryRedirect, storedRedirect].find((value) => typeof value === 'string' && !!value) || '/dashboard';
-    return candidate.startsWith('/') ? candidate : '/dashboard';
+    const candidate = [stateFrom, queryRedirect, storedRedirect].find((value) => typeof value === 'string' && !!value) || '/my-day';
+    return candidate.startsWith('/') ? candidate : '/my-day';
   };
 
   useEffect(() => {
