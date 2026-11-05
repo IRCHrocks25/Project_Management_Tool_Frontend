@@ -313,3 +313,34 @@
   }
 }
 
+.profile-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-title-row h1 {
+  margin: 0;
+}
+
+.logout-button-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  background: #ffffff;
+  border: 1px solid #d2d2d2;
+  border-radius: 8px;
+  color: #b3261e;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-button-profile:hover {
+  background: #fae5e3;
+  border-color: #b3261e;
+}

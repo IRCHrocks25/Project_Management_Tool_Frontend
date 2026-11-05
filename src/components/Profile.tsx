@@ -10,6 +10,7 @@ import {
   FaBirthdayCake,
   FaLock,
   FaLink,
+  FaSignOutAlt,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
 import { clientUpdatesService } from '../services/client-updates.service';
@@ -127,7 +128,19 @@ const Profile: React.FC = () => {
         <button onClick={() => navigate('/dashboard')} className="back-button-profile">
           <FaArrowLeft /> Back to Dashboard
         </button>
-        <h1>Profile Settings</h1>
+        <div className="profile-title-row">
+          <h1>Profile Settings</h1>
+          <button
+            type="button"
+            className="logout-button-profile"
+            onClick={() => {
+              authService.logout();
+              navigate('/');
+            }}
+          >
+            <FaSignOutAlt /> Log out
+          </button>
+        </div>
       </div>
 
       <div className="profile-content">
