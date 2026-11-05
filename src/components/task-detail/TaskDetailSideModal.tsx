@@ -44,6 +44,9 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
   const [loadingTaskHistory, setLoadingTaskHistory] = useState(false);
   const [taskTransfers, setTaskTransfers] = useState<any[]>([]);
   const [loadingTaskTransfers, setLoadingTaskTransfers] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [showTransfer, setShowTransfer] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'conversation'>(initialTab);
   const displayTask = resolvedTask || task;
@@ -94,6 +97,36 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
     };
     loadHistory();
   }, [isOpen, displayTask, displayTask?.id, displayTask?.deliverableId]);
+
+  useEffect(() => {
+    setAttachments([]);
+    setConversations([]);
+    setActivityLogs([]);
+  }, [task?.id]);
+
+  // Reloads when returning to Details so new questions and replies show up.
+  useEffect(() => {
+    if (!isOpen || !task?.id || activeTab !== 'details') return;
+    let cancelled = false;
+    taskService
+      .getConversations(task.id)
+      .then((data) => { if (!cancelled) setConversations(Array.isArray(data) ? data : []); })
+      .catch((err) => { console.error('Failed to load conversation activity', err); });
+    return () => { cancelled = true; };
+  }, [isOpen, task?.id, activeTab]);
+
+  // Reloads after a description edit or a removed attachment so the entry appears right away.
+  const description = displayTask?.description;
+  const attachmentCount = attachments.length;
+  useEffect(() => {
+    if (!isOpen || !task?.id) return;
+    let cancelled = false;
+    taskService
+      .getActivity(task.id)
+      .then((data) => { if (!cancelled) setActivityLogs(Array.isArray(data) ? data : []); })
+      .catch((err) => { console.error('Failed to load activity log', err); });
+    return () => { cancelled = true; };
+  }, [isOpen, task?.id, description, displayTask?.title, displayTask?.dueDate, activeTab, attachmentCount]);
 
   useEffect(() => {
     if (!isOpen || !task?.id) {
@@ -231,9 +264,12 @@ const TaskDetailSideModal: React.FC<TaskDetailSideModalProps> = ({
                   onTaskUpdate?.(updated);
                 }}
               />
-              <TaskAttachmentsList taskId={displayTask?.id ?? task?.id} />
+              <TaskAttachmentsList taskId={displayTask?.id ?? task?.id} onAttachmentsChange={setAttachments} />
               <TaskActivityHistory
                 parsedStatusChanges={parsedStatusChanges}
+                attachments={attachments}
+                conversations={conversations}
+                activityLogs={activityLogs}
                 taskHistory={taskHistory}
                 loadingTaskHistory={loadingTaskHistory}
                 taskTransfers={taskTransfers}

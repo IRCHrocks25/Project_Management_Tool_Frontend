@@ -158,7 +158,7 @@ export const moveTaskToColumn = async (
     logBlock += `\nAttachments:\n${validLinks.map((link) => `- ${link}`).join('\n')}`;
   }
   try {
-    await taskService.update(task.id, { description: descWithMarker + logBlock });
+    await taskService.update(task.id, { description: descWithMarker + logBlock, baseDescription: task.description || '' });
   } catch (descError) {
     console.warn('Failed to update task description with status change log:', descError);
   }

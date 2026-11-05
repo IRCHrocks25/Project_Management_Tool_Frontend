@@ -594,7 +594,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       // Keep backend status unchanged (to respect allowed enum values) and just
       // append metadata + forward note for UI/tracking.
       await taskService.update(forwardingTask.id, {
-        description: updatedDescription
+        description: updatedDescription,
+        baseDescription: forwardingTask.description || ''
       });
 
       await loadData();
@@ -631,7 +632,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (returnData.notes || returnData.links) {
         const returnNote = `\n\n--- Returned to ${linked.originDepartmentName || 'origin department'} on ${new Date().toLocaleString()} ---\n${returnData.notes ? `Notes: ${returnData.notes}\n` : ''}${returnData.links ? `Links: ${returnData.links}` : ''}`;
         const updatedDesc = (returningTask.description || '') + returnNote;
-        await taskService.update(returningTask.id, { description: updatedDesc });
+        await taskService.update(returningTask.id, { description: updatedDesc, baseDescription: returningTask.description || '' });
       }
 
       await taskService.updateStatus(linked.originTaskId, 'In Review');
@@ -664,7 +665,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (returnData.notes || returnData.links) {
         const revisionNote = `\n\n--- Sent back for revision on ${new Date().toLocaleString()} ---\n${returnData.notes ? `Notes: ${returnData.notes}\n` : ''}${returnData.links ? `Links: ${returnData.links}` : ''}`;
         const updatedOriginDesc = (task.description || '') + revisionNote;
-        await taskService.update(task.id, { description: updatedOriginDesc });
+        await taskService.update(task.id, { description: updatedOriginDesc, baseDescription: task.description || '' });
       }
 
       const targetTask = tasks.find((t: any) => t.id === linked.targetTaskId);
@@ -673,6 +674,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
       // Also append a simple revision marker on the linked department task
       await taskService.update(linked.targetTaskId, {
+        baseDescription: targetPrevDescription,
         description: targetPrevDescription +
           `\n\n--- Marked as Revision by ${departmentName} on ${new Date().toLocaleString()} ---`
       });
@@ -726,7 +728,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
 
       const currentDesc = selectedTaskForReview.description || '';
       try {
-        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock });
+        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock, baseDescription: currentDesc });
       } catch (descError) {
         console.warn('Failed to update task description with review log:', descError);
       }
@@ -1107,6 +1109,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         updateData.deliverableId = deliverableId;
       }
 
+      updateData.baseDescription = editingTask.description || '';
       await taskService.update(editingTask.id, updateData);
 
       if (editTaskData.assignedToId !== (editingTask.assignedToId || '')) {
@@ -1137,7 +1140,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       notify('Task updated successfully!');
     } catch (error) {
       console.error('Failed to update task:', error);
-      notify('Failed to update task. Please try again.');
+      notify((error as any)?.response?.status === 409 ? (error as any).response.data.message : 'Failed to update task. Please try again.');
     } finally {
       setIsUpdatingTaskInModal(false);
     }
@@ -1260,7 +1263,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
       if (!cleanedDesc.includes(columnMarker)) {
         try {
           await taskService.update(task.id, {
-            description: cleanedDesc + columnMarker
+            description: cleanedDesc + columnMarker,
+            baseDescription: currentDesc
           });
         } catch (descError) {
           console.warn('Failed to update description with column marker:', descError);
@@ -1272,7 +1276,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
         try {
           const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
           await taskService.update(task.id, {
-            description: cleanedDesc
+            description: cleanedDesc,
+            baseDescription: currentDesc
           });
         } catch (descError) {
           console.warn('Failed to clear column marker:', descError);

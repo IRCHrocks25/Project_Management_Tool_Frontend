@@ -92,12 +92,17 @@ export const taskService = {
     return response.data;
   },
 
-  async update(id: string, updateData: { title?: string; description?: string; dueDate?: Date | null; deliverableId?: string }): Promise<any> {
+  async update(id: string, updateData: { title?: string; description?: string; baseDescription?: string | null; dueDate?: Date | null; deliverableId?: string }): Promise<any> {
     const response = await axios.put(
       `${API_URL}/tasks/${id}`,
       updateData,
       getAuthHeaders()
     );
+    return response.data;
+  },
+
+  async getActivity(id: string): Promise<any[]> {
+    const response = await axios.get(`${API_URL}/tasks/${id}/activity`, getAuthHeaders());
     return response.data;
   },
 

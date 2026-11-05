@@ -10,6 +10,7 @@ import {
   FaHistory,
   FaPaperPlane,
   FaStream,
+  FaTrash,
   FaColumns,
   FaUser,
 } from 'react-icons/fa';
@@ -31,6 +32,7 @@ const DEPARTMENT_COLORS: Record<string, string> = {
 const getDepartmentColor = (dept: string) => DEPARTMENT_COLORS[dept] || '#6b7280';
 
 const getActionIcon = (action: string) => {
+  if (action.includes('Deleted')) return <FaTrash style={{ color: '#111111' }} />;
   if (action.includes('Created')) return <FaCheckCircle style={{ color: '#10b981' }} />;
   if (action.includes('Approved')) return <FaCheck style={{ color: '#10b981' }} />;
   if (action.includes('Revision')) return <FaExclamationTriangle style={{ color: '#f59e0b' }} />;

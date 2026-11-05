@@ -323,7 +323,7 @@ export function useTuesdayMutations(setData: SetData) {
         // Description must be written first so updateStatus's side effects
         // (notifications, deliverable updates) see the right marker.
         if (newDesc !== oldDesc) {
-          await taskService.update(task.id, { description: newDesc } as any);
+          await taskService.update(task.id, { description: newDesc, baseDescription: oldDesc } as any);
         }
         await taskService.updateStatus(task.id, status, isCompleted);
 

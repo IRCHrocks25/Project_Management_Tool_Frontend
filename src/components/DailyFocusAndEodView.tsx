@@ -798,6 +798,7 @@ const DailyFocusAndEodView: React.FC = () => {
     try {
       const updateData: any = { title: editTaskData.title, description: editTaskData.description };
       if (editTaskData.dueDate) updateData.dueDate = new Date(editTaskData.dueDate);
+      updateData.baseDescription = editingTask.description || '';
       await taskService.update(editingTask.id, updateData);
       if (editTaskData.assignedToId !== (editingTask.assignedToId || '')) {
         if (editTaskData.assignedToId) await taskService.assign(editingTask.id, editTaskData.assignedToId);
@@ -808,8 +809,8 @@ const DailyFocusAndEodView: React.FC = () => {
       setShowEditTaskModal(false); setEditingTask(null);
       setEditTaskData({ title: '', description: '', dueDate: '', assignedToId: '' });
       setMessage('Task updated successfully.');
-    } catch {
-      setError('Failed to update task. Please try again.');
+    } catch (err: any) {
+      setError(err?.response?.status === 409 ? err.response.data.message : 'Failed to update task. Please try again.');
     } finally {
       setIsUpdatingTaskInModal(false);
     }

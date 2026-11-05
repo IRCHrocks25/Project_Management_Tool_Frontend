@@ -145,7 +145,7 @@ const MyProjectsView: React.FC = () => {
 
       const currentDesc = selectedTaskForReview.description || '';
       try {
-        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock });
+        await taskService.update(selectedTaskForReview.id, { description: currentDesc + logBlock, baseDescription: currentDesc });
       } catch (descError) {
         console.warn('Failed to update task description with review log:', descError);
       }

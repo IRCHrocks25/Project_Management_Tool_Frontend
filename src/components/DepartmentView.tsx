@@ -1176,6 +1176,7 @@ const DepartmentView: React.FC = () => {
         updateData.deliverableId = deliverableId;
       }
 
+      updateData.baseDescription = editingTask.description || '';
       await taskService.update(editingTask.id, updateData);
 
       // Update assignment if changed
@@ -1220,7 +1221,7 @@ const DepartmentView: React.FC = () => {
       alert('Task updated successfully!');
     } catch (error) {
       console.error('Failed to update task:', error);
-      alert('Failed to update task. Please try again.');
+      alert((error as any)?.response?.status === 409 ? (error as any).response.data.message : 'Failed to update task. Please try again.');
     } finally {
       setUpdatingTask(false);
     }
@@ -1281,7 +1282,8 @@ const DepartmentView: React.FC = () => {
       const updatedDescription = (forwardingTask.description || '') + forwardNote;
       
       await taskService.update(forwardingTask.id, {
-        description: updatedDescription
+        description: updatedDescription,
+        baseDescription: forwardingTask.description || ''
       });
 
       // Reload tasks - optimized
@@ -1515,7 +1517,7 @@ const DepartmentView: React.FC = () => {
 
       if (updatedDesc !== currentDesc) {
         try {
-          await taskService.update(task.id, { description: updatedDesc });
+          await taskService.update(task.id, { description: updatedDesc, baseDescription: currentDesc });
         } catch (descError) {
           console.warn('Failed to update task description with status change log:', descError);
         }
@@ -1638,7 +1640,7 @@ const DepartmentView: React.FC = () => {
         const updatedDesc = columnMarker ? cleanedDesc + columnMarker : cleanedDesc;
         if (updatedDesc !== currentDesc) {
           try {
-            await taskService.update(task.id, { description: updatedDesc });
+            await taskService.update(task.id, { description: updatedDesc, baseDescription: currentDesc });
           } catch (descError) {
             console.warn('Failed to sync column marker for department status change:', descError);
           }
@@ -2557,7 +2559,8 @@ const DepartmentView: React.FC = () => {
                                 // Remove any existing column markers first
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc + columnMarker
+                                  description: cleanedDesc + columnMarker,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to update description with column marker:', descError);
@@ -2572,7 +2575,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc + columnMarker
+                                  description: cleanedDesc + columnMarker,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to update description with column marker:', descError);
@@ -2588,7 +2592,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc + columnMarker
+                                  description: cleanedDesc + columnMarker,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to update description with column marker:', descError);
@@ -2617,7 +2622,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc + columnMarker
+                                  description: cleanedDesc + columnMarker,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to update description with column marker:', descError);
@@ -2652,7 +2658,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc + columnMarker
+                                  description: cleanedDesc + columnMarker,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to update description with column marker:', descError);
@@ -2666,7 +2673,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc
+                                  description: cleanedDesc,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to clear column marker from description:', descError);
@@ -2680,7 +2688,8 @@ const DepartmentView: React.FC = () => {
                               try {
                                 const cleanedDesc = currentDesc.replace(/\n\n--- Column: [^-]+ ---/g, '');
                                 await taskService.update(task.id, {
-                                  description: cleanedDesc
+                                  description: cleanedDesc,
+                                  baseDescription: currentDesc
                                 });
                               } catch (descError) {
                                 console.warn('Failed to clear column marker from description:', descError);

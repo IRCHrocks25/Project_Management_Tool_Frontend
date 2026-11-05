@@ -279,6 +279,7 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
   const [editingDescription,  setEditingDescription]  = useState(false);
   const [descInput,           setDescInput]           = useState('');
   const [savedMarkerBlocks,   setSavedMarkerBlocks]   = useState<string[]>([]);
+  const [descBase, setDescBase] = useState('');
   const [descError,           setDescError]           = useState<string | null>(null);
   const [updatingDesc,        setUpdatingDesc]        = useState(false);
 
@@ -441,6 +442,7 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     const { prose, markerBlocks } = splitDescMarkers(desc);
     setDescInput(prose);
     setSavedMarkerBlocks(markerBlocks);
+    setDescBase(desc);
     setDescError(null);
     setEditingDescription(true);
   };
@@ -456,11 +458,11 @@ const TaskMetaPanel: React.FC<TaskMetaPanelProps> = ({
     setDescError(null);
     setUpdatingDesc(true);
     try {
-      const updated = await taskService.update(taskId, { description: recomposed });
+      const updated = await taskService.update(taskId, { description: recomposed, baseDescription: descBase });
       onTaskUpdate?.({ ...(displayTask ?? task), description: updated.description ?? recomposed });
       setEditingDescription(false);
-    } catch {
-      setDescError('Failed to save description');
+    } catch (error: any) {
+      setDescError(error?.response?.status === 409 ? error.response.data.message : 'Failed to save description');
     } finally {
       setUpdatingDesc(false);
     }

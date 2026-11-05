@@ -5,6 +5,7 @@ import { taskService } from '../../services/task.service';
 
 interface TaskAttachmentsListProps {
   taskId: string;
+  onAttachmentsChange?: (attachments: any[]) => void;
 }
 
 const MAX_FILES = 10;
@@ -35,7 +36,7 @@ function showToast(message: string) {
   }, 3000);
 }
 
-const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => {
+const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId, onAttachmentsChange }) => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -43,11 +44,13 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
   // Pending file upload state — files are held here until confirmed
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [fileNote, setFileNote] = useState('');
+  const [fileNoteMissing, setFileNoteMissing] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   // Link state
   const [linkInput, setLinkInput] = useState('');
   const [linkNote, setLinkNote] = useState('');
+  const [linkNoteMissing, setLinkNoteMissing] = useState(false);
   const [linkError, setLinkError] = useState('');
   const [addingLink, setAddingLink] = useState(false);
 
@@ -57,6 +60,7 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const fileNoteRef = useRef<HTMLTextAreaElement>(null);
+  const linkNoteRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchAttachments = useCallback(async () => {
     setLoading(true);
@@ -75,6 +79,10 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
     if (!taskId) return;
     fetchAttachments();
   }, [taskId, fetchAttachments]);
+
+  useEffect(() => {
+    onAttachmentsChange?.(attachments);
+  }, [attachments, onAttachmentsChange]);
 
   // Auto-focus the note field when files are staged
   useEffect(() => {
@@ -98,13 +106,20 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
     }
     setPendingFiles(files);
     setFileNote('');
+    setFileNoteMissing(false);
   };
 
   const confirmUpload = async () => {
     if (!pendingFiles || uploading) return;
+    const note = fileNote.trim();
+    if (!note) {
+      setFileNoteMissing(true);
+      fileNoteRef.current?.focus();
+      return;
+    }
     setUploading(true);
     try {
-      await taskService.uploadAttachments(taskId, pendingFiles, fileNote);
+      await taskService.uploadAttachments(taskId, pendingFiles, note);
       setPendingFiles(null);
       setFileNote('');
       await fetchAttachments();
@@ -118,6 +133,7 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
   const cancelUpload = () => {
     setPendingFiles(null);
     setFileNote('');
+    setFileNoteMissing(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -150,12 +166,19 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
       setLinkError('URL must start with http:// or https://');
       return;
     }
+    const note = linkNote.trim();
+    if (!note) {
+      setLinkNoteMissing(true);
+      linkNoteRef.current?.focus();
+      return;
+    }
     setLinkError('');
     setAddingLink(true);
     try {
-      await taskService.addLinkAttachment(taskId, url, undefined, linkNote);
+      await taskService.addLinkAttachment(taskId, url, undefined, note);
       setLinkInput('');
       setLinkNote('');
+      setLinkNoteMissing(false);
       await fetchAttachments();
     } catch {
       showToast('Failed to add link. Please try again.');
@@ -216,14 +239,15 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
 
             <div style={{ marginBottom: '8px' }}>
               <div style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--td-text-secondary)', marginBottom: '5px' }}>
-                Note <span style={{ color: 'var(--td-text-tertiary)', fontWeight: 400 }}>(optional)</span>
+                Note <span style={{ color: 'var(--td-text-tertiary)', fontWeight: 400 }}>(required)</span>
               </div>
               <textarea
                 ref={fileNoteRef}
                 className="tdsm-desc-textarea"
-                placeholder="Add a note about these files…"
+                placeholder="What are these files for?"
+                aria-required="true"
                 value={fileNote}
-                onChange={e => setFileNote(e.target.value)}
+                onChange={e => { setFileNote(e.target.value); setFileNoteMissing(false); }}
                 rows={2}
                 style={{ minHeight: 'unset' }}
                 onKeyDown={e => {
@@ -231,13 +255,14 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
                   if (e.key === 'Escape') cancelUpload();
                 }}
               />
+              {fileNoteMissing && <div className="tdsm-link-error">Add a note so teammates know what these files are for.</div>}
             </div>
 
             <div style={{ display: 'flex', gap: '7px' }}>
               <button
                 className="tdsm-post-btn"
                 onClick={confirmUpload}
-                disabled={uploading}
+                disabled={uploading || !fileNote.trim()}
                 style={{ flex: 1, justifyContent: 'center' }}
               >
                 {uploading
@@ -288,7 +313,7 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
               <button
                 className="tdsm-link-add-btn"
                 onClick={handleLinkSubmit}
-                disabled={addingLink || !linkInput.trim()}
+                disabled={addingLink || !linkInput.trim() || !linkNote.trim()}
               >
                 {addingLink
                   ? <FaSpinner className="tdsm-spinner" style={{ fontSize: '11px' }} />
@@ -301,19 +326,22 @@ const TaskAttachmentsList: React.FC<TaskAttachmentsListProps> = ({ taskId }) => 
             {linkInput.trim() && (
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: '11.5px', fontWeight: 500, color: 'var(--td-text-secondary)', marginBottom: '5px' }}>
-                  Note <span style={{ color: 'var(--td-text-tertiary)', fontWeight: 400 }}>(optional)</span>
+                  Note <span style={{ color: 'var(--td-text-tertiary)', fontWeight: 400 }}>(required)</span>
                 </div>
                 <textarea
                   className="tdsm-desc-textarea"
-                  placeholder="Add a note about this link…"
+                  ref={linkNoteRef}
+                  placeholder="What is this link for?"
+                  aria-required="true"
                   value={linkNote}
-                  onChange={e => setLinkNote(e.target.value)}
+                  onChange={e => { setLinkNote(e.target.value); setLinkNoteMissing(false); }}
                   rows={2}
                   style={{ minHeight: 'unset' }}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleLinkSubmit(); }
                   }}
                 />
+                {linkNoteMissing && <div className="tdsm-link-error">Add a note so teammates know what this link is for.</div>}
               </div>
             )}
           </>

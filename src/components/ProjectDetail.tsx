@@ -1225,7 +1225,7 @@ const ProjectDetail: React.FC = () => {
 
           if (updatedDesc !== currentDesc) {
             try {
-              await taskService.update(taskId, { description: updatedDesc });
+              await taskService.update(taskId, { description: updatedDesc, baseDescription: currentDesc });
             } catch (descError) {
               console.warn('Failed to update task description with column marker:', descError);
             }
@@ -1374,14 +1374,14 @@ const ProjectDetail: React.FC = () => {
         finalDescription += statusChangeMatch[0];
       }
 
-      await taskService.update(taskId, { description: finalDescription });
+      await taskService.update(taskId, { description: finalDescription, baseDescription: currentDesc });
       await loadProject();
       setEditingTaskTitleId(null);
       setEditingTaskTitleValue('');
       showToast('Task title updated ✓');
     } catch (error) {
       console.error('Failed to update task title:', error);
-      showToast('Failed to update task title');
+      showToast((error as any)?.response?.status === 409 ? (error as any).response.data.message : 'Failed to update task title');
     }
   };
 
