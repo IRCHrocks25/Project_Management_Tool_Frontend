@@ -24,6 +24,7 @@ import DepartmentPrioritiesPmView from './components/DepartmentPrioritiesPmView'
 import RapidProspectDashboard from './components/dashboards/RapidProspectDashboard';
 import RoleDashboard from './components/dashboards/RoleDashboard';
 import TuesdayView from './components/tuesday/TuesdayView';
+import BoardsPage from './components/boards/BoardsPage';
 import ForumConversations from './components/ForumConversations';
 import TimelinePage from './components/TimelinePage';
 import DashboardLayout from './components/DashboardLayout';
@@ -203,6 +204,9 @@ const App: React.FC = () => {
         {/* Routes that use the shared side navigation layout */}
         <Route element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
           <Route path="tuesday" element={<TuesdayRoute />} />
+          <Route path="boards" element={<BoardsPage />} />
+          <Route path="boards/:projectId" element={<BoardsPage />} />
+          <Route path="boards/:projectId/:taskId" element={<BoardsPage />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="timeline/:userId" element={<TimelinePage />} />
           <Route path="my-projects" element={<MyProjectsView />} />

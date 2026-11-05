@@ -73,6 +73,13 @@ const logVerb = (log: any) => {
     case 'question_deleted': return 'deleted a question';
     case 'due_date_changed': return `changed the due date from ${formatDay(details.before)} to ${formatDay(details.after)}`;
     case 'title_changed': return 'renamed the task';
+    case 'task_created': return 'created the task';
+    case 'start_date_changed': return `changed the start date from ${formatDay(details.before)} to ${formatDay(details.after)}`;
+    case 'priority_changed': return `changed the priority from ${details.before || 'none'} to ${details.after || 'none'}`;
+    case 'notes_changed': return 'edited the notes';
+    case 'owners_changed': return `changed the owners to ${(details.after || []).join(', ') || 'no one'}`;
+    case 'group_changed': return `moved the task from ${details.before || 'General'} to ${details.after || 'General'}`;
+    case 'field_changed': return `changed ${details.field}`;
     default: return 'edited the description';
   }
 };
@@ -81,7 +88,19 @@ const LogBody: React.FC<{ log: any }> = ({ log }) => {
   const details = log.details || {};
   switch (log.action) {
     case 'due_date_changed':
+    case 'start_date_changed':
+    case 'priority_changed':
+    case 'owners_changed':
+    case 'group_changed':
+    case 'task_created':
       return null;
+    case 'notes_changed':
+    case 'field_changed':
+      return (
+        <div className="tdsm-history-notes" style={blockStyle}>
+          {`From: ${details.before ?? '(empty)'}\nTo: ${details.after ?? '(empty)'}`}
+        </div>
+      );
     case 'attachment_removed':
       return (
         <div className="tdsm-history-notes" style={blockStyle}>
