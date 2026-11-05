@@ -159,7 +159,13 @@ const GuestMeeting: React.FC = () => {
       subtitle={`${meetingTime(info.startsAt, 0).split(' to ')[0]}${info.hostName ? ` · Hosted by ${info.hostName}` : ''}`}
       askName
       joinLabel="Ask to join"
-      notice={info.videoReady ? null : "Video calls aren't switched on yet. Please check back with your host."}
+      notice={
+        !info.videoReady
+          ? "Video calls aren't switched on yet. Please check back with your host."
+          : info.isRecording
+            ? 'This call is being recorded. By joining, you agree to appear in the recording.'
+            : null
+      }
       error={error}
       busy={busy}
       onJoin={ask}

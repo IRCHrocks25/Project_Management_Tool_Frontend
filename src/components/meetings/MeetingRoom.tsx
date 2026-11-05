@@ -16,6 +16,8 @@ import CallStage, { CallTimer } from './CallStage';
 import Lobby from './Lobby';
 import { guestLink, meetingTime } from './meetingUtils';
 import PeoplePicker from './PeoplePicker';
+import { recordingStore } from './recordingStore';
+import RecordingStatus from './RecordingStatus';
 import './meetings.css';
 
 const WAITING_POLL_MS = 4000;
@@ -158,6 +160,7 @@ const CallHeader: React.FC<{
           confirmLabel="End for everyone"
           busyLabel="Ending…"
           onConfirm={async () => {
+            await recordingStore.stop();
             await meetingsService.end(meeting.id);
             setEnding(false);
             onEnded();
@@ -212,6 +215,8 @@ const MeetingRoom: React.FC = () => {
   };
 
   const onLeft = useCallback((reason?: DisconnectReason) => {
+    // A recording can't outlive the call it's drawn from, so save what there is.
+    recordingStore.stop();
     setDetails(null);
     if (reason === DisconnectReason.ROOM_DELETED) setPhase('ended');
     else if (reason === DisconnectReason.PARTICIPANT_REMOVED) setPhase('removed');
@@ -220,6 +225,7 @@ const MeetingRoom: React.FC = () => {
 
   const hostControls = useMemo(
     () => ({
+      meetingId: id,
       mute: async (identity: string) => {
         try {
           await meetingsService.muteParticipant(id, identity);
@@ -321,7 +327,13 @@ const MeetingRoom: React.FC = () => {
       subtitle={`${meetingTime(meeting.startsAt, meeting.durationMinutes)}${meeting.project ? ` · ${meeting.project.name}` : ''}`}
       defaultName={authService.getUser()?.name || 'Teammate'}
       joinLabel={meeting.status === 'live' ? 'Join call' : 'Start call'}
-      notice={meeting.videoReady === false && !joinError ? "Video calls aren't switched on yet. Joining will work once the LiveKit keys are added." : null}
+      notice={
+        meeting.videoReady === false && !joinError
+          ? "Video calls aren't switched on yet. Joining will work once the LiveKit keys are added."
+          : meeting.isRecording
+            ? 'This call is being recorded. By joining, you agree to appear in the recording.'
+            : null
+      }
       error={joinError}
       busy={joining}
       onJoin={join}
@@ -334,4 +346,11 @@ const MeetingRoom: React.FC = () => {
   );
 };
 
-export default MeetingRoom;
+const MeetingRoomPage: React.FC = () => (
+  <>
+    <MeetingRoom />
+    <RecordingStatus />
+  </>
+);
+
+export default MeetingRoomPage;

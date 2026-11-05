@@ -162,11 +162,27 @@
 .mt-waiting .hub-btn-primary { background:#ffffff; color:#111111; border-color:#ffffff; }
 .mt-waiting .hub-btn-primary:hover { background:#e7e7e7; }
 
+.mt-call-room[data-lk-theme] .mt-dock .mt-rec-btn[aria-pressed="true"], .mt-call-room[data-lk-theme] .mt-dock .mt-rec-btn[aria-pressed="true"]:hover { background:var(--call-off); }
+.mt-dock .mt-rec-btn:disabled { opacity:.5; cursor:progress; }
+.mt-rec-dot { width:14px; height:14px; border-radius:50%; background:var(--call-off); }
+.mt-rec-stop { width:13px; height:13px; border-radius:3px; background:#ffffff; }
+.mt-rec-badge { position:absolute; top:10px; left:calc(var(--s4) + 10px); z-index:20; display:inline-flex; align-items:center; gap:7px; padding:5px 11px; border-radius:999px; background:var(--call-off); color:#ffffff; font-size:13px; font-weight:600; }
+.mt-rec-badge > span { width:8px; height:8px; border-radius:50%; background:#ffffff; animation:mt-rec-blink 1.4s ease-in-out infinite; }
+.mt-rec-status { position:fixed; right:var(--s4); bottom:var(--s4); z-index:40; display:grid; gap:6px; width:min(340px, calc(100vw - 32px)); padding:var(--s3) var(--s4); border:1px solid var(--line); border-radius:14px; background:#ffffff; color:#242424; font-size:14px; box-shadow:0 14px 40px rgba(0,0,0,.28); }
+.mt-rec-status b { font-weight:600; }
+.mt-rec-status > span { color:#5F6878; font-size:13px; }
+.mt-rec-bar { height:5px; border-radius:999px; background:#e5e5e5; overflow:hidden; }
+.mt-rec-bar > span { display:block; height:100%; background:var(--color-action); transition:width .2s; }
+.mt-rec-actions { display:flex; gap:var(--s2); flex-wrap:wrap; margin-top:4px; }
+.mt-player { position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000000; }
+.mt-player iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+
+@keyframes mt-rec-blink { 50% { opacity:.25; } }
 @keyframes mt-pulse { from { transform:scale(1); opacity:.7; } to { transform:scale(3); opacity:0; } }
 @keyframes mt-count-pop { 0% { transform:scale(.6); } 60% { transform:scale(1.25); } 100% { transform:scale(1); } }
 @keyframes mt-slide-in { from { transform:translateY(-8px); opacity:0; } to { transform:none; opacity:1; } }
 @media (prefers-reduced-motion: reduce) {
-  .mt-live-dot::after, .mt-count, .mt-waiting { animation:none; }
+  .mt-live-dot::after, .mt-count, .mt-waiting, .mt-rec-badge > span { animation:none; }
   .mt-dock .lk-button, .mt-dock .lk-chat-toggle { transition:none; }
 }
 

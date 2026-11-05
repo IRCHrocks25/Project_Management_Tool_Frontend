@@ -67,3 +67,9 @@ export const callDuration = (ms: number): string => {
   const seconds = total % 60;
   return hours ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
+
+/** A recording's size in the units people expect. */
+export const fileSize = (bytes: number): string => {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`;
+};

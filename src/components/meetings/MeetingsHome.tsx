@@ -1,6 +1,6 @@
 /** Meetings (/meetings): start a call now, schedule one, and see upcoming and past meetings. */
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { hubErrorMessage } from '../../services/hub.service';
 import { Meeting, meetingsService, MeetingView } from '../../services/meetings.service';
 import { authService } from '../../services/auth.service';
@@ -13,12 +13,17 @@ import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { attendanceLabel, guestLink, isJoinableSoon, meetingTime } from './meetingUtils';
+import RecordingsList from './RecordingsList';
+import RecordingStatus from './RecordingStatus';
 import ScheduleMeetingModal from './ScheduleMeetingModal';
 import './meetings.css';
 
-const VIEWS: { key: MeetingView; label: string }[] = [
+type Tab = MeetingView | 'recordings';
+
+const VIEWS: { key: Tab; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
+  { key: 'recordings', label: 'Recordings' },
 ];
 
 const StatusBadge: React.FC<{ meeting: Meeting }> = ({ meeting }) => {
@@ -30,7 +35,8 @@ const StatusBadge: React.FC<{ meeting: Meeting }> = ({ meeting }) => {
 const MeetingsHome: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const [view, setView] = useState<MeetingView>('upcoming');
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<Tab>(searchParams.get('tab') === 'recordings' ? 'recordings' : 'upcoming');
   const [meetings, setMeetings] = useState<Meeting[] | null>(null);
   const [videoReady, setVideoReady] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +45,7 @@ const MeetingsHome: React.FC = () => {
   const [cancelling, setCancelling] = useState<Meeting | null>(null);
 
   const load = useCallback(async () => {
+    if (view === 'recordings') return;
     setError(null);
     try {
       const result = await meetingsService.list(view);
@@ -115,7 +122,9 @@ const MeetingsHome: React.FC = () => {
             </div>
           </div>
           <div className="hub-card">
-            {error ? (
+            {view === 'recordings' ? (
+              <RecordingsList />
+            ) : error ? (
               <EmptyState icon="alert" title="Couldn't load your meetings" text={error} actionLabel="Try again" actionIcon="refresh" onAction={load} />
             ) : !meetings ? (
               <div aria-busy="true" aria-label="Loading">
@@ -189,6 +198,7 @@ const MeetingsHome: React.FC = () => {
         </section>
       </div>
 
+      <RecordingStatus />
       {editing && (
         <ScheduleMeetingModal
           meeting={editing === 'new' ? undefined : editing}

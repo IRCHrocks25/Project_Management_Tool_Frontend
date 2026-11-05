@@ -34,13 +34,17 @@ import {
   useLocalParticipant,
   useParticipants,
   usePinnedTracks,
+  useRoomContext,
+  useRoomInfo,
   useTracks,
   VideoTrack,
 } from '@livekit/components-react';
 import { LocalVideoTrack, Participant, RoomEvent, Track } from 'livekit-client';
 import ConfirmDialog from '../hub/ui/ConfirmDialog';
 import Icon from '../hub/ui/Icon';
+import { canRecordCalls } from './callRecorder';
 import { avatarHue, initials, plainName } from './meetingUtils';
+import { recordingStore, useRecordingState } from './recordingStore';
 
 // LiveKit's types return ReactNode, which this project's older TypeScript won't accept as a component.
 const fc = <P,>(component: unknown) => component as React.FC<P>;
@@ -65,6 +69,7 @@ const ConnectionToast = fc<object>(ConnectionStateToast);
 
 /** Only the host gets these. */
 export interface HostControls {
+  meetingId: string;
   mute: (identity: string) => Promise<void>;
   remove: (identity: string) => Promise<void>;
 }
@@ -278,6 +283,52 @@ const BlurButton: React.FC<{ onProblem: (message: string) => void }> = ({ onProb
   );
 };
 
+const callStage = () => document.querySelector<HTMLElement>('.mt-call .lk-grid-layout-wrapper, .mt-call .lk-focus-layout-wrapper');
+
+/** Host only. The recording runs in this browser, so it stops if this tab closes. */
+const RecordButton: React.FC<{ meetingId: string; onProblem: (message: string) => void }> = ({ meetingId, onProblem }) => {
+  const room = useRoomContext();
+  const { phase } = useRecordingState();
+  if (!canRecordCalls()) return null;
+  const recording = phase === 'recording';
+  const label = recording ? 'Stop recording' : 'Record this call';
+  return (
+    <button
+      type="button"
+      className="lk-button mt-rec-btn"
+      aria-pressed={recording}
+      aria-label={label}
+      title={label}
+      disabled={phase === 'starting' || phase === 'saving'}
+      onClick={() => {
+        if (recording) recordingStore.stop();
+        else recordingStore.start(meetingId, room, callStage).catch((err: Error) => onProblem(err.message));
+      }}
+    >
+      <span className={recording ? 'mt-rec-stop' : 'mt-rec-dot'} aria-hidden="true" />
+    </button>
+  );
+};
+
+/** Everyone in the call sees this. It needs the host present because the recording runs in the host's browser. */
+const RecordingBadge: React.FC = () => {
+  const { metadata } = useRoomInfo();
+  const hostHere = useParticipants().some(isHostParticipant);
+  let recording = false;
+  try {
+    recording = !!JSON.parse(metadata || '{}').recording;
+  } catch {
+    recording = false;
+  }
+  if (!recording || !hostHere) return null;
+  return (
+    <div className="mt-rec-badge" role="status">
+      <span aria-hidden="true" />
+      Recording
+    </div>
+  );
+};
+
 const CallConference: React.FC<{ host?: HostControls }> = ({ host }) => {
   const layout = useCreateLayoutContext();
   const [showChat, setShowChat] = useState(false);
@@ -331,6 +382,7 @@ const CallConference: React.FC<{ host?: HostControls }> = ({ host }) => {
 
   return (
     <div className="lk-video-conference">
+      <RecordingBadge />
       <LayoutProvider
         value={layout}
         onWidgetChange={(state) => {
@@ -380,6 +432,7 @@ const CallConference: React.FC<{ host?: HostControls }> = ({ host }) => {
               aria-label="Share screen"
               captureOptions={{ audio: true, selfBrowserSurface: 'include' }}
             />
+            {host && <RecordButton meetingId={host.meetingId} onProblem={setProblem} />}
             <PeopleButton open={showPeople} onClick={togglePeople} />
             <ChatButton title="Chat" aria-label="Chat">
               <ChatIcon />

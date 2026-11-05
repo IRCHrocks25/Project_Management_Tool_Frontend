@@ -1,4 +1,4 @@
-import { attendanceLabel, avatarHue, callDuration, guestLink, initials, isJoinableSoon, meetingTime, nextStart, plainName, toLocalInput } from './meetingUtils';
+import { attendanceLabel, avatarHue, callDuration, fileSize, guestLink, initials, isJoinableSoon, meetingTime, nextStart, plainName, toLocalInput } from './meetingUtils';
 
 describe('meetingUtils', () => {
   it('cleans up names for the people list and avatars', () => {
@@ -11,6 +11,12 @@ describe('meetingUtils', () => {
 
   it('gives a person the same colour with or without the guest label', () => {
     expect(avatarHue('Sam Client (guest)')).toBe(avatarHue('Sam Client'));
+  });
+
+  it('formats a recording size', () => {
+    expect(fileSize(500)).toBe('1 MB');
+    expect(fileSize(450 * 1024 * 1024)).toBe('450 MB');
+    expect(fileSize(1.5 * 1024 ** 3)).toBe('1.5 GB');
   });
 
   it('formats how long a call has run', () => {
