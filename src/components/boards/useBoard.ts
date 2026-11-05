@@ -23,7 +23,6 @@ export interface NewTaskContext {
   type: string;
   priority?: string | null;
   owner?: string | null;
-  stageId?: string;
 }
 
 export function useBoard(projectId: string | undefined) {
@@ -141,12 +140,7 @@ export function useBoard(projectId: string | undefined) {
 
   /** Same write every other board makes, so the task sits in the same column everywhere. */
   const moveStage = useCallback(
-    async (task: BoardTaskRow, stageId: string) => {
-      if (stageId === task.stageId) return;
-      if (stageId === 'not_started' && task.owners.length > 0) {
-        showBoardToast('Remove the owner to move this back to Not yet started.');
-        return;
-      }
+    async (task: BoardTaskRow, stageId: string, notes: string, links: string[]): Promise<boolean> => {
       const me = authService.getUser();
       let working = task;
       // In progress means someone owns it, so an unowned task goes to whoever moved it.
@@ -158,19 +152,20 @@ export function useBoard(projectId: string | undefined) {
           showBoardToast('Assigned to you, since in-progress work needs an owner.');
         } catch (assignError) {
           showBoardToast(errorMessage(assignError, 'The task could not be assigned to you.'));
-          return;
+          return false;
         }
       }
       const { status, isCompleted } = mapColumnToStatus(stageId);
       patchLocal(task.id, { owners: working.owners, assignedToId: working.assignedToId, status, isCompleted, stageId, ...stamp() });
       try {
-        await moveTaskToColumn(working, stageId, stageLabel(stageId), '', [], me?.name);
+        await moveTaskToColumn(working, stageId, stageLabel(stageId), notes, links, me?.name);
       } catch (moveError) {
         patchLocal(task.id, task);
         showBoardToast(errorMessage(moveError, 'The status could not be changed.'));
-        return;
+        return false;
       }
       await load(true);
+      return true;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [load, patchLocal],
@@ -186,17 +181,6 @@ export function useBoard(projectId: string | undefined) {
         if (context.priority) payload.priority = context.priority;
         const created = await taskService.create(payload);
         if (context.owner) await taskService.assignMultiple(created.id, [context.owner]);
-        if (context.stageId && context.stageId !== 'not_started') {
-          const { status, isCompleted } = mapColumnToStatus(context.stageId);
-          await moveTaskToColumn(
-            { ...created, assignedToId: context.owner ?? created.assignedToId, status, isCompleted },
-            context.stageId,
-            stageLabel(context.stageId),
-            '',
-            [],
-            authService.getUser()?.name,
-          );
-        }
         await load(true);
       } catch (createError) {
         showBoardToast(errorMessage(createError, 'The task could not be created.'));

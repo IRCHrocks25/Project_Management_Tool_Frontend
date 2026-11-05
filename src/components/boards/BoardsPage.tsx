@@ -6,6 +6,7 @@ import { boardService, BoardPerson, BoardSummary, BoardTaskRow } from '../../ser
 import UserAvatar from '../UserAvatar';
 import TaskDetailSideModal from '../task-detail/TaskDetailSideModal';
 import TransferTaskModal from '../task-detail/TransferTaskModal';
+import StatusChangeNotesModal from '../shared/StatusChangeNotesModal';
 import Popover from './Popover';
 import { BoardContext, BoardContextValue, SearchField } from './cells';
 import BoardTable from './BoardTable';
@@ -23,6 +24,7 @@ import {
   NO_FILTERS,
   orderedColumns,
   savePrefs,
+  showBoardToast,
   sortTasks,
   stageLabel,
 } from './boardConfig';
@@ -90,6 +92,7 @@ const BoardsPage: React.FC = () => {
   const [addTaskFocus, setAddTaskFocus] = useState(0);
   const [transfer, setTransfer] = useState<BoardTaskRow | null>(null);
   const [fullDetails, setFullDetails] = useState<BoardTaskRow | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ taskId: string; stageId: string } | null>(null);
   const switcherRef = useRef<HTMLButtonElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -162,9 +165,18 @@ const BoardsPage: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
+  const requestMove = useCallback((task: BoardTaskRow, stageId: string) => {
+    if (stageId === task.stageId) return;
+    if (stageId === 'not_started' && task.owners.length > 0) {
+      showBoardToast('Remove the owner to move this back to Not yet started.');
+      return;
+    }
+    setPendingMove({ taskId: task.id, stageId });
+  }, []);
+
   const context: BoardContextValue = useMemo(
-    () => ({ actions, people, openTask, transferTask: setTransfer }),
-    [actions, people, openTask],
+    () => ({ actions, people, openTask, transferTask: setTransfer, requestMove }),
+    [actions, people, openTask, requestMove],
   );
 
   const columns = useMemo(() => orderedColumns(board?.columns || [], prefs), [board?.columns, prefs]);
@@ -366,6 +378,25 @@ const BoardsPage: React.FC = () => {
         <Popover anchor={switcherRef.current} onClose={() => setSwitcherOpen(false)} width={300}>
           {switchList(() => setSwitcherOpen(false))}
         </Popover>
+      )}
+
+      {pendingMove && (
+        <StatusChangeNotesModal
+          isOpen
+          targetColumnLabel={stageLabel(pendingMove.stageId)}
+          notesRequired
+          attachmentMode="multi"
+          onClose={() => setPendingMove(null)}
+          onSave={async (notes, links) => {
+            const task = board?.tasks.find((t) => t.id === pendingMove.taskId);
+            if (!task) {
+              setPendingMove(null);
+              return;
+            }
+            // Stays open if the save fails, so the notes aren't lost.
+            if (await actions.moveStage(task, pendingMove.stageId, notes, links)) setPendingMove(null);
+          }}
+        />
       )}
 
       {transfer && (
