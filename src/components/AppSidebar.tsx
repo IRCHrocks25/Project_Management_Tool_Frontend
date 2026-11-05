@@ -16,6 +16,7 @@ import {
   FaRegCompass,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
+import TeamClock from './TeamClock';
 import UserAvatar from './UserAvatar';
 import './Dashboard.css';
 import './AppSidebar.css';
@@ -203,6 +204,8 @@ const AppSidebar: React.FC<{ workspace?: SidebarWorkspace }> = ({ workspace }) =
             <div className="as-brandcaption">TEAM OPERATIONS</div>
           </div>
         </div>
+
+        <TeamClock />
 
         <nav className="as-nav" aria-label="Main">
           {workspace && (

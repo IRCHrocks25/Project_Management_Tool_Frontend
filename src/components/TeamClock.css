@@ -1,0 +1,25 @@
+.team-clock {
+  margin: 0 16px 10px; border: 1px solid #ececec; border-radius: 10px; background: #fff;
+  font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+.team-clock-toggle {
+  width: 100%; min-height: 44px; padding: 8px 12px; display: flex; align-items: center; gap: 10px;
+  border: 0; border-radius: 10px; background: transparent; color: #111111;
+  font: inherit; text-align: left; cursor: pointer;
+}
+.team-clock-toggle:hover { background: #fafafa; }
+.team-clock-toggle:focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
+.team-clock-toggle > svg:first-child { flex-shrink: 0; color: #686868; font-size: 14px; }
+.team-clock-times { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.team-clock-team { white-space: nowrap; }
+.team-clock-team b { font-weight: 700; }
+.team-clock-local { font-size: 11.5px; color: #686868; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.team-clock-chevron { flex-shrink: 0; color: #858b9c; font-size: 10px; transition: transform 0.12s; }
+.team-clock-chevron.open { transform: rotate(180deg); }
+
+.team-clock-list { padding: 2px 12px 6px; border-top: 1px solid #f0f0f0; }
+.team-clock-row { padding: 6px 0; display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #383838; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .team-clock-chevron { transition: none; }
+}
