@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
@@ -42,8 +42,13 @@ import MyDay from './components/workspace/MyDay';
 import VaultPage from './components/workspace/VaultPage';
 import PagesHome from './components/workspace/PagesHome';
 import PageEditor from './components/workspace/PageEditor';
+import MeetingsHome from './components/meetings/MeetingsHome';
 import { authService } from './services/auth.service';
 import './App.css';
+
+// The video library is large, so it only loads for people opening a call.
+const MeetingRoom = React.lazy(() => import('./components/meetings/MeetingRoom'));
+const GuestMeeting = React.lazy(() => import('./components/meetings/GuestMeeting'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -143,13 +148,15 @@ const DepartmentBoardRoute: React.FC = () => {
 
 /** Pages anyone can open: the assistant must never appear here, even if a teammate is logged in on this browser. */
 const PUBLIC_PATHS = ['/', '/login', '/signup', '/reset-password', '/rapid-prospect-onboarding'];
-const PUBLIC_PREFIXES = ['/share/', '/f/', '/client-updates/forms/'];
+const PUBLIC_PREFIXES = ['/share/', '/f/', '/m/', '/client-updates/forms/'];
+/** A floating button would sit over the call's own controls. */
+const isCallPage = (path: string) => /^\/meetings\/[^/]+$/.test(path);
 
 const AssistantOnAppPages: React.FC = () => {
   const { pathname } = useLocation();
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const isPublic = PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
-  return authService.isAuthenticated() && !isPublic ? <AssistantWidget /> : null;
+  return authService.isAuthenticated() && !isPublic && !isCallPage(path) ? <AssistantWidget /> : null;
 };
 
 const App: React.FC = () => {
@@ -220,6 +227,10 @@ const App: React.FC = () => {
             <Route path="pages" element={<PagesHome />} />
             <Route path="pages/:id" element={<PageEditor />} />
           </Route>
+          {/* Meetings */}
+          <Route element={<HubRoot />}>
+            <Route path="meetings" element={<MeetingsHome />} />
+          </Route>
           {/* Forms */}
           <Route path="forms" element={<FormsRoot />}>
             <Route index element={<FormsHome />} />
@@ -229,6 +240,30 @@ const App: React.FC = () => {
         </Route>
         {/* Katalyst Hub: public client page for a shared vault login (no sign-in) */}
         <Route path="/share/:token" element={<SharePage />} />
+        {/* Meetings: the call fills the window, so it sits outside the side navigation */}
+        <Route
+          path="/meetings/:id"
+          element={
+            <PrivateRoute>
+              <HubRoot>
+                <Suspense fallback={null}>
+                  <MeetingRoom />
+                </Suspense>
+              </HubRoot>
+            </PrivateRoute>
+          }
+        />
+        {/* Meetings: public page a guest joins from (no sign-in) */}
+        <Route
+          path="/m/:code"
+          element={
+            <HubRoot>
+              <Suspense fallback={null}>
+                <GuestMeeting />
+              </Suspense>
+            </HubRoot>
+          }
+        />
         {/* Forms: public page a client fills in (no sign-in) */}
         <Route path="/f/:token" element={<PublicForm />} />
         <Route

@@ -16,6 +16,7 @@ import {
   FaRegCompass,
   FaSun,
   FaKey,
+  FaVideo,
   FaRegFileAlt,
 } from 'react-icons/fa';
 import { authService } from '../services/auth.service';
@@ -79,6 +80,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
       { path: '/timeline', label: 'My Timeline', icon: <FaClock /> },
       { path: '/my-projects', label: 'My Projects', icon: <FaFolderOpen /> },
+      { path: '/meetings', label: 'Meetings', icon: <FaVideo /> },
       { path: '/products', label: 'Products', icon: <FaCubes /> },
       { path: '/forms', label: 'Forms', icon: <FaWpforms /> },
       { path: '/pages', label: 'My Space', icon: <FaRegFileAlt /> },
