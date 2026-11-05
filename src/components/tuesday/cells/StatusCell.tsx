@@ -1,20 +1,16 @@
 import React from 'react';
-import InlineEditDropdown from '../../task-detail/InlineEditDropdown';
 import { TuesdayRow } from '../rowTypes';
 import { KANBAN_COLUMNS } from '../../../utils/taskKanbanColumn';
+import { EMPTY_FILL, STAGE_COLOR } from '../../boards/boardConfig';
+import LabelMenu from './LabelMenu';
 
-const COLOR_BY_LABEL: Record<string, string> = KANBAN_COLUMNS.reduce(
-  (acc, c) => { acc[c.label] = c.color; return acc; },
-  {} as Record<string, string>,
-);
-
-const DELIV_DOT_COLOR: Record<string, string> = {
-  'Not Started':       '#9199a8',
-  'In Progress':       '#111111',
-  'Ready for Review':  '#e67700',
-  'Client Review':     '#f97316',
-  'Approved':          '#2f9e44',
-  'Revision':          '#c92a2a',
+const DELIV_COLOR: Record<string, string> = {
+  'Not Started':       '#6b7280',
+  'In Progress':       '#0f766e',
+  'Ready for Review':  '#b45309',
+  'Client Review':     '#a16207',
+  'Approved':          '#15803d',
+  'Revision':          '#b91c1c',
 };
 
 const DELIV_STATUSES = ['Not Started', 'In Progress', 'Ready for Review', 'Client Review', 'Approved', 'Revision'];
@@ -32,116 +28,101 @@ interface Props {
   anyFilterActive?: boolean;
 }
 
-function rollupBar(visibleDone: number, visibleTotal: number, label: string) {
-  // Bar fill tracks the visible numerator so the user can see filter
-  // progress visually. When no filter is active visibleDone/visibleTotal
-  // equal the backend totals, so the bar shape is unchanged from before.
-  const pct = visibleTotal === 0 ? 0 : Math.round((visibleDone / visibleTotal) * 100);
+type TaskCounts = { kanbanColumnId: string; isCompleted: boolean };
+
+const tasksIn = (node: { tasks?: TaskCounts[]; deliverables?: { tasks: TaskCounts[] }[] }): TaskCounts[] =>
+  node.tasks ?? (node.deliverables ?? []).flatMap((d) => d.tasks);
+
+// One colour per stage, so a glance shows where the work is, not just how much is done.
+const StageBar: React.FC<{ tasks: TaskCounts[] }> = ({ tasks }) => {
+  const parts = KANBAN_COLUMNS
+    .map((c) => ({ id: c.id, label: c.label, count: tasks.filter((t) => t.kanbanColumnId === c.id).length }))
+    .filter((p) => p.count > 0);
   return (
-    <span className="tuesday-rollup">
-      <span>{label}</span>
-      <span className="tuesday-rollup-bar"><span className="tuesday-rollup-bar-fill" style={{ width: `${pct}%` }} /></span>
+    <span
+      className="tuesday-stagebar"
+      role="img"
+      aria-label={parts.map((p) => `${p.label}: ${p.count}`).join(', ') || 'No tasks'}
+    >
+      {parts.length === 0 && <span style={{ flex: 1, background: EMPTY_FILL }} />}
+      {parts.map((p) => (
+        <span key={p.id} title={`${p.label}: ${p.count}`} style={{ flex: p.count, background: STAGE_COLOR[p.id] }} />
+      ))}
     </span>
   );
-}
+};
 
-// Walks the (already-filtered) project / deliverable subtree and counts
-// (visibleTotal, visibleDone). Cheap — typical project has a couple
-// dozen tasks at most after filtering.
-function countVisible(node: { tasks?: { kanbanColumnId: string; isCompleted: boolean }[]; deliverables?: { tasks: { kanbanColumnId: string; isCompleted: boolean }[] }[] }): { total: number; done: number } {
-  let total = 0;
-  let done = 0;
-  const tasks = node.tasks ?? (node.deliverables ?? []).flatMap((d) => d.tasks);
-  for (const t of tasks) {
-    total += 1;
-    if (t.kanbanColumnId === 'approved_completed' || t.isCompleted) done += 1;
-  }
-  return { total, done };
+function countVisible(node: { tasks?: TaskCounts[]; deliverables?: { tasks: TaskCounts[] }[] }): { total: number; done: number } {
+  const tasks = tasksIn(node);
+  return {
+    total: tasks.length,
+    done: tasks.filter((t) => t.kanbanColumnId === 'approved_completed' || t.isCompleted).length,
+  };
 }
 
 const StatusCell: React.FC<Props> = ({ row, onChangeDeliverableStatus, onChangeTaskStatus, anyFilterActive }) => {
-  if (row.kind === 'project') {
-    // L1 status is a rollup, not editable.
-    // Backend total = unfiltered count (Z); visible counts derive from
-    // the loaded subtree (server-side filtered before reaching us).
-    const total = row.data.rollup.total;
-    const done = row.data.rollup.done;
+  if (row.kind === 'project' || row.kind === 'deliverable') {
+    const { total, done } = row.data.rollup;
+    const noun = row.kind === 'project' ? 'done' : 'tasks done';
+    let label = `${done} of ${total} ${noun}`;
     if (anyFilterActive) {
-      const { total: visTotal, done: visDone } = countVisible(row.data);
-      return rollupBar(visDone, visTotal, `${visDone} of ${visTotal} visible / ${total} total`);
+      const visible = countVisible(row.data);
+      label = `${visible.done} of ${visible.total} visible / ${total} total`;
     }
-    return rollupBar(done, total, `${done} of ${total} done`);
-  }
+    const rollup = (
+      <span className="tuesday-rollup">
+        <StageBar tasks={tasksIn(row.data)} />
+        <span>{label}</span>
+      </span>
+    );
+    if (row.kind === 'project') return rollup;
 
-  if (row.kind === 'deliverable') {
-    const total = row.data.rollup.total;
-    const done = row.data.rollup.done;
-    const isUnassigned = row.data.id === '__unassigned__';
-    const dotColor = row.data.status ? DELIV_DOT_COLOR[row.data.status] || '#9199a8' : null;
-    const labelText = (() => {
-      if (anyFilterActive) {
-        const { total: visTotal, done: visDone } = countVisible(row.data);
-        return `${visDone} of ${visTotal} visible / ${total} total`;
-      }
-      return `${done} of ${total} tasks done`;
-    })();
-    const rollup = <span className="tuesday-rollup"><span>{labelText}</span></span>;
-
-    if (isUnassigned || !onChangeDeliverableStatus || !row.data.status) {
-      return (
-        <span>
-          {dotColor && <span className="tuesday-deliv-status-dot" style={{ background: dotColor }} title={row.data.status || ''} />}
-          {rollup}
-        </span>
-      );
-    }
+    const status = row.data.status;
+    if (!onChangeDeliverableStatus || !status) return rollup;
     return (
-      <span>
-        <InlineEditDropdown
-          trigger={
-            <span className="tuesday-deliv-status-trigger" title="Click to change status">
-              <span className="tuesday-deliv-status-dot" style={{ background: dotColor || '#9199a8' }} />
-              <span className="tuesday-deliv-status-label">{row.data.status}</span>
-            </span>
-          }
-          options={DELIV_STATUSES.map((s) => ({
-            value: s,
-            label: (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                <span className="tuesday-deliv-status-dot" style={{ background: DELIV_DOT_COLOR[s] || '#9199a8' }} />
-                {s}
-              </span>
-            ),
-          }))}
+      <span className="tuesday-deliv-status">
+        <LabelMenu
+          className="tuesday-deliv-pill"
+          style={{ background: DELIV_COLOR[status] || '#6b7280' }}
+          ariaLabel={`Deliverable status: ${status}`}
+          title="Click to change status"
+          options={DELIV_STATUSES.map((s) => ({ value: s, label: s, color: DELIV_COLOR[s] }))}
           onSelect={onChangeDeliverableStatus}
-        />
-        <span style={{ marginLeft: '10px' }}>{rollup}</span>
+        >
+          {status}
+        </LabelMenu>
+        {rollup}
       </span>
     );
   }
 
   // task
-  const color = COLOR_BY_LABEL[row.data.kanbanColumnLabel] || '#9199a8';
-  const pill = (
-    <span className="tuesday-status-pill" style={{ background: color }}>
-      {row.data.kanbanColumnLabel}
-    </span>
-  );
-  if (!onChangeTaskStatus) return pill;
+  const task = row.data;
+  const color = STAGE_COLOR[task.kanbanColumnId] || '#6b7280';
+  if (!onChangeTaskStatus) {
+    return <span className="tuesday-fill" style={{ background: color }}>{task.kanbanColumnLabel}</span>;
+  }
   return (
-    <InlineEditDropdown
-      trigger={pill}
-      options={KANBAN_COLUMNS.map((c) => ({
-        value: c.label,
-        label: (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color }} />
-            {c.label}
-          </span>
-        ),
-      }))}
+    <LabelMenu
+      className="tuesday-fill"
+      style={{ background: color }}
+      ariaLabel={`Status of ${task.title}: ${task.kanbanColumnLabel}`}
+      width={250}
+      options={KANBAN_COLUMNS.map((c) => {
+        // The shared stage rules send a task with an owner straight back to in progress.
+        const locked = c.id === 'not_started' && task.assignees.length > 0 && task.kanbanColumnId !== c.id;
+        return {
+          value: c.label,
+          label: c.label,
+          color: STAGE_COLOR[c.id],
+          disabled: locked,
+          hint: locked ? 'Remove the owner to move this back' : undefined,
+        };
+      })}
       onSelect={onChangeTaskStatus}
-    />
+    >
+      {task.kanbanColumnLabel}
+    </LabelMenu>
   );
 };
 

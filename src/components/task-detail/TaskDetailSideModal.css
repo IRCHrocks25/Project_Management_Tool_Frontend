@@ -1147,7 +1147,7 @@
   color: var(--td-text-primary);
 }
 .ttm-kind-btn.active {
-  background: rgba(17, 17, 17, 0.08);
+  background: var(--color-action-soft);
   border-color: var(--td-accent-primary);
   color: var(--td-accent-primary);
   font-weight: 600;
@@ -1176,10 +1176,10 @@
 .ttm-dept-btn:hover:not(.disabled) {
   border-color: var(--td-accent-primary);
   color: var(--td-accent-primary);
-  background: rgba(17, 17, 17, 0.05);
+  background: var(--color-action-soft);
 }
 .ttm-dept-btn.active {
-  background: rgba(17, 17, 17, 0.10);
+  background: var(--color-action-soft);
   border-color: var(--td-accent-primary);
   color: var(--td-accent-primary);
   font-weight: 600;
@@ -1221,8 +1221,8 @@
   background: var(--td-surface-sunken);
 }
 .ttm-assignee-row.selected {
-  background: rgba(17, 17, 17, 0.07);
-  border-color: rgba(17, 17, 17, 0.3);
+  background: var(--color-action-soft);
+  border-color: var(--color-action-line);
 }
 
 .ttm-avatar {
@@ -1328,6 +1328,13 @@
 .tdsm-transfer-btn:hover {
   border-color: var(--td-accent-warning);
   background: rgba(230, 119, 0, 0.07);
+}
+
+/* Transfer modal: teal marks the choice and the next step; everything else stays white. */
+.ttm-panel {
+  --td-accent-primary: var(--color-action);
+  --td-accent-primary-hover: var(--color-action);
+  --td-surface-raised: #ffffff;
 }
 
 /* Success state shown after transfer completes */

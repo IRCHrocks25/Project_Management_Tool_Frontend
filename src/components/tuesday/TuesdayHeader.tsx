@@ -3,17 +3,17 @@ import { FaCaretDown, FaCaretUp } from 'react-icons/fa';
 import { SortState } from './hooks/useTuesdayFilters';
 
 const COLUMNS = [
-  { key: 'name',       label: 'Name',       width: '28%' },
+  { key: 'name',       label: 'Name',       width: '25%' },
   // Blank-header narrow column for row-action icons (diamond / chat).
   // Fixed width so icons align cleanly across L1/L2/L3 regardless of
   // surrounding cell content.
   { key: 'actions',    label: '',           width: '60px' },
-  { key: 'status',     label: 'Status',     width: '18%' },
-  { key: 'priority',   label: 'Priority',   width: '10%' },
-  { key: 'timeline',   label: 'Timeline',   width: '14%' },
-  { key: 'pm',         label: 'PM',         width: '11%' },
-  { key: 'clientType', label: 'Client Type', width: '11%' },
-  { key: 'department', label: 'Department', width: '7%' },
+  { key: 'status',     label: 'Status',     width: '15%' },
+  { key: 'priority',   label: 'Priority',   width: '8%' },
+  { key: 'timeline',   label: 'Timeline',   width: '11%' },
+  { key: 'pm',         label: 'PM',         width: '10%' },
+  { key: 'clientType', label: 'Client Type', width: '9%' },
+  { key: 'department', label: 'Department', width: '9%' },
   { key: 'assignee',   label: 'Assignee',   width: '7%' },
 ];
 

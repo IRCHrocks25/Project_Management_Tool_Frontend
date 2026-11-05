@@ -63,8 +63,10 @@ export const PeoplePicker: React.FC<{
   selected: BoardPerson[];
   onChange: (next: BoardPerson[]) => void;
   label: string;
-}> = ({ selected, onChange, label }) => {
-  const { people } = useBoardContext();
+  people?: BoardPerson[];
+}> = ({ selected, onChange, label, people: peopleProp }) => {
+  const contextPeople = useContext(BoardContext)?.people;
+  const people = useMemo(() => peopleProp || contextPeople || [], [peopleProp, contextPeople]);
   const [query, setQuery] = useState('');
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();

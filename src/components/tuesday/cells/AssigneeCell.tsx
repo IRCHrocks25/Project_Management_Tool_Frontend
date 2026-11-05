@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import AssigneePicker from '../../task-detail/AssigneePicker';
+import React, { useMemo, useRef, useState } from 'react';
+import Popover from '../../boards/Popover';
+import { PeoplePicker } from '../../boards/cells';
 import { TuesdayRow } from '../rowTypes';
 import { BoardAssignee, BoardTask } from '../../../services/boardView.service';
 
@@ -7,7 +8,6 @@ interface Props {
   row: TuesdayRow;
   projectPm: { id: string; name: string; avatarUrl: string | null } | null;
   allUsers?: any[];
-  getUserName?: (id: string) => string;
   onChangeTaskAssignees?: (newUserIds: string[]) => void;
 }
 
@@ -37,60 +37,49 @@ function CompactStack({ assignees, emptyLabel }: { assignees: BoardAssignee[]; e
   );
 }
 
-// Task-level cell: compact avatar trigger, AssigneePicker rendered in a
-// floating popover above the cell so it doesn't inflate row height.
-// Matches the InlineEditDropdown popover treatment (position: absolute,
-// var(--td-shadow-panel), z-index: 200).
+// Task-level cell: compact avatars open the Boards people picker on the page
+// body, so the table can't clip it and row height never changes.
 const TaskAssigneeCell: React.FC<{
   task: BoardTask;
   allUsers: any[];
-  getUserName: (id: string) => string;
   onChange: (newUserIds: string[]) => void;
-}> = ({ task, allUsers, getUserName, onChange }) => {
+}> = ({ task, allUsers, onChange }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  const ids = task.assignees.map((a) => a.id);
+  const ref = useRef<HTMLButtonElement>(null);
+  const people = useMemo(
+    () => allUsers
+      .map((u) => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [allUsers],
+  );
 
   return (
-    <span ref={ref} className="tuesday-assignee-host" onClick={(e) => e.stopPropagation()}>
-      <span
+    <>
+      <button
+        ref={ref}
+        type="button"
         className="tuesday-assignee-trigger"
-        title={ids.length === 0 ? 'Click to assign' : 'Click to edit assignees'}
+        title={task.assignees.length === 0 ? 'Click to assign' : 'Click to edit assignees'}
         onClick={() => setOpen((o) => !o)}
       >
         <CompactStack assignees={task.assignees} emptyLabel="+ Assign" />
-      </span>
+      </button>
       {open && (
-        <div className="tuesday-assignee-popover">
-          <AssigneePicker
-            allUsers={allUsers}
-            assigneeIds={ids}
-            getUserName={getUserName}
-            onAssigneesChange={onChange}
+        <Popover anchor={ref.current} onClose={() => setOpen(false)} width={320} align="right">
+          <PeoplePicker
+            selected={task.assignees}
+            people={people}
+            label="Search people to assign"
+            onChange={(next) => onChange(next.map((p) => p.id))}
           />
-        </div>
+        </Popover>
       )}
-    </span>
+    </>
   );
 };
 
 const AssigneeCell: React.FC<Props> = ({
-  row, projectPm, allUsers, getUserName, onChangeTaskAssignees,
+  row, projectPm, allUsers, onChangeTaskAssignees,
 }) => {
   if (row.kind === 'project') {
     if (!projectPm) return <span className="tuesday-muted">—</span>;
@@ -109,12 +98,11 @@ const AssigneeCell: React.FC<Props> = ({
   }
 
   // task — editable via floating popover when full editing context is available
-  if (allUsers && getUserName && onChangeTaskAssignees) {
+  if (allUsers && onChangeTaskAssignees) {
     return (
       <TaskAssigneeCell
         task={row.data}
         allUsers={allUsers}
-        getUserName={getUserName}
         onChange={onChangeTaskAssignees}
       />
     );

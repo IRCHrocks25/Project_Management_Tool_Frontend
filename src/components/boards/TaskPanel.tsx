@@ -351,10 +351,10 @@ const TaskPanel: React.FC<TaskPanelProps> = ({ task, board, columns, tab, allUse
       <ConfirmModal
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           setConfirmDelete(false);
+          await actions.deleteTasks([task.id]);
           onClose();
-          actions.deleteTasks([task.id]);
         }}
         title={`Delete "${task.title}"?`}
         message="It will be removed from every board. A record of what was deleted stays in the activity log."

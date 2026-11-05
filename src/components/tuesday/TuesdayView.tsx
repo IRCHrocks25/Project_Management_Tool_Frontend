@@ -42,7 +42,8 @@ import TimelineCell from './cells/TimelineCell';
 import PMCell from './cells/PMCell';
 import DepartmentCell from './cells/DepartmentCell';
 import AssigneeCell from './cells/AssigneeCell';
-import TaskDetailSideModal from '../task-detail/TaskDetailSideModal';
+import TaskPanelHost from '../boards/TaskPanelHost';
+import { GROUP_COLORS } from '../boards/boardConfig';
 import TransferTaskModal from '../task-detail/TransferTaskModal';
 import AddTaskModal from '../AddTaskModal';
 import CreateProjectModal from '../CreateProjectModal';
@@ -118,24 +119,8 @@ const TuesdayView: React.FC = () => {
   useEffect(() => {
     authService.getAllUsers().then((u: any[]) => setAllUsers(u || [])).catch(() => setAllUsers([]));
   }, []);
-  const userNameMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const u of allUsers) m.set(u.id, u.name || 'Unassigned');
-    return m;
-  }, [allUsers]);
-  const getUserName = (id: string) => userNameMap.get(id) || 'Unassigned';
-  const projectNameMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of data || []) m.set(p.id, p.name);
-    return m;
-  }, [data]);
-  const getProjectName = (projectId: string) => projectNameMap.get(projectId) || '';
-
-  // TaskDetailSideModal + TransferTaskModal state. `openTaskInitialTab`
-  // lets the chat-bubble icon open the modal directly on the Conversation
-  // tab; the diamond/name path leaves it at default ('details').
-  const [openTask, setOpenTask] = useState<any | null>(null);
-  const [openTaskInitialTab, setOpenTaskInitialTab] = useState<'details' | 'conversation'>('details');
+  // The Boards task panel, plus the transfer modal for the Department column.
+  const [openTask, setOpenTask] = useState<{ id: string; projectId: string } | null>(null);
   const [transferTask, setTransferTask] = useState<any | null>(null);
 
   // "More fields" → AddTaskModal pre-filled with the inline draft
@@ -349,6 +334,8 @@ const TuesdayView: React.FC = () => {
     const projectPriority = project?.priority ?? '';
     const clientType = project?.clientType ?? null;
     const isUnassigned = r.kind === 'deliverable' && r.data.id === '__unassigned__';
+    const projectIndex = project ? (sortedData || []).findIndex((p) => p.id === project.id) : 0;
+    const accentStyle = { '--tuesday-accent': GROUP_COLORS[Math.max(projectIndex, 0) % GROUP_COLORS.length] } as React.CSSProperties;
     const trClass =
       r.kind === 'project' ? 'tuesday-tr-project'
       : isUnassigned ? 'tuesday-tr-deliverable tuesday-tr-unassigned'
@@ -392,19 +379,10 @@ const TuesdayView: React.FC = () => {
       ? (newUserIds: string[]) => mutations.editTaskAssignees(project.id, r.deliverableId, r.data, newUserIds, allUsers)
       : undefined;
 
-    const onOpenTaskDetail = r.kind === 'task'
-      ? () => {
-          setOpenTaskInitialTab('details');
-          setOpenTask({ ...r.data, projectId: project?.id, deliverableId: r.deliverableId });
-        }
+    const onOpenTaskDetail = (r.kind === 'task' && project)
+      ? () => setOpenTask({ id: r.data.id, projectId: project.id })
       : undefined;
-
-    const onOpenTaskConversation = r.kind === 'task'
-      ? () => {
-          setOpenTaskInitialTab('conversation');
-          setOpenTask({ ...r.data, projectId: project?.id, deliverableId: r.deliverableId });
-        }
-      : undefined;
+    const onOpenTaskConversation = onOpenTaskDetail;
 
     const onOpenProjectDetail = r.kind === 'project'
       ? () => navigate(`/project/${r.data.id}`)
@@ -419,7 +397,7 @@ const TuesdayView: React.FC = () => {
       : undefined;
 
     return (
-      <tr key={row.id} className={trClass}>
+      <tr key={row.id} className={trClass} style={accentStyle}>
         <td className="tuesday-td">
           <NameCell
             row={r}
@@ -441,7 +419,7 @@ const TuesdayView: React.FC = () => {
             onOpenProjectDetail={onOpenProjectDetail}
           />
         </td>
-        <td className="tuesday-td">
+        <td className={`tuesday-td${r.kind === 'task' ? ' tuesday-td--fill' : ''}`}>
           <StatusCell
             row={r}
             onChangeDeliverableStatus={onChangeDeliverableStatus}
@@ -449,7 +427,7 @@ const TuesdayView: React.FC = () => {
             anyFilterActive={filterControls.anyActive}
           />
         </td>
-        <td className="tuesday-td">
+        <td className={`tuesday-td${r.kind === 'project' ? ' tuesday-td--fill' : ''}`}>
           <PriorityCell row={r} projectPriority={projectPriority} onChangeProjectPriority={onChangeProjectPriority} />
         </td>
         <td className="tuesday-td">
@@ -471,7 +449,6 @@ const TuesdayView: React.FC = () => {
             row={r}
             projectPm={pm}
             allUsers={allUsers.length > 0 ? allUsers : undefined}
-            getUserName={getUserName}
             onChangeTaskAssignees={onChangeTaskAssignees}
           />
         </td>
@@ -990,37 +967,18 @@ const TuesdayView: React.FC = () => {
         </div>
       </div>
 
-      <TaskDetailSideModal
-        isOpen={!!openTask}
-        task={openTask}
-        onClose={() => setOpenTask(null)}
-        allUsers={allUsers}
-        getProjectName={getProjectName}
-        initialTab={openTaskInitialTab}
-        onTaskUpdate={(updated) => {
-          // Patch local state with whatever fields the modal returns. We do a
-          // best-effort merge — if the modal mutates fields we don't handle,
-          // the next refetch (manual reload) will reconcile.
-          if (!openTask?.projectId || !openTask?.deliverableId) return;
-          setData((prev) => {
-            if (!prev) return prev;
-            return prev.map((p) => p.id !== openTask.projectId ? p : ({
-              ...p,
-              deliverables: p.deliverables.map((d) => d.id !== openTask.deliverableId ? d : ({
-                ...d,
-                tasks: d.tasks.map((t) => t.id !== updated.id ? t : ({
-                  ...t,
-                  title: updated.title ?? t.title,
-                  status: updated.status ?? t.status,
-                  isCompleted: updated.isCompleted ?? t.isCompleted,
-                  description: updated.description ?? t.description,
-                  dueDate: updated.dueDate ?? t.dueDate,
-                })),
-              })),
-            }));
-          });
-        }}
-      />
+      {openTask && (
+        <TaskPanelHost
+          key={openTask.projectId}
+          projectId={openTask.projectId}
+          taskId={openTask.id}
+          allUsers={allUsers}
+          onClose={() => {
+            setOpenTask(null);
+            refetch(); // Picks up whatever changed in the panel, keeping the table mounted
+          }}
+        />
+      )}
 
       {transferTask && (
         <TransferTaskModal

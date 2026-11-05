@@ -4,9 +4,6 @@ import { FaAngleDoubleLeft, FaAngleDoubleRight, FaCaretDown, FaColumns, FaExtern
 import { authService } from '../../services/auth.service';
 import { boardService, BoardPerson, BoardSummary, BoardTaskRow } from '../../services/board.service';
 import UserAvatar from '../UserAvatar';
-import TaskDetailSideModal from '../task-detail/TaskDetailSideModal';
-import TransferTaskModal from '../task-detail/TransferTaskModal';
-import StatusChangeNotesModal from '../shared/StatusChangeNotesModal';
 import Popover from './Popover';
 import { BoardContext, BoardContextValue, SearchField } from './cells';
 import BoardTable from './BoardTable';
@@ -14,6 +11,7 @@ import BoardKanban from './BoardKanban';
 import BoardToolbar from './BoardToolbar';
 import TaskPanel, { PanelTab } from './TaskPanel';
 import { useBoard } from './useBoard';
+import { useTaskOverlays } from './useTaskOverlays';
 import {
   BoardFilters,
   BoardPrefs,
@@ -24,7 +22,6 @@ import {
   NO_FILTERS,
   orderedColumns,
   savePrefs,
-  showBoardToast,
   sortTasks,
   stageLabel,
 } from './boardConfig';
@@ -90,14 +87,12 @@ const BoardsPage: React.FC = () => {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [groupPromptAnchor, setGroupPromptAnchor] = useState<HTMLElement | null>(null);
   const [addTaskFocus, setAddTaskFocus] = useState(0);
-  const [transfer, setTransfer] = useState<BoardTaskRow | null>(null);
-  const [fullDetails, setFullDetails] = useState<BoardTaskRow | null>(null);
-  const [pendingMove, setPendingMove] = useState<{ taskId: string; stageId: string } | null>(null);
   const switcherRef = useRef<HTMLButtonElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const actions = useBoard(projectId);
   const { board, loading, error } = actions;
+  const { requestMove, transferTask, openFullDetails, overlays } = useTaskOverlays(actions, allUsers);
 
   useEffect(() => {
     boardService.list().then(setBoards).catch(() => setBoards([]));
@@ -165,18 +160,9 @@ const BoardsPage: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
-  const requestMove = useCallback((task: BoardTaskRow, stageId: string) => {
-    if (stageId === task.stageId) return;
-    if (stageId === 'not_started' && task.owners.length > 0) {
-      showBoardToast('Remove the owner to move this back to Not yet started.');
-      return;
-    }
-    setPendingMove({ taskId: task.id, stageId });
-  }, []);
-
   const context: BoardContextValue = useMemo(
-    () => ({ actions, people, openTask, transferTask: setTransfer, requestMove }),
-    [actions, people, openTask, requestMove],
+    () => ({ actions, people, openTask, transferTask, requestMove }),
+    [actions, people, openTask, transferTask, requestMove],
   );
 
   const columns = useMemo(() => orderedColumns(board?.columns || [], prefs), [board?.columns, prefs]);
@@ -363,7 +349,7 @@ const BoardsPage: React.FC = () => {
                 allUsers={allUsers}
                 onTab={setPanelTab}
                 onClose={closeTask}
-                onOpenFullDetails={setFullDetails}
+                onOpenFullDetails={openFullDetails}
               />
             )}
 
@@ -380,55 +366,7 @@ const BoardsPage: React.FC = () => {
         </Popover>
       )}
 
-      {pendingMove && (
-        <StatusChangeNotesModal
-          isOpen
-          targetColumnLabel={stageLabel(pendingMove.stageId)}
-          notesRequired
-          attachmentMode="multi"
-          onClose={() => setPendingMove(null)}
-          onSave={async (notes, links) => {
-            const task = board?.tasks.find((t) => t.id === pendingMove.taskId);
-            if (!task) {
-              setPendingMove(null);
-              return;
-            }
-            // Stays open if the save fails, so the notes aren't lost.
-            if (await actions.moveStage(task, pendingMove.stageId, notes, links)) setPendingMove(null);
-          }}
-        />
-      )}
-
-      {transfer && (
-        <TransferTaskModal
-          task={{
-            id: transfer.id,
-            title: transfer.title,
-            type: transfer.type,
-            projectId: transfer.projectId,
-            deliverableId: transfer.deliverableId,
-            assignees: transfer.owners.map((o) => ({ userId: o.id })),
-          }}
-          allUsers={allUsers}
-          onClose={() => setTransfer(null)}
-          onTransferred={() => {
-            setTransfer(null);
-            actions.reload(true);
-          }}
-        />
-      )}
-
-      <TaskDetailSideModal
-        isOpen={!!fullDetails}
-        task={fullDetails}
-        onClose={() => {
-          setFullDetails(null);
-          actions.reload(true);
-        }}
-        allUsers={allUsers}
-        getProjectName={() => board?.project.name || ''}
-        onTaskUpdate={() => actions.reload(true)}
-      />
+      {overlays}
     </div>
   );
 };

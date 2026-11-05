@@ -1,6 +1,7 @@
 import React from 'react';
-import InlineEditDropdown from '../../task-detail/InlineEditDropdown';
 import { TuesdayRow } from '../rowTypes';
+import { PRIORITIES, PRIORITY_COLOR } from '../../boards/boardConfig';
+import LabelMenu from './LabelMenu';
 
 interface Props {
   row: TuesdayRow;
@@ -8,34 +9,24 @@ interface Props {
   onChangeProjectPriority?: (newPriority: string) => void;
 }
 
-const CLASS_BY_PRIORITY: Record<string, string> = {
-  Low:    'tuesday-priority--low',
-  Medium: 'tuesday-priority--medium',
-  High:   'tuesday-priority--high',
-  Urgent: 'tuesday-priority--urgent',
-};
-
-const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
-
 const PriorityCell: React.FC<Props> = ({ row, projectPriority, onChangeProjectPriority }) => {
   if (row.kind === 'project') {
     const value = row.data.priority;
+    const color = PRIORITY_COLOR[value] || '#6b7280';
     if (!onChangeProjectPriority) {
-      return <span className={`tuesday-priority ${CLASS_BY_PRIORITY[value] || ''}`}>{value}</span>;
+      return <span className="tuesday-fill" style={{ background: color }}>{value}</span>;
     }
     return (
-      <InlineEditDropdown
-        trigger={
-          <span className={`tuesday-priority tuesday-priority--editable ${CLASS_BY_PRIORITY[value] || ''}`}>
-            {value}
-          </span>
-        }
-        options={PRIORITY_OPTIONS.map((p) => ({
-          value: p,
-          label: <span className={`tuesday-priority ${CLASS_BY_PRIORITY[p] || ''}`}>{p}</span>,
-        }))}
+      <LabelMenu
+        className="tuesday-fill"
+        style={{ background: color }}
+        ariaLabel={`Priority of ${row.data.name}: ${value}`}
+        width={180}
+        options={PRIORITIES.map((p) => ({ value: p, label: p, color: PRIORITY_COLOR[p] }))}
         onSelect={onChangeProjectPriority}
-      />
+      >
+        {value}
+      </LabelMenu>
     );
   }
   // L2/L3 inherit from project, rendered muted-italic, read-only

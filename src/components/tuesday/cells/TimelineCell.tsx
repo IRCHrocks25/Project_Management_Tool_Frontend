@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { FaExclamationCircle } from 'react-icons/fa';
 import { TuesdayRow } from '../rowTypes';
+import { todayDay } from '../../boards/boardConfig';
 
 interface Props {
   row: TuesdayRow;
@@ -40,7 +42,7 @@ const TimelineCell: React.FC<Props> = ({ row, onChangeTaskDueDate }) => {
 };
 
 interface EditorProps {
-  task: { dueDate: string | null };
+  task: { dueDate: string | null; isCompleted: boolean };
   onChange?: (newDate: string | null) => void;
 }
 
@@ -96,12 +98,14 @@ const TaskDueDateEditor: React.FC<EditorProps> = ({ task, onChange }) => {
   }
 
   const due = fmt(task.dueDate);
+  const late = !!task.dueDate && !task.isCompleted && isoToInputValue(task.dueDate) < todayDay();
   return (
     <span
-      className="tuesday-mono tuesday-due-display"
+      className={`tuesday-mono tuesday-due-display${late ? ' tuesday-due-display--late' : ''}`}
       title="Click to change due date"
       onClick={(e) => { e.stopPropagation(); setEditing(true); }}
     >
+      {late && <FaExclamationCircle aria-label="Overdue" />}
       {due || <span className="tuesday-muted">+ Set date</span>}
     </span>
   );

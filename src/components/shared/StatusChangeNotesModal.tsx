@@ -333,7 +333,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             onClick={handleSave}
             disabled={!canSave}
             style={{
-              background: !canSave ? '#9ca3af' : '#111111',
+              background: !canSave ? '#9ca3af' : 'var(--color-action)',
               border: 'none',
               color: 'white',
               padding: '0.6rem 1.4rem',
