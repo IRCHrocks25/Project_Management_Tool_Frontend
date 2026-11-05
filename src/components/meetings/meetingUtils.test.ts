@@ -1,6 +1,24 @@
-import { attendanceLabel, guestLink, isJoinableSoon, meetingTime, nextStart, toLocalInput } from './meetingUtils';
+import { attendanceLabel, avatarHue, callDuration, guestLink, initials, isJoinableSoon, meetingTime, nextStart, plainName, toLocalInput } from './meetingUtils';
 
 describe('meetingUtils', () => {
+  it('cleans up names for the people list and avatars', () => {
+    expect(plainName('Sam Client (guest)')).toBe('Sam Client');
+    expect(initials('Sam Client (guest)')).toBe('SC');
+    expect(initials('Julia Marie Victorio')).toBe('JV');
+    expect(initials('Cher')).toBe('C');
+    expect(initials('')).toBe('?');
+  });
+
+  it('gives a person the same colour with or without the guest label', () => {
+    expect(avatarHue('Sam Client (guest)')).toBe(avatarHue('Sam Client'));
+  });
+
+  it('formats how long a call has run', () => {
+    expect(callDuration(247000)).toBe('4:07');
+    expect(callDuration(3847000)).toBe('1:04:07');
+    expect(callDuration(-5)).toBe('0:00');
+  });
+
   it('builds the guest link', () => {
     expect(guestLink('abc', 'https://telos.katek-ai.com')).toBe('https://telos.katek-ai.com/m/abc');
   });

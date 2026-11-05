@@ -10,7 +10,7 @@ import { hubErrorMessage } from '../../services/hub.service';
 import { meetingsService, PublicMeeting } from '../../services/meetings.service';
 import EmptyState from '../hub/ui/EmptyState';
 import { Skeleton } from '../hub/ui/Skeleton';
-import CallStage from './CallStage';
+import CallStage, { CallTimer } from './CallStage';
 import Lobby from './Lobby';
 import { meetingTime } from './meetingUtils';
 import './meetings.css';
@@ -123,6 +123,7 @@ const GuestMeeting: React.FC = () => {
             <div className="mt-call-title">
               <span className="mt-live-dot" aria-hidden="true" />
               <b>{info.title}</b>
+              <CallTimer />
             </div>
           </header>
         }

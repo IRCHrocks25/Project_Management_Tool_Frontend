@@ -12,7 +12,7 @@ import Icon from '../hub/ui/Icon';
 import { Modal } from '../hub/ui/Modal';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
-import CallStage from './CallStage';
+import CallStage, { CallTimer } from './CallStage';
 import Lobby from './Lobby';
 import { guestLink, meetingTime } from './meetingUtils';
 import PeoplePicker from './PeoplePicker';
@@ -111,17 +111,18 @@ const CallHeader: React.FC<{
         <div className="mt-call-title">
           <span className="mt-live-dot" aria-hidden="true" />
           <b>{meeting.title}</b>
+          <CallTimer since={meeting.startedAt} />
         </div>
         {isHost && (
           <div className="mt-call-actions">
-            <button type="button" className="hub-btn hub-btn-sm" onClick={() => setInviting(true)}>
+            <button type="button" className="hub-btn hub-btn-sm" onClick={() => setInviting(true)} aria-label="Invite">
               <Icon name="users" />
-              Invite
+              <span className="mt-head-label">Invite</span>
             </button>
             {meeting.guestLinkEnabled && (
-              <button type="button" className="hub-btn hub-btn-sm" onClick={copyLink}>
+              <button type="button" className="hub-btn hub-btn-sm" onClick={copyLink} aria-label="Copy guest link">
                 <Icon name="link" />
-                Copy guest link
+                <span className="mt-head-label">Copy guest link</span>
               </button>
             )}
             <button type="button" className="hub-btn hub-btn-sm hub-btn-danger" onClick={() => setEnding(true)}>

@@ -36,3 +36,31 @@ export function attendanceLabel(m: Pick<Meeting, 'invitees'>): string {
   const joined = m.invitees.filter((i) => i.joinedAt).length;
   return `${joined} of ${total} invited joined`;
 }
+
+/** A guest's call name carries " (guest)" so tiles show it; lists use a badge instead. */
+export const plainName = (name: string): string => name.replace(/ \(guest\)$/, '').trim();
+
+/** Up to two initials for a camera-off avatar. */
+export const initials = (name: string): string => {
+  const words = plainName(name).split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  const picked = words.length > 1 ? [words[0], words[words.length - 1]] : [words[0]];
+  return picked.map((w) => Array.from(w)[0]).join('').toUpperCase();
+};
+
+/** A steady colour per person, so someone keeps the same avatar through a call. */
+export const avatarHue = (name: string): number => {
+  let hash = 0;
+  for (const ch of plainName(name)) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
+  return hash;
+};
+
+/** Call length as 4:07, or 1:04:07 past an hour. */
+export const callDuration = (ms: number): string => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return hours ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+};
