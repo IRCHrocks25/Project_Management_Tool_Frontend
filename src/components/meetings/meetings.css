@@ -70,6 +70,16 @@
 .mt-call-room[data-lk-theme] .lk-participant-metadata-item { background:rgba(26,26,26,.72); color:#ffffff; }
 .mt-call-room[data-lk-theme] .lk-control-bar { border-top:1px solid var(--line); background:var(--surface); }
 .mt-call-room[data-lk-theme] .lk-disconnect-button { background:var(--crit); color:var(--on-crit); border:none; }
+.mt-call-room[data-lk-theme] .lk-participant-placeholder svg { width:auto; height:45%; max-width:60%; }
+.mt-call-room[data-lk-theme] .lk-participant-placeholder svg path { fill:var(--line-strong); fill-opacity:1; }
+.mt-call-room[data-lk-theme] .lk-participant-media-video[data-lk-source="screen_share"] { background:var(--surface); }
+.mt-call-room[data-lk-theme] .lk-carousel > .lk-participant-tile { height:auto; }
+.mt-call-room[data-lk-theme] .lk-chat { background:var(--surface); border-left:1px solid var(--line); }
+.mt-call-room[data-lk-theme] .lk-chat-header { background:var(--surface); border-bottom:1px solid var(--line); }
+.mt-call-room[data-lk-theme] .lk-chat-header .lk-close-button { color:var(--fg); background:transparent; }
+.mt-call-room[data-lk-theme] .lk-chat-header .lk-close-button svg path { fill:currentColor; }
+.mt-call-room[data-lk-theme] .lk-chat-form { background:var(--surface); }
+.mt-call-room[data-lk-theme] .lk-chat-form-input { background:var(--surface); }
 
 .mt-waiting { display:grid; border-bottom:1px solid var(--line); background:var(--surface); }
 .mt-waiting-row { display:flex; align-items:center; justify-content:space-between; gap:var(--s3); flex-wrap:wrap; padding:var(--s2) var(--s4); }
