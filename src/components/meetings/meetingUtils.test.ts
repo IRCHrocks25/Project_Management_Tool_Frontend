@@ -1,4 +1,4 @@
-import { attendanceLabel, avatarHue, callDuration, guestLink, initials, isJoinableSoon, meetingTime, nextStart, plainName, toLocalInput } from './meetingUtils';
+import { attendanceLabel, avatarHue, callDuration, fileSize, guestLink, initials, isJoinableSoon, meetingTime, nextStart, plainName, toLocalInput, transcriptClock, summaryAsText } from './meetingUtils';
 
 describe('meetingUtils', () => {
   it('cleans up names for the people list and avatars', () => {
@@ -11,6 +11,12 @@ describe('meetingUtils', () => {
 
   it('gives a person the same colour with or without the guest label', () => {
     expect(avatarHue('Sam Client (guest)')).toBe(avatarHue('Sam Client'));
+  });
+
+  it('formats a recording size', () => {
+    expect(fileSize(500)).toBe('1 MB');
+    expect(fileSize(450 * 1024 * 1024)).toBe('450 MB');
+    expect(fileSize(1.5 * 1024 ** 3)).toBe('1.5 GB');
   });
 
   it('formats how long a call has run', () => {
@@ -49,5 +55,26 @@ describe('meetingUtils', () => {
     const user = { id: '1', name: 'A' } as any;
     expect(attendanceLabel({ invitees: [] })).toBe('No one else invited');
     expect(attendanceLabel({ invitees: [{ user, joinedAt: 'x' }, { user, joinedAt: null }] })).toBe('1 of 2 invited joined');
+  });
+});
+
+describe('transcriptClock', () => {
+  it('shows minutes and seconds', () => {
+    expect(transcriptClock(245)).toBe('4:05');
+  });
+  it('adds hours when needed', () => {
+    expect(transcriptClock(3725)).toBe('1:02:05');
+  });
+});
+
+describe('summaryAsText', () => {
+  it('lists the overview, action items and topics', () => {
+    const text = summaryAsText({
+      title: 'Strategy call',
+      overview: 'We agreed the plan.',
+      items: [{ text: 'Send the form', ownerName: 'Julia' }],
+      topics: [{ title: 'Pricing', points: ['$10 a seat'] }],
+    });
+    expect(text).toBe('Strategy call\n\nWe agreed the plan.\n\nAction items\n- Send the form (Julia)\n\nPricing\n- $10 a seat');
   });
 });

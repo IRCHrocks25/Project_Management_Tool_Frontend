@@ -43,6 +43,7 @@ import MyDay from './components/workspace/MyDay';
 import VaultPage from './components/workspace/VaultPage';
 import PagesHome from './components/workspace/PagesHome';
 import PageEditor from './components/workspace/PageEditor';
+import MeetingNotePage from './components/meetings/MeetingNotePage';
 import MeetingsHome from './components/meetings/MeetingsHome';
 import { authService } from './services/auth.service';
 import './App.css';
@@ -234,6 +235,7 @@ const App: React.FC = () => {
           {/* Meetings */}
           <Route element={<HubRoot />}>
             <Route path="meetings" element={<MeetingsHome />} />
+            <Route path="meetings/notes/:noteId" element={<MeetingNotePage />} />
           </Route>
           {/* Forms */}
           <Route path="forms" element={<FormsRoot />}>

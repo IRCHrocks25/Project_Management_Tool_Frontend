@@ -17,7 +17,7 @@ import './meetings.css';
 
 const POLL_MS = 3000;
 
-type Phase = 'lobby' | 'waiting' | 'call' | 'denied' | 'left' | 'ended';
+type Phase = 'lobby' | 'waiting' | 'call' | 'denied' | 'removed' | 'left' | 'ended';
 
 const GuestMeeting: React.FC = () => {
   const { code = '' } = useParams();
@@ -84,7 +84,9 @@ const GuestMeeting: React.FC = () => {
 
   const onLeft = useCallback((reason?: DisconnectReason) => {
     setConnection(null);
-    setPhase(reason === DisconnectReason.ROOM_DELETED ? 'ended' : 'left');
+    if (reason === DisconnectReason.ROOM_DELETED) setPhase('ended');
+    else if (reason === DisconnectReason.PARTICIPANT_REMOVED) setPhase('removed');
+    else setPhase('left');
   }, []);
 
   const onFailed = useCallback((err: Error) => {
@@ -140,6 +142,7 @@ const GuestMeeting: React.FC = () => {
     );
   }
   if (phase === 'denied') return message("You weren't let in", 'Contact the person who invited you if you think this is a mistake.');
+  if (phase === 'removed') return message('The host removed you from this call', 'Contact the person who invited you if you think this is a mistake.');
   if (phase === 'ended') return message('This meeting has ended', info.title);
   if (phase === 'left') {
     return message(
@@ -156,7 +159,15 @@ const GuestMeeting: React.FC = () => {
       subtitle={`${meetingTime(info.startsAt, 0).split(' to ')[0]}${info.hostName ? ` · Hosted by ${info.hostName}` : ''}`}
       askName
       joinLabel="Ask to join"
-      notice={info.videoReady ? null : "Video calls aren't switched on yet. Please check back with your host."}
+      notice={
+        !info.videoReady
+          ? "Video calls aren't switched on yet. Please check back with your host."
+          : info.isRecording
+            ? `This call is being recorded${info.mayTakeNotes ? ' and may be transcribed into notes' : ''}. By joining, you agree to this.`
+            : info.mayTakeNotes
+              ? 'This call may be transcribed into notes for the people on it. By joining, you agree to this.'
+              : null
+      }
       error={error}
       busy={busy}
       onJoin={ask}

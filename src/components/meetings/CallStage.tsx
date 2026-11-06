@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { LiveKitRoom, LiveKitRoomProps, LocalUserChoices } from '@livekit/components-react';
 import { DisconnectReason, RoomOptions, VideoPresets } from 'livekit-client';
 import '@livekit/components-styles';
-import CallConference from './CallConference';
+import CallConference, { HostControls } from './CallConference';
 import { callDuration } from './meetingUtils';
 import './meetings.css';
 
@@ -29,9 +29,12 @@ const CallStage: React.FC<{
   token: string;
   choices: LocalUserChoices;
   header: React.ReactNode;
+  host?: HostControls;
+  /** Teammates only: guests can't take notes. */
+  notesMeetingId?: string;
   onLeft: (reason?: DisconnectReason) => void;
   onFailed: (error: Error) => void;
-}> = ({ url, token, choices, header, onLeft, onFailed }) => {
+}> = ({ url, token, choices, header, host, notesMeetingId, onLeft, onFailed }) => {
   const options: RoomOptions = {
     adaptiveStream: true,
     dynacast: true,
@@ -54,7 +57,7 @@ const CallStage: React.FC<{
         onDisconnected={onLeft}
         onError={onFailed}
       >
-        <CallConference />
+        <CallConference host={host} notesMeetingId={notesMeetingId} />
       </Room>
     </div>
   );
