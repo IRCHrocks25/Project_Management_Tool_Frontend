@@ -26,6 +26,7 @@ interface Props {
   notesRequired?: boolean;                        // default false
   attachmentMode?: 'single' | 'multi';            // default 'single'
   saving?: boolean;                               // controlled by caller
+  saveColor?: string;                             // default black
 }
 
 // Exported helpers — pure functions tested by StatusChangeNotesModal.test.ts.
@@ -55,6 +56,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
   notesRequired = false,
   attachmentMode = 'single',
   saving = false,
+  saveColor = '#111111',
 }) => {
   const [notes, setNotes] = useState('');
   const [singleAttachment, setSingleAttachment] = useState('');
@@ -333,7 +335,7 @@ const StatusChangeNotesModal: React.FC<Props> = ({
             onClick={handleSave}
             disabled={!canSave}
             style={{
-              background: !canSave ? '#9ca3af' : 'var(--color-action)',
+              background: !canSave ? '#9ca3af' : saveColor,
               border: 'none',
               color: 'white',
               padding: '0.6rem 1.4rem',

@@ -40,7 +40,7 @@
 .bv-board-title { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 6px 2px 0; border-radius: 6px; cursor: pointer; color: #111827; min-width: 0; font: inherit; }
 .bv-board-title:hover { background: #f3f4f6; }
 .bv-board-title h1 { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bv-head-meta { display: flex; align-items: center; gap: 12px; }
+.bv-head-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .bv-pm { display: inline-flex; align-items: center; gap: 8px; color: #4b5563; }
 .bv-views { display: flex; gap: 4px; margin-top: 10px; border-bottom: 1px solid #e5e7eb; }
 .bv-views button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: #4b5563; font: inherit; cursor: pointer; }

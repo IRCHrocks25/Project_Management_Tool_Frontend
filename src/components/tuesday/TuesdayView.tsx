@@ -37,11 +37,16 @@ import TuesdayHeader from './TuesdayHeader';
 import NameCell from './cells/NameCell';
 import RowActionsCell from './cells/RowActionsCell';
 import StatusCell from './cells/StatusCell';
+import NewStatusCell from './newLook/StatusCell';
+import NewPriorityCell from './newLook/PriorityCell';
+import NewAssigneeCell from './newLook/AssigneeCell';
+import { useTuesdayLook } from './hooks/useTuesdayLook';
 import PriorityCell from './cells/PriorityCell';
 import TimelineCell from './cells/TimelineCell';
 import PMCell from './cells/PMCell';
 import DepartmentCell from './cells/DepartmentCell';
 import AssigneeCell from './cells/AssigneeCell';
+import TaskDetailSideModal from '../task-detail/TaskDetailSideModal';
 import TaskPanelHost from '../boards/TaskPanelHost';
 import { GROUP_COLORS } from '../boards/boardConfig';
 import TransferTaskModal from '../task-detail/TransferTaskModal';
@@ -59,6 +64,7 @@ import { notificationService } from '../../services/notification.service';
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import '../Dashboard.css';
 import './styles/tuesday.css';
+import './styles/tuesday-new.css';
 
 // Walks up the row's parents to find the project row (kind='project'),
 // so deliverable/task rows can render inherited columns (priority, PM).
@@ -119,8 +125,28 @@ const TuesdayView: React.FC = () => {
   useEffect(() => {
     authService.getAllUsers().then((u: any[]) => setAllUsers(u || [])).catch(() => setAllUsers([]));
   }, []);
-  // The Boards task panel, plus the transfer modal for the Department column.
-  const [openTask, setOpenTask] = useState<{ id: string; projectId: string } | null>(null);
+  const [look, setLook] = useTuesdayLook();
+  const newLook = look === 'new';
+
+  const userNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of allUsers) m.set(u.id, u.name || 'Unassigned');
+    return m;
+  }, [allUsers]);
+  const getUserName = (id: string) => userNameMap.get(id) || 'Unassigned';
+  const projectNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of data || []) m.set(p.id, p.name);
+    return m;
+  }, [data]);
+  const getProjectName = (projectId: string) => projectNameMap.get(projectId) || '';
+
+  // The open task shows in TaskDetailSideModal on Classic and the Boards panel
+  // on the New look. `openTaskInitialTab` lets the chat-bubble icon open the
+  // Classic modal on Conversation. `rowDeliverableId` keeps the table's bucket,
+  // including "__unassigned__", which must never reach the API as a real id.
+  const [openTask, setOpenTask] = useState<any | null>(null);
+  const [openTaskInitialTab, setOpenTaskInitialTab] = useState<'details' | 'conversation'>('details');
   const [transferTask, setTransferTask] = useState<any | null>(null);
 
   // "More fields" → AddTaskModal pre-filled with the inline draft
@@ -335,7 +361,11 @@ const TuesdayView: React.FC = () => {
     const clientType = project?.clientType ?? null;
     const isUnassigned = r.kind === 'deliverable' && r.data.id === '__unassigned__';
     const projectIndex = project ? (sortedData || []).findIndex((p) => p.id === project.id) : 0;
-    const accentStyle = { '--tuesday-accent': GROUP_COLORS[Math.max(projectIndex, 0) % GROUP_COLORS.length] } as React.CSSProperties;
+    const accentStyle = newLook
+      ? ({ '--tuesday-accent': GROUP_COLORS[Math.max(projectIndex, 0) % GROUP_COLORS.length] } as React.CSSProperties)
+      : undefined;
+    const ActiveStatusCell = newLook ? NewStatusCell : StatusCell;
+    const ActivePriorityCell = newLook ? NewPriorityCell : PriorityCell;
     const trClass =
       r.kind === 'project' ? 'tuesday-tr-project'
       : isUnassigned ? 'tuesday-tr-deliverable tuesday-tr-unassigned'
@@ -379,10 +409,18 @@ const TuesdayView: React.FC = () => {
       ? (newUserIds: string[]) => mutations.editTaskAssignees(project.id, r.deliverableId, r.data, newUserIds, allUsers)
       : undefined;
 
-    const onOpenTaskDetail = (r.kind === 'task' && project)
-      ? () => setOpenTask({ id: r.data.id, projectId: project.id })
-      : undefined;
-    const onOpenTaskConversation = onOpenTaskDetail;
+    const openTaskOnTab = (tab: 'details' | 'conversation') => {
+      if (r.kind !== 'task') return;
+      setOpenTaskInitialTab(tab);
+      setOpenTask({
+        ...r.data,
+        projectId: project?.id,
+        deliverableId: r.deliverableId === '__unassigned__' ? null : r.deliverableId,
+        rowDeliverableId: r.deliverableId,
+      });
+    };
+    const onOpenTaskDetail = r.kind === 'task' ? () => openTaskOnTab('details') : undefined;
+    const onOpenTaskConversation = r.kind === 'task' ? () => openTaskOnTab('conversation') : undefined;
 
     const onOpenProjectDetail = r.kind === 'project'
       ? () => navigate(`/project/${r.data.id}`)
@@ -419,19 +457,19 @@ const TuesdayView: React.FC = () => {
             onOpenProjectDetail={onOpenProjectDetail}
           />
         </td>
-        <td className={`tuesday-td${r.kind === 'task' ? ' tuesday-td--fill' : ''}`}>
-          <StatusCell
+        <td className={`tuesday-td${newLook && r.kind === 'task' ? ' tuesday-td--fill' : ''}`}>
+          <ActiveStatusCell
             row={r}
             onChangeDeliverableStatus={onChangeDeliverableStatus}
             onChangeTaskStatus={onChangeTaskStatus}
             anyFilterActive={filterControls.anyActive}
           />
         </td>
-        <td className={`tuesday-td${r.kind === 'project' ? ' tuesday-td--fill' : ''}`}>
-          <PriorityCell row={r} projectPriority={projectPriority} onChangeProjectPriority={onChangeProjectPriority} />
+        <td className={`tuesday-td${newLook && r.kind === 'project' ? ' tuesday-td--fill' : ''}`}>
+          <ActivePriorityCell row={r} projectPriority={projectPriority} onChangeProjectPriority={onChangeProjectPriority} />
         </td>
         <td className="tuesday-td">
-          <TimelineCell row={r} onChangeTaskDueDate={onChangeTaskDueDate} />
+          <TimelineCell row={r} onChangeTaskDueDate={onChangeTaskDueDate} markOverdue={newLook} />
         </td>
         <td className="tuesday-td"><PMCell row={r} projectPm={pm} /></td>
         <td className="tuesday-td">
@@ -445,12 +483,22 @@ const TuesdayView: React.FC = () => {
           <DepartmentCell row={r} onOpenTransfer={onOpenTransfer} />
         </td>
         <td className="tuesday-td">
-          <AssigneeCell
-            row={r}
-            projectPm={pm}
-            allUsers={allUsers.length > 0 ? allUsers : undefined}
-            onChangeTaskAssignees={onChangeTaskAssignees}
-          />
+          {newLook ? (
+            <NewAssigneeCell
+              row={r}
+              projectPm={pm}
+              allUsers={allUsers.length > 0 ? allUsers : undefined}
+              onChangeTaskAssignees={onChangeTaskAssignees}
+            />
+          ) : (
+            <AssigneeCell
+              row={r}
+              projectPm={pm}
+              allUsers={allUsers.length > 0 ? allUsers : undefined}
+              getUserName={getUserName}
+              onChangeTaskAssignees={onChangeTaskAssignees}
+            />
+          )}
         </td>
       </tr>
     );
@@ -778,7 +826,7 @@ const TuesdayView: React.FC = () => {
         </div>
       </nav>
 
-      <div className="tuesday-root" style={{ flex: 1 }}>
+      <div className={`tuesday-root${newLook ? ' tuesday-root--new' : ''}`} style={{ flex: 1 }}>
         <div className="tuesday-page">
           <div className="tuesday-pageheader">
             <div>
@@ -790,6 +838,24 @@ const TuesdayView: React.FC = () => {
                 />
               </h1>
               <p className="tuesday-pagesub">All projects, hierarchical view.</p>
+            </div>
+            <div className="tuesday-look-switch" role="group" aria-label="Tuesday look">
+              <button
+                type="button"
+                className="tuesday-look-option"
+                aria-pressed={!newLook}
+                onClick={() => setLook('classic')}
+              >
+                Classic
+              </button>
+              <button
+                type="button"
+                className="tuesday-look-option"
+                aria-pressed={newLook}
+                onClick={() => setLook('new')}
+              >
+                New look
+              </button>
             </div>
           </div>
 
@@ -839,7 +905,7 @@ const TuesdayView: React.FC = () => {
         )}
         {data !== null && rows.length > 0 && (
           <table className="tuesday-table">
-            <TuesdayHeader sort={filterControls.sort} onSort={handleColumnSort} />
+            <TuesdayHeader sort={filterControls.sort} onSort={handleColumnSort} newLook={newLook} />
             <tbody>
               {(() => {
                 const rowList = table.getRowModel().rows;
@@ -967,7 +1033,41 @@ const TuesdayView: React.FC = () => {
         </div>
       </div>
 
-      {openTask && (
+      {!newLook && (
+        <TaskDetailSideModal
+          isOpen={!!openTask}
+          task={openTask}
+          onClose={() => setOpenTask(null)}
+          allUsers={allUsers}
+          getProjectName={getProjectName}
+          initialTab={openTaskInitialTab}
+          onTaskUpdate={(updated) => {
+            // Patch local state with whatever fields the modal returns. We do a
+            // best-effort merge — if the modal mutates fields we don't handle,
+            // the next refetch (manual reload) will reconcile.
+            if (!openTask?.projectId || !openTask?.rowDeliverableId) return;
+            setData((prev) => {
+              if (!prev) return prev;
+              return prev.map((p) => p.id !== openTask.projectId ? p : ({
+                ...p,
+                deliverables: p.deliverables.map((d) => d.id !== openTask.rowDeliverableId ? d : ({
+                  ...d,
+                  tasks: d.tasks.map((t) => t.id !== updated.id ? t : ({
+                    ...t,
+                    title: updated.title ?? t.title,
+                    status: updated.status ?? t.status,
+                    isCompleted: updated.isCompleted ?? t.isCompleted,
+                    description: updated.description ?? t.description,
+                    dueDate: updated.dueDate ?? t.dueDate,
+                  })),
+                })),
+              }));
+            });
+          }}
+        />
+      )}
+
+      {newLook && openTask && (
         <TaskPanelHost
           key={openTask.projectId}
           projectId={openTask.projectId}
@@ -982,6 +1082,7 @@ const TuesdayView: React.FC = () => {
 
       {transferTask && (
         <TransferTaskModal
+          actionAccent={newLook}
           task={transferTask}
           allUsers={allUsers}
           onClose={() => setTransferTask(null)}
@@ -1017,6 +1118,7 @@ const TuesdayView: React.FC = () => {
           notesRequired={true}                    // Tuesday divergence — see CLAUDE.md
           attachmentMode="multi"
           saving={statusChangeSaving}
+          saveColor={newLook ? 'var(--color-action)' : undefined}
           onClose={() => {
             if (statusChangeSaving) return;
             setPendingStatusChange(null);

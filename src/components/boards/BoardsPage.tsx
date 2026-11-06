@@ -9,6 +9,7 @@ import { BoardContext, BoardContextValue, SearchField } from './cells';
 import BoardTable from './BoardTable';
 import BoardKanban from './BoardKanban';
 import BoardToolbar from './BoardToolbar';
+import BoardSwitch from './BoardSwitch';
 import TaskPanel, { PanelTab } from './TaskPanel';
 import { useBoard } from './useBoard';
 import { useTaskOverlays } from './useTaskOverlays';
@@ -273,6 +274,7 @@ const BoardsPage: React.FC = () => {
                   <FaCaretDown aria-hidden />
                 </button>
                 <div className="bv-head-meta">
+                  <BoardSwitch active="boards" role={user?.role} />
                   {board.project.pm && (
                     <span className="bv-pm" title={`PM: ${board.project.pm.name}`}>
                       <UserAvatar name={board.project.pm.name} avatarUrl={board.project.pm.avatarUrl} size={28} />

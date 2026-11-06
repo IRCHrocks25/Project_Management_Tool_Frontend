@@ -30,6 +30,7 @@ export function useTaskOverlays(actions: BoardActions, allUsers: any[]) {
           targetColumnLabel={stageLabel(pendingMove.stageId)}
           notesRequired
           attachmentMode="multi"
+          saveColor="var(--color-action)"
           onClose={() => setPendingMove(null)}
           onSave={async (notes, links) => {
             const task = board?.tasks.find((t) => t.id === pendingMove.taskId);
@@ -45,6 +46,7 @@ export function useTaskOverlays(actions: BoardActions, allUsers: any[]) {
 
       {transfer && (
         <TransferTaskModal
+          actionAccent
           task={{
             id: transfer.id,
             title: transfer.title,

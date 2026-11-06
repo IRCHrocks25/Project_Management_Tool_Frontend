@@ -2,18 +2,22 @@ import React from 'react';
 import { FaCaretDown, FaCaretUp } from 'react-icons/fa';
 import { SortState } from './hooks/useTuesdayFilters';
 
+const NEW_LOOK_WIDTHS: Record<string, string> = {
+  name: '25%', status: '15%', priority: '8%', timeline: '11%', pm: '10%', clientType: '9%', department: '9%', assignee: '7%',
+};
+
 const COLUMNS = [
-  { key: 'name',       label: 'Name',       width: '25%' },
+  { key: 'name',       label: 'Name',       width: '28%' },
   // Blank-header narrow column for row-action icons (diamond / chat).
   // Fixed width so icons align cleanly across L1/L2/L3 regardless of
   // surrounding cell content.
   { key: 'actions',    label: '',           width: '60px' },
-  { key: 'status',     label: 'Status',     width: '15%' },
-  { key: 'priority',   label: 'Priority',   width: '8%' },
-  { key: 'timeline',   label: 'Timeline',   width: '11%' },
-  { key: 'pm',         label: 'PM',         width: '10%' },
-  { key: 'clientType', label: 'Client Type', width: '9%' },
-  { key: 'department', label: 'Department', width: '9%' },
+  { key: 'status',     label: 'Status',     width: '18%' },
+  { key: 'priority',   label: 'Priority',   width: '10%' },
+  { key: 'timeline',   label: 'Timeline',   width: '14%' },
+  { key: 'pm',         label: 'PM',         width: '11%' },
+  { key: 'clientType', label: 'Client Type', width: '11%' },
+  { key: 'department', label: 'Department', width: '7%' },
   { key: 'assignee',   label: 'Assignee',   width: '7%' },
 ];
 
@@ -29,9 +33,10 @@ const SORTABLE_KEYS = new Set(['name', 'status', 'priority', 'timeline', 'pm']);
 interface Props {
   sort: SortState | null;
   onSort: (columnKey: string) => void;
+  newLook?: boolean;
 }
 
-const TuesdayHeader: React.FC<Props> = ({ sort, onSort }) => (
+const TuesdayHeader: React.FC<Props> = ({ sort, onSort, newLook }) => (
   <thead className="tuesday-thead">
     <tr>
       {COLUMNS.map((c) => {
@@ -42,7 +47,7 @@ const TuesdayHeader: React.FC<Props> = ({ sort, onSort }) => (
           <th
             key={c.key}
             className={`tuesday-th ${sortable ? 'tuesday-th--sortable' : ''} ${isSorted ? 'tuesday-th--sorted' : ''}`}
-            style={{ width: c.width }}
+            style={{ width: (newLook && NEW_LOOK_WIDTHS[c.key]) || c.width }}
             onClick={sortable ? () => onSort(c.key) : undefined}
             aria-sort={isSorted ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}
           >

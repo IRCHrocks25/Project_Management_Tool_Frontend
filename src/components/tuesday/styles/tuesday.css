@@ -8,14 +8,14 @@
 
 .tuesday-root {
   --td-surface-base:           #ffffff;
-  --td-surface-raised:         #f9fafb; /* Hover only: rows and pages stay white */
-  --td-surface-sunken:         #f3f4f6;
+  --td-surface-raised:         #fbfbfb;
+  --td-surface-sunken:         #f5f5f5;
   /* Warmer amber tint to flag the synthesized "Unassigned" bucket as
      "attention needed" — most projects have many orphan tasks. */
-  --td-surface-unassigned:     #ffffff;
-  --td-surface-unassigned-hover:var(--color-attention-soft);
-  --td-warning-text:           var(--color-attention);
-  --td-warning-icon:           var(--color-attention);
+  --td-surface-unassigned:     #fffbeb;
+  --td-surface-unassigned-hover:#fef3c7;
+  --td-warning-text:           #92400e;
+  --td-warning-icon:           #d97706;
 
   --td-text-primary:           #242424;
   --td-text-secondary:         #696969;
@@ -25,18 +25,18 @@
   --td-border-card:             #dfdfdf;
   --td-border-strong:           #d0d0d0;
 
-  --td-accent-primary:          var(--color-action);
-  --td-accent-primary-hover:    var(--color-action-hover);
+  --td-accent-primary:          #111111;
+  --td-accent-primary-hover:    #111111;
   --td-accent-todo:             #696969;
-  --td-accent-progress:         var(--color-action);
-  --td-accent-review:           var(--color-attention);
-  --td-accent-completed:        var(--color-done);
-  --td-accent-blocked:          #b91c1c;
+  --td-accent-progress:         #111111;
+  --td-accent-review:           #e67700;
+  --td-accent-completed:        #2f9e44;
+  --td-accent-blocked:          #c92a2a;
 
-  --td-priority-low:            #64748b;
-  --td-priority-medium:         #a16207;
-  --td-priority-high:           #c2410c;
-  --td-priority-urgent:         #991b1b;
+  --td-priority-low:            #696969;
+  --td-priority-medium:         #111111;
+  --td-priority-high:           #e67700;
+  --td-priority-urgent:         #c92a2a;
 
   --td-radius-sm:               4px;
   --td-radius-md:               8px;
@@ -102,7 +102,7 @@
   font-size: 13px;
   font-weight: 600;
   color: white;
-  background: var(--td-accent-primary);
+  background: linear-gradient(135deg, var(--td-accent-primary) 0%, var(--td-accent-primary-hover) 100%);
   padding: 8px 14px;
   border-radius: 6px;
   letter-spacing: 0.01em;
@@ -186,7 +186,7 @@
 }
 .tuesday-chip:hover { border-color: var(--td-border-strong); color: var(--td-text-primary); }
 .tuesday-chip--active {
-  background: var(--color-action-soft);
+  background: rgba(17, 17, 17, 0.10);
   border-color: var(--td-accent-primary);
   color: var(--td-accent-primary-hover);
 }
@@ -271,7 +271,7 @@
 }
 
 .tuesday-thead {
-  background: var(--td-surface-base);
+  background: var(--td-surface-sunken);
 }
 
 .tuesday-th {
@@ -283,12 +283,12 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--td-text-secondary);
+  color: var(--td-text-tertiary);
   padding: 12px 14px;
   white-space: nowrap;
   /* Sticky cells need their own opaque background — the parent <thead>
      background doesn't paint behind the sticky stack. */
-  background: var(--td-surface-base);
+  background: var(--td-surface-sunken);
   /* Border-collapse drops borders for sticky cells; reproduce them via
      inset shadow so the bottom rule + right divider survive scrolling. */
   box-shadow:
@@ -311,7 +311,6 @@
 }
 
 .tuesday-td:first-child {
-  min-width: 300px;
   position: sticky;
   left: 0;
   z-index: 5;        /* above non-sticky body cells, below sticky-top header (10) */
@@ -327,13 +326,6 @@
 .tuesday-table tbody tr > .tuesday-td:first-child {
   background: var(--td-row-bg, var(--td-surface-base));
 }
-
-/* Every row in a project carries its colour on the left edge, so a project
-   reads as one block when it is expanded. */
-.tuesday-table tbody tr > .tuesday-td:first-child {
-  box-shadow: inset 5px 0 0 var(--tuesday-accent, transparent);
-}
-.tuesday-tr-project .tuesday-name-text--project { color: var(--tuesday-accent); }
 
 /* Sortable column headers — click cycles asc → desc → none. */
 .tuesday-th--sortable {
@@ -360,7 +352,7 @@
 }
 
 .tuesday-td {
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--td-border-default);
   border-right: 1px solid var(--td-border-default);
   vertical-align: middle;
@@ -382,8 +374,8 @@
 .tuesday-tr-project        { --td-row-bg: var(--td-surface-base); }
 .tuesday-tr-project:hover  { --td-row-bg: var(--td-surface-raised); }
 
-.tuesday-tr-deliverable        { --td-row-bg: var(--td-surface-base); }
-.tuesday-tr-deliverable:hover  { --td-row-bg: var(--td-surface-raised); }
+.tuesday-tr-deliverable        { --td-row-bg: var(--td-surface-raised); }
+.tuesday-tr-deliverable:hover  { --td-row-bg: var(--td-surface-sunken); }
 
 .tuesday-tr-task        { --td-row-bg: var(--td-surface-base); }
 .tuesday-tr-task:hover  { --td-row-bg: var(--td-surface-raised); cursor: pointer; }
@@ -412,7 +404,7 @@
   padding: 2px 6px;
   border-radius: 3px;
 }
-.tuesday-more-fields:hover { background: var(--color-action-soft); }
+.tuesday-more-fields:hover { background: rgba(17, 17, 17, 0.10); }
 .tuesday-add-row-error {
   font-size: 11.5px;
   color: var(--td-accent-blocked);
@@ -452,7 +444,7 @@
 
 /* Primary accent treatment so users see Save as the commit action. */
 .tuesday-add-save { color: var(--td-accent-primary); }
-.tuesday-add-save:hover { background: var(--color-action-soft); color: var(--td-accent-primary-hover); }
+.tuesday-add-save:hover { background: rgba(17, 17, 17, 0.10); color: var(--td-accent-primary-hover); }
 .tuesday-add-save[disabled],
 .tuesday-add-save:disabled {
   color: var(--td-text-tertiary);
@@ -482,14 +474,11 @@
 .tuesday-name {
   display: flex;
   align-items: center;
-  gap: 2px 6px;
+  gap: 6px;
   min-height: 22px;
 }
 
-.tuesday-name-indent { display: inline-block; flex-shrink: 0; }
-/* Project and deliverable details drop to a second line rather than squeezing the name. */
-.tuesday-tr-project .tuesday-name,
-.tuesday-tr-deliverable .tuesday-name { flex-wrap: wrap; }
+.tuesday-name-indent { display: inline-block; }
 
 .tuesday-expand-btn {
   all: unset;
@@ -517,9 +506,9 @@
 }
 .tuesday-name-text--project { font-weight: 600; font-size: 14px; }
 .tuesday-name-text--deliverable { font-weight: 500; }
-.tuesday-name-text--task { font-weight: 400; color: var(--td-text-primary); }
+.tuesday-name-text--task { font-weight: 400; color: var(--td-text-secondary); }
 .tuesday-name-text--editable { cursor: text; }
-.tuesday-name-text--editable:hover { background: var(--color-action-soft); border-radius: 3px; }
+.tuesday-name-text--editable:hover { background: rgba(17, 17, 17, 0.08); border-radius: 3px; }
 
 .tuesday-name-input {
   font: inherit;
@@ -546,7 +535,7 @@
   transition: opacity 0.13s;
 }
 .tuesday-tr-task:hover .tuesday-task-open-btn { opacity: 1; }
-.tuesday-task-open-btn:hover { background: var(--color-action-soft); }
+.tuesday-task-open-btn:hover { background: rgba(17, 17, 17, 0.10); }
 
 /* Row-action icons live in their own dedicated column. Always visible,
    muted gray, darker on hover. The wrapper is a flex container so icons
@@ -576,9 +565,9 @@
 
 .tuesday-project-meta {
   font-size: 11.5px;
-  color: var(--td-text-secondary);
+  color: var(--td-text-tertiary);
   font-weight: 400;
-  white-space: nowrap;
+  margin-left: 8px;
 }
 .tuesday-project-meta strong {
   font-weight: 500;
@@ -589,36 +578,22 @@
 .tuesday-unassigned-hint {
   font-size: 11.5px;
   color: var(--td-warning-text);
-  white-space: nowrap;
+  margin-left: 6px;
   font-weight: 500;
   font-style: italic;
 }
 
 /* ── Status cell ─────────────────────────────────────────────────────── */
 
-.tuesday-td--fill { padding: 0; height: 1px; }
-/* Fills its cell edge to edge, like a status label on Boards. */
-.tuesday-fill {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 40px;
-  padding: 4px 10px;
-  border: 0;
-  color: #ffffff;
-  font: inherit;
-  font-size: 13px;
+.tuesday-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
   font-weight: 500;
-  text-align: center;
-  cursor: pointer;
+  color: white;
+  letter-spacing: 0.01em;
 }
-button.tuesday-fill:hover { filter: brightness(0.92); }
-span.tuesday-fill { cursor: default; }
-button.tuesday-fill:focus-visible,
-.tuesday-deliv-pill:focus-visible,
-.tuesday-assignee-trigger:focus-visible { outline: 2px solid var(--color-action); outline-offset: -2px; }
 
 .tuesday-rollup {
   display: inline-flex;
@@ -627,28 +602,26 @@ button.tuesday-fill:focus-visible,
   font-size: 12px;
   color: var(--td-text-secondary);
 }
-.tuesday-stagebar {
-  display: inline-flex;
-  width: 70px;
-  height: 10px;
-  gap: 1px;
-  border-radius: 2px;
+.tuesday-rollup-bar {
+  width: 80px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--td-border-default);
   overflow: hidden;
-  flex-shrink: 0;
 }
-.tuesday-deliv-status { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
-.tuesday-deliv-pill {
-  border: 0;
-  border-radius: 3px;
-  padding: 3px 9px;
-  color: #ffffff;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
+.tuesday-rollup-bar-fill {
+  height: 100%;
+  background: var(--td-accent-completed);
 }
-.tuesday-deliv-pill:hover { filter: brightness(0.92); }
+
+.tuesday-deliv-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 
 /* ── Priority cell ───────────────────────────────────────────────────── */
 
@@ -659,17 +632,36 @@ button.tuesday-fill:focus-visible,
   font-size: 11.5px;
   font-weight: 500;
 }
+.tuesday-priority--low      { background: rgba(105, 105, 105, 0.10);   color: var(--td-priority-low); }
+.tuesday-priority--medium   { background: rgba(17, 17, 17, 0.12);   color: var(--td-priority-medium); }
+.tuesday-priority--high     { background: rgba(230, 119, 0, 0.12);    color: var(--td-priority-high); }
+.tuesday-priority--urgent   { background: rgba(201, 42, 42, 0.12);    color: var(--td-priority-urgent); }
 .tuesday-priority--inherited { color: var(--td-text-tertiary); font-style: italic; }
+.tuesday-priority--editable { cursor: pointer; }
+.tuesday-priority--editable:hover { filter: brightness(0.95); }
+
+/* Deliverable status trigger (clickable dot+label combo) */
+.tuesday-deliv-status-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.tuesday-deliv-status-trigger:hover { background: rgba(0,0,0,0.04); }
+.tuesday-deliv-status-label { font-size: 12px; color: var(--td-text-secondary); }
+
+/* Task status pill is rendered inside InlineEditDropdown; the dropdown's
+   trigger needs cursor:pointer baked in. The pill already conveys color. */
 
 /* Inline due-date editor */
 .tuesday-due-display {
-  white-space: nowrap;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
 }
 .tuesday-due-display:hover { background: rgba(0,0,0,0.04); }
-.tuesday-due-display--late { color: #b91c1c; display: inline-flex; align-items: center; gap: 5px; }
 
 .tuesday-due-edit { display: inline-flex; align-items: center; gap: 4px; }
 .tuesday-due-input {
@@ -710,6 +702,15 @@ button.tuesday-fill:focus-visible,
 .tuesday-dept-task:hover .tuesday-inline-edit-icon,
 .tuesday-due-display:hover .tuesday-inline-edit-icon { opacity: 1; }
 
+/* Task assignee: compact avatar stack as trigger, AssigneePicker in a
+   floating popover above the cell. Mirrors the InlineEditDropdown popover
+   treatment (absolute, shadow, z-index 200). */
+.tuesday-assignee-host {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
 /* Trigger truncates cleanly inside the cell — never overflows the column. */
 .tuesday-assignee-trigger {
   cursor: pointer;
@@ -721,14 +722,28 @@ button.tuesday-fill:focus-visible,
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
 }
 .tuesday-assignee-trigger:hover { background: rgba(0,0,0,0.04); }
 /* Constrain children from forcing the trigger to grow beyond cell width */
 .tuesday-assignee-trigger > * { min-width: 0; }
+
+.tuesday-assignee-popover {
+  position: absolute;
+  /* Open above the cell to avoid pushing table content. Right-align to the
+     trigger so the popover grows leftward — Assignee is the last column,
+     so left-aligned would overflow the viewport. */
+  bottom: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  min-width: 320px;
+  max-width: 420px;
+  background: var(--td-surface-base);
+  border: 1px solid var(--td-border-default);
+  border-radius: var(--td-radius-md);
+  box-shadow: var(--td-shadow-panel);
+  z-index: 200;
+  padding: 12px;
+}
 
 /* ── Other cells ─────────────────────────────────────────────────────── */
 
@@ -889,7 +904,7 @@ button.tuesday-fill:focus-visible,
 .tuesday-pagination-num { padding: 0; }
 .tuesday-pagination-num--active,
 .tuesday-pagination-num--active:hover:not(:disabled) {
-  background: var(--color-action-soft);
+  background: rgba(17, 17, 17, 0.10);
   border-color: var(--td-accent-primary);
   color: var(--td-accent-primary-hover);
 }
@@ -901,4 +916,30 @@ button.tuesday-fill:focus-visible,
   height: 32px;
   color: var(--td-text-tertiary);
   user-select: none;
+}
+
+/* Classic / New look switch. The selected option follows each look's accent. */
+.tuesday-look-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--td-border-card);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--td-surface-base);
+}
+.tuesday-look-option {
+  border: 0;
+  background: none;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--td-text-secondary);
+  cursor: pointer;
+}
+.tuesday-look-option:hover { color: var(--td-text-primary); }
+.tuesday-look-option:focus-visible { outline: 2px solid var(--td-accent-primary); outline-offset: -2px; }
+.tuesday-look-option[aria-pressed='true'] {
+  background: var(--td-accent-primary);
+  color: #ffffff;
 }

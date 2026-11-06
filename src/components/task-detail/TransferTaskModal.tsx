@@ -8,6 +8,8 @@ interface TransferTaskModalProps {
   allUsers: any[];
   onClose: () => void;
   onTransferred: (updatedTask: any) => void;
+  /** Teal for the choice and next step, as on Boards */
+  actionAccent?: boolean;
 }
 
 const TransferTaskModal: React.FC<TransferTaskModalProps> = ({
@@ -15,6 +17,7 @@ const TransferTaskModal: React.FC<TransferTaskModalProps> = ({
   allUsers,
   onClose,
   onTransferred,
+  actionAccent,
 }) => {
   const currentDept = taskTypeToDepartment(task?.type ?? '');
 
@@ -108,7 +111,7 @@ const TransferTaskModal: React.FC<TransferTaskModalProps> = ({
       className="ttm-backdrop"
       onClick={handleBackdropClick}
     >
-      <div className="ttm-panel tdsm-light-theme" role="dialog" aria-modal="true">
+      <div className={`ttm-panel tdsm-light-theme${actionAccent ? ' ttm-panel--action' : ''}`} role="dialog" aria-modal="true">
         {/* Header */}
         <div className="ttm-header">
           <div className="ttm-header-title">
