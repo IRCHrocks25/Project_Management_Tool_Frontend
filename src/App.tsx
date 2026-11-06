@@ -49,6 +49,9 @@ import './App.css';
 
 // The video library is large, so it only loads for people opening a call.
 const MeetingRoom = React.lazy(() => import('./components/meetings/MeetingRoom'));
+const DrivelyRoot = React.lazy(() => import('./components/drively/DrivelyRoot'));
+const DrivelyHome = React.lazy(() => import('./components/drively/DrivelyHome'));
+const DriveOpen = React.lazy(() => import('./components/drively/DriveOpen'));
 const GuestMeeting = React.lazy(() => import('./components/meetings/GuestMeeting'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -244,6 +247,26 @@ const App: React.FC = () => {
         </Route>
         {/* Katalyst Hub: public client page for a shared vault login (no sign-in) */}
         <Route path="/share/:token" element={<SharePage />} />
+        {/* Drively: a Drive of its own, with its own navigation; editors fill the window */}
+        <Route
+          path="/drively"
+          element={
+            <PrivateRoute>
+              <Suspense fallback={null}>
+                <DrivelyRoot />
+              </Suspense>
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DrivelyHome />} />
+          <Route path="my-drive" element={<DrivelyHome section="mine" />} />
+          <Route path="shared" element={<DrivelyHome section="shared" />} />
+          <Route path="recent" element={<DrivelyHome section="recent" />} />
+          <Route path="starred" element={<DrivelyHome section="starred" />} />
+          <Route path="trash" element={<DrivelyHome section="trash" />} />
+          <Route path="folders/:folderId" element={<DrivelyHome />} />
+          <Route path="d/:id" element={<DriveOpen />} />
+        </Route>
         {/* Meetings: the call fills the window, so it sits outside the side navigation */}
         <Route
           path="/meetings/:id"

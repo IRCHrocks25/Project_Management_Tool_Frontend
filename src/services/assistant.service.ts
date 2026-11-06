@@ -4,7 +4,8 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://projectmanagementtoolb
 
 export type AssistantAction =
   | { type: 'navigate'; path: string; label: string }
-  | { type: 'vault_link'; label: string; url: string; expiresAt: string; oneTime: boolean };
+  | { type: 'vault_link'; label: string; url: string; expiresAt: string; oneTime: boolean }
+  | { type: 'open_file'; label: string; kind: string; path: string };
 
 export interface PendingAction {
   id: string;

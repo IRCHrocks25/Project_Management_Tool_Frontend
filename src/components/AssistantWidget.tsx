@@ -7,6 +7,7 @@ import './AssistantWidget.css';
 type Item =
   | { kind: 'message'; role: 'user' | 'assistant'; text: string }
   | { kind: 'note'; text: string }
+  | { kind: 'file'; label: string; fileKind: string; path: string }
   | { kind: 'error'; text: string }
   | { kind: 'vault'; label: string; url: string; expiresAt: string; oneTime: boolean };
 
@@ -76,6 +77,8 @@ const AssistantWidget: React.FC = () => {
       } else if (action.type === 'navigate') {
         navigate(action.path);
         next.push({ kind: 'note', text: `Opened ${action.label}` });
+      } else if (action.type === 'open_file') {
+        next.push({ kind: 'file', label: action.label, fileKind: action.kind, path: action.path });
       }
     });
     if (reply.text) next.push({ kind: 'message', role: 'assistant', text: reply.text });
@@ -224,6 +227,17 @@ const AssistantWidget: React.FC = () => {
               }
               if (item.kind === 'note') return <div key={i} className="aw-note">{item.text}</div>;
               if (item.kind === 'error') return <div key={i} className="aw-error" role="alert">{item.text}</div>;
+              if (item.kind === 'file') {
+                return (
+                  <div key={i} className="aw-card">
+                    <b>{item.label}</b>
+                    <p>{item.fileKind} created.</p>
+                    <div className="aw-card-actions">
+                      <a className="aw-btn" href={item.path} target="_blank" rel="noopener noreferrer">Open</a>
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div key={i} className="aw-card">
                   <b><FaKey aria-hidden="true" style={{ marginRight: 6, fontSize: 11 }} />{item.label}</b>
