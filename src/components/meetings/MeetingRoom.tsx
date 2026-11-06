@@ -1,5 +1,5 @@
 /** One meeting for a teammate (/meetings/:id): lobby, then the call, then a "you left" screen. */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { LocalUserChoices } from '@livekit/components-react';
 import { DisconnectReason } from 'livekit-client';
@@ -16,11 +16,13 @@ import CallStage, { CallTimer } from './CallStage';
 import Lobby from './Lobby';
 import { guestLink, meetingTime } from './meetingUtils';
 import PeoplePicker from './PeoplePicker';
+import { recordingStore } from './recordingStore';
+import RecordingStatus from './RecordingStatus';
 import './meetings.css';
 
 const WAITING_POLL_MS = 4000;
 
-type Phase = 'lobby' | 'call' | 'left' | 'ended';
+type Phase = 'lobby' | 'call' | 'left' | 'ended' | 'removed';
 
 const InviteModal: React.FC<{ meeting: Meeting; onClose: () => void; onSaved: (m: Meeting) => void }> = ({ meeting, onClose, onSaved }) => {
   const toast = useToast();
@@ -158,6 +160,7 @@ const CallHeader: React.FC<{
           confirmLabel="End for everyone"
           busyLabel="Ending…"
           onConfirm={async () => {
+            await recordingStore.stop();
             await meetingsService.end(meeting.id);
             setEnding(false);
             onEnded();
@@ -172,6 +175,7 @@ const CallHeader: React.FC<{
 const MeetingRoom: React.FC = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('lobby');
@@ -211,9 +215,34 @@ const MeetingRoom: React.FC = () => {
   };
 
   const onLeft = useCallback((reason?: DisconnectReason) => {
+    // A recording can't outlive the call it's drawn from, so save what there is.
+    recordingStore.stop();
     setDetails(null);
-    setPhase(reason === DisconnectReason.ROOM_DELETED ? 'ended' : 'left');
+    if (reason === DisconnectReason.ROOM_DELETED) setPhase('ended');
+    else if (reason === DisconnectReason.PARTICIPANT_REMOVED) setPhase('removed');
+    else setPhase('left');
   }, []);
+
+  const hostControls = useMemo(
+    () => ({
+      meetingId: id,
+      mute: async (identity: string) => {
+        try {
+          await meetingsService.muteParticipant(id, identity);
+        } catch (err) {
+          toast.error(hubErrorMessage(err, "Couldn't mute them. Try again."));
+        }
+      },
+      remove: async (identity: string) => {
+        try {
+          await meetingsService.removeParticipant(id, identity);
+        } catch (err) {
+          toast.error(hubErrorMessage(err, "Couldn't remove them. Try again."));
+        }
+      },
+    }),
+    [id, toast],
+  );
 
   const onFailed = useCallback((error: Error) => {
     setDetails(null);
@@ -244,6 +273,8 @@ const MeetingRoom: React.FC = () => {
         choices={choicesRef.current}
         onLeft={onLeft}
         onFailed={onFailed}
+        host={details.isHost ? hostControls : undefined}
+        notesMeetingId={meeting.id}
         header={
           <CallHeader
             meeting={meeting}
@@ -253,6 +284,19 @@ const MeetingRoom: React.FC = () => {
           />
         }
       />
+    );
+  }
+  if (phase === 'removed') {
+    return (
+      <main className="mt-center">
+        <EmptyState icon="video" title="The host removed you from this call" text={meeting.title}>
+          <div className="mt-after">
+            <Link to="/meetings" className="hub-btn">
+              Back to meetings
+            </Link>
+          </div>
+        </EmptyState>
+      </main>
     );
   }
   if (phase === 'left' || phase === 'ended') {
@@ -284,7 +328,13 @@ const MeetingRoom: React.FC = () => {
       subtitle={`${meetingTime(meeting.startsAt, meeting.durationMinutes)}${meeting.project ? ` · ${meeting.project.name}` : ''}`}
       defaultName={authService.getUser()?.name || 'Teammate'}
       joinLabel={meeting.status === 'live' ? 'Join call' : 'Start call'}
-      notice={meeting.videoReady === false && !joinError ? "Video calls aren't switched on yet. Joining will work once the LiveKit keys are added." : null}
+      notice={
+        meeting.videoReady === false && !joinError
+          ? "Video calls aren't switched on yet. Joining will work once the LiveKit keys are added."
+          : meeting.isRecording
+            ? 'This call is being recorded. By joining, you agree to appear in the recording.'
+            : null
+      }
       error={joinError}
       busy={joining}
       onJoin={join}
@@ -297,4 +347,11 @@ const MeetingRoom: React.FC = () => {
   );
 };
 
-export default MeetingRoom;
+const MeetingRoomPage: React.FC = () => (
+  <>
+    <MeetingRoom />
+    <RecordingStatus />
+  </>
+);
+
+export default MeetingRoomPage;
