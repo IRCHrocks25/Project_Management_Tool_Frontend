@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { FaExclamationCircle } from 'react-icons/fa';
 import { TuesdayRow } from '../rowTypes';
+import { todayDay } from '../../boards/boardConfig';
 
 interface Props {
   row: TuesdayRow;
   onChangeTaskDueDate?: (newDate: string | null) => void; // YYYY-MM-DD or null
+  markOverdue?: boolean; // New look: red date with an icon
 }
 
 function fmt(iso: string | null): string | null {
@@ -20,7 +23,7 @@ function isoToInputValue(iso: string | null): string {
   return d.toISOString().slice(0, 10);
 }
 
-const TimelineCell: React.FC<Props> = ({ row, onChangeTaskDueDate }) => {
+const TimelineCell: React.FC<Props> = ({ row, onChangeTaskDueDate, markOverdue }) => {
   if (row.kind === 'project') {
     // Per locked decision #5: render "No timeline set" whenever clientStartDate
     // is null. We never parse targetCloseMonth and never substitute task dueDates.
@@ -36,15 +39,16 @@ const TimelineCell: React.FC<Props> = ({ row, onChangeTaskDueDate }) => {
     return <span className="tuesday-mono">{min} → {max}</span>;
   }
   // task — click-to-edit date input
-  return <TaskDueDateEditor task={row.data} onChange={onChangeTaskDueDate} />;
+  return <TaskDueDateEditor task={row.data} onChange={onChangeTaskDueDate} markOverdue={markOverdue} />;
 };
 
 interface EditorProps {
-  task: { dueDate: string | null };
+  task: { dueDate: string | null; isCompleted: boolean };
   onChange?: (newDate: string | null) => void;
+  markOverdue?: boolean;
 }
 
-const TaskDueDateEditor: React.FC<EditorProps> = ({ task, onChange }) => {
+const TaskDueDateEditor: React.FC<EditorProps> = ({ task, onChange, markOverdue }) => {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(isoToInputValue(task.dueDate));
   const ref = useRef<HTMLInputElement>(null);
@@ -96,12 +100,14 @@ const TaskDueDateEditor: React.FC<EditorProps> = ({ task, onChange }) => {
   }
 
   const due = fmt(task.dueDate);
+  const late = !!markOverdue && !!task.dueDate && !task.isCompleted && isoToInputValue(task.dueDate) < todayDay();
   return (
     <span
-      className="tuesday-mono tuesday-due-display"
+      className={`tuesday-mono tuesday-due-display${late ? ' tuesday-due-display--late' : ''}`}
       title="Click to change due date"
       onClick={(e) => { e.stopPropagation(); setEditing(true); }}
     >
+      {late && <FaExclamationCircle aria-label="Overdue" />}
       {due || <span className="tuesday-muted">+ Set date</span>}
     </span>
   );

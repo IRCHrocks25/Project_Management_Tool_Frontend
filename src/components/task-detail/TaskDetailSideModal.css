@@ -1663,3 +1663,17 @@
   border: 1px solid var(--td-badge-progress-border);
   flex-shrink: 0;
 }
+
+/* Transfer modal, teal variant: teal marks the choice and the next step; everything else stays white. */
+.ttm-panel--action {
+  --td-accent-primary: var(--color-action);
+  --td-accent-primary-hover: var(--color-action);
+  --td-surface-raised: #ffffff;
+}
+.ttm-panel--action .ttm-kind-btn.active,
+.ttm-panel--action .ttm-dept-btn.active,
+.ttm-panel--action .ttm-dept-btn:hover:not(.disabled) { background: var(--color-action-soft); }
+.ttm-panel--action .ttm-assignee-row.selected {
+  background: var(--color-action-soft);
+  border-color: var(--color-action-line);
+}

@@ -4,15 +4,15 @@ import { FaAngleDoubleLeft, FaAngleDoubleRight, FaCaretDown, FaColumns, FaExtern
 import { authService } from '../../services/auth.service';
 import { boardService, BoardPerson, BoardSummary, BoardTaskRow } from '../../services/board.service';
 import UserAvatar from '../UserAvatar';
-import TaskDetailSideModal from '../task-detail/TaskDetailSideModal';
-import TransferTaskModal from '../task-detail/TransferTaskModal';
 import Popover from './Popover';
 import { BoardContext, BoardContextValue, SearchField } from './cells';
 import BoardTable from './BoardTable';
 import BoardKanban from './BoardKanban';
 import BoardToolbar from './BoardToolbar';
+import BoardSwitch from './BoardSwitch';
 import TaskPanel, { PanelTab } from './TaskPanel';
 import { useBoard } from './useBoard';
+import { useTaskOverlays } from './useTaskOverlays';
 import {
   BoardFilters,
   BoardPrefs,
@@ -88,13 +88,12 @@ const BoardsPage: React.FC = () => {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [groupPromptAnchor, setGroupPromptAnchor] = useState<HTMLElement | null>(null);
   const [addTaskFocus, setAddTaskFocus] = useState(0);
-  const [transfer, setTransfer] = useState<BoardTaskRow | null>(null);
-  const [fullDetails, setFullDetails] = useState<BoardTaskRow | null>(null);
   const switcherRef = useRef<HTMLButtonElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const actions = useBoard(projectId);
   const { board, loading, error } = actions;
+  const { requestMove, transferTask, openFullDetails, overlays } = useTaskOverlays(actions, allUsers);
 
   useEffect(() => {
     boardService.list().then(setBoards).catch(() => setBoards([]));
@@ -163,8 +162,8 @@ const BoardsPage: React.FC = () => {
   };
 
   const context: BoardContextValue = useMemo(
-    () => ({ actions, people, openTask, transferTask: setTransfer }),
-    [actions, people, openTask],
+    () => ({ actions, people, openTask, transferTask, requestMove }),
+    [actions, people, openTask, transferTask, requestMove],
   );
 
   const columns = useMemo(() => orderedColumns(board?.columns || [], prefs), [board?.columns, prefs]);
@@ -275,6 +274,7 @@ const BoardsPage: React.FC = () => {
                   <FaCaretDown aria-hidden />
                 </button>
                 <div className="bv-head-meta">
+                  <BoardSwitch active="boards" role={user?.role} />
                   {board.project.pm && (
                     <span className="bv-pm" title={`PM: ${board.project.pm.name}`}>
                       <UserAvatar name={board.project.pm.name} avatarUrl={board.project.pm.avatarUrl} size={28} />
@@ -351,7 +351,7 @@ const BoardsPage: React.FC = () => {
                 allUsers={allUsers}
                 onTab={setPanelTab}
                 onClose={closeTask}
-                onOpenFullDetails={setFullDetails}
+                onOpenFullDetails={openFullDetails}
               />
             )}
 
@@ -368,36 +368,7 @@ const BoardsPage: React.FC = () => {
         </Popover>
       )}
 
-      {transfer && (
-        <TransferTaskModal
-          task={{
-            id: transfer.id,
-            title: transfer.title,
-            type: transfer.type,
-            projectId: transfer.projectId,
-            deliverableId: transfer.deliverableId,
-            assignees: transfer.owners.map((o) => ({ userId: o.id })),
-          }}
-          allUsers={allUsers}
-          onClose={() => setTransfer(null)}
-          onTransferred={() => {
-            setTransfer(null);
-            actions.reload(true);
-          }}
-        />
-      )}
-
-      <TaskDetailSideModal
-        isOpen={!!fullDetails}
-        task={fullDetails}
-        onClose={() => {
-          setFullDetails(null);
-          actions.reload(true);
-        }}
-        allUsers={allUsers}
-        getProjectName={() => board?.project.name || ''}
-        onTaskUpdate={() => actions.reload(true)}
-      />
+      {overlays}
     </div>
   );
 };

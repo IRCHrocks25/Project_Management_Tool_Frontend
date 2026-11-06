@@ -917,3 +917,29 @@
   color: var(--td-text-tertiary);
   user-select: none;
 }
+
+/* Classic / New look switch. The selected option follows each look's accent. */
+.tuesday-look-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--td-border-card);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--td-surface-base);
+}
+.tuesday-look-option {
+  border: 0;
+  background: none;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--td-text-secondary);
+  cursor: pointer;
+}
+.tuesday-look-option:hover { color: var(--td-text-primary); }
+.tuesday-look-option:focus-visible { outline: 2px solid var(--td-accent-primary); outline-offset: -2px; }
+.tuesday-look-option[aria-pressed='true'] {
+  background: var(--td-accent-primary);
+  color: #ffffff;
+}

@@ -34,6 +34,8 @@ export interface BoardContextValue {
   people: BoardPerson[];
   openTask: (task: BoardTaskRow, tab?: 'updates' | 'files' | 'activity') => void;
   transferTask: (task: BoardTaskRow) => void;
+  /** Asks for notes first; the move only happens once they are saved. */
+  requestMove: (task: BoardTaskRow, stageId: string) => void;
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);
@@ -61,8 +63,10 @@ export const PeoplePicker: React.FC<{
   selected: BoardPerson[];
   onChange: (next: BoardPerson[]) => void;
   label: string;
-}> = ({ selected, onChange, label }) => {
-  const { people } = useBoardContext();
+  people?: BoardPerson[];
+}> = ({ selected, onChange, label, people: peopleProp }) => {
+  const contextPeople = useContext(BoardContext)?.people;
+  const people = useMemo(() => peopleProp || contextPeople || [], [peopleProp, contextPeople]);
   const [query, setQuery] = useState('');
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -139,7 +143,7 @@ const LabelOption: React.FC<{ color: string; label: string; disabled?: boolean; 
 );
 
 export const StatusCell: React.FC<{ task: BoardTaskRow }> = ({ task }) => {
-  const { actions } = useBoardContext();
+  const { actions, requestMove } = useBoardContext();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const stages = stagesForBoard(actions.board?.tasks || []);
@@ -162,7 +166,7 @@ export const StatusCell: React.FC<{ task: BoardTaskRow }> = ({ task }) => {
                   hint={lockedByOwner ? 'Remove the owner to move this back' : undefined}
                   onClick={() => {
                     setOpen(false);
-                    actions.moveStage(task, id);
+                    requestMove(task, id);
                   }}
                 />
               );

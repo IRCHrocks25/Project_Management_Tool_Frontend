@@ -2,6 +2,10 @@ import React from 'react';
 import { FaCaretDown, FaCaretUp } from 'react-icons/fa';
 import { SortState } from './hooks/useTuesdayFilters';
 
+const NEW_LOOK_WIDTHS: Record<string, string> = {
+  name: '25%', status: '15%', priority: '8%', timeline: '11%', pm: '10%', clientType: '9%', department: '9%', assignee: '7%',
+};
+
 const COLUMNS = [
   { key: 'name',       label: 'Name',       width: '28%' },
   // Blank-header narrow column for row-action icons (diamond / chat).
@@ -29,9 +33,10 @@ const SORTABLE_KEYS = new Set(['name', 'status', 'priority', 'timeline', 'pm']);
 interface Props {
   sort: SortState | null;
   onSort: (columnKey: string) => void;
+  newLook?: boolean;
 }
 
-const TuesdayHeader: React.FC<Props> = ({ sort, onSort }) => (
+const TuesdayHeader: React.FC<Props> = ({ sort, onSort, newLook }) => (
   <thead className="tuesday-thead">
     <tr>
       {COLUMNS.map((c) => {
@@ -42,7 +47,7 @@ const TuesdayHeader: React.FC<Props> = ({ sort, onSort }) => (
           <th
             key={c.key}
             className={`tuesday-th ${sortable ? 'tuesday-th--sortable' : ''} ${isSorted ? 'tuesday-th--sorted' : ''}`}
-            style={{ width: c.width }}
+            style={{ width: (newLook && NEW_LOOK_WIDTHS[c.key]) || c.width }}
             onClick={sortable ? () => onSort(c.key) : undefined}
             aria-sort={isSorted ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}
           >

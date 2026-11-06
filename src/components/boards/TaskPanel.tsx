@@ -41,6 +41,7 @@ interface ActivityRow {
   field: string;
   before?: React.ReactNode;
   after?: React.ReactNode;
+  note?: string;
 }
 
 const Pill: React.FC<{ color: string; children: React.ReactNode }> = ({ color, children }) => (
@@ -69,6 +70,7 @@ const statusRows = (description: string | null): ActivityRow[] => {
     const column = (block.match(/\nNew Column:\s*(.+?)(?:\n|$)/)?.[1] || '').trim();
     const by = (block.match(/\nBy:\s*(.+?)(?:\n|$)/)?.[1] || 'Unknown').trim();
     const at = (block.match(/\nAt:\s*(.+?)(?:\n|$)/)?.[1] || '').trim();
+    const note = block.match(/\nNotes:\s*([\s\S]+?)(?=\nAttachments?:|\n\n|$)/)?.[1]?.trim();
     const row: ActivityRow = {
       id: `status-${index}`,
       at,
@@ -76,6 +78,7 @@ const statusRows = (description: string | null): ActivityRow[] => {
       field: 'Status',
       before: previous ? <Pill color={stageColorByLabel(previous)}>{previous}</Pill> : undefined,
       after: <Pill color={stageColorByLabel(column)}>{column}</Pill>,
+      note,
     };
     previous = column;
     return row;
@@ -151,6 +154,7 @@ const ActivityLog: React.FC<{ task: BoardTaskRow }> = ({ task }) => {
             {row.before !== undefined && <><span className="bv-activity-value">{row.before}</span><FaArrowRight className="bv-activity-arrow" /></>}
             <span className="bv-activity-value">{row.after}</span>
           </span>
+          {row.note && <p className="bv-activity-note">{row.note}</p>}
         </div>
       ))}
     </div>
@@ -347,10 +351,10 @@ const TaskPanel: React.FC<TaskPanelProps> = ({ task, board, columns, tab, allUse
       <ConfirmModal
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           setConfirmDelete(false);
+          await actions.deleteTasks([task.id]);
           onClose();
-          actions.deleteTasks([task.id]);
         }}
         title={`Delete "${task.title}"?`}
         message="It will be removed from every board. A record of what was deleted stays in the activity log."

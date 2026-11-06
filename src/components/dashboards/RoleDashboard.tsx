@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import BoardSwitch from '../boards/BoardSwitch';
 import {
   FaArrowRight,
   FaBell,
@@ -1599,9 +1600,12 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({ role, pmPreviewMode = fal
               <h1 className="rd-h1">{pageTitle}</h1>
               <p className="rd-desc">{pageDesc}</p>
             </div>
-            <div className="rd-today">
-              <FaCalendarAlt aria-hidden="true" />
-              {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            <div className="rd-header-side">
+              {section === 'board' && <BoardSwitch active="board" />}
+              <div className="rd-today">
+                <FaCalendarAlt aria-hidden="true" />
+                {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
             </div>
           </div>
 

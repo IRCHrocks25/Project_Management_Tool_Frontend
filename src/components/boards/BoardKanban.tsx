@@ -66,7 +66,7 @@ const Card: React.FC<{ task: BoardTaskRow; hidden: string[]; onDrag: (dragging: 
   );
 };
 
-const AddCard: React.FC<{ stageId: string; tasks: BoardTaskRow[] }> = ({ stageId, tasks }) => {
+const AddCard: React.FC<{ tasks: BoardTaskRow[] }> = ({ tasks }) => {
   const { actions } = useBoardContext();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -74,7 +74,7 @@ const AddCard: React.FC<{ stageId: string; tasks: BoardTaskRow[] }> = ({ stageId
     const value = title.trim();
     setOpen(false);
     setTitle('');
-    if (value) actions.addTask(value, { type: mostCommonType(tasks.length ? tasks : actions.board?.tasks || []), stageId });
+    if (value) actions.addTask(value, { type: mostCommonType(tasks.length ? tasks : actions.board?.tasks || []) });
   };
   if (!open) {
     return <button type="button" className="bv-card-add" onClick={() => setOpen(true)}><FaPlus /> Add task</button>;
@@ -85,7 +85,7 @@ const AddCard: React.FC<{ stageId: string; tasks: BoardTaskRow[] }> = ({ stageId
       className="bv-card-add-input"
       value={title}
       placeholder="Task name"
-      aria-label={`New task in ${stageLabel(stageId)}`}
+      aria-label="New task name"
       onChange={(e) => setTitle(e.target.value)}
       onBlur={submit}
       onKeyDown={(e) => {
@@ -100,7 +100,7 @@ const AddCard: React.FC<{ stageId: string; tasks: BoardTaskRow[] }> = ({ stageId
 };
 
 const BoardKanban: React.FC<{ tasks: BoardTaskRow[]; hidden: string[] }> = ({ tasks, hidden }) => {
-  const { actions } = useBoardContext();
+  const { actions, requestMove } = useBoardContext();
   const [over, setOver] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   useDragEdgeScroll(dragging);
@@ -128,7 +128,7 @@ const BoardKanban: React.FC<{ tasks: BoardTaskRow[]; hidden: string[] }> = ({ ta
               setOver(null);
               setDragging(false);
               const task = tasks.find((t) => t.id === e.dataTransfer.getData('application/x-board-task'));
-              if (task) actions.moveStage(task, stageId);
+              if (task) requestMove(task, stageId);
             }}
           >
             <header style={{ background: STAGE_COLOR[stageId] }}>
@@ -137,7 +137,8 @@ const BoardKanban: React.FC<{ tasks: BoardTaskRow[]; hidden: string[] }> = ({ ta
             </header>
             <div className="bv-lane-body">
               {stageTasks.map((task) => <Card key={task.id} task={task} hidden={hidden} onDrag={setDragging} />)}
-              <AddCard stageId={stageId} tasks={stageTasks} />
+              {/* New tasks start at the beginning. Any later stage is a status change, which needs notes. */}
+              {stageId === 'not_started' && <AddCard tasks={stageTasks} />}
             </div>
           </section>
         );

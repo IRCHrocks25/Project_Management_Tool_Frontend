@@ -53,7 +53,6 @@ const newTaskContext = (section: TaskSection, groupBy: GroupByKey) => {
   const base = { type: mostCommonType(section.tasks) };
   switch (groupBy) {
     case 'deliverable': return { ...base, deliverableId: section.id === UNASSIGNED_GROUP ? null : section.id };
-    case 'stage': return { ...base, stageId: section.id };
     case 'priority': return { ...base, priority: section.id === 'none' ? null : section.id };
     case 'owner': return { ...base, owner: section.id === 'none' ? null : section.id };
     case 'department': return { type: section.id };
@@ -383,7 +382,7 @@ const GroupMenu: React.FC<{ section: TaskSection }> = ({ section }) => {
 };
 
 const BoardTable: React.FC<BoardTableProps> = ({ sections, columns, prefs, sort, canManage, addTaskFocus, onPrefs, onSort, onAddGroup }) => {
-  const { actions } = useBoardContext();
+  const { actions, requestMove } = useBoardContext();
   const [selected, setSelected] = useState<string[]>([]);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
@@ -421,7 +420,7 @@ const BoardTable: React.FC<BoardTableProps> = ({ sections, columns, prefs, sort,
       const target = section.id === UNASSIGNED_GROUP ? null : section.id;
       if ((task.deliverableId || null) !== target) actions.setFields(task, { deliverableId: target });
     } else if (prefs.groupBy === 'stage') {
-      actions.moveStage(task, section.id);
+      requestMove(task, section.id);
     } else if (prefs.groupBy === 'priority') {
       const target = section.id === 'none' ? null : section.id;
       if ((task.priority || null) !== target) actions.setFields(task, { priority: target });
@@ -552,7 +551,10 @@ const BoardTable: React.FC<BoardTableProps> = ({ sections, columns, prefs, sort,
                       </div>
                     ))}
 
-                    <AddTaskRow section={section} groupBy={prefs.groupBy} template={template} focusSignal={sectionIndex === 0 ? addTaskFocus : 0} />
+                    {/* New tasks start at the beginning. Any later stage is a status change, which needs notes. */}
+                    {(prefs.groupBy !== 'stage' || section.id === 'not_started') && (
+                      <AddTaskRow section={section} groupBy={prefs.groupBy} template={template} focusSignal={sectionIndex === 0 ? addTaskFocus : 0} />
+                    )}
 
                     <div className="bv-row bv-summary-row" style={{ gridTemplateColumns: template }}>
                       <div className="bv-cell bv-sticky bv-sticky-check blank" />
