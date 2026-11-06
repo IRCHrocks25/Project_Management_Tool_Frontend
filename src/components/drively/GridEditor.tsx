@@ -9,6 +9,7 @@ import { DriveDetail, saveBlob } from '../../services/drively.service';
 import EmptyState from '../hub/ui/EmptyState';
 import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
+import { attachGridScroll } from './gridScroll';
 import { useToast } from '../hub/ui/Toast';
 import { exportName } from './driveContent';
 import { useLiveDoc, useLivePreview } from './driveLive';
@@ -30,6 +31,10 @@ const GridEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   const latest = useRef<any[]>([]);
   const grid = useRef<WorkbookInstance>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const host = useRef<HTMLDivElement>(null);
+  const hasWorkbook = !!workbook;
+
+  useEffect(() => (hasWorkbook && host.current ? attachGridScroll(host.current) : undefined), [hasWorkbook]);
 
   useLivePreview(live, item.id, 'grid', () => ({ sheets: sheetsForStorage(latest.current) }));
 
@@ -117,7 +122,7 @@ const GridEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   return (
     <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions}>
       {workbook ? (
-        <div className="drv-grid-host">
+        <div className="drv-grid-host" ref={host}>
           <Workbook key={workbook.key} ref={grid} data={workbook.sheets} lang="en" allowEdit={canEdit} showToolbar={canEdit} showFormulaBar showSheetTabs row={100} column={26} onChange={onChange} />
         </div>
       ) : (
