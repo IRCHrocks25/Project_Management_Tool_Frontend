@@ -13,17 +13,19 @@ import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { attendanceLabel, guestLink, isJoinableSoon, meetingTime } from './meetingUtils';
+import NotesList from './NotesList';
 import RecordingsList from './RecordingsList';
 import RecordingStatus from './RecordingStatus';
 import ScheduleMeetingModal from './ScheduleMeetingModal';
 import './meetings.css';
 
-type Tab = MeetingView | 'recordings';
+type Tab = MeetingView | 'recordings' | 'notes';
 
 const VIEWS: { key: Tab; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
   { key: 'recordings', label: 'Recordings' },
+  { key: 'notes', label: 'Notes' },
 ];
 
 const StatusBadge: React.FC<{ meeting: Meeting }> = ({ meeting }) => {
@@ -36,7 +38,10 @@ const MeetingsHome: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [searchParams] = useSearchParams();
-  const [view, setView] = useState<Tab>(searchParams.get('tab') === 'recordings' ? 'recordings' : 'upcoming');
+  const [view, setView] = useState<Tab>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'recordings' || tab === 'notes' ? tab : 'upcoming';
+  });
   const [meetings, setMeetings] = useState<Meeting[] | null>(null);
   const [videoReady, setVideoReady] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +50,7 @@ const MeetingsHome: React.FC = () => {
   const [cancelling, setCancelling] = useState<Meeting | null>(null);
 
   const load = useCallback(async () => {
-    if (view === 'recordings') return;
+    if (view === 'recordings' || view === 'notes') return;
     setError(null);
     try {
       const result = await meetingsService.list(view);
@@ -124,6 +129,8 @@ const MeetingsHome: React.FC = () => {
           <div className="hub-card">
             {view === 'recordings' ? (
               <RecordingsList />
+            ) : view === 'notes' ? (
+              <NotesList />
             ) : error ? (
               <EmptyState icon="alert" title="Couldn't load your meetings" text={error} actionLabel="Try again" actionIcon="refresh" onAction={load} />
             ) : !meetings ? (

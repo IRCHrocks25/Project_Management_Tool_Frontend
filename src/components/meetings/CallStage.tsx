@@ -30,9 +30,11 @@ const CallStage: React.FC<{
   choices: LocalUserChoices;
   header: React.ReactNode;
   host?: HostControls;
+  /** Teammates only: guests can't take notes. */
+  notesMeetingId?: string;
   onLeft: (reason?: DisconnectReason) => void;
   onFailed: (error: Error) => void;
-}> = ({ url, token, choices, header, host, onLeft, onFailed }) => {
+}> = ({ url, token, choices, header, host, notesMeetingId, onLeft, onFailed }) => {
   const options: RoomOptions = {
     adaptiveStream: true,
     dynacast: true,
@@ -55,7 +57,7 @@ const CallStage: React.FC<{
         onDisconnected={onLeft}
         onError={onFailed}
       >
-        <CallConference host={host} />
+        <CallConference host={host} notesMeetingId={notesMeetingId} />
       </Room>
     </div>
   );

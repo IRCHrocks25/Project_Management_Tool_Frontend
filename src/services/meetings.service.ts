@@ -60,6 +60,7 @@ export interface PublicMeeting {
   status: MeetingStatus;
   videoReady: boolean;
   isRecording?: boolean;
+  mayTakeNotes?: boolean;
 }
 
 export interface MeetingRecording {
@@ -72,6 +73,55 @@ export interface MeetingRecording {
   title: string;
   projectName: string | null;
   canManage: boolean;
+}
+
+export interface SpeakerSpan {
+  segment: number;
+  name: string;
+  startMs: number;
+  endMs: number;
+}
+
+export type NoteStatus = 'capturing' | 'processing' | 'ready' | 'empty' | 'failed';
+
+export interface MeetingNoteRow {
+  id: string;
+  title: string;
+  status: NoteStatus;
+  overview: string | null;
+  durationSeconds: number | null;
+  startedAt: string;
+}
+
+export interface NoteItem {
+  id: string;
+  text: string;
+  ownerName: string | null;
+  done: boolean;
+  taskId: string | null;
+}
+
+export interface TranscriptLine {
+  start: number;
+  end: number;
+  speaker: string;
+  text: string;
+}
+
+export interface MeetingNoteDetail extends MeetingNoteRow {
+  meetingId: string;
+  language: string | null;
+  topics: { title: string; points: string[] }[];
+  items: NoteItem[];
+  transcript: TranscriptLine[];
+  recipients: HubUser[];
+  project: { id: string; name: string } | null;
+  hasRecording: boolean;
+}
+
+export interface NotePreferences {
+  autoNotes: boolean;
+  available: boolean;
 }
 
 export interface RecordingPart {
@@ -89,6 +139,28 @@ const data = <T,>(p: Promise<{ data: T }>) => p.then((r) => r.data);
 const recordingUrl = (meetingId: string, id: string) => `${API_URL}/meetings/${meetingId}/recordings/${id}`;
 
 export const meetingsService = {
+  notePreferences: () => data<NotePreferences>(axios.get(`${API_URL}/meetings/notes/preferences`, auth())),
+  setNotePreferences: (autoNotes: boolean) => data<NotePreferences>(axios.patch(`${API_URL}/meetings/notes/preferences`, { autoNotes }, auth())),
+  notes: () => data<{ notes: MeetingNoteRow[] }>(axios.get(`${API_URL}/meetings/notes`, auth())).then((r) => r.notes),
+  note: (id: string) => data<MeetingNoteDetail>(axios.get(`${API_URL}/meetings/notes/${id}`, auth())),
+  removeNote: (id: string) => data<{ removed: boolean }>(axios.delete(`${API_URL}/meetings/notes/${id}`, auth())),
+  retryNote: (id: string) => data<{ status: string }>(axios.post(`${API_URL}/meetings/notes/${id}/retry`, {}, auth())),
+  shareNote: (id: string, userIds: string[]) => data<{ shared: number }>(axios.post(`${API_URL}/meetings/notes/${id}/share`, { userIds }, auth())),
+  setNoteItemDone: (id: string, itemId: string, done: boolean) => data<NoteItem>(axios.patch(`${API_URL}/meetings/notes/${id}/items/${itemId}`, { done }, auth())),
+  makeNoteItemTask: (id: string, itemId: string, projectId?: string) =>
+    data<NoteItem>(axios.post(`${API_URL}/meetings/notes/${id}/items/${itemId}/task`, { projectId }, auth())),
+  listenForNotes: (meetingId: string, input: { segment: number | null; contentType?: string; speakers?: SpeakerSpan[] }) =>
+    data<{ blocked: boolean; capturing: boolean; noteId: string | null; segment: number | null }>(
+      axios.post(`${API_URL}/meetings/${meetingId}/notes/listen`, input, auth()),
+    ),
+  leaveNotes: (meetingId: string) => data<{ left: boolean }>(axios.post(`${API_URL}/meetings/${meetingId}/notes/leave`, {}, auth())),
+  blockNotes: (meetingId: string, blocked: boolean) => data<{ blocked: boolean }>(axios.post(`${API_URL}/meetings/${meetingId}/notes/block`, { blocked }, auth())),
+  uploadNoteChunk: (meetingId: string, noteId: string, segment: number, seq: number, chunk: Blob) =>
+    data<{ saved: boolean }>(
+      axios.put(`${API_URL}/meetings/${meetingId}/notes/${noteId}/chunks/${segment}/${seq}`, chunk, {
+        headers: { ...auth().headers, 'Content-Type': 'application/octet-stream' },
+      }),
+    ),
   recordings: () => data<{ recordings: MeetingRecording[] }>(axios.get(`${API_URL}/meetings/recordings`, auth())).then((r) => r.recordings),
   recordingPlayback: (id: string) =>
     data<{ deliveryUrl: string; embedUrl: string; expiresAt: string }>(axios.post(`${API_URL}/meetings/recordings/${id}/playback`, {}, auth())),

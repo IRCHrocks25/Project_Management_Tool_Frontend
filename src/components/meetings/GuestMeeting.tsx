@@ -163,8 +163,10 @@ const GuestMeeting: React.FC = () => {
         !info.videoReady
           ? "Video calls aren't switched on yet. Please check back with your host."
           : info.isRecording
-            ? 'This call is being recorded. By joining, you agree to appear in the recording.'
-            : null
+            ? `This call is being recorded${info.mayTakeNotes ? ' and may be transcribed into notes' : ''}. By joining, you agree to this.`
+            : info.mayTakeNotes
+              ? 'This call may be transcribed into notes for the people on it. By joining, you agree to this.'
+              : null
       }
       error={error}
       busy={busy}

@@ -41,79 +41,30 @@ const startTicker = (onTick: () => void): (() => void) => {
   }
 };
 
-export class CallRecorder {
-  private readonly canvas = document.createElement('canvas');
-  private readonly ctx: CanvasRenderingContext2D;
+/** Everyone's audio in the call, mixed into one stream. */
+export class CallAudioMix {
   private readonly audio = new AudioContext();
   private readonly mix = this.audio.createMediaStreamDestination();
   private readonly sources = new Map<string, MediaStreamAudioSourceNode>();
-  private readonly chunks: Blob[] = [];
-  private recorder: MediaRecorder | null = null;
-  private stopTicker: (() => void) | null = null;
-  private startedAt = 0;
-  private ticks = 0;
 
-  constructor(private readonly room: Room, private readonly stage: () => HTMLElement | null) {
-    this.canvas.width = WIDTH;
-    this.canvas.height = HEIGHT;
-    const ctx = this.canvas.getContext('2d', { alpha: false });
-    if (!ctx) throw new Error('This browser cannot record calls.');
-    this.ctx = ctx;
+  constructor(private readonly room: Room) {}
+
+  get stream(): MediaStream {
+    return this.mix.stream;
   }
 
   async start(): Promise<void> {
-    const mimeType = pickFormat();
-    if (!mimeType) throw new Error('This browser cannot record calls.');
     await this.audio.resume();
-    this.syncAudio();
-    this.draw();
-    const stream = new MediaStream([...this.canvas.captureStream(FPS).getVideoTracks(), ...this.mix.stream.getAudioTracks()]);
-    this.recorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
-      audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
-    });
-    this.recorder.ondataavailable = (event) => {
-      if (event.data.size) this.chunks.push(event.data);
-    };
-    this.recorder.start(5000);
-    this.startedAt = Date.now();
-    this.stopTicker = startTicker(() => {
-      this.draw();
-      this.ticks += 1;
-      if (this.ticks % FPS === 0) this.syncAudio();
-    });
+    this.sync();
   }
 
-  stop(): Promise<FinishedRecording> {
-    return new Promise((resolve, reject) => {
-      const recorder = this.recorder;
-      if (!recorder) {
-        reject(new Error('Recording never started.'));
-        return;
-      }
-      const finish = () => {
-        this.stopTicker?.();
-        this.sources.forEach((node) => node.disconnect());
-        this.audio.close().catch(() => undefined);
-        const contentType = (recorder.mimeType || 'video/webm').split(';')[0];
-        const lengthMs = Math.max(1000, Date.now() - this.startedAt);
-        const blob = new Blob(this.chunks, { type: contentType });
-        const done = (file: Blob) => resolve({ blob: file, contentType, durationSeconds: Math.round(lengthMs / 1000) });
-        // Browsers leave the length out of live WebM, and Iceberg rejects a video without one.
-        if (contentType === 'video/webm' && blob.size) fixWebmDuration(blob, lengthMs, { logger: false }).then(done, reject);
-        else done(blob);
-      };
-      if (recorder.state === 'inactive') finish();
-      else {
-        recorder.onstop = finish;
-        recorder.stop();
-      }
-    });
+  close() {
+    this.sources.forEach((node) => node.disconnect());
+    this.audio.close().catch(() => undefined);
   }
 
   /** Re-checked regularly, so it covers people joining, leaving and switching microphones without extra wiring. */
-  private syncAudio() {
+  sync() {
     const live = new Map<string, MediaStreamTrack>();
     const collect = (publications: Iterable<{ kind: Track.Kind; track?: { mediaStreamTrack: MediaStreamTrack } }>) => {
       for (const publication of Array.from(publications)) {
@@ -135,6 +86,75 @@ export class CallRecorder {
       const node = this.audio.createMediaStreamSource(new MediaStream([media]));
       node.connect(this.mix);
       this.sources.set(id, node);
+    });
+  }
+}
+
+export class CallRecorder {
+  private readonly canvas = document.createElement('canvas');
+  private readonly ctx: CanvasRenderingContext2D;
+  private readonly mix: CallAudioMix;
+  private readonly chunks: Blob[] = [];
+  private recorder: MediaRecorder | null = null;
+  private stopTicker: (() => void) | null = null;
+  private startedAt = 0;
+  private ticks = 0;
+
+  constructor(room: Room, private readonly stage: () => HTMLElement | null) {
+    this.mix = new CallAudioMix(room);
+    this.canvas.width = WIDTH;
+    this.canvas.height = HEIGHT;
+    const ctx = this.canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('This browser cannot record calls.');
+    this.ctx = ctx;
+  }
+
+  async start(): Promise<void> {
+    const mimeType = pickFormat();
+    if (!mimeType) throw new Error('This browser cannot record calls.');
+    await this.mix.start();
+    this.draw();
+    const stream = new MediaStream([...this.canvas.captureStream(FPS).getVideoTracks(), ...this.mix.stream.getAudioTracks()]);
+    this.recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: VIDEO_BITS_PER_SECOND,
+      audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+    });
+    this.recorder.ondataavailable = (event) => {
+      if (event.data.size) this.chunks.push(event.data);
+    };
+    this.recorder.start(5000);
+    this.startedAt = Date.now();
+    this.stopTicker = startTicker(() => {
+      this.draw();
+      this.ticks += 1;
+      if (this.ticks % FPS === 0) this.mix.sync();
+    });
+  }
+
+  stop(): Promise<FinishedRecording> {
+    return new Promise((resolve, reject) => {
+      const recorder = this.recorder;
+      if (!recorder) {
+        reject(new Error('Recording never started.'));
+        return;
+      }
+      const finish = () => {
+        this.stopTicker?.();
+        this.mix.close();
+        const contentType = (recorder.mimeType || 'video/webm').split(';')[0];
+        const lengthMs = Math.max(1000, Date.now() - this.startedAt);
+        const blob = new Blob(this.chunks, { type: contentType });
+        const done = (file: Blob) => resolve({ blob: file, contentType, durationSeconds: Math.round(lengthMs / 1000) });
+        // Browsers leave the length out of live WebM, and Iceberg rejects a video without one.
+        if (contentType === 'video/webm' && blob.size) fixWebmDuration(blob, lengthMs, { logger: false }).then(done, reject);
+        else done(blob);
+      };
+      if (recorder.state === 'inactive') finish();
+      else {
+        recorder.onstop = finish;
+        recorder.stop();
+      }
     });
   }
 

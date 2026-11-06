@@ -73,3 +73,28 @@ export const fileSize = (bytes: number): string => {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
   return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`;
 };
+
+/** A transcript line's time from the start of the notes, like 4:05 or 1:02:05. */
+export const transcriptClock = (seconds: number): string => {
+  const total = Math.max(0, Math.floor(seconds));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor(total / 60) % 60;
+  return hours ? `${hours}:${pad(minutes)}:${pad(total % 60)}` : `${minutes}:${pad(total % 60)}`;
+};
+
+/** The notes as plain text, for pasting somewhere else. */
+export const summaryAsText = (note: {
+  title: string;
+  overview: string | null;
+  items: { text: string; ownerName: string | null }[];
+  topics: { title: string; points: string[] }[];
+}): string =>
+  [
+    note.title,
+    note.overview || '',
+    note.items.length ? `Action items\n${note.items.map((i) => `- ${i.text}${i.ownerName ? ` (${i.ownerName})` : ''}`).join('\n')}` : '',
+    ...note.topics.map((t) => `${t.title}\n${t.points.map((p) => `- ${p}`).join('\n')}`),
+  ]
+    .filter(Boolean)
+    .join('\n\n');

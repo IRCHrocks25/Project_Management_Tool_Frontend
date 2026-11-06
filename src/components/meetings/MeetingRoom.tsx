@@ -274,6 +274,7 @@ const MeetingRoom: React.FC = () => {
         onLeft={onLeft}
         onFailed={onFailed}
         host={details.isHost ? hostControls : undefined}
+        notesMeetingId={meeting.id}
         header={
           <CallHeader
             meeting={meeting}
