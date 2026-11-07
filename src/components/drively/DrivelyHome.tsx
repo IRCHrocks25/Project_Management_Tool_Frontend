@@ -14,6 +14,7 @@ import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { blankContent, blankTab, formatBytes, itemHref, KIND_LABELS, previewFor, sendTab } from './driveContent';
+import DriveFolderTree from './DriveFolderTree';
 import { MoveModal, NameModal, ShareModal } from './DriveModals';
 import FileIcon from './FileIcon';
 
@@ -128,6 +129,8 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
   });
   const [newOpen, setNewOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [treeKey, setTreeKey] = useState(0); // bump to refresh the sidebar folder tree
+  const bumpTree = useCallback(() => setTreeKey((k) => k + 1), []);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [dragging, setDragging] = useState(false);
   const [dialog, setDialog] = useState<
@@ -278,7 +281,8 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
   const finishUploads = useCallback(() => {
     load();
     refreshStorage();
-  }, [load, refreshStorage]);
+    bumpTree();
+  }, [load, refreshStorage, bumpTree]);
 
   const uploadFiles = useCallback(
     async (files: File[]) => {
@@ -325,6 +329,7 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
       if (done) toast.show(done);
       load();
       refreshStorage();
+      bumpTree();
     } catch (err) {
       toast.error(hubErrorMessage(err, fail));
     }
@@ -470,6 +475,10 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
           ))}
           <Link to="/forms" className="drv-nav"><FileIcon kind="form" size={18} /> Forms</Link>
         </nav>
+        <div className="drv-tree-wrap">
+          <div className="drv-tree-title">Folders</div>
+          <DriveFolderTree activeId={folderId} activePath={folder?.path} reloadKey={treeKey} onMoveInto={moveInto} />
+        </div>
         <div className="drv-storage">
           <Icon name="archive" size={16} />
           <span>{usedBytes === null ? 'Checking storage…' : `${usedBytes ? formatBytes(usedBytes) : '0 B'} used`}</span>
@@ -592,12 +601,12 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
       <input ref={folderInput} type="file" multiple hidden {...({ webkitdirectory: '' } as any)} onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ''; if (files.length) uploadFolder(files); }} />
 
       {dialog?.type === 'share' && dialog.item && <ShareModal item={dialog.item} onClose={() => setDialog(null)} />}
-      {dialog?.type === 'move' && dialog.item && <MoveModal item={dialog.item} onClose={() => setDialog(null)} onMoved={load} />}
+      {dialog?.type === 'move' && dialog.item && <MoveModal item={dialog.item} onClose={() => setDialog(null)} onMoved={() => { load(); bumpTree(); }} />}
       {dialog?.type === 'rename' && dialog.item && (
-        <NameModal title="Rename" label="Name" action="Save" initial={dialog.item.name} onClose={() => setDialog(null)} onSubmit={async (name) => { await drivelyService.update(dialog.item!.id, { name }); load(); }} />
+        <NameModal title="Rename" label="Name" action="Save" initial={dialog.item.name} onClose={() => setDialog(null)} onSubmit={async (name) => { await drivelyService.update(dialog.item!.id, { name }); load(); bumpTree(); }} />
       )}
       {dialog?.type === 'folder' && (
-        <NameModal title="New folder" label="Folder name" action="Create" initial="Untitled folder" onClose={() => setDialog(null)} onSubmit={async (name) => { await drivelyService.create({ kind: 'folder', name, parentId }); load(); }} />
+        <NameModal title="New folder" label="Folder name" action="Create" initial="Untitled folder" onClose={() => setDialog(null)} onSubmit={async (name) => { await drivelyService.create({ kind: 'folder', name, parentId }); load(); bumpTree(); }} />
       )}
       {dialog?.type === 'delete' && dialog.item && (
         <ConfirmDialog
@@ -605,7 +614,7 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
           body={<>“{dialog.item.name}”{dialog.item.kind === 'folder' ? ' and everything inside it' : ''} will be gone for you and anyone it was shared with. You can't undo this.</>}
           confirmLabel="Delete forever"
           busyLabel="Deleting…"
-          onConfirm={async () => { await drivelyService.remove(dialog.item!.id); toast.show('Deleted forever'); load(); refreshStorage(); }}
+          onConfirm={async () => { await drivelyService.remove(dialog.item!.id); toast.show('Deleted forever'); load(); refreshStorage(); bumpTree(); }}
           onClose={() => setDialog(null)}
         />
       )}

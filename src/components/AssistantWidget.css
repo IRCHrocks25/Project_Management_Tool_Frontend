@@ -2,10 +2,12 @@
   position: fixed; right: 24px; bottom: 24px; z-index: 1150;
   width: 52px; height: 52px; display: grid; place-items: center;
   border: 0; border-radius: 50%; background: var(--color-action); color: #fff; font-size: 19px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); cursor: grab;
   transition: transform 0.14s;
+  touch-action: none; /* let pointer-drag work on touch devices */
 }
 .aw-trigger:hover { transform: scale(1.05); }
+.aw-trigger.dragging { cursor: grabbing; transform: none; transition: none; }
 .aw-trigger:focus-visible, .aw-panel :focus-visible { outline: 2px solid #111111; outline-offset: 2px; }
 
 .aw-panel {
@@ -16,7 +18,9 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
   color: #111111; font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 13.5px;
 }
-.aw-head { padding: 12px 10px 12px 16px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #ececec; }
+.aw-head { padding: 12px 10px 12px 16px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #ececec; cursor: grab; touch-action: none; user-select: none; }
+.aw-panel.dragging, .aw-panel.dragging .aw-head { cursor: grabbing; }
+.aw-panel.dragging { user-select: none; }
 .aw-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aw-icon { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 9px; background: transparent; color: #444; font-size: 14px; cursor: pointer; }
 .aw-icon:hover { background: #f3f3f3; color: #111111; }

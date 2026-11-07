@@ -27,6 +27,36 @@ const HOW_TO_VIDEOS = [
 const errorText = (error: any) =>
   error?.response?.data?.message || 'The assistant could not answer just now. Please try again.';
 
+/** Where the widget sits, as offsets from the viewport's right/bottom edges (matches the CSS anchor). */
+type Corner = { right: number; bottom: number };
+const DEFAULT_POS: Corner = { right: 24, bottom: 24 };
+const POS_KEY = 'aw-widget-pos';
+const EDGE = 8; // keep at least this many px from every edge
+const PANEL_W = 420;
+const panelH = () => Math.min(680, window.innerHeight - 48);
+
+const isMobileViewport = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+const loadPos = (): Corner | null => {
+  try {
+    const raw = localStorage.getItem(POS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (typeof p?.right === 'number' && typeof p?.bottom === 'number') return p;
+    }
+  } catch {
+    /* ignore unreadable storage */
+  }
+  return null;
+};
+
+/** Clamp a corner offset so a w×h box stays fully on screen. */
+const clampPos = (right: number, bottom: number, w: number, h: number): Corner => ({
+  right: Math.min(Math.max(EDGE, right), Math.max(EDGE, window.innerWidth - w - EDGE)),
+  bottom: Math.min(Math.max(EDGE, bottom), Math.max(EDGE, window.innerHeight - h - EDGE)),
+});
+
 /** Shows plain text with its links clickable. Nothing is rendered as HTML. */
 const Linkified: React.FC<{ text: string }> = ({ text }) => (
   <>
@@ -55,6 +85,84 @@ const AssistantWidget: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // ---- Draggable position (so the widget never traps the upload/storage indicator) ----
+  const [pos, setPos] = useState<Corner | null>(() => loadPos());
+  const [mobile, setMobile] = useState<boolean>(isMobileViewport);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ sx: number; sy: number; right: number; bottom: number; w: number; h: number; moved: boolean } | null>(null);
+  const justDragged = useRef(false);
+
+  // Track viewport breakpoint; re-clamp the saved position when the window resizes.
+  useEffect(() => {
+    const onResize = () => {
+      setMobile(isMobileViewport());
+      setPos((p) => {
+        if (!p || isMobileViewport()) return p;
+        const w = open ? PANEL_W : 52;
+        const h = open ? panelH() : 52;
+        return clampPos(p.right, p.bottom, w, h);
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [open]);
+
+  // When the panel opens, make sure its larger footprint still fits on screen.
+  useEffect(() => {
+    if (!open || mobile) return;
+    setPos((p) => (p ? clampPos(p.right, p.bottom, PANEL_W, panelH()) : p));
+  }, [open, mobile]);
+
+  const startDrag = (e: React.PointerEvent<HTMLElement>) => {
+    if (mobile) return; // panel is fullscreen on mobile — no dragging
+    // On the header, let its buttons (new chat / history / close) work instead of starting a drag.
+    if (e.currentTarget.classList.contains('aw-head') && (e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const cur = pos ?? DEFAULT_POS;
+    drag.current = { sx: e.clientX, sy: e.clientY, right: cur.right, bottom: cur.bottom, w: rect.width, h: rect.height, moved: false };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
+  };
+
+  const moveDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const st = drag.current;
+    if (!st) return;
+    const dx = e.clientX - st.sx;
+    const dy = e.clientY - st.sy;
+    if (!st.moved && Math.abs(dx) + Math.abs(dy) < 4) return; // ignore tiny jitters (keep clicks as clicks)
+    st.moved = true;
+    if (!dragging) setDragging(true);
+    // right/bottom grow toward the top-left, so subtract the pointer delta.
+    setPos(clampPos(st.right - dx, st.bottom - dy, st.w, st.h));
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const st = drag.current;
+    drag.current = null;
+    if (!st) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    if (st.moved) {
+      // Only the trigger has a trailing onClick to suppress; the header has none.
+      if (e.currentTarget.classList.contains('aw-trigger')) justDragged.current = true;
+      setDragging(false);
+      setPos((p) => {
+        const np = p ?? DEFAULT_POS;
+        try { localStorage.setItem(POS_KEY, JSON.stringify(np)); } catch { /* ignore */ }
+        return np;
+      });
+    }
+  };
+
+  const resetPos = () => {
+    setPos(null);
+    try { localStorage.removeItem(POS_KEY); } catch { /* ignore */ }
+  };
+
+  // Inline offsets only when the user has moved it and we're not in the fullscreen mobile panel.
+  const posStyle: React.CSSProperties | undefined =
+    pos && !mobile ? { right: pos.right, bottom: pos.bottom, top: 'auto', left: 'auto' } : undefined;
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
@@ -170,15 +278,37 @@ const AssistantWidget: React.FC = () => {
 
   if (!open) {
     return (
-      <button type="button" className="aw-trigger faq-help-trigger" onClick={() => setOpen(true)} aria-label="Open assistant" title="Ask the assistant">
+      <button
+        type="button"
+        className={`aw-trigger faq-help-trigger${dragging ? ' dragging' : ''}`}
+        style={posStyle}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClick={() => {
+          if (justDragged.current) { justDragged.current = false; return; } // a drag, not a click
+          setOpen(true);
+        }}
+        aria-label="Open assistant"
+        title="Ask the assistant — drag to move"
+      >
         <FaMagic aria-hidden="true" />
       </button>
     );
   }
 
   return (
-    <div className="aw-panel faq-help-trigger" role="dialog" aria-label="Assistant">
-      <div className="aw-head">
+    <div className={`aw-panel faq-help-trigger${dragging ? ' dragging' : ''}`} style={posStyle} role="dialog" aria-label="Assistant">
+      <div
+        className="aw-head"
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onDoubleClick={resetPos}
+        title="Drag to move · double-click to reset position"
+      >
         <h2>{view === 'history' ? 'Past chats' : 'Assistant'}</h2>
         <button type="button" className="aw-icon" onClick={newChat} aria-label="New chat" title="New chat"><FaPlus /></button>
         <button type="button" className="aw-icon" onClick={showHistory} aria-label="Past chats" title="Past chats"><FaHistory /></button>

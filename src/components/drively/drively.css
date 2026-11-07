@@ -302,6 +302,25 @@
   .hub .drv-eact { margin-left:0; width:100%; justify-content:flex-end; }
 }
 
+/* Sidebar folder tree — the Google-Drive-style "My Drive" outline. */
+.hub .drv-tree-wrap { flex:1 1 auto; min-height:0; overflow-y:auto; margin-top:4px; padding-top:8px; border-top:1px solid var(--line); }
+.hub .drv-tree-title { padding:2px 12px 6px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+.hub .drv-tree, .hub .drv-tree-kids { list-style:none; margin:0; padding:0; }
+.hub .drv-tree-row { display:flex; align-items:center; gap:2px; min-height:32px; border-radius:8px; color:var(--fg-2); }
+.hub .drv-tree-row:hover { background:var(--surface-2); }
+.hub .drv-tree-on { background:var(--color-action-soft); }
+.hub .drv-tree-on .drv-tree-link { color:var(--color-action); font-weight:600; }
+.hub .drv-tree-drop { outline:2px dashed var(--color-action); outline-offset:-2px; background:var(--color-action-soft); }
+.hub .drv-tree-twist { flex-shrink:0; width:20px; height:24px; display:grid; place-items:center; border:0; background:transparent; color:var(--muted); border-radius:6px; cursor:pointer; transition:transform .12s; }
+.hub .drv-tree-twist.open { transform:rotate(90deg); }
+.hub .drv-tree-twist:hover { background:var(--surface-2); color:var(--fg); }
+.hub .drv-tree-twist:focus-visible, .hub .drv-tree-link:focus-visible { outline:2px solid var(--color-action); outline-offset:-2px; border-radius:6px; }
+.hub .drv-tree-link { flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:4px 8px 4px 2px; border:0; background:transparent; color:inherit; font:inherit; font-size:13.5px; text-align:left; cursor:pointer; border-radius:6px; }
+.hub .drv-tree-link span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hub .drv-tree-muted { color:var(--muted); font-size:12.5px; padding:4px 12px; }
+.hub .drv-tree-pad { padding:4px 0; }
+.hub .drv-tree-retry { border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px; text-align:left; cursor:pointer; text-decoration:underline; }
+
 /* Printing a document or PDF shows only the content. */
 @media print {
   .hub .drv-etop, .hub .drv-toolbar, .hub .drv-outline, .hub .drv-thumbs, .hub .drv-wordcount, .hub .drv-conflict { display:none !important; }
