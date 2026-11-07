@@ -113,7 +113,7 @@ const DriveFolderTree: React.FC<{
   const loadRoots = useCallback(async () => {
     setError(false);
     try {
-      setRoots(onlyFolders(await drivelyService.list({ view: 'mine', parentId: null })));
+      setRoots(onlyFolders(await drivelyService.list({ view: 'mine' })));
     } catch {
       setError(true);
       setRoots([]);

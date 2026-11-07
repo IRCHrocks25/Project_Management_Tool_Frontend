@@ -1,6 +1,7 @@
 /** /drively/d/:id loads the file and hands it to the right editor. Editors are lazy: each has heavy libraries. */
 import React, { Suspense, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { clearClientSession, isClientPortalPath } from '../../services/clientPortal.service';
 import { DriveDetail, drivelyService } from '../../services/drively.service';
 import { hubErrorMessage, hubErrorStatus } from '../../services/hub.service';
 import EmptyState from '../hub/ui/EmptyState';
@@ -16,6 +17,8 @@ const Loading = () => <div className="drv-loading"><Skeleton height={44} /><Skel
 
 const DriveOpen: React.FC = () => {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
+  const portal = isClientPortalPath();
   const [item, setItem] = useState<DriveDetail | null>(null);
   const [error, setError] = useState<{ title: string; body: string } | null>(null);
 
@@ -25,19 +28,26 @@ const DriveOpen: React.FC = () => {
     drivelyService
       .get(id)
       .then(setItem)
-      .catch((err) =>
+      .catch((err) => {
+        if (portal && hubErrorStatus(err) === 401) {
+          clearClientSession();
+          navigate('/client', { replace: true });
+          return;
+        }
         setError(
           hubErrorStatus(err) === 404
             ? { title: "This file isn't available", body: "It may have been deleted, or you don't have access. Ask its owner to share it with you." }
             : { title: "Couldn't open this file", body: hubErrorMessage(err) },
-        ),
-      );
-  }, [id]);
+        );
+      });
+  }, [id, navigate, portal]);
 
   if (error) {
     return (
       <div className="drv-loading">
-        <EmptyState icon="alert" title={error.title} text={error.body}><Link className="hub-btn" to="/drively">Back to Drively</Link></EmptyState>
+        <EmptyState icon="alert" title={error.title} text={error.body}>
+          <Link className="hub-btn" to={portal ? '/client/files' : '/drively'}>{portal ? 'Back to your files' : 'Back to Drively'}</Link>
+        </EmptyState>
       </div>
     );
   }

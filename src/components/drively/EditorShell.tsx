@@ -1,6 +1,7 @@
 /** The top bar every Drively editor shares: back, name, star, save state, actions and Share. */
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isClientPortalPath } from '../../services/clientPortal.service';
 import { DriveDetail, drivelyService } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import { Avatar } from '../hub/ui/Avatar';
@@ -31,7 +32,11 @@ const EditorShell: React.FC<{
   const [sharing, setSharing] = useState(false);
   const saved = useRef(item.name);
   const canEdit = item.myAccess !== 'view';
-  const back = item.path.length ? `/drively/folders/${item.path[item.path.length - 1].id}` : item.isOwner ? '/drively/my-drive' : '/drively/shared';
+  const portal = isClientPortalPath();
+  const parent = item.path[item.path.length - 1]?.id;
+  const back = portal
+    ? parent ? `/client/folders/${parent}` : '/client/files'
+    : parent ? `/drively/folders/${parent}` : item.isOwner ? '/drively/my-drive' : '/drively/shared';
 
   useEffect(() => {
     document.title = `${name} - Drively`;
@@ -81,7 +86,7 @@ const EditorShell: React.FC<{
             if (e.key === 'Enter') e.currentTarget.blur();
           }}
         />
-        <button type="button" className={`drv-estar${starred ? ' drv-estar-on' : ''}`} aria-label={starred ? 'Remove star' : 'Add star'} aria-pressed={starred} onClick={toggleStar}>{starred ? '★' : '☆'}</button>
+        {!portal && <button type="button" className={`drv-estar${starred ? ' drv-estar-on' : ''}`} aria-label={starred ? 'Remove star' : 'Add star'} aria-pressed={starred} onClick={toggleStar}>{starred ? '★' : '☆'}</button>}
         {status && (
           <span className={`drv-save${status === 'error' || status === 'offline' ? ' drv-save-err' : ''}`} role="status">
             {SAVE_TEXT[status]}

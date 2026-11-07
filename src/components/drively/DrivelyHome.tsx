@@ -54,7 +54,7 @@ const whenText = (iso: string) => {
 };
 
 /** A small sample of the file, in the spirit of Drive's thumbnails. */
-const CardPreview: React.FC<{ item: DriveItem }> = ({ item }) => {
+export const CardPreview: React.FC<{ item: DriveItem }> = ({ item }) => {
   const p = item.preview;
   if (item.kind === 'doc' && p?.lines?.length) {
     return (

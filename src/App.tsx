@@ -53,6 +53,10 @@ const MeetingRoom = React.lazy(() => import('./components/meetings/MeetingRoom')
 const DrivelyRoot = React.lazy(() => import('./components/drively/DrivelyRoot'));
 const DrivelyHome = React.lazy(() => import('./components/drively/DrivelyHome'));
 const DriveOpen = React.lazy(() => import('./components/drively/DriveOpen'));
+const ClientSignIn = React.lazy(() => import('./components/drively/ClientPortal').then((m) => ({ default: m.ClientSignIn })));
+const ClientClaim = React.lazy(() => import('./components/drively/ClientPortal').then((m) => ({ default: m.ClientClaim })));
+const ClientFiles = React.lazy(() => import('./components/drively/ClientPortal').then((m) => ({ default: m.ClientFiles })));
+const ClientGate = React.lazy(() => import('./components/drively/ClientPortal').then((m) => ({ default: m.ClientGate })));
 const GuestMeeting = React.lazy(() => import('./components/meetings/GuestMeeting'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -152,8 +156,8 @@ const DepartmentBoardRoute: React.FC = () => {
 };
 
 /** Pages anyone can open: the assistant must never appear here, even if a teammate is logged in on this browser. */
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/reset-password', '/rapid-prospect-onboarding'];
-const PUBLIC_PREFIXES = ['/share/', '/f/', '/m/', '/client-updates/forms/'];
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/reset-password', '/rapid-prospect-onboarding', '/client'];
+const PUBLIC_PREFIXES = ['/share/', '/f/', '/m/', '/client-updates/forms/', '/client/'];
 /** A floating button would sit over the call's own controls. */
 const isCallPage = (path: string) => /^\/meetings\/[^/]+$/.test(path);
 
@@ -268,6 +272,21 @@ const App: React.FC = () => {
           <Route path="trash" element={<DrivelyHome section="trash" />} />
           <Route path="folders/:folderId" element={<DrivelyHome />} />
           <Route path="d/:id" element={<DriveOpen />} />
+        </Route>
+        {/* Drively for people outside the company: no team login, and none of the team app's navigation */}
+        <Route
+          path="/client"
+          element={
+            <Suspense fallback={null}>
+              <DrivelyRoot />
+            </Suspense>
+          }
+        >
+          <Route index element={<ClientSignIn />} />
+          <Route path="link/:token" element={<ClientClaim />} />
+          <Route path="files" element={<ClientGate><ClientFiles /></ClientGate>} />
+          <Route path="folders/:folderId" element={<ClientGate><ClientFiles /></ClientGate>} />
+          <Route path="d/:id" element={<ClientGate><DriveOpen /></ClientGate>} />
         </Route>
         {/* Meetings: the call fills the window, so it sits outside the side navigation */}
         <Route

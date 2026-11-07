@@ -9,6 +9,7 @@ import { Modal } from '../hub/ui/Modal';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { useHubUsers } from '../hub/ui/users';
+import DriveClientAccessSection from './DriveClientAccess';
 import FileIcon from './FileIcon';
 
 const Perm: React.FC<{ label: string; value: DrivePermission; onChange: (p: DrivePermission) => void }> = ({ label, value, onChange }) => (
@@ -139,6 +140,7 @@ export const ShareModal: React.FC<{ item: Pick<DriveItem, 'id' | 'name' | 'kind'
             </label>
             {everyone && <Perm label="Permission for everyone" value={everyone.permission} onChange={(permission) => change(rows.map((x) => (x === everyone ? { ...x, permission } : x)))} />}
           </div>
+          <DriveClientAccessSection itemId={item.id} />
         </div>
       )}
     </Modal>

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { DriveAccess, DriveDetail, drivelyService } from '../../services/drively.service';
+import { DriveAccess, DriveDetail, driveToken, drivelyService } from '../../services/drively.service';
 import { currentHubUser } from '../hub/ui/users';
 import { previewFor } from './driveContent';
 
@@ -70,7 +70,8 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
     let lastSeq = 0;
     let savedSeq = 0;
     let saveFailed = false;
-    const socket: Socket = io(`${API_URL}/drively`, { auth: { token: localStorage.getItem('token') }, transports: ['websocket', 'polling'] });
+    let shownLocally = false;
+    const socket: Socket = io(`${API_URL}/drively`, { auth: { token: driveToken() }, transports: ['websocket', 'polling'] });
 
     const refresh = () => {
       if (!socket.connected) return setStatus('offline');
@@ -139,15 +140,22 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
           setLevel(ack.level as DriveAccess);
           lastSeq = Math.max(lastSeq, ack.seq || 0);
           savedSeq = Math.max(savedSeq, ack.savedSeq || 0);
+          // An empty update is two bytes.
+          if (shownLocally && ack.update && ack.update.byteLength > 2) return window.location.reload();
           if (ack.update) Y.applyUpdate(doc, new Uint8Array(ack.update), socket);
           if (ack.seed) runSeed();
           else if (ack.stateVector && canWrite) {
             const missing = Y.encodeStateAsUpdate(doc, new Uint8Array(ack.stateVector));
-            // An empty update is two bytes.
             if (missing.length > 2) send(missing);
           }
-          // A file that still waits to be filled by someone else stays on the loading screen.
-          if (!ack.seed && doc.share.size > 0) setSynced(true);
+          // Holding no edits at all. `doc.share` can't tell: just reading a part of the document adds it there.
+          const empty = Y.encodeStateVector(doc).length <= 1;
+          if (!ack.seed && !canWrite && empty) {
+            // Nobody who can edit has opened this yet, and a viewer can't fill the shared copy. Draw the saved content
+            // here only: `send` refuses without write access, so none of it leaves this page.
+            shownLocally = true;
+            runSeed();
+          } else if (!ack.seed && doc.share.size > 0) setSynced(true);
           sendAwareness([doc.clientID]);
           refresh();
         },
@@ -158,6 +166,8 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
     socket.on('disconnect', refresh);
     socket.on('update', (m: { itemId: string; update: ArrayBuffer }) => {
       if (m.itemId !== itemId) return;
+      // The shared copy now exists. Merging it with the local one would show everything twice, so start over from it.
+      if (shownLocally) return window.location.reload();
       Y.applyUpdate(doc, new Uint8Array(m.update), socket);
       setSynced(true);
     });
@@ -183,6 +193,8 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
     });
     socket.on('access', (m: { itemId: string; level: DriveAccess }) => {
       if (m.itemId !== itemId) return;
+      // Newly able to edit, but holding a local-only copy: reload so its edits go to the shared one.
+      if (shownLocally && m.level !== 'view') return window.location.reload();
       canWrite = m.level !== 'view';
       setLevel(m.level);
     });
