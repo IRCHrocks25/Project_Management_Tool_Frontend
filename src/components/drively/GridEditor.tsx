@@ -5,13 +5,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Workbook, WorkbookInstance } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
-import { DriveDetail, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, saveBlob } from '../../services/drively.service';
 import EmptyState from '../hub/ui/EmptyState';
 import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { attachGridScroll } from './gridScroll';
 import { useToast } from '../hub/ui/Toast';
 import { exportName } from './driveContent';
+import { useDriveComments } from './DriveComments';
 import { useLiveDoc, useLivePreview } from './driveLive';
 import EditorShell from './EditorShell';
 import { sheetsForEditor, sheetsForStorage, sheetsToCsv, sheetsToXlsx } from './gridConvert';
@@ -25,7 +26,8 @@ const GridEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   const live = useLiveDoc(item, (doc) => {
     writeSheets(doc, sheetsForStorage(sheetsForEditor(item.content?.sheets)), known.current, LOCAL);
   });
-  const canEdit = live.level !== 'view';
+  const canEdit = canEditLevel(live.level);
+  const comments = useDriveComments(item);
   const shownItem = useMemo(() => ({ ...item, myAccess: live.level }), [item, live.level]);
   const [workbook, setWorkbook] = useState<{ key: number; sheets: any[] } | null>(null);
   const latest = useRef<any[]>([]);
@@ -120,7 +122,7 @@ const GridEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   if (live.failed) return <div className="drv-loading"><EmptyState icon="alert" title="Couldn't open this file" text="The file storage didn't answer. Try again in a moment." /></div>;
 
   return (
-    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions}>
+    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions} comments={comments}>
       {workbook ? (
         <div className="drv-grid-host" ref={host}>
           <Workbook key={workbook.key} ref={grid} data={workbook.sheets} lang="en" allowEdit={canEdit} showToolbar={canEdit} showFormulaBar showSheetTabs row={100} column={26} onChange={onChange} />

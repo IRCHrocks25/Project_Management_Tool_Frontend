@@ -15,6 +15,7 @@ import FileIcon from './FileIcon';
 const Perm: React.FC<{ label: string; value: DrivePermission; onChange: (p: DrivePermission) => void }> = ({ label, value, onChange }) => (
   <select className="hub-inp drv-perm" aria-label={label} value={value} onChange={(e) => onChange(e.target.value as DrivePermission)}>
     <option value="view">Can view</option>
+    <option value="comment">Can comment</option>
     <option value="edit">Can edit</option>
   </select>
 );

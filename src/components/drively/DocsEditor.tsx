@@ -8,7 +8,7 @@ import { getSchema } from '@tiptap/core';
 import { useSearchParams } from 'react-router-dom';
 import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import * as Y from 'yjs';
-import { DriveDetail, drivelyService, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, drivelyService, saveBlob } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import Icon from '../hub/ui/Icon';
 import OverflowMenu from '../hub/ui/OverflowMenu';
@@ -16,7 +16,9 @@ import { useToast } from '../hub/ui/Toast';
 import ConfirmDialog from '../hub/ui/ConfirmDialog';
 import EmptyState from '../hub/ui/EmptyState';
 import { Skeleton } from '../hub/ui/Skeleton';
-import { buildDocExtensions, isSafeHref } from './docsExtensions';
+import { findTextAnchor, makeTextAnchor, TextAnchor } from './commentAnchors';
+import { buildDocExtensions, docText, isSafeHref, setCommentHighlights, textRangeForPositions } from './docsExtensions';
+import { SelectionCommentButton, useDriveComments } from './DriveComments';
 import { setAssetLink, setAssetLinks, withResolvedPictures } from './driveAssets';
 import { exportName, newId } from './driveContent';
 import { LiveDoc, useLiveDoc, useLivePreview } from './driveLive';
@@ -40,8 +42,13 @@ const readTabs = (doc: Y.Doc): DocTab[] =>
     .filter((id) => tabTitles(doc).has(id))
     .map((id) => ({ id, title: tabTitles(doc).get(id) as string }));
 
-function addTab(doc: Y.Doc, title: string, content: JSONContent = BLANK, index?: number): string {
-  const id = newId();
+/**
+ * A new document's first tab always has this id. Someone who can't edit draws a never-opened file from a copy of their
+ * own until an editor fills the shared one, and a comment made on that copy has to point at the same tab.
+ */
+const FIRST_TAB_ID = 'first-tab';
+
+function addTab(doc: Y.Doc, title: string, content: JSONContent = BLANK, index?: number, id: string = newId()): string {
   doc.transact(() => {
     prosemirrorJSONToYXmlFragment(docSchema(), content, tabFragment(doc, id));
     tabTitles(doc).set(id, title);
@@ -179,7 +186,7 @@ const Toolbar: React.FC<{ editor: Editor; onImage: () => void; onLink: () => voi
 const DocsEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   useMemo(() => setAssetLinks(item.assetLinks), [item.assetLinks]);
   const live = useLiveDoc(item, (doc) => {
-    addTab(doc, 'Tab 1', item.content?.type === 'doc' ? item.content : BLANK);
+    addTab(doc, 'Tab 1', item.content?.type === 'doc' ? item.content : BLANK, undefined, FIRST_TAB_ID);
   });
   const [tabs, setTabs] = useState<DocTab[]>([]);
   useEffect(() => {
@@ -197,7 +204,8 @@ const DocsEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
 
 const DocsWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc; tabs: DocTab[] }> = ({ item, live, tabs }) => {
   const toast = useToast();
-  const canEdit = live.level !== 'view';
+  const canEdit = canEditLevel(live.level);
+  const comments = useDriveComments(item);
   const shownItem = useMemo(() => ({ ...item, myAccess: live.level }), [item, live.level]);
   const [params, setParams] = useSearchParams();
   const wanted = params.get('tab');
@@ -272,6 +280,50 @@ const DocsWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc; tabs: DocTab[]
   useEffect(() => {
     editor?.setEditable(canEdit);
   }, [canEdit, editor]);
+
+  // Highlights are drawn over the document and never written into it, so people who can't edit can have them too.
+  const { data: commentData, activeId: activeComment, setActiveId: setActiveComment, setMissing } = comments;
+  const docRevision = editor?.state.doc;
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const here = (commentData?.threads || []).filter((t) => !t.resolvedAt && t.anchor?.type === 'text' && t.anchor.tabId === tabId);
+    setCommentHighlights(editor.view, here.map((t) => ({ id: t.id, anchor: t.anchor as TextAnchor })), activeComment);
+  }, [activeComment, commentData, editor, tabId]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const flat = docText(editor.state.doc);
+    const gone = (commentData?.threads || []).filter((t) => {
+      if (t.anchor?.type !== 'text') return false;
+      return t.anchor.tabId === tabId ? !findTextAnchor(flat.text, t.anchor) : !tabs.some((x) => x.id === (t.anchor as TextAnchor).tabId);
+    });
+    setMissing(new Set(gone.map((t) => t.id)));
+  }, [commentData, docRevision, editor, setMissing, tabId, tabs]);
+
+  // Picking a thread in the panel takes you to its place, even on another tab.
+  useEffect(() => {
+    const anchor = commentData?.threads.find((t) => t.id === activeComment)?.anchor;
+    if (!anchor || anchor.type !== 'text') return;
+    if (anchor.tabId !== tabId) {
+      if (tabs.some((t) => t.id === anchor.tabId)) openTab(anchor.tabId);
+      return;
+    }
+    pageRef.current?.querySelector(`[data-comment-id="${activeComment}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Only when the choice of thread or tab changes, not whenever comments refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeComment, tabId]);
+
+  const buildAnchor = useCallback(
+    (range: Range) => {
+      if (!editor) return null;
+      const flat = docText(editor.state.doc);
+      const from = editor.view.posAtDOM(range.startContainer, range.startOffset);
+      const to = editor.view.posAtDOM(range.endContainer, range.endOffset);
+      const [start, end] = textRangeForPositions(flat, from, to);
+      return end > start && flat.text.slice(start, end).trim() ? makeTextAnchor(flat.text, start, end, tabId) : null;
+    },
+    [editor, tabId],
+  );
 
   const newTab = () => openTab(addTab(live.doc, nextTabTitle(tabs)));
 
@@ -363,7 +415,7 @@ const DocsWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc; tabs: DocTab[]
   );
 
   return (
-    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions}>
+    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions} comments={comments}>
       {editor && canEdit && <Toolbar editor={editor} onImage={() => fileInput.current?.click()} onLink={onLink} />}
       <div className="drv-doc-body">
         {showOutline && (
@@ -416,6 +468,13 @@ const DocsWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc; tabs: DocTab[]
           <div
             className="drv-page"
             ref={pageRef}
+            onClick={(e) => {
+              const id = (e.target as HTMLElement).closest('[data-comment-id]')?.getAttribute('data-comment-id');
+              if (id) {
+                setActiveComment(id);
+                comments.setOpen(true);
+              }
+            }}
             onMouseDown={(e) => {
               // A click in the page margin puts the cursor in the text, not nowhere.
               if (e.target === e.currentTarget && editor) {
@@ -429,6 +488,7 @@ const DocsWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc; tabs: DocTab[]
           <div className="drv-wordcount">{words} {words === 1 ? 'word' : 'words'}</div>
         </div>
       </div>
+      {commentData?.canComment && <SelectionCommentButton container={pageRef} build={buildAnchor} onComment={comments.startDraft} />}
       {renaming && (
         <NameModal
           title="Rename tab"

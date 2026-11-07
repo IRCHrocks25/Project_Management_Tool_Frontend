@@ -3,6 +3,7 @@
  * Errors are axios errors; turn them into a message with `hubErrorMessage(err)`.
  */
 import axios from 'axios';
+import type { CommentAnchor } from '../components/drively/commentAnchors';
 import { clientToken, isClientPortalPath } from './clientPortal.service';
 import { HubUser } from './hub.service';
 
@@ -15,8 +16,12 @@ const readUrl = (path: string) => `${API_URL}/${isClientPortalPath() ? 'client-p
 
 export type DriveKind = 'folder' | 'doc' | 'grid' | 'slides' | 'pdf' | 'file';
 export type DriveView = 'mine' | 'shared' | 'recent' | 'starred' | 'trash';
-export type DriveAccess = 'owner' | 'edit' | 'view';
-export type DrivePermission = 'view' | 'edit';
+export type DriveAccess = 'owner' | 'edit' | 'comment' | 'view';
+export type DrivePermission = 'view' | 'comment' | 'edit';
+export type DriveClientPermission = 'view' | 'comment';
+
+/** Only these change a file. Everyone else is read-only, however much else they can do. */
+export const canEditLevel = (level: DriveAccess) => level === 'owner' || level === 'edit';
 
 export interface DrivePreview {
   lines?: { t: string; h?: boolean }[];
@@ -67,9 +72,9 @@ export interface DriveClientLink {
 }
 
 export interface DriveClientAccess {
-  clients: { id: string; name: string; email: string | null; lastSeenAt: string | null; permission: 'view'; sharedAt: string }[];
+  clients: { id: string; name: string; email: string | null; lastSeenAt: string | null; permission: DriveClientPermission; sharedAt: string }[];
   /** Links nobody has used yet. `clientName` set means it sets a new code for that client. */
-  links: { id: string; expiresAt: string; createdAt: string; clientName: string | null }[];
+  links: { id: string; expiresAt: string; createdAt: string; clientName: string | null; permission: DriveClientPermission }[];
 }
 
 export const drivelyService = {
@@ -116,11 +121,50 @@ export const drivelyService = {
   /* Clients outside the company. Only a file's owner can use these. */
   clientAccess: (id: string) => axios.get<DriveClientAccess>(url(`/items/${id}/client-access`), auth()).then((r) => r.data),
   knownClients: () => axios.get<{ id: string; name: string; email: string | null }[]>(url('/clients'), auth()).then((r) => r.data),
-  createClientLink: (id: string) => axios.post<DriveClientLink>(url(`/items/${id}/client-links`), {}, auth()).then((r) => r.data),
+  createClientLink: (id: string, permission: DriveClientPermission) => axios.post<DriveClientLink>(url(`/items/${id}/client-links`), { permission }, auth()).then((r) => r.data),
   cancelClientLink: (id: string, linkId: string) => axios.delete(url(`/items/${id}/client-links/${linkId}`), auth()).then((r) => r.data),
-  shareWithClient: (id: string, clientId: string) => axios.post(url(`/items/${id}/client-access`), { clientId }, auth()).then((r) => r.data),
+  shareWithClient: (id: string, clientId: string, permission: DriveClientPermission) => axios.post(url(`/items/${id}/client-access`), { clientId, permission }, auth()).then((r) => r.data),
+  setClientPermission: (id: string, clientId: string, permission: DriveClientPermission) => axios.patch(url(`/items/${id}/client-access/${clientId}`), { permission }, auth()).then((r) => r.data),
   removeClient: (id: string, clientId: string) => axios.delete(url(`/items/${id}/client-access/${clientId}`), auth()).then((r) => r.data),
   newCodeLink: (id: string, clientId: string) => axios.post<DriveClientLink>(url(`/items/${id}/client-access/${clientId}/new-code-link`), {}, auth()).then((r) => r.data),
+};
+
+export interface DriveComment {
+  id: string;
+  body: string;
+  authorName: string;
+  authorIsClient: boolean;
+  mine: boolean;
+  createdAt: string;
+  editedAt: string | null;
+  canDelete: boolean;
+}
+
+export interface CommentThread extends DriveComment {
+  anchor: CommentAnchor | null;
+  visibility: 'team' | 'everyone';
+  resolvedAt: string | null;
+  resolvedByName: string | null;
+  canResolve: boolean;
+  replies: DriveComment[];
+}
+
+export interface DriveCommentsData {
+  canComment: boolean;
+  isClient: boolean;
+  /** A client could read a thread here if the team shows it to them. */
+  clientsCanComment: boolean;
+  threads: CommentThread[];
+}
+
+/** The same calls for team members and clients: the page decides which routes and session apply. */
+export const driveCommentsApi = {
+  list: (itemId: string) => axios.get<DriveCommentsData>(readUrl(`/items/${itemId}/comments`), auth()).then((r) => r.data),
+  add: (itemId: string, body: { body: string; parentId?: string; anchor?: CommentAnchor | null; showToClients?: boolean }) =>
+    axios.post<{ id: string }>(readUrl(`/items/${itemId}/comments`), body, auth()).then((r) => r.data),
+  update: (id: string, body: string) => axios.patch(readUrl(`/comments/${id}`), { body }, auth()).then((r) => r.data),
+  remove: (id: string) => axios.delete(readUrl(`/comments/${id}`), auth()).then((r) => r.data),
+  resolve: (id: string, resolved: boolean) => axios.post(readUrl(`/comments/${id}/resolve`), { resolved }, auth()).then((r) => r.data),
 };
 
 /** The address a client opens. The token is only known at the moment the link is created. */

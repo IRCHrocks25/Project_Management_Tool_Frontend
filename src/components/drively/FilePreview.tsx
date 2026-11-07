@@ -1,13 +1,14 @@
 /** Any other upload: shows it if the browser can, offers Download, and turns Office files into editable ones. */
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DriveDetail, drivelyService, fetchDriveBytes, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, drivelyService, fetchDriveBytes, saveBlob } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import EmptyState from '../hub/ui/EmptyState';
 import Icon from '../hub/ui/Icon';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { blankTab, formatBytes, itemHref, OfficeTarget, officeTarget, sendTab } from './driveContent';
+import { useDriveComments } from './DriveComments';
 import EditorShell from './EditorShell';
 
 const TARGET_LABEL: Record<OfficeTarget, string> = { doc: 'Docs', grid: 'Grid', slides: 'Slides' };
@@ -20,6 +21,7 @@ const FilePreview: React.FC<{ item: DriveDetail }> = ({ item }) => {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
+  const comments = useDriveComments(item);
   const type = item.contentType || '';
   const target = officeTarget(item);
   const showsText = (type.startsWith('text/') || type === 'application/json') && item.sizeBytes <= MAX_TEXT_BYTES;
@@ -67,7 +69,7 @@ const FilePreview: React.FC<{ item: DriveDetail }> = ({ item }) => {
 
   const actions = (
     <>
-      {target && item.myAccess !== 'view' && (
+      {target && canEditLevel(item.myAccess) && (
         <button type="button" className="hub-btn hub-btn-primary" disabled={converting} onClick={convert}>{converting ? 'Converting…' : `Edit in ${TARGET_LABEL[target]}`}</button>
       )}
       <button type="button" className="hub-btn" onClick={download}><Icon name="download" size={15} /> Download</button>
@@ -88,7 +90,7 @@ const FilePreview: React.FC<{ item: DriveDetail }> = ({ item }) => {
   }
 
   return (
-    <EditorShell item={item} actions={actions}>
+    <EditorShell item={item} actions={actions} comments={comments}>
       <div className="drv-preview">{body}</div>
     </EditorShell>
   );

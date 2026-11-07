@@ -2,12 +2,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isClientPortalPath } from '../../services/clientPortal.service';
-import { DriveDetail, drivelyService } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, drivelyService } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import { Avatar } from '../hub/ui/Avatar';
 import { Badge } from '../hub/ui/Badge';
 import Icon from '../hub/ui/Icon';
 import { useToast } from '../hub/ui/Toast';
+import { CommentsController, DriveCommentsPanel } from './DriveComments';
 import { ShareModal } from './DriveModals';
 import FileIcon from './FileIcon';
 import { LiveUser, SaveStatus } from './driveLive';
@@ -24,19 +25,27 @@ const EditorShell: React.FC<{
   status?: SaveStatus;
   peers?: LiveUser[];
   actions?: React.ReactNode;
+  comments?: CommentsController;
   children: React.ReactNode;
-}> = ({ item, status, peers, actions, children }) => {
+}> = ({ item, status, peers, actions, comments, children }) => {
   const toast = useToast();
   const [name, setName] = useState(item.name);
   const [starred, setStarred] = useState(item.starred);
   const [sharing, setSharing] = useState(false);
   const saved = useRef(item.name);
-  const canEdit = item.myAccess !== 'view';
+  const openCount = comments?.data?.threads.filter((t) => !t.resolvedAt).length ?? 0;
+  const canEdit = canEditLevel(item.myAccess);
   const portal = isClientPortalPath();
   const parent = item.path[item.path.length - 1]?.id;
   const back = portal
     ? parent ? `/client/folders/${parent}` : '/client/files'
     : parent ? `/drively/folders/${parent}` : item.isOwner ? '/drively/my-drive' : '/drively/shared';
+
+  // The grid measures itself on window resizes, so it needs telling when the panel takes or gives back space.
+  const panelOpen = !!comments?.open;
+  useEffect(() => {
+    window.dispatchEvent(new Event('resize'));
+  }, [panelOpen]);
 
   useEffect(() => {
     document.title = `${name} - Drively`;
@@ -92,7 +101,7 @@ const EditorShell: React.FC<{
             {SAVE_TEXT[status]}
           </span>
         )}
-        {!canEdit && <Badge tone="neutral">View only</Badge>}
+        {!canEdit && <Badge tone="neutral">{item.myAccess === 'comment' ? 'Can comment' : 'View only'}</Badge>}
         <div className="drv-eact">
           {!!peers?.length && (
             <ul className="drv-peers" aria-label="Also in this file">
@@ -103,12 +112,20 @@ const EditorShell: React.FC<{
             </ul>
           )}
           {actions}
+          {comments?.enabled && (
+            <button type="button" className={`hub-btn${comments.open ? ' drv-tool-on' : ''}`} aria-pressed={comments.open} onClick={() => comments.setOpen(!comments.open)}>
+              Comments{openCount ? ` (${openCount})` : ''}
+            </button>
+          )}
           {item.myAccess === 'owner' && (
             <button type="button" className="hub-btn hub-btn-primary" onClick={() => setSharing(true)}><Icon name="share" size={16} /> Share</button>
           )}
         </div>
       </header>
-      <div className="drv-ebody">{children}</div>
+      <div className="drv-ebody-wrap">
+        <div className="drv-ebody">{children}</div>
+        {comments?.enabled && comments.open && <DriveCommentsPanel itemId={item.id} controller={comments} />}
+      </div>
       {sharing && <ShareModal item={item} onClose={() => setSharing(false)} />}
     </div>
   );

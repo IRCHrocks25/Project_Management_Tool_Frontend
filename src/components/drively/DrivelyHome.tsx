@@ -4,7 +4,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { DriveItem, DriveKind, DriveView, drivelyService, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveAccess, DriveItem, DriveKind, DriveView, drivelyService, saveBlob } from '../../services/drively.service';
 import { formsErrorMessage, formsService } from '../../services/forms.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import ConfirmDialog from '../hub/ui/ConfirmDialog';
@@ -144,7 +144,7 @@ const DrivelyHome: React.FC<{ section?: Section }> = ({ section: sectionProp }) 
   const newRef = useRef<HTMLDivElement>(null);
 
   const parentId = folderId || null;
-  const canAddHere = section === 'home' || (section === 'mine' && (!folderId || folder?.myAccess !== 'view'));
+  const canAddHere = section === 'home' || (section === 'mine' && (!folderId || (!!folder && canEditLevel(folder.myAccess as DriveAccess))));
 
   const load = useCallback(async () => {
     setError(null);

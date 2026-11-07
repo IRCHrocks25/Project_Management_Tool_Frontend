@@ -4,7 +4,7 @@
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
-import { DriveDetail, drivelyService, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, drivelyService, saveBlob } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import Icon from '../hub/ui/Icon';
 import OverflowMenu from '../hub/ui/OverflowMenu';
@@ -27,6 +27,7 @@ import {
 import EmptyState from '../hub/ui/EmptyState';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { setAssetLink, setAssetLinks } from './driveAssets';
+import { useDriveComments } from './DriveComments';
 import { LiveDoc, useLiveDoc, useLivePreview } from './driveLive';
 import EditorShell from './EditorShell';
 import { readDeck, slideScopes, writeDeck } from './liveSlides';
@@ -162,7 +163,8 @@ const SlidesEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
 
 const SlidesWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc }> = ({ item, live }) => {
   const toast = useToast();
-  const canEdit = live.level !== 'view';
+  const canEdit = canEditLevel(live.level);
+  const comments = useDriveComments(item);
   const shownItem = useMemo(() => ({ ...item, myAccess: live.level }), [item, live.level]);
   const [deck, setDeckState] = useState<SlidesContent>(() => readDeck(live.doc));
   const deckRef = useRef(deck);
@@ -516,7 +518,7 @@ const SlidesWorkspace: React.FC<{ item: DriveDetail; live: LiveDoc }> = ({ item,
   );
 
   return (
-    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions}>
+    <EditorShell item={shownItem} status={canEdit ? live.status : undefined} peers={live.peers} actions={actions} comments={comments}>
       {canEdit && (
         <div className="drv-toolbar" role="toolbar" aria-label="Slide tools">
           <OverflowMenu label="New slide" triggerLabel="New slide" triggerIcon="plus" items={SLIDE_LAYOUTS.map((l) => ({ label: l.label, onSelect: () => addSlide(l.id) }))} />

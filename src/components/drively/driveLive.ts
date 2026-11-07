@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { DriveAccess, DriveDetail, driveToken, drivelyService } from '../../services/drively.service';
+import { canEditLevel, DriveAccess, DriveDetail, driveToken, drivelyService } from '../../services/drively.service';
 import { currentHubUser } from '../hub/ui/users';
 import { previewFor } from './driveContent';
 
@@ -65,7 +65,7 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
 
   useEffect(() => {
     const itemId = item.id;
-    let canWrite = item.myAccess !== 'view';
+    let canWrite = canEditLevel(item.myAccess);
     let pending = 0;
     let lastSeq = 0;
     let savedSeq = 0;
@@ -136,7 +136,7 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
             return;
           }
           setFailed(false);
-          canWrite = ack.level !== 'view';
+          canWrite = canEditLevel(ack.level as DriveAccess);
           setLevel(ack.level as DriveAccess);
           lastSeq = Math.max(lastSeq, ack.seq || 0);
           savedSeq = Math.max(savedSeq, ack.savedSeq || 0);
@@ -194,8 +194,8 @@ export function useLiveDoc(item: DriveDetail, seed: (doc: Y.Doc) => void): LiveD
     socket.on('access', (m: { itemId: string; level: DriveAccess }) => {
       if (m.itemId !== itemId) return;
       // Newly able to edit, but holding a local-only copy: reload so its edits go to the shared one.
-      if (shownLocally && m.level !== 'view') return window.location.reload();
-      canWrite = m.level !== 'view';
+      if (shownLocally && canEditLevel(m.level)) return window.location.reload();
+      canWrite = canEditLevel(m.level);
       setLevel(m.level);
     });
     socket.on('removed', (m: { itemId: string }) => {
@@ -228,7 +228,7 @@ export function useLivePreview(live: LiveDoc, itemId: string, kind: 'doc' | 'gri
   const read = useRef(getContent);
   read.current = getContent;
   useEffect(() => {
-    if (live.level === 'view') return undefined;
+    if (!canEditLevel(live.level)) return undefined;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const send = () => {
       timer = null;

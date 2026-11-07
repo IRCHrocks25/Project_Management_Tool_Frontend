@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { DriveDetail, drivelyService, fetchDriveBytes, saveBlob } from '../../services/drively.service';
+import { canEditLevel, DriveDetail, drivelyService, fetchDriveBytes, saveBlob } from '../../services/drively.service';
 import { hubErrorMessage, hubErrorStatus } from '../../services/hub.service';
 import EmptyState from '../hub/ui/EmptyState';
 import Icon from '../hub/ui/Icon';
@@ -14,6 +14,8 @@ import OverflowMenu from '../hub/ui/OverflowMenu';
 import { Skeleton } from '../hub/ui/Skeleton';
 import { useToast } from '../hub/ui/Toast';
 import { exportName, newId } from './driveContent';
+import { PdfAnchor, PdfRect, rectsOnPage } from './commentAnchors';
+import { SelectionCommentButton, useDriveComments } from './DriveComments';
 import EditorShell from './EditorShell';
 import type { PdfMark, PdfPageRef } from './pdfBake';
 
@@ -116,7 +118,10 @@ function markMatches(layer: HTMLElement, query?: string) {
 
 const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   const toast = useToast();
-  const canEdit = item.myAccess !== 'view';
+  const canEdit = canEditLevel(item.myAccess);
+  const comments = useDriveComments(item);
+  const [areaMode, setAreaMode] = useState(false);
+  const [areaDraft, setAreaDraft] = useState<{ pageId: string; rect: PdfRect } | null>(null);
   const [sources, setSources] = useState<{ bytes: Uint8Array; doc: PDFDocumentProxy }[] | null>(null);
   const [pages, setPages] = useState<PdfPageRef[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -309,8 +314,55 @@ const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
 
   /* ---------------- drawing on a page ---------------- */
 
+  /** For scanned pages and pictures, which have no text to select: drag a box and comment on it. */
+  const startArea = (e: React.PointerEvent<HTMLDivElement>, page: PdfPageRef) => {
+    e.preventDefault();
+    const box = e.currentTarget.getBoundingClientRect();
+    const spot = (ev: { clientX: number; clientY: number }): [number, number] => [
+      Math.min(1, Math.max(0, (ev.clientX - box.left) / box.width)),
+      Math.min(1, Math.max(0, (ev.clientY - box.top) / box.height)),
+    ];
+    const [sx, sy] = spot(e);
+    const rectTo = (ev: { clientX: number; clientY: number }): PdfRect => {
+      const [x, y] = spot(ev);
+      return { x: Math.min(sx, x), y: Math.min(sy, y), w: Math.abs(x - sx), h: Math.abs(y - sy) };
+    };
+    const move = (ev: PointerEvent) => setAreaDraft({ pageId: page.id, rect: rectTo(ev) });
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      const rect = rectTo(ev);
+      setAreaDraft(null);
+      setAreaMode(false);
+      if (rect.w > 0.01 && rect.h > 0.01) comments.startDraft({ type: 'pdf', page: pages.findIndex((p) => p.id === page.id), quote: '', rects: [rect] });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const buildAnchor = (range: Range): PdfAnchor | null => {
+    const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+    const el = start?.closest<HTMLElement>('[data-page]');
+    if (!el) return null;
+    const page = pages.findIndex((p) => p.id === el.dataset.page);
+    const rects = rectsOnPage(Array.from(range.getClientRects()), el.getBoundingClientRect());
+    return page >= 0 && rects.length ? { type: 'pdf', page, quote: range.toString().replace(/\s+/g, ' ').trim().slice(0, 2000), rects } : null;
+  };
+
+  const { data: commentData, activeId: activeComment, setActiveId: setActiveComment, setMissing } = comments;
+  const pdfThreads = (commentData?.threads || []).filter((t) => t.anchor?.type === 'pdf');
+  const pageCount = pages.length;
+  useEffect(() => {
+    if (!pageCount) return;
+    setMissing(new Set((commentData?.threads || []).filter((t) => t.anchor?.type === 'pdf' && t.anchor.page >= pageCount).map((t) => t.id)));
+  }, [commentData, pageCount, setMissing]);
+  useEffect(() => {
+    if (activeComment) pagesRef.current?.querySelector(`[data-comment-id="${activeComment}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [activeComment]);
+
   const startOnPage = (e: React.PointerEvent<HTMLDivElement>, page: PdfPageRef) => {
     setActivePage(pages.findIndex((p) => p.id === page.id));
+    if (areaMode) return startArea(e, page);
     if (!canEdit || tool === 'select') {
       if (e.target === e.currentTarget) setSelectedMark(null);
       return;
@@ -478,7 +530,7 @@ const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
   }
 
   return (
-    <EditorShell item={item} actions={actions}>
+    <EditorShell item={item} actions={actions} comments={comments}>
       {conflict && (
         <div className="drv-note drv-note-warn drv-conflict" role="alert">
           Someone else saved this PDF, so yours wasn't saved. Download your copy first if you need it, then reload.
@@ -504,6 +556,11 @@ const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
           <input type="search" aria-label="Find in PDF" placeholder="Find in PDF" value={query} onChange={(e) => search(e.target.value)} />
           {hits && <span className="drv-muted">{hits.length ? `${hits.length} ${hits.length === 1 ? 'page' : 'pages'}` : 'No matches'}</span>}
         </div>
+        {commentData?.canComment && (
+          <button type="button" className={`hub-btn hub-btn-sm ${areaMode ? 'drv-tool-on' : 'hub-btn-ghost'}`} aria-pressed={areaMode} title="For scanned pages and pictures. To comment on text, select it." onClick={() => setAreaMode((on) => !on)}>
+            {areaMode ? 'Drag over the page…' : 'Comment on an area'}
+          </button>
+        )}
         {dirty && <span className="drv-save">Unsaved changes</span>}
       </div>
       {!sources ? (
@@ -546,13 +603,13 @@ const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
             ))}
           </nav>
           <div className="drv-pdf-pages" ref={pagesRef}>
-            {pages.map((p) => {
+            {pages.map((p, pageIndex) => {
               const size = sizes[`${p.id}:${zoom}:${p.rotation}`];
               return (
                 <div
                   key={p.id}
                   data-page={p.id}
-                  className={`drv-pdf-page drv-cursor-${canEdit ? tool : 'select'}`}
+                  className={`drv-pdf-page drv-cursor-${areaMode ? 'area' : canEdit ? tool : 'select'}`}
                   style={size ? { width: size.w, height: size.h } : undefined}
                   onPointerDown={(e) => startOnPage(e, p)}
                 >
@@ -572,12 +629,33 @@ const PdfEditor: React.FC<{ item: DriveDetail }> = ({ item }) => {
                     {p.marks.map((m) => MarkView(p, m))}
                     {draft?.pageId === p.id && MarkView(p, draft.mark, true)}
                   </div>
+                  {pdfThreads.filter((t) => !t.resolvedAt && (t.anchor as PdfAnchor).page === pageIndex).flatMap((t) =>
+                    (t.anchor as PdfAnchor).rects.map((r, n) => (
+                      <div
+                        key={`${t.id}:${n}`}
+                        role="button"
+                        aria-label="Open this comment"
+                        data-comment-id={n === 0 ? t.id : undefined}
+                        className={`drv-pdf-cmt${t.id === activeComment ? ' drv-pdf-cmt-on' : ''}`}
+                        style={{ left: `${r.x * 100}%`, top: `${r.y * 100}%`, width: `${r.w * 100}%`, height: `${r.h * 100}%` }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => {
+                          setActiveComment(t.id);
+                          comments.setOpen(true);
+                        }}
+                      />
+                    )),
+                  )}
+                  {areaDraft?.pageId === p.id && (
+                    <div className="drv-pdf-area" style={{ left: `${areaDraft.rect.x * 100}%`, top: `${areaDraft.rect.y * 100}%`, width: `${areaDraft.rect.w * 100}%`, height: `${areaDraft.rect.h * 100}%` }} />
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
       )}
+      {commentData?.canComment && !areaMode && <SelectionCommentButton container={pagesRef} build={buildAnchor} onComment={comments.startDraft} />}
       <input ref={mergeInput} type="file" accept="application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) merge(f); }} />
       <input ref={imageInput} type="file" accept="image/png,image/jpeg" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) placeImage(f); }} />
     </EditorShell>

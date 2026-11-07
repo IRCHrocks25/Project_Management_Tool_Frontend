@@ -1,6 +1,10 @@
 /** The TipTap setup for Drively documents. Build it once per editor. */
 import { Extension, mergeAttributes, Node } from '@tiptap/core';
 import type { Extensions } from '@tiptap/react';
+import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet, EditorView } from '@tiptap/pm/view';
+import { findTextAnchor, TextAnchor } from './commentAnchors';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import Color from '@tiptap/extension-color';
@@ -89,8 +93,83 @@ export interface DocCollab {
   user: { name: string; color: string };
 }
 
+/** The document as plain text, with each character's position in the editor. Blocks are separated by a line break. */
+export function docText(doc: ProseMirrorNode): { text: string; positions: number[] } {
+  let text = '';
+  const positions: number[] = [];
+  doc.descendants((node, pos) => {
+    if (node.isText && node.text) {
+      for (let i = 0; i < node.text.length; i += 1) positions.push(pos + i);
+      text += node.text;
+    } else if (node.isTextblock && text && !text.endsWith('\n')) {
+      positions.push(pos);
+      text += '\n';
+    }
+    return true;
+  });
+  return { text, positions };
+}
+
+/** The stretch of `docText` output that falls between two editor positions. */
+export function textRangeForPositions(flat: { positions: number[] }, from: number, to: number): [number, number] {
+  let start = flat.positions.findIndex((p) => p >= from);
+  if (start < 0) start = flat.positions.length;
+  let end = start;
+  while (end < flat.positions.length && flat.positions[end] < to) end += 1;
+  return [start, end];
+}
+
+interface HighlightState {
+  threads: { id: string; anchor: TextAnchor }[];
+  activeId: string | null;
+  decorations: DecorationSet;
+}
+
+const commentHighlightKey = new PluginKey<HighlightState>('driveCommentHighlights');
+
+function highlightDecorations(doc: ProseMirrorNode, threads: HighlightState['threads'], activeId: string | null): DecorationSet {
+  if (threads.length === 0) return DecorationSet.empty;
+  const flat = docText(doc);
+  const found: Decoration[] = [];
+  for (const { id, anchor } of threads) {
+    const range = findTextAnchor(flat.text, anchor);
+    if (range) {
+      found.push(Decoration.inline(flat.positions[range[0]], flat.positions[range[1] - 1] + 1, { class: `drv-cmt-hl${id === activeId ? ' drv-cmt-hl-on' : ''}`, 'data-comment-id': id }));
+    }
+  }
+  return DecorationSet.create(doc, found);
+}
+
+/** Draws comment highlights as decorations: on screen only, never part of the shared document. */
+const CommentHighlights = Extension.create({
+  name: 'driveCommentHighlights',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<HighlightState>({
+        key: commentHighlightKey,
+        state: {
+          init: () => ({ threads: [], activeId: null, decorations: DecorationSet.empty }),
+          apply(tr, value, _old, state) {
+            const next = tr.getMeta(commentHighlightKey) as Pick<HighlightState, 'threads' | 'activeId'> | undefined;
+            if (next) return { ...next, decorations: highlightDecorations(state.doc, next.threads, next.activeId) };
+            return tr.docChanged ? { ...value, decorations: highlightDecorations(state.doc, value.threads, value.activeId) } : value;
+          },
+        },
+        props: {
+          decorations: (state) => commentHighlightKey.getState(state)?.decorations,
+        },
+      }),
+    ];
+  },
+});
+
+export function setCommentHighlights(view: EditorView, threads: HighlightState['threads'], activeId: string | null) {
+  view.dispatch(view.state.tr.setMeta(commentHighlightKey, { threads, activeId }).setMeta('addToHistory', false));
+}
+
 export function buildDocExtensions(opts: { canEdit: boolean; collab?: DocCollab }): Extensions {
   return [
+    CommentHighlights,
     // Undo comes from the collaboration extension, so it only takes back this person's own edits.
     StarterKit.configure({ heading: { levels: [1, 2, 3, 4] }, history: opts.collab ? false : undefined }),
     ...(opts.collab

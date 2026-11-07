@@ -357,6 +357,53 @@
   .hub .drv-client-body { padding:16px; }
 }
 
+/* Comments. */
+.hub .drv-ebody-wrap { flex:1; min-height:0; display:flex; }
+.hub .drv-ebody-wrap > .drv-ebody { min-width:0; position:relative; overflow:hidden; }
+.hub .drv-client-create { display:flex; gap:8px; flex-wrap:wrap; }
+.hub .drv-cmt-panel { position:relative; z-index:5; width:340px; flex:none; display:flex; flex-direction:column; min-height:0; overflow-y:auto; border-left:1px solid var(--line); background:#fff; }
+.hub .drv-cmt-head { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; padding:10px var(--s3); background:#fff; border-bottom:1px solid var(--line); }
+.hub .drv-cmt-head h2 { margin:0; font-size:15px; font-weight:600; }
+.hub .drv-cmt-new { padding:var(--s3); border-bottom:1px solid var(--line); }
+.hub .drv-cmt-composer { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.hub .drv-cmt-composer textarea { width:100%; min-height:72px; resize:vertical; font:inherit; font-size:14px; }
+.hub .drv-cmt-actions { display:flex; justify-content:flex-end; gap:8px; }
+.hub .drv-cmt-show { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--fg-2); }
+.hub .drv-cmt-quote { margin:0 0 8px; padding:4px 0 4px 10px; border-left:3px solid #d97706; color:var(--fg-2); font-size:13px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; max-height:96px; overflow:hidden; }
+.hub .drv-cmt-unquote { display:block; margin-top:4px; font-size:12px; }
+.hub .drv-cmt-gone { margin:0 0 8px; padding:6px 8px; border-radius:6px; background:var(--surface-2); color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.hub .drv-cmt-tabs { display:flex; width:auto; margin:var(--s3) var(--s3) 0; }
+.hub .drv-cmt-tabs button { flex:1; padding:6px 8px; font-size:13px; white-space:nowrap; }
+.hub .drv-cmt-list { display:flex; flex-direction:column; gap:var(--s2); padding:var(--s3); }
+.hub .drv-cmt-empty, .hub .drv-cmt-readonly { margin:0; padding:var(--s3); font-size:13px; }
+.hub .drv-cmt-thread { padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; }
+.hub .drv-cmt-thread-on { border-color:var(--color-action); box-shadow:0 0 0 1px var(--color-action); cursor:default; }
+.hub .drv-cmt-thread-done { opacity:.75; }
+.hub .drv-cmt-entry + .drv-cmt-entry { margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+.hub .drv-cmt-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; }
+.hub .drv-cmt-meta .drv-muted { font-size:12px; }
+.hub .drv-cmt-more { margin-left:auto; }
+.hub .drv-cmt-body { margin:4px 0 0; font-size:14px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+.hub .drv-cmt-audience { margin-top:6px; font-size:12px; }
+.hub .drv-cmt-done { margin:8px 0 0; font-size:12px; }
+.hub .drv-cmt-float { position:fixed; z-index:50; box-shadow:0 4px 14px rgba(0,0,0,.2); }
+.hub .drv-prose .drv-cmt-hl { background:#fde68a; cursor:pointer; }
+.hub .drv-prose .drv-cmt-hl-on { background:#fbbf24; }
+.hub .drv-pdf-cmt { position:absolute; background:rgba(251,191,36,.38); cursor:pointer; }
+.hub .drv-pdf-cmt-on { background:rgba(245,158,11,.55); outline:1px solid #d97706; }
+.hub .drv-pdf-area { position:absolute; border:2px dashed #d97706; background:rgba(251,191,36,.2); pointer-events:none; }
+.hub .drv-cursor-area { cursor:crosshair; touch-action:none; user-select:none; }
+.hub .drv-cursor-area .textLayer { pointer-events:none; }
+@media (max-width: 768px) {
+  .hub .drv-cmt-panel { position:fixed; z-index:45; inset:0; width:auto; border-left:0; }
+  .hub .drv-cmt-composer textarea { font-size:16px; }
+}
+@media print {
+  .hub .drv-cmt-panel, .hub .drv-cmt-float, .hub .drv-pdf-cmt { display:none !important; }
+  .hub .drv-prose .drv-cmt-hl { background:none; }
+  .hub .drv-ebody-wrap { display:block !important; height:auto !important; }
+}
+
 /* Printing a document or PDF shows only the content. */
 @media print {
   .hub .drv-etop, .hub .drv-toolbar, .hub .drv-outline, .hub .drv-thumbs, .hub .drv-wordcount, .hub .drv-conflict { display:none !important; }

@@ -3,10 +3,17 @@
  * because a client link has to exist before it can be sent.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { clientLinkUrl, clientSignInUrl, DriveClientAccess, drivelyService } from '../../services/drively.service';
+import { clientLinkUrl, clientSignInUrl, DriveClientAccess, DriveClientPermission, drivelyService } from '../../services/drively.service';
 import { hubErrorMessage } from '../../services/hub.service';
 import Icon from '../hub/ui/Icon';
 import { useToast } from '../hub/ui/Toast';
+
+const ClientPerm: React.FC<{ label: string; value: DriveClientPermission; disabled?: boolean; onChange: (p: DriveClientPermission) => void }> = ({ label, value, disabled, onChange }) => (
+  <select className="hub-inp drv-perm" aria-label={label} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as DriveClientPermission)}>
+    <option value="comment">Can comment</option>
+    <option value="view">Can view</option>
+  </select>
+);
 
 const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
   const toast = useToast();
@@ -14,6 +21,7 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
   const [known, setKnown] = useState<{ id: string; name: string; email: string | null }[]>([]);
   const [fresh, setFresh] = useState<{ url: string; forClient: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [linkPermission, setLinkPermission] = useState<DriveClientPermission>('comment');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -55,7 +63,7 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
 
   const createLink = () =>
     run(async () => {
-      const link = await drivelyService.createClientLink(itemId);
+      const link = await drivelyService.createClientLink(itemId, linkPermission);
       setFresh({ url: clientLinkUrl(link.token), forClient: null });
     }, "Couldn't create the link.");
 
@@ -72,9 +80,12 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
       <div className="drv-client-head">
         <div className="drv-grow">
           <b>Clients</b>
-          <div className="drv-muted">People outside the company. They can only view this and can't see anything else in Telos.</div>
+          <div className="drv-muted">People outside the company. They can't change this file or see anything else in Telos.</div>
         </div>
-        <button type="button" className="hub-btn" disabled={busy} onClick={createLink}><Icon name="link" size={15} /> Create client link</button>
+        <div className="drv-client-create">
+          <ClientPerm label="What a client link allows" value={linkPermission} disabled={busy} onChange={setLinkPermission} />
+          <button type="button" className="hub-btn" disabled={busy} onClick={createLink}><Icon name="link" size={15} /> Create client link</button>
+        </div>
       </div>
 
       {error && <p className="hub-err" role="alert">{error}</p>}
@@ -104,7 +115,7 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
           disabled={busy}
           onChange={(e) => {
             const clientId = e.target.value;
-            if (clientId) run(() => drivelyService.shareWithClient(itemId, clientId), "Couldn't share it with that client.");
+            if (clientId) run(() => drivelyService.shareWithClient(itemId, clientId, linkPermission), "Couldn't share it with that client.");
           }}
         >
           <option value="">Share with an existing client…</option>
@@ -121,7 +132,7 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
                 <b>{c.name}</b>
                 <div className="drv-muted">{c.email || 'No email on file'}</div>
               </div>
-              <span className="drv-muted">Can view</span>
+              <ClientPerm label={`What ${c.name} can do`} value={c.permission} disabled={busy} onChange={(permission) => run(() => drivelyService.setClientPermission(itemId, c.id, permission), "Couldn't change their access.")} />
               <button type="button" className="hub-btn hub-btn-ghost hub-btn-sm" disabled={busy} title="For a client who forgot their code" onClick={() => newCodeLink(c.id, c.name)}>New code</button>
               <button type="button" className="hub-btn hub-btn-ghost hub-btn-sm" disabled={busy} aria-label={`Remove ${c.name}`} onClick={() => run(() => drivelyService.removeClient(itemId, c.id), "Couldn't remove them.")}>
                 <Icon name="x" size={15} />
@@ -133,7 +144,7 @@ const DriveClientAccessSection: React.FC<{ itemId: string }> = ({ itemId }) => {
               <span className="drv-dept"><Icon name="link" size={15} /></span>
               <div className="drv-grow">
                 <b>{l.clientName ? `New code link for ${l.clientName}` : 'Unused client link'}</b>
-                <div className="drv-muted">Stops working {new Date(l.expiresAt).toLocaleDateString()}</div>
+                <div className="drv-muted">{l.clientName ? '' : `${l.permission === 'comment' ? 'Can comment' : 'Can view'} · `}Stops working {new Date(l.expiresAt).toLocaleDateString()}</div>
               </div>
               <button type="button" className="hub-btn hub-btn-ghost hub-btn-sm" disabled={busy} aria-label="Cancel this link" onClick={() => run(() => drivelyService.cancelClientLink(itemId, l.id), "Couldn't cancel the link.")}>
                 <Icon name="x" size={15} />
